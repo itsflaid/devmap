@@ -13,28 +13,28 @@ devmap/
 │   └── cli/                         ← core CLI
 │       ├── src/
 │       │   ├── commands/
-│       │   │   ├── init.js
-│       │   │   ├── analyze.js
-│       │   │   ├── ask.js
-│       │   │   └── doctor.js
+│       │   │   ├── init.ts
+│       │   │   ├── analyze.ts
+│       │   │   ├── ask.ts
+│       │   │   └── doctor.ts
 │       │   ├── analyzers/
-│       │   │   ├── fileScanner.js
-│       │   │   ├── filterEngine.js
-│       │   │   ├── frameworkDetector.js
-│       │   │   ├── dependencyGraph.js
-│       │   │   ├── entryPoints.js
-│       │   │   └── serviceDetector.js
+│       │   │   ├── fileScanner.ts
+│       │   │   ├── filterEngine.ts
+│       │   │   ├── frameworkDetector.ts
+│       │   │   ├── dependencyGraph.ts
+│       │   │   ├── entryPoints.ts
+│       │   │   └── serviceDetector.ts
 │       │   ├── ai/
-│       │   │   ├── provider.js
-│       │   │   ├── groq.js
-│       │   │   └── prompts.js
+│       │   │   ├── provider.ts
+│       │   │   ├── groq.ts
+│       │   │   └── prompts.ts
 │       │   ├── cache/
-│       │   │   ├── snapshot.js
-│       │   │   └── fileHash.js
+│       │   │   ├── snapshot.ts
+│       │   │   └── fileHash.ts
 │       │   └── utils/
-│       │       ├── output.js
-│       │       ├── config.js
-│       │       └── gitignore.js
+│       │       ├── output.ts
+│       │       ├── config.ts
+│       │       └── gitignore.ts
 │       ├── test/
 │       │   └── fixtures/
 │       │       ├── nextjs-project/
@@ -82,21 +82,21 @@ Project Files
 
 ## Scanner
 
-`packages/cli/src/analyzers/fileScanner.js`
-`packages/cli/src/analyzers/filterEngine.js`
+`packages/cli/src/analyzers/fileScanner.ts`
+`packages/cli/src/analyzers/filterEngine.ts`
 
 Responsible for discovering project structure from the filesystem.
 
-**fileScanner.js** — recursive directory traversal, returns flat list
+**fileScanner.ts** — recursive directory traversal, returns flat list
 of file paths with metadata (size, extension, last modified).
 
-**filterEngine.js** — applies ignore rules, returns only relevant files.
+**filterEngine.ts** — applies ignore rules, returns only relevant files.
 
 Default ignore list:
 ```
 node_modules/   .git/         .next/        dist/
 build/          coverage/     .turbo/       .vercel/
-out/            *.min.js      *.map         *.lock
+out/            *.min.ts      *.map         *.lock
 *.log           public/assets/ .env*
 ```
 
@@ -108,27 +108,27 @@ out/            *.min.js      *.map         *.lock
 
 ```
 packages/cli/src/analyzers/
-├── frameworkDetector.js
-├── dependencyGraph.js
-├── entryPoints.js
-└── serviceDetector.js
+├── frameworkDetector.ts
+├── dependencyGraph.ts
+├── entryPoints.ts
+└── serviceDetector.ts
 ```
 
 Responsible for understanding relationships between files.
 
-**frameworkDetector.js**
+**frameworkDetector.ts**
 Detect framework from `package.json` dependencies + file patterns.
 ```
-package.json has "next" → Next.js
+package.json has "next" → Next.ts
 package.json has "express" → Express
-app/ folder exists → Next.js App Router
+app/ folder exists → Next.ts App Router
 ```
 
-**dependencyGraph.js**
+**dependencyGraph.ts**
 Parse all `import` and `require` statements across all relevant files.
 Build a directed graph: file A → imports → file B.
 
-**entryPoints.js**
+**entryPoints.ts**
 Detect entry points from graph topology:
 ```
 Files imported by many others but import few = utility/library
@@ -136,7 +136,7 @@ Files that import many others but are imported by few = entry points
 Files matching name patterns: page.tsx, layout.tsx, index.ts, server.ts, app.ts
 ```
 
-**serviceDetector.js**
+**serviceDetector.ts**
 Detect external services from import patterns:
 ```
 @prisma/client      → Prisma
@@ -206,7 +206,7 @@ Saved to `.devmap/snapshot.json` in the user's project root.
 Poor context = high token usage + low accuracy.
 Good context = low token usage + high accuracy.
 
-`packages/cli/src/commands/ask.js` uses this logic internally.
+`packages/cli/src/commands/ask.ts` uses this logic internally.
 
 **Strategy:**
 
@@ -256,9 +256,9 @@ Never call a provider SDK directly from a command file.
 
 ```
 packages/cli/src/ai/
-├── provider.js    ← abstraction interface
-├── groq.js        ← Groq adapter
-└── prompts.js     ← all prompt templates
+├── provider.ts    ← abstraction interface
+├── groq.ts        ← Groq adapter
+└── prompts.ts     ← all prompt templates
 ```
 
 **Provider interface — every adapter must implement:**
@@ -292,7 +292,7 @@ const MODEL_ROUTER = {
 4. On 3 consecutive failures → surface actionable error message
 ```
 
-**Prompt templates** in `prompts.js` — all prompts centralized here,
+**Prompt templates** in `prompts.ts` — all prompts centralized here,
 never inline inside command files. Makes iteration and optimization easier.
 
 ---
@@ -303,8 +303,8 @@ Prevents redundant AI calls. Makes repeated analyzes nearly free.
 
 ```
 packages/cli/src/cache/
-├── snapshot.js    ← read/write .devmap/snapshot.json
-└── fileHash.js    ← MD5 hashing per file
+├── snapshot.ts    ← read/write .devmap/snapshot.json
+└── fileHash.ts    ← MD5 hashing per file
 ```
 
 **Logic:**
@@ -340,7 +340,7 @@ Full re-analyze only when user explicitly runs `devmap analyze --fresh`.
 All CLI output goes through a single utility.
 Never use `console.log` directly in command files.
 
-`packages/cli/src/utils/output.js`
+`packages/cli/src/utils/output.ts`
 
 ```js
 output.step('Scanning files...')       // ⟳ spinner
@@ -429,7 +429,7 @@ packages:
   "name": "@devmap/cli",
   "version": "0.1.0",
   "bin": {
-    "devmap": "./src/index.js"
+    "devmap": "./src/index.ts"
   },
   "dependencies": {
     "commander": "^12.0.0",

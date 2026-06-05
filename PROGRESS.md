@@ -1,145 +1,172 @@
-# DevMap Progress
+# Progress DevMap
 
-Last updated: 2026-06-05
+Terakhir diperbarui: 2026-06-05
 
-## Current Status
+## Status Saat Ini
 
-DevMap is now set up as a working pnpm monorepo with a functional CLI foundation.
-The project is still in Phase 1 from the roadmap: static analysis first, no AI
-answering yet.
+DevMap sekarang sudah disiapkan sebagai monorepo pnpm yang berjalan, dengan
+fondasi CLI yang sudah fungsional. Posisi proyek masih berada di Phase 1 sesuai
+roadmap: fokus ke static analysis dulu, belum masuk jawaban AI.
 
-The CLI can currently:
+Saat ini CLI sudah bisa:
 
-- Initialize local DevMap config with `devmap init`.
-- Analyze a project and save `.devmap/snapshot.json`.
-- Detect source files, imports, entry points, critical files, and known external services.
-- Answer a question in a static mode by finding likely relevant files.
-- Run setup diagnostics with `devmap doctor`.
+- Menampilkan welcome screen dengan ASCII wordmark DevMap berwarna aqua ketika
+  `devmap` dijalankan tanpa command.
+- Membuat konfigurasi lokal DevMap dengan `devmap init`.
+- Menganalisis project dan menyimpan `.devmap/snapshot.json`.
+- Mendeteksi source file, import, entry point, critical file, dan external service
+  yang dikenal.
+- Menjawab pertanyaan secara statis dengan mencari file yang kemungkinan relevan.
+- Menjalankan diagnostics setup dengan `devmap doctor`.
 
-## Update Summary
+## Ringkasan Update
 
-### Workspace Setup
+### Setup Workspace
 
-- Updated root `package.json` to match the documented monorepo workflow.
-- Added root scripts:
+- Root `package.json` diperbarui supaya cocok dengan workflow monorepo yang ada
+  di dokumentasi.
+- Script root ditambahkan:
   - `pnpm dev:cli`
   - `pnpm build:cli`
   - `pnpm test:cli`
-- Marked the root package as private because this repository is a workspace root.
-- Updated project metadata to use the MIT license and DevMap description.
+- Root package ditandai sebagai `private` karena repo ini adalah workspace root.
+- Metadata project diperbarui memakai deskripsi DevMap dan license MIT.
 
-### CLI Package Setup
+### Setup Package CLI
 
-- Renamed the CLI package to `@devmap/cli`.
-- Added the `devmap` binary entry pointing to `./dist/index.js`.
-- Added scripts:
+- Package CLI diganti namanya menjadi `@devmap/cli`.
+- Entry binary `devmap` ditambahkan dan diarahkan ke `./dist/index.js`.
+- Welcome screen aqua ditambahkan untuk command `devmap` tanpa argumen. Desainnya
+  memakai ASCII wordmark DevMap sebagai brand signal, memakai warna truecolor
+  `#2EE6D6`, lalu isi di bawahnya tetap ringkas dan command-focused.
+- Script package CLI ditambahkan:
   - `pnpm --filter @devmap/cli dev`
   - `pnpm --filter @devmap/cli build`
   - `pnpm --filter @devmap/cli test`
-- Kept `commander` on version `^12.0.0` so the CLI stays compatible with the
-  Node.js 18+ requirement from the docs.
-- Added Node types to `tsconfig.json` so TypeScript understands `process`,
-  `console`, and `node:*` imports.
+- `commander` dipasang di versi `^12.0.0` supaya tetap kompatibel dengan
+  requirement Node.js 18+ yang tertulis di dokumentasi.
+- Node types ditambahkan ke `tsconfig.json` supaya TypeScript mengenali
+  `process`, `console`, dan import `node:*`.
 
-### Git Hygiene
+### Kerapian Git
 
-- Added `.gitignore` with:
+- `.gitignore` ditambahkan dengan isi:
   - `node_modules/`
   - `dist/`
   - `.devmap/`
   - `.env`
   - `.env.*`
   - `*.log`
-- Removed the accidentally tracked `node_modules/.pnpm-workspace-state-v1.json`
-  from Git tracking while keeping the local file intact.
-- Added pnpm build-script policy for `esbuild`, which is needed by `tsx`.
+- File `node_modules/.pnpm-workspace-state-v1.json` yang sebelumnya terlanjur
+  tracked sudah dikeluarkan dari tracking Git tanpa menghapus file lokalnya.
+- Policy pnpm untuk build script `esbuild` ditambahkan karena dibutuhkan oleh
+  `tsx`.
 
-## Implemented Files
+## File Yang Sudah Diimplementasikan
 
 ### `packages/cli/src/index.ts`
 
-Main CLI entry point.
+Entry point utama untuk CLI.
 
-Responsibilities:
+Tanggung jawab:
 
-- Creates the `devmap` command with Commander.
-- Registers the MVP command surface:
+- Menampilkan welcome screen ketika user menjalankan `devmap` tanpa command.
+- Membuat command utama `devmap` menggunakan Commander.
+- Mendaftarkan command MVP:
   - `init`
   - `analyze`
   - `ask`
   - `doctor`
-- Exposes `--version` and command help.
+- Menyediakan `--version` dan bantuan command.
+
+### `packages/cli/src/utils/welcome.ts`
+
+Renderer welcome screen untuk first-run experience.
+
+Tanggung jawab:
+
+- Menampilkan ASCII wordmark DevMap berwarna aqua `#2EE6D6`.
+- Menampilkan tagline `Understand Any Codebase.`
+- Menampilkan status snapshot project.
+- Menampilkan quick start:
+  - `devmap init`
+  - `devmap analyze`
+- Menampilkan daftar popular commands seperti `analyze`, `explain`, `ask`,
+  `docs`, dan `onboard`.
 
 ### `packages/cli/src/commands/init.ts`
 
-Initial setup command.
+Command setup awal.
 
-Current behavior:
+Perilaku saat ini:
 
-- Creates `~/.devmap/config.json`.
-- Sets Groq as the default provider.
-- Leaves API key empty for now because it is user secret data.
-- Ensures `.devmap/` is ignored in the current project.
+- Membuat `~/.devmap/config.json`.
+- Mengatur Groq sebagai default provider.
+- Membiarkan API key kosong untuk sementara karena itu data rahasia user.
+- Memastikan `.devmap/` masuk ke `.gitignore` project aktif.
 
 ### `packages/cli/src/commands/analyze.ts`
 
-Static project analysis command.
+Command untuk analisis project secara statis.
 
-Current behavior:
+Perilaku saat ini:
 
-- Scans the target project folder.
-- Builds a project map.
-- Prints project name, framework, file count, line count, entry points,
-  critical files, and external services.
-- Saves the snapshot to `.devmap/snapshot.json`.
-- Supports `--deep` and `--fresh` flags at the CLI level.
+- Melakukan scan pada folder project yang ditargetkan.
+- Membuat project map.
+- Menampilkan nama project, framework, jumlah file, jumlah line, entry point,
+  critical file, dan external service.
+- Menyimpan snapshot ke `.devmap/snapshot.json`.
+- Mendukung flag `--deep` dan `--fresh` di level CLI.
 
-The `--deep` output is still simple and static for now. The richer AI explanation
-belongs to Phase 2.
+Output `--deep` saat ini masih sederhana dan statis. Penjelasan AI yang lebih
+kaya akan masuk di Phase 2.
 
 ### `packages/cli/src/commands/ask.ts`
 
-Static question command.
+Command pertanyaan statis.
 
-Current behavior:
+Perilaku saat ini:
 
-- Reads `.devmap/snapshot.json`.
-- If no snapshot exists, runs a quick analyze first.
-- Extracts keywords from the question.
-- Scores files by matching keywords against file paths and exported symbols.
-- Shows the top relevant files and a short preview.
+- Membaca `.devmap/snapshot.json`.
+- Jika snapshot belum ada, command menjalankan quick analyze dulu.
+- Mengambil keyword dari pertanyaan user.
+- Memberi skor file berdasarkan kecocokan keyword terhadap path file dan exported
+  symbol.
+- Menampilkan file paling relevan dan preview singkat.
 
-This does not call AI yet. Phase 2 will replace the static answer section with
-context-aware Groq output.
+Command ini belum memanggil AI. Di Phase 2, bagian jawaban statis akan diganti
+dengan output Groq yang context-aware.
 
 ### `packages/cli/src/commands/doctor.ts`
 
-Setup diagnostics command.
+Command diagnostics setup.
 
-Current behavior:
+Perilaku saat ini:
 
-- Shows Node.js version.
-- Checks whether DevMap config exists.
-- Checks whether API key is set.
-- Checks whether a project snapshot exists.
-- Warns when Groq API key is missing.
+- Menampilkan versi Node.js.
+- Mengecek apakah config DevMap sudah ada.
+- Mengecek apakah API key sudah diset.
+- Mengecek apakah snapshot project sudah ada.
+- Memberi warning jika API key Groq belum tersedia.
 
 ### `packages/cli/src/analyzers/fileScanner.ts`
 
-Recursive filesystem scanner.
+Scanner filesystem rekursif.
 
-Responsibilities:
+Tanggung jawab:
 
-- Walks a project folder.
-- Applies ignore rules.
-- Reads file content.
-- Returns path, absolute path, extension, size, line count, and content.
+- Menelusuri folder project.
+- Menerapkan ignore rules.
+- Membaca isi file.
+- Mengembalikan path, absolute path, extension, ukuran file, jumlah line, dan
+  konten file.
 
 ### `packages/cli/src/analyzers/filterEngine.ts`
 
-Ignore-rule engine for scanning.
+Engine ignore rule untuk proses scanning.
 
-Currently ignores common generated or unsafe paths:
+Saat ini mengabaikan path umum yang generated atau tidak aman dikirim ke proses
+analisis:
 
 - `.git`
 - `.devmap`
@@ -152,37 +179,37 @@ Currently ignores common generated or unsafe paths:
 - `node_modules`
 - `out`
 - `.env*`
-- logs, maps, lockfiles, and common binary assets
+- file log, source map, lockfile, dan asset binary umum
 
 ### `packages/cli/src/analyzers/frameworkDetector.ts`
 
-Framework detector.
+Detector framework.
 
-Current detection:
+Deteksi saat ini:
 
-- Detects Next.js from `next` dependency or an `app/` folder.
-- Detects Express from `express` dependency or common server entry files.
-- Falls back to `unknown`.
+- Next.js terdeteksi dari dependency `next` atau folder `app/`.
+- Express terdeteksi dari dependency `express` atau file entry server umum.
+- Jika tidak cocok, hasilnya `unknown`.
 
 ### `packages/cli/src/analyzers/dependencyGraph.ts`
 
-Import graph builder.
+Builder import graph.
 
-Responsibilities:
+Tanggung jawab:
 
-- Parses static `import`, `export from`, and `require()` specifiers.
-- Resolves local relative imports.
-- Supports TypeScript source resolution when imports use `.js` suffixes.
-- Counts references between files.
+- Melakukan parsing static untuk `import`, `export from`, dan `require()`.
+- Resolve import relatif lokal.
+- Mendukung resolve source TypeScript ketika import memakai suffix `.js`.
+- Menghitung reference antar file.
 
 ### `packages/cli/src/analyzers/entryPoints.ts`
 
-Entry-point detector.
+Detector entry point.
 
-Current logic:
+Logika saat ini:
 
-- Prioritizes source files only.
-- Detects known entry patterns like:
+- Memprioritaskan source file saja.
+- Mendeteksi pola entry point umum seperti:
   - `page.tsx`
   - `layout.tsx`
   - `middleware.ts`
@@ -190,30 +217,31 @@ Current logic:
   - `app.ts`
   - `index.ts`
   - `route.ts`
-- Also includes source files that import other files but are not imported
-  by another local file.
+- Juga memasukkan source file yang meng-import file lain tetapi tidak di-import
+  oleh file lokal lain.
 
 ### `packages/cli/src/analyzers/serviceDetector.ts`
 
-External service detector.
+Detector external service.
 
-Current logic:
+Logika saat ini:
 
-- Reads package dependencies and actual package imports.
-- Detects known services such as Prisma, Supabase, Stripe, NextAuth, Midtrans,
-  Resend, Cloudinary, Firebase, OpenAI, and Groq.
-- Avoids false positives from documentation text or the detector source file itself.
+- Membaca dependency package dan import package yang benar-benar ada di source.
+- Mendeteksi service yang dikenal seperti Prisma, Supabase, Stripe, NextAuth,
+  Midtrans, Resend, Cloudinary, Firebase, OpenAI, dan Groq.
+- Menghindari false positive dari teks dokumentasi atau dari file detector itu
+  sendiri.
 
 ### `packages/cli/src/analyzers/projectMap.ts`
 
-Project map builder.
+Builder project map.
 
-Responsibilities:
+Tanggung jawab:
 
-- Coordinates scanner, graph builder, framework detector, entry detector, and
+- Mengorkestrasi scanner, graph builder, framework detector, entry detector, dan
   service detector.
-- Creates the snapshot data shape used by `analyze` and `ask`.
-- Stores per-file metadata:
+- Membuat bentuk data snapshot yang dipakai oleh `analyze` dan `ask`.
+- Menyimpan metadata per file:
   - hash
   - imports
   - exported symbols
@@ -221,52 +249,53 @@ Responsibilities:
 
 ### `packages/cli/src/cache/fileHash.ts`
 
-Small MD5 hashing utility.
+Utility kecil untuk hashing MD5.
 
-Used to identify file content changes for snapshots and future cache behavior.
+Dipakai untuk mengenali perubahan konten file pada snapshot dan behavior cache
+di masa depan.
 
 ### `packages/cli/src/cache/snapshot.ts`
 
-Snapshot persistence helper.
+Helper persistensi snapshot.
 
-Responsibilities:
+Tanggung jawab:
 
-- Writes `.devmap/snapshot.json`.
-- Reads existing snapshots.
-- Provides the canonical snapshot path.
+- Menulis `.devmap/snapshot.json`.
+- Membaca snapshot yang sudah ada.
+- Menyediakan path canonical untuk snapshot.
 
 ### `packages/cli/src/utils/config.ts`
 
-Global config helper.
+Helper global config.
 
-Responsibilities:
+Tanggung jawab:
 
-- Reads `~/.devmap/config.json`.
-- Writes `~/.devmap/config.json`.
-- Provides the canonical config path.
+- Membaca `~/.devmap/config.json`.
+- Menulis `~/.devmap/config.json`.
+- Menyediakan path canonical untuk config.
 
 ### `packages/cli/src/utils/gitignore.ts`
 
-Git ignore helper.
+Helper Git ignore.
 
-Responsibilities:
+Tanggung jawab:
 
-- Ensures `.devmap/` exists in project `.gitignore`.
-- Avoids duplicate `.devmap/` entries.
+- Memastikan `.devmap/` ada di `.gitignore` project.
+- Menghindari duplikasi entry `.devmap/`.
 
 ### `packages/cli/src/utils/output.ts`
 
-Terminal output helper.
+Helper output terminal.
 
-Responsibilities:
+Tanggung jawab:
 
-- Keeps command output consistent.
-- Provides helpers for sections, steps, success messages, warnings, errors,
-  and key-value rows.
+- Menjaga output command tetap konsisten.
+- Menyediakan helper untuk section, step, success message, warning, error, dan
+  baris key-value.
 
-## Verification
+## Verifikasi
 
-The following checks passed:
+Pengecekan berikut sudah berhasil:
 
 ```bash
 pnpm --filter @devmap/cli test
@@ -278,20 +307,20 @@ node packages\cli\dist\index.js ask "where is the scanner logic"
 node packages\cli\dist\index.js doctor
 ```
 
-## Current Known Limitations
+## Limitasi Saat Ini
 
-- AI integration is not implemented yet.
-- `ask` currently only finds relevant files and previews them.
-- `analyze --deep` currently prints a simple static breakdown.
-- Framework support is still MVP-level: Next.js, Express, or unknown.
-- The generated snapshot is local-only and intentionally ignored by Git.
-- `devmap init` does not ask interactively for an API key yet.
+- Integrasi AI belum diimplementasikan.
+- `ask` saat ini hanya mencari file relevan dan menampilkan preview.
+- `analyze --deep` saat ini masih menampilkan breakdown statis sederhana.
+- Dukungan framework masih level MVP: Next.js, Express, atau unknown.
+- Snapshot yang dibuat bersifat lokal dan sengaja di-ignore oleh Git.
+- `devmap init` belum meminta API key secara interaktif.
 
-## Recommended Next Steps
+## Rekomendasi Langkah Berikutnya
 
-1. Add an interactive `devmap init` prompt for Groq API key input.
-2. Add Groq provider abstraction and model routing.
-3. Add prompt templates for `analyze` and `ask`.
-4. Add tests with fixture projects for Next.js and Express.
-5. Improve exported symbol parsing using a real TypeScript parser.
-6. Add polished user-facing error handling so raw stack traces never leak.
+1. Tambahkan prompt interaktif di `devmap init` untuk input API key Groq.
+2. Tambahkan abstraction provider Groq dan model routing.
+3. Tambahkan prompt template untuk `analyze` dan `ask`.
+4. Tambahkan test fixture untuk project Next.js dan Express.
+5. Tingkatkan parsing exported symbol memakai parser TypeScript sungguhan.
+6. Rapikan error handling user-facing supaya raw stack trace tidak bocor ke user.

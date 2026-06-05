@@ -1,14 +1,24 @@
 {
-  "name": "cli",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "name": "@devmap/cli",
+  "version": "0.1.0",
+  "description": "DevMap command line interface.",
+  "bin": {
+    "devmap": "./dist/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "devmap",
+    "cli",
+    "static-analysis"
+  ],
+  "author": "Mufacoderz",
+  "license": "MIT",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -18,7 +28,7 @@
   },
   "type": "module",
   "dependencies": {
-    "commander": "^15.0.0"
+    "commander": "^12.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",

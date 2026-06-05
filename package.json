@@ -1,14 +1,21 @@
 {
   "name": "devmap",
+  "private": true,
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Understand any codebase in minutes, not days.",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:cli": "pnpm --filter @devmap/cli dev",
+    "build:cli": "pnpm --filter @devmap/cli build",
+    "test:cli": "pnpm --filter @devmap/cli test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "codebase",
+    "architecture",
+    "cli",
+    "static-analysis"
+  ],
+  "author": "Mufacoderz",
+  "license": "MIT",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",

@@ -40,16 +40,17 @@ export async function askCommand(questionParts: string[]): Promise<void> {
   }
 
   for (const file of ranked) {
-    console.log(`- ${file.path}`);
+    output.item(file.path);
   }
 
   output.section("Static Answer");
-  console.log("AI answering is planned for Phase 2. For now, DevMap found the files most likely related to your question.");
+  output.note("AI answering is planned for Phase 2. For now, DevMap found the files most likely related to your question.");
 
   for (const file of ranked.slice(0, 3)) {
     const content = await readFile(join(process.cwd(), file.path), "utf8").catch(() => "");
     const preview = content.split(/\r?\n/).slice(0, 12).join("\n");
-    console.log(`\n${file.path}\n${preview}`);
+    output.section(file.path);
+    output.codeBlock(preview);
   }
 }
 

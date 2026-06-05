@@ -4,12 +4,18 @@ import { analyzeCommand } from "./commands/analyze.js";
 import { askCommand } from "./commands/ask.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
+import { printHelp } from "./utils/help.js";
 import { printWelcome } from "./utils/welcome.js";
 
 const program = new Command();
 
 if (process.argv.length === 2) {
   printWelcome(process.cwd());
+  process.exit(0);
+}
+
+if (process.argv.length === 3 && ["--help", "-h", "help"].includes(process.argv[2])) {
+  printHelp();
   process.exit(0);
 }
 

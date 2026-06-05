@@ -32,7 +32,7 @@ export async function analyzeCommand(target = ".", options: AnalyzeOptions = {})
   if (options.deep) {
     output.section("Module Breakdown");
     for (const file of snapshot.criticalFiles.slice(0, 5)) {
-      console.log(`${file.path}: referenced by ${file.referencedBy} files`);
+      output.item(`${file.path} referenced by ${file.referencedBy} files`);
     }
   }
 
@@ -45,11 +45,11 @@ export async function analyzeCommand(target = ".", options: AnalyzeOptions = {})
 function printList(title: string, values: string[]): void {
   output.section(title);
   if (values.length === 0) {
-    console.log("None detected yet");
+    output.note("None detected yet");
     return;
   }
 
   for (const value of values) {
-    console.log(`- ${value}`);
+    output.item(value);
   }
 }

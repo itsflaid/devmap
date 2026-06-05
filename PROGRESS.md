@@ -12,6 +12,9 @@ Saat ini CLI sudah bisa:
 
 - Menampilkan welcome screen dengan ASCII wordmark DevMap berwarna aqua ketika
   `devmap` dijalankan tanpa command.
+- Menampilkan root help `devmap --help` dengan tema aqua/gray.
+- Menampilkan output command dengan warna tema yang konsisten untuk section,
+  status, key-value, list item, dan catatan.
 - Membuat konfigurasi lokal DevMap dengan `devmap init`.
 - Menganalisis project dan menyimpan `.devmap/snapshot.json`.
 - Mendeteksi source file, import, entry point, critical file, dan external service
@@ -47,6 +50,8 @@ Saat ini CLI sudah bisa:
   requirement Node.js 18+ yang tertulis di dokumentasi.
 - Node types ditambahkan ke `tsconfig.json` supaya TypeScript mengenali
   `process`, `console`, dan import `node:*`.
+- Root help kustom ditambahkan supaya `devmap --help` mengikuti tema terminal
+  DevMap, bukan output default Commander.
 
 ### Kerapian Git
 
@@ -71,6 +76,8 @@ Entry point utama untuk CLI.
 Tanggung jawab:
 
 - Menampilkan welcome screen ketika user menjalankan `devmap` tanpa command.
+- Menampilkan root help bertema ketika user menjalankan `devmap --help`,
+  `devmap -h`, atau `devmap help`.
 - Membuat command utama `devmap` menggunakan Commander.
 - Mendaftarkan command MVP:
   - `init`
@@ -93,6 +100,15 @@ Tanggung jawab:
   - `devmap analyze`
 - Menampilkan daftar popular commands seperti `analyze`, `explain`, `ask`,
   `docs`, dan `onboard`.
+
+### `packages/cli/src/utils/help.ts`
+
+Renderer root help bertema.
+
+Tanggung jawab:
+
+- Menampilkan usage, daftar command, options, dan link repo dengan warna tema.
+- Menjaga `devmap --help` tetap konsisten dengan visual terminal DevMap.
 
 ### `packages/cli/src/commands/init.ts`
 
@@ -290,8 +306,14 @@ Helper output terminal.
 Tanggung jawab:
 
 - Menjaga output command tetap konsisten.
-- Menyediakan helper untuk section, step, success message, warning, error, dan
-  baris key-value.
+- Menyediakan token warna tema:
+  - aqua `#2EE6D6`
+  - gray
+  - green
+  - yellow
+  - red
+- Menyediakan helper untuk section, step, success message, warning, error,
+  baris key-value, list item, note, dan code block.
 
 ## Verifikasi
 

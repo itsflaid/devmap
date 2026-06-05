@@ -44,6 +44,7 @@ Usage:
 - progress indicators
 - important values
 - DevMap wordmark on the welcome screen
+- section titles and root help headings
 
 ## Secondary Colors
 
@@ -135,6 +136,14 @@ OK Detecting framework
 OK Building dependency graph
 OK Analysis complete
 ```
+
+In the actual CLI, status labels should be color-coded:
+
+- `OK` uses green
+- `WARN` uses yellow
+- `ERROR` uses red
+- steps and important values use aqua
+- metadata and separators use gray
 
 Avoid:
 

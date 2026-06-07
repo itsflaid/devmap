@@ -7,7 +7,8 @@
 Initialize DevMap configuration.
 
 ### Purpose
-Setup AI provider and save API key. Run once per machine.
+Validate the Groq API key, save global configuration, and prepare the current
+project. Run once per machine and again when changing credentials.
 
 ### Usage
 ```bash
@@ -16,15 +17,14 @@ devmap init
 
 ### Flow
 ```
-Select provider:
-  [1] Groq (free tier — recommended)
-  [2] OpenAI
-  [3] Gemini
-
-→ Input API Key
-→ Validate key with test request
+→ Confirm Groq provider
+→ Input API key or read GROQ_API_KEY
+→ Validate key against the Groq API
 → Save to ~/.devmap/config.json
+→ Detect the current project framework
+→ Create .devmap/
 → Add .devmap/ to .gitignore (current project)
+→ Generate DEVMAP.md without overwriting an existing file
 ```
 
 ### Output
@@ -33,6 +33,7 @@ Select provider:
 ✓ API key validated
 ✓ Config saved to ~/.devmap/config.json
 ✓ Added .devmap/ to .gitignore
+✓ Created DEVMAP.md
 
 Ready. Run: devmap analyze
 ```
@@ -42,6 +43,8 @@ Ready. Run: devmap analyze
 ✗ Invalid API key — check your key at console.groq.com/keys
 
 ✗ Network error — check your internet connection and try again
+
+✗ API key missing — run interactively or set GROQ_API_KEY
 ```
 
 ---

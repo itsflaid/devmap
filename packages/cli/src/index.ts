@@ -6,18 +6,9 @@ import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { printHelp } from "./utils/help.js";
 import { printWelcome } from "./utils/welcome.js";
+import { runSafely } from "./utils/errors.js";
 
 const program = new Command();
-
-if (process.argv.length === 2) {
-  printWelcome(process.cwd());
-  process.exit(0);
-}
-
-if (process.argv.length === 3 && ["--help", "-h", "help"].includes(process.argv[2])) {
-  printHelp();
-  process.exit(0);
-}
 
 program
   .name("devmap")
@@ -27,7 +18,7 @@ program
 program
   .command("init")
   .description("Initialize DevMap configuration")
-  .action(initCommand);
+  .action(() => initCommand());
 
 program
   .command("analyze")
@@ -48,4 +39,16 @@ program
   .description("Diagnose DevMap setup")
   .action(doctorCommand);
 
-await program.parseAsync(process.argv);
+await runSafely(async () => {
+  if (process.argv.length === 2) {
+    printWelcome(process.cwd());
+    return;
+  }
+
+  if (process.argv.length === 3 && ["--help", "-h", "help"].includes(process.argv[2])) {
+    printHelp();
+    return;
+  }
+
+  await program.parseAsync(process.argv);
+});

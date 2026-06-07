@@ -828,4 +828,4 @@ Reasons:
 ---
 
 *Last updated: June 2026*
-*Maintained by: Fadil (@Mufacoderz)*
+*Maintained by: Fadil (@itsflaid)*

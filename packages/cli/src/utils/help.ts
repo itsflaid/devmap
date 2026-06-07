@@ -20,5 +20,5 @@ export function printHelp(): void {
   console.log(`\n${theme.aqua}OPTIONS${theme.reset}`);
   console.log(`  ${theme.aqua}-V, --version${theme.reset}   ${theme.gray}Show version number${theme.reset}`);
   console.log(`  ${theme.aqua}-h, --help${theme.reset}      ${theme.gray}Show help message${theme.reset}`);
-  console.log(`\n${theme.gray}More info: ${theme.aqua}https://github.com/Mufacoderz/devmap${theme.reset}\n`);
+  console.log(`\n${theme.gray}More info: ${theme.aqua}https://github.com/itsflaid/devmap${theme.reset}\n`);
 }

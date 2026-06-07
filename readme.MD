@@ -287,7 +287,7 @@ Use DevMap to understand the codebase. Use Cursor or Copilot to edit it.
 DevMap is open source and welcomes contributions.
 
 ```bash
-git clone https://github.com/Mufacoderz/devmap
+git clone https://github.com/itsflaid/devmap
 cd devmap
 npm install
 npm link
@@ -305,4 +305,4 @@ MIT — use it, fork it, build on it.
 
 ---
 
-*Built by [@Mufacoderz](https://github.com/Mufacoderz)*
+*Built by [@itsflaid](https://github.com/itsflaid)*

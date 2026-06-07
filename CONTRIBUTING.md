@@ -35,7 +35,7 @@ Most contributions will be inside `packages/cli/src/`.
 
 ```bash
 # Clone the repo
-git clone https://github.com/Mufacoderz/devmap
+git clone https://github.com/itsflaid/devmap
 cd devmap
 
 # Install dependencies

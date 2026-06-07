@@ -49,7 +49,7 @@
         <a href="#" class="transition hover:text-aqua-300">CLI</a>
         <a href="#" class="transition hover:text-aqua-300">Blog</a>
       </div>
-      <p>Made by Mufacoderz</p>
+      <p>Made by itsflaid</p>
     </footer>
   </section>
 </template>

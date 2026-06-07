@@ -23,6 +23,9 @@ Saat ini CLI sudah bisa:
 - Menjalankan diagnostics setup dengan `devmap doctor`.
 - Menjalankan automated test terhadap fixture Next.js dan Express.
 - Menyediakan landing page DevMap berbasis Vue dan Vite.
+- Menangani command failure tanpa menampilkan raw stack trace.
+- Menjalankan setup wizard `devmap init` dengan validasi Groq API key.
+- Membuat `DEVMAP.md` sebagai panduan reusable untuk developer dan AI agent.
 
 ## Ringkasan Update
 
@@ -156,8 +159,57 @@ Perilaku saat ini:
 
 - Membuat `~/.devmap/config.json`.
 - Mengatur Groq sebagai default provider.
-- Membiarkan API key kosong untuk sementara karena itu data rahasia user.
+- Meminta API key secara interaktif atau membaca `GROQ_API_KEY`.
+- Memvalidasi API key langsung ke Groq.
+- Memakai API key lama jika user menekan Enter saat config sudah tersedia.
+- Mendeteksi framework project aktif.
+- Membuat folder `.devmap/`.
 - Memastikan `.devmap/` masuk ke `.gitignore` project aktif.
+- Membuat `DEVMAP.md` tanpa menimpa file yang sudah ada.
+
+### `packages/cli/src/ai/groq.ts`
+
+Validator Groq untuk setup MVP.
+
+Tanggung jawab:
+
+- Memvalidasi API key melalui endpoint model Groq.
+- Menerjemahkan invalid key, network failure, dan provider failure menjadi error
+  yang actionable.
+
+### `packages/cli/src/utils/errors.ts`
+
+Global command error boundary.
+
+Tanggung jawab:
+
+- Menangkap error dari command CLI.
+- Menampilkan pesan ringkas tanpa raw stack trace.
+- Memberi saran tindakan berikutnya.
+- Menerjemahkan error umum seperti `ENOENT`, `EACCES`, dan `EPERM`.
+
+### `packages/cli/src/utils/prompt.ts`
+
+Adapter prompt interaktif berbasis `node:readline/promises`.
+
+Tanggung jawab:
+
+- Membaca provider dan API key saat `devmap init`.
+- Menutup interface input setelah wizard selesai atau gagal.
+
+### `packages/cli/src/utils/devmapFile.ts`
+
+Generator `DEVMAP.md`.
+
+Isi utama file:
+
+- lokasi snapshot dan config DevMap
+- workflow `analyze`, `ask`, dan `doctor`
+- panduan untuk AI agent agar memakai snapshot sebelum eksplorasi buta
+- aturan untuk tidak mengedit `.devmap/`
+- peringatan agar API key tidak pernah di-commit
+
+File yang sudah ada tidak akan ditimpa.
 
 ### `packages/cli/src/commands/analyze.ts`
 
@@ -367,6 +419,20 @@ Coverage saat ini:
 - project map Next.js dan Express
 - save/read snapshot
 
+### `packages/cli/test/init-and-errors.test.ts`
+
+Automated test untuk setup dan error handling.
+
+Coverage saat ini:
+
+- konten generator `DEVMAP.md`
+- perlindungan agar `DEVMAP.md` tidak tertimpa
+- init melalui environment API key
+- penolakan provider di luar Groq
+- actionable error saat API key tidak tersedia
+- error handler tidak membocorkan stack trace
+- translasi error path yang tidak ditemukan
+
 ### `packages/cli/test/fixtures/`
 
 Project kecil yang dipakai sebagai input analyzer saat test.
@@ -375,6 +441,24 @@ Fixture yang tersedia:
 
 - `nextjs-project`
 - `express-project`
+
+### `TEST.md`
+
+Panduan testing lokal dan development untuk maintainer.
+
+Mencakup:
+
+- setup environment
+- automated test CLI
+- development CLI tanpa build
+- testing hasil build
+- testing `devmap init` dan Groq API key
+- testing `DEVMAP.md`
+- testing error handler
+- testing fixture Next.js dan Express
+- testing landing page
+- checklist sebelum commit
+- testing global install dengan `npm link`
 
 ## Verifikasi
 
@@ -398,17 +482,16 @@ node packages\cli\dist\index.js doctor
 - `analyze --deep` saat ini masih menampilkan breakdown statis sederhana.
 - Dukungan framework masih level MVP: Next.js, Express, atau unknown.
 - Snapshot yang dibuat bersifat lokal dan sengaja di-ignore oleh Git.
-- `devmap init` belum meminta API key secara interaktif.
 - `devmap doctor` belum memvalidasi API key, network, dan availability model.
-- Global error handler belum tersedia untuk mencegah raw stack trace.
+- Input API key interaktif belum disamarkan saat diketik.
 - Test belum mencakup edge case project besar, malformed `package.json`, dan
   circular dependency.
 
 ## Rekomendasi Langkah Berikutnya
 
-1. Tambahkan global error handler supaya raw stack trace tidak bocor ke user.
-2. Tambahkan test untuk malformed project dan circular dependency.
-3. Tambahkan prompt interaktif di `devmap init` untuk input API key Groq.
-4. Tingkatkan `devmap doctor` untuk validasi API key, network, dan model.
-5. Tambahkan abstraction provider Groq dan model routing.
+1. Samarkan input API key saat wizard interaktif.
+2. Tingkatkan `devmap doctor` untuk validasi API key, network, dan model.
+3. Tambahkan test untuk malformed project dan circular dependency.
+4. Tambahkan abstraction AI client dan model routing.
+5. Tambahkan Context Builder dengan batas 3–5 file.
 6. Tambahkan prompt template untuk `analyze` dan `ask`.

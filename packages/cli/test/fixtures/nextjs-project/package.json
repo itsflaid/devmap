@@ -1,0 +1,10 @@
+{
+  "name": "nextjs-fixture",
+  "private": true,
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "next": "^15.0.0",
+    "next-auth": "^5.0.0",
+    "react": "^19.0.0"
+  }
+}

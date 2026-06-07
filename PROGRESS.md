@@ -1,6 +1,6 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-05
+Terakhir diperbarui: 2026-06-07
 
 ## Status Saat Ini
 
@@ -21,6 +21,8 @@ Saat ini CLI sudah bisa:
   yang dikenal.
 - Menjawab pertanyaan secara statis dengan mencari file yang kemungkinan relevan.
 - Menjalankan diagnostics setup dengan `devmap doctor`.
+- Menjalankan automated test terhadap fixture Next.js dan Express.
+- Menyediakan landing page DevMap berbasis Vue dan Vite.
 
 ## Ringkasan Update
 
@@ -66,6 +68,42 @@ Saat ini CLI sudah bisa:
   tracked sudah dikeluarkan dari tracking Git tanpa menghapus file lokalnya.
 - Policy pnpm untuk build script `esbuild` ditambahkan karena dibutuhkan oleh
   `tsx`.
+
+### Automated Testing
+
+- Test runner memakai built-in `node:test` melalui `tsx`, sehingga tidak perlu
+  menambah framework test baru.
+- Script test CLI sekarang menjalankan unit/integration test dan TypeScript
+  type-check:
+  - `pnpm --filter @devmap/cli test`
+  - `pnpm --filter @devmap/cli test:unit`
+  - `pnpm --filter @devmap/cli test:types`
+- Fixture Next.js mencakup:
+  - App Router
+  - import lokal dengan suffix `.js`
+  - NextAuth
+  - Prisma
+  - `.env` dan `node_modules` untuk memastikan ignore rules bekerja
+- Fixture Express mencakup:
+  - server entry point
+  - route lokal
+  - Stripe
+- Tujuh automated tests sudah tersedia untuk scanner, framework detector,
+  dependency graph, service detector, project map, dan snapshot persistence.
+
+### Landing Page
+
+- Landing page DevMap sudah tersedia di `apps/web`.
+- Stack web:
+  - Vue 3
+  - Vite
+  - Vue Router
+  - Tailwind CSS
+- Root workspace menyediakan:
+  - `pnpm dev:web`
+  - `pnpm build:web`
+  - `pnpm preview:web`
+- Production build landing page sudah berhasil.
 
 ## File Yang Sudah Diimplementasikan
 
@@ -315,6 +353,29 @@ Tanggung jawab:
 - Menyediakan helper untuk section, step, success message, warning, error,
   baris key-value, list item, note, dan code block.
 
+### `packages/cli/test/analyzers.test.ts`
+
+Automated test utama untuk fondasi static analysis.
+
+Coverage saat ini:
+
+- scanner mengabaikan generated path dan secret file
+- deteksi Next.js dan Express
+- resolve import TypeScript dengan suffix `.js`
+- perhitungan reference pada dependency graph
+- deteksi external service tanpa false positive
+- project map Next.js dan Express
+- save/read snapshot
+
+### `packages/cli/test/fixtures/`
+
+Project kecil yang dipakai sebagai input analyzer saat test.
+
+Fixture yang tersedia:
+
+- `nextjs-project`
+- `express-project`
+
 ## Verifikasi
 
 Pengecekan berikut sudah berhasil:
@@ -322,6 +383,7 @@ Pengecekan berikut sudah berhasil:
 ```bash
 pnpm --filter @devmap/cli test
 pnpm --filter @devmap/cli build
+pnpm --filter @devmap/web build
 node packages\cli\dist\index.js --help
 node packages\cli\dist\index.js init
 node packages\cli\dist\index.js analyze
@@ -337,12 +399,16 @@ node packages\cli\dist\index.js doctor
 - Dukungan framework masih level MVP: Next.js, Express, atau unknown.
 - Snapshot yang dibuat bersifat lokal dan sengaja di-ignore oleh Git.
 - `devmap init` belum meminta API key secara interaktif.
+- `devmap doctor` belum memvalidasi API key, network, dan availability model.
+- Global error handler belum tersedia untuk mencegah raw stack trace.
+- Test belum mencakup edge case project besar, malformed `package.json`, dan
+  circular dependency.
 
 ## Rekomendasi Langkah Berikutnya
 
-1. Tambahkan prompt interaktif di `devmap init` untuk input API key Groq.
-2. Tambahkan abstraction provider Groq dan model routing.
-3. Tambahkan prompt template untuk `analyze` dan `ask`.
-4. Tambahkan test fixture untuk project Next.js dan Express.
-5. Tingkatkan parsing exported symbol memakai parser TypeScript sungguhan.
-6. Rapikan error handling user-facing supaya raw stack trace tidak bocor ke user.
+1. Tambahkan global error handler supaya raw stack trace tidak bocor ke user.
+2. Tambahkan test untuk malformed project dan circular dependency.
+3. Tambahkan prompt interaktif di `devmap init` untuk input API key Groq.
+4. Tingkatkan `devmap doctor` untuk validasi API key, network, dan model.
+5. Tambahkan abstraction provider Groq dan model routing.
+6. Tambahkan prompt template untuk `analyze` dan `ask`.

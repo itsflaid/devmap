@@ -1,0 +1,8 @@
+{
+  "name": "express-fixture",
+  "private": true,
+  "dependencies": {
+    "express": "^5.0.0",
+    "stripe": "^18.0.0"
+  }
+}

@@ -4,4 +4,10 @@ dist/
 .env
 .env.*
 *.log
+
+# Test fixtures intentionally verify ignored paths.
+!packages/cli/test/fixtures/nextjs-project/.env
+!packages/cli/test/fixtures/nextjs-project/node_modules/
+!packages/cli/test/fixtures/nextjs-project/node_modules/ignored/
+!packages/cli/test/fixtures/nextjs-project/node_modules/ignored/index.js
 *.tsbuildinfo

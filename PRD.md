@@ -1,6 +1,6 @@
 # DevMap — Product Requirements Document
 
-> **Single source of truth for DevMap development.**
+> **Single source of truth for DevMap development.**  
 > Before adding any feature or changing any priority — read this first.
 
 ---
@@ -13,23 +13,27 @@
 4. [Product Positioning](#4-product-positioning)
 5. [Core Philosophy](#5-core-philosophy)
 6. [Target Users](#6-target-users)
-7. [MVP Goal](#7-mvp-goal)
-8. [Core Commands — MVP](#8-core-commands--mvp)
-9. [DEVMAP.md](#9-devmapmd)
-10. [AI Strategy](#10-ai-strategy)
-11. [Language Strategy](#11-language-strategy)
-12. [Static Analysis Strategy](#12-static-analysis-strategy)
-13. [Context Builder Strategy](#13-context-builder-strategy)
-14. [Token & Caching Strategy](#14-token--caching-strategy)
-15. [Terminal UX Strategy](#15-terminal-ux-strategy)
-16. [Error Handling Strategy](#16-error-handling-strategy)
-17. [Future Commands](#17-future-commands)
-18. [Future AI Modes](#18-future-ai-modes)
-19. [Repository Structure](#19-repository-structure)
-20. [Success Metrics](#20-success-metrics)
-21. [Risks & Mitigations](#21-risks--mitigations)
-22. [Launch Checklist](#22-launch-checklist)
-23. [License](#23-license)
+7. [Assumptions to Validate](#7-assumptions-to-validate)
+8. [MVP Goal](#8-mvp-goal)
+9. [Core Commands — MVP](#9-core-commands--mvp)
+10. [Generated Files](#10-generated-files)
+11. [AI Strategy](#11-ai-strategy)
+12. [Language Strategy](#12-language-strategy)
+13. [Static Analysis Strategy](#13-static-analysis-strategy)
+14. [Snapshot Schema Strategy](#14-snapshot-schema-strategy)
+15. [Context Builder Strategy](#15-context-builder-strategy)
+16. [Token Benchmarking Strategy](#16-token-benchmarking-strategy)
+17. [Token & Caching Strategy](#17-token--caching-strategy)
+18. [Terminal UX Strategy](#18-terminal-ux-strategy)
+19. [Error Handling Strategy](#19-error-handling-strategy)
+20. [Cross-Platform Testing Strategy](#20-cross-platform-testing-strategy)
+21. [Future Commands](#21-future-commands)
+22. [Future AI Modes](#22-future-ai-modes)
+23. [Repository Structure](#23-repository-structure)
+24. [Success Metrics](#24-success-metrics)
+25. [Risks & Mitigations](#25-risks--mitigations)
+26. [Launch Checklist](#26-launch-checklist)
+27. [License](#27-license)
 
 ---
 
@@ -38,25 +42,27 @@
 | | |
 |---|---|
 | **Product Name** | DevMap |
+| **Package Name** | `devmap` |
 | **Tagline** | Understand any codebase in minutes, not days. |
-| **Short Description** | AI-powered CLI to understand, analyze, and map any codebase in minutes. |
+| **Short Description** | AI-powered CLI to analyze, map, and explain codebases. |
 
 ---
 
 ## 2. Problem
 
-Modern AI tools generate code faster than developers can understand it.
+Modern AI tools can generate code faster than developers can understand it.
 
 Developers frequently encounter:
 
-- Unfamiliar codebases with no documentation
-- Long and painful onboarding time
-- AI-generated projects with no clear structure
+- Unfamiliar codebases with little or no documentation
+- Long onboarding time when joining new projects
+- AI-generated projects with unclear structure
 - Large projects with hundreds of files
-- Limited AI context windows forcing repeated manual explanation
-- Repeated effort explaining the same project to different AI tools across sessions
+- Repeated manual explanation when using AI tools
+- Context window limitations when asking AI about codebases
+- AI agents that must repeatedly explore project files from scratch
 
-Reading every file manually is slow, inefficient, and doesn't scale.
+Reading every file manually is slow, inefficient, and does not scale.
 
 ---
 
@@ -64,14 +70,13 @@ Reading every file manually is slow, inefficient, and doesn't scale.
 
 DevMap becomes the first tool developers run after cloning a repository.
 
-Not a nice-to-have — a **default step in every developer's workflow.**
-
 The goal is not to replace AI coding assistants. The goal is to help developers and AI agents understand unfamiliar codebases faster through:
 
 - Project mapping
 - Static analysis
-- Architecture analysis
+- Architecture discovery
 - Onboarding guidance
+- Reusable project snapshots
 - Documentation generation
 - Code relationship tracing
 
@@ -83,7 +88,7 @@ The goal is not to replace AI coding assistants. The goal is to help developers 
 
 DevMap is **not** an AI coding assistant.
 
-AI coding assistants help developers **write** code.
+AI coding assistants help developers **write** code.  
 DevMap helps developers **understand** code that already exists.
 
 DevMap is complementary to:
@@ -93,22 +98,28 @@ DevMap is complementary to:
 - OpenAI Codex
 - Gemini CLI
 - GitHub Copilot
+- Other AI coding agents
 
-DevMap does not compete with them directly. Instead, DevMap generates structured project understanding that feeds into these tools — making them faster, cheaper, and more accurate.
+DevMap should not position itself as a direct competitor to those tools.
+
+Instead, DevMap creates structured project context that can help humans and AI agents understand a project faster.
 
 ### Why Not Just Use AI Directly?
 
-**Without DevMap**, AI agents and chat tools must:
-- Explore the codebase blindly from scratch every session
-- Guess which files are relevant based on names
-- Rebuild context from scratch on every new conversation
-- Burn tokens on exploration before doing any real work
+Without DevMap, AI agents and chat tools often need to:
 
-**With DevMap**, AI gets:
-- A ready-made project map from static analysis — not guesses
-- Accurate entry points, critical files, and dependency relationships
-- A reusable snapshot that works across any AI tool
-- Consistent context regardless of which AI is used
+- Explore the repository from scratch
+- Guess relevant files from names and partial context
+- Rebuild project understanding on every new session
+- Spend tokens on exploration before solving the actual task
+
+With DevMap, users get:
+
+- A reusable project snapshot
+- Static-analysis-backed project structure
+- Important files and relationships
+- Context that can be used across different AI tools
+- A project map that persists beyond a single AI session
 
 > DevMap is not a replacement for AI. It is the context layer before AI.
 
@@ -118,62 +129,127 @@ DevMap does not compete with them directly. Instead, DevMap generates structured
 
 DevMap is not AI-first.
 
-```
+```txt
 80% Static Analysis
 20% AI Interpretation
 ```
 
-LLMs should not read the entire project.
+LLMs should not read the entire project.  
 LLMs should interpret analysis results generated by DevMap.
 
-The static analysis engine is the **foundation** of the product.
+The static analysis engine is the **foundation** of the product.  
 AI is an **enhancement layer**, not the primary engine.
+
+### Important Framing
+
+Do not claim DevMap is token-efficient until benchmarked.
+
+Use this framing before validation:
+
+> DevMap is designed to reduce repeated AI exploration by generating reusable project context.
+
+Use stronger token-efficiency claims only after real benchmark results exist.
 
 ---
 
 ## 6. Target Users
 
-### Primary — Individual Developers
+### Primary — Developers Working with AI
 
-- Vibe coders who use AI heavily and lose track of project architecture
-- Freelancers working on unfamiliar client codebases
-- IT students onboarding to team projects mid-way
-- Developers working with AI-generated codebases
-- Developers using Claude Code, Codex, Gemini CLI, Cursor, and similar tools
-- Developers who frequently clone, inspect, or continue old projects
+Developers who regularly use AI tools and need reusable, structured project context.
 
-### Secondary — Small Teams
+Examples:
 
-- Teams that need documentation without maintaining it manually
-- Teams onboarding new members frequently
-- Small product teams with fast-moving codebases
-- Hackathon teams that need quick project understanding
+* Developers using AI Generatif like Chatgpt, Gemini, Claude, and similir Web-based chat AI
+* Developers using AI Agents like Claude Code, Codex, Gemini CLI, Cursor, and similar AI agents
+* Vibe coders working with AI-generated codebases
+* Developers returning to old projects after weeks or months
+* Freelancers working on unfamiliar client repositories
+* Developers frequently cloning and exploring open-source projects
+* Engineers who want AI tools to spend less time exploring and more time solving problems
+
+
+### Secondary — Individual Developers
+
+Developers who need faster project understanding and onboarding.
+
+Examples:
+
+* IT students joining team projects
+* Solo developers managing multiple projects
+* Developers inheriting existing codebases
+* Builders maintaining long-term side projects
+
+
+### Tertiary — Small Teams
+
+Teams that need shared project understanding without maintaining documentation manually.
+
+Examples:
+
+* Teams onboarding new members frequently
+* Fast-moving product teams
+* Startup teams with evolving architectures
+* Hackathon teams that need rapid project understanding
+* Teams using AI tools as part of their development workflow
+
 
 ### Not For
 
-- Enterprise teams with dedicated DevOps/documentation teams
-- Developers who work on a single codebase for years
-- Teams that already maintain perfect documentation
-- Users expecting DevMap to generate or rewrite code
+DevMap may provide limited value for:
+
+* Very small projects with simple structures
+* Single-purpose scripts and throwaway prototypes
+* Developers who already know every part of their codebase and rarely use AI tools
+* Users expecting DevMap to generate, refactor, or write code
+* Users looking for a replacement for AI coding assistants such as Cursor, Claude Code, or GitHub Copilot
+
+
+### Important Note
+
+Even well-documented projects can benefit from DevMap.
+
+Documentation explains a project.
+
+DevMap creates structured, reusable context that helps both developers and AI tools understand a project faster and more consistently across sessions.
+
+
+## 7. Assumptions to Validate
+
+This section separates assumptions from proven facts.
+
+| Assumption | Validation Method | Status |
+|---|---|---|
+| DevMap reduces repeated AI exploration | Compare raw-file prompting vs snapshot-based prompting using Groq usage data | Not tested |
+| DevMap reduces token usage meaningfully | A/B benchmark on 3+ projects using Groq `usage.prompt_tokens` | Not tested |
+| Static analyzer is accurate for Next.js App Router | Test against 5 real Next.js projects and manually review snapshot | Not tested |
+| Static analyzer is accurate for Express projects | Test against 3 real Express projects | Not tested |
+| Context Builder can select relevant files correctly | Manual review on 20 real questions | Not tested |
+| Developers want reusable project snapshots | Early user feedback/interviews | Not tested |
+| Developers accept BYOK/API-key setup | Observe first 10 external users | Not tested |
+| AGENTS.md append flow is acceptable | Ask confirmation before modifying existing file | Not tested |
+| DEVMAP.md is useful for humans and AI agents | Ask early users whether it helps them use DevMap | Not tested |
+
+These assumptions must be validated before making strong public claims.
 
 ---
 
-## 7. MVP Goal
+## 8. MVP Goal
 
 > A developer who has never seen a 200-file Next.js codebase can understand its main structure in under 10 minutes using DevMap.
 
 MVP success means DevMap can:
 
-- Scan the project
+- Scan a project
 - Detect stack and structure
 - Identify important files
-- Explain architecture
-- Answer basic project questions
-- Save a reusable snapshot
+- Generate a reusable snapshot
+- Explain high-level architecture
+- Answer basic project questions using the snapshot
 
 ---
 
-## 8. Core Commands — MVP
+## 9. Core Commands — MVP
 
 Four commands. No more, no less.
 
@@ -183,27 +259,30 @@ Four commands. No more, no less.
 
 ### `devmap init`
 
-Setup wizard. Runs once per machine.
+Setup wizard. Runs once per machine/project.
 
 **Responsibilities:**
+
 - Ask for AI provider
 - Ask for API key
 - Validate API key
-- Save config to `~/.devmap/config.json`
+- Save global config to `~/.devmap/config.json`
 - Create `.devmap/` project folder if needed
 - Add `.devmap/` to `.gitignore`
+- Generate `DEVMAP.md`
+- Handle `AGENTS.md` safely
 - Detect basic project stack
 - Finish in under 30 seconds
 
-**Example:**
+**Usage:**
 
-```
+```bash
 devmap init
 ```
 
 **Output:**
 
-```
+```txt
 DevMap Setup
 
 Provider:   ✓ Groq
@@ -211,6 +290,8 @@ API Key:    ✓ Valid
 Project:    ✓ Next.js detected
 
 Config saved: ~/.devmap/config.json
+Generated: DEVMAP.md
+Updated: .gitignore
 
 Run: devmap analyze
 ```
@@ -219,13 +300,15 @@ Run: devmap analyze
 
 ### `devmap analyze`
 
-Run static analysis, feed compact JSON summary to AI, output a readable architecture overview.
+Run static analysis, generate project snapshot, and output a readable project overview.
 
 **Supported stacks (MVP):**
+
 - Next.js
 - Express
 
 **Responsibilities:**
+
 - Scan file structure
 - Detect framework
 - Detect routes and API routes
@@ -250,11 +333,11 @@ devmap analyze --deep
 |---|---|---|
 | Analysis scope | Project-level overview | Per-module detailed explanation |
 | AI usage | Lower | Higher |
-| Best for | Quick mapping | Large or unfamiliar projects |
+| Best for | Quick mapping | Large/unfamiliar projects |
 
 **Generated file:**
 
-```
+```txt
 .devmap/snapshot.json
 ```
 
@@ -280,18 +363,19 @@ devmap ask "where is a new user created?"
 
 **Internal flow:**
 
-```
+```txt
 Question
   → Detect language
   → Read snapshot
-  → Find relevant files (3–5 most relevant)
+  → Find relevant files using path + keyword + dependency heuristics
   → Build compact context
-  → Send only relevant data to AI
+  → Send relevant data to AI
   → Return answer in user's language
 ```
 
 **Rules:**
-- Never send entire project to AI
+
+- Never send the entire project to AI
 - Prefer 3–5 most relevant files
 - Include related files in output
 - Keep technical labels readable and consistent
@@ -309,6 +393,7 @@ devmap doctor
 ```
 
 **Checks:**
+
 - DevMap version
 - Node.js version
 - Package manager
@@ -322,7 +407,7 @@ devmap doctor
 
 **Example output:**
 
-```
+```txt
 DevMap Doctor
 
 DevMap version    0.1.0               ✓
@@ -337,27 +422,94 @@ No issues found.
 
 ---
 
-## 9. DEVMAP.md
+## 10. Generated Files
 
-During initialization, DevMap generates a `DEVMAP.md` file in the project root.
+DevMap uses generated files to create reusable context for humans and AI agents.
+
+### `DEVMAP.md`
+
+Generated during `devmap init`.
 
 **Purpose:**
-- Help developers use DevMap effectively
-- Help AI agents discover DevMap context
-- Encourage DevMap-first workflows
-- Reduce repeated repository discovery
 
-The file acts as an instruction layer between the repository and AI agents — a portable, session-agnostic context file that any AI tool can consume immediately.
+- Explain how to use DevMap in this repository
+- Provide instructions for humans and AI agents
+- Tell AI agents how to read the project snapshot
+- Encourage DevMap-first workflows
+
+**Important:**
+
+- Generated once during init
+- Not automatically regenerated by `devmap analyze`
+- Can be manually edited by the user
+- Should clearly say it is a DevMap usage/instruction file
+
+Recommended header:
+
+```md
+> This file explains how to use DevMap in this repository.
+> For current project analysis, see `.devmap/snapshot.json`.
+```
 
 ---
 
-## 10. AI Strategy
+### `.devmap/snapshot.json`
+
+Generated by `devmap analyze`.
+
+**Purpose:**
+
+- Fresh project analysis data
+- Source of truth for `devmap ask`
+- Reusable context for AI tools
+- Regenerated every time the project is re-analyzed
+
+**Important:**
+
+- This is the file that gets regenerated
+- It should contain structured metadata, not full raw project content
+- Should stay compact and predictable
+
+---
+
+### `AGENTS.md`
+
+DevMap may integrate with `AGENTS.md` if the project uses AI agents.
+
+**Rules:**
+
+If `AGENTS.md` does not exist:
+
+- DevMap can generate a basic file
+
+If `AGENTS.md` already exists:
+
+- DevMap must not overwrite it
+- DevMap should ask before appending anything
+- Append only a small DevMap instruction block
+- The instruction should tell AI agents to read `DEVMAP.md` before starting
+
+Example append block:
+
+```md
+<!-- DEVMap Instruction Block -->
+## DevMap Context
+
+Before working in this repository, read `DEVMAP.md` first.
+For current project structure, use `.devmap/snapshot.json` if available.
+<!-- End DevMap Instruction Block -->
+```
+
+---
+
+## 11. AI Strategy
 
 ### MVP Provider
 
 **Groq only.**
 
 Reasons:
+
 - Fast inference
 - Accessible globally
 - User provides their own API key
@@ -369,9 +521,9 @@ Built from day one so adding providers later requires no major refactor.
 
 AI provider logic must not be tightly coupled to commands.
 
-**Recommended structure:**
+Recommended structure:
 
-```
+```txt
 ai/
 ├── ai-client.ts
 ├── providers/
@@ -402,11 +554,11 @@ If a model becomes unavailable, DevMap gracefully falls back. No raw provider er
 
 ---
 
-## 11. Language Strategy
+## 12. Language Strategy
 
 ### Default Behavior
 
-```
+```txt
 language = auto
 ```
 
@@ -420,7 +572,7 @@ DevMap automatically detects the language used by the user.
 ### Applies To
 
 - `devmap ask`
-- `devmap explain`
+- `devmap explain` *(future)*
 - `devmap onboard` *(future)*
 - `devmap docs` *(future)*
 
@@ -428,14 +580,21 @@ DevMap automatically detects the language used by the user.
 
 Core CLI labels remain English regardless of language mode.
 
-Examples: `Framework`, `Routes`, `Dependencies`, `Features`, `Entry Points`, `Critical Files`
+Examples:
+
+- `Framework`
+- `Routes`
+- `Dependencies`
+- `Features`
+- `Entry Points`
+- `Critical Files`
 
 These are industry-standard terms familiar to developers worldwide.
 
 ### Configuration
 
 ```bash
-devmap config language auto   # default
+devmap config language auto
 devmap config language en
 devmap config language id
 ```
@@ -453,9 +612,11 @@ devmap config language id
 
 ---
 
-## 12. Static Analysis Strategy
+## 13. Static Analysis Strategy
 
-Static analysis runs **before** AI. DevMap extracts useful structure without spending tokens.
+Static analysis runs **before** AI.
+
+DevMap extracts useful structure without spending tokens.
 
 Static analysis detects:
 
@@ -471,35 +632,186 @@ Static analysis detects:
 
 Results are converted into compact structured data before AI interpretation.
 
+### MVP Principle
+
+Before building more commands, `devmap analyze` must produce a snapshot that is accurate enough on real projects.
+
+The analyzer must be tested against:
+
+- DevMap itself
+- DevNote
+- One unfamiliar project
+- At least one Next.js App Router project
+- At least one Express project
+
 ---
 
-## 13. Context Builder Strategy
+## 14. Snapshot Schema Strategy
+
+The snapshot schema is the contract between the analyzer and every command.
+
+It must be defined early and kept stable.
+
+Recommended MVP schema:
+
+```ts
+interface DevMapSnapshot {
+  version: string;
+  generatedAt: string;
+  project: {
+    name?: string;
+    root: string;
+    framework: "nextjs" | "express" | "react" | "node" | "unknown";
+    language: "typescript" | "javascript" | "mixed" | "unknown";
+    packageManager: "pnpm" | "npm" | "yarn" | "bun" | "unknown";
+  };
+  entryPoints: EntryPoint[];
+  criticalFiles: CriticalFile[];
+  routes: RouteInfo[];
+  apiRoutes: ApiRouteInfo[];
+  dependencies: DependencyInfo[];
+  externalServices: ExternalServiceInfo[];
+  database?: DatabaseInfo;
+  features: FeatureInfo[];
+}
+```
+
+### Snapshot Rules
+
+- Snapshot must not contain full raw project source by default
+- Snapshot should be compact
+- Snapshot should be deterministic
+- Snapshot must include a schema version
+- Future schema changes must be versioned
+
+---
+
+## 15. Context Builder Strategy
 
 The Context Builder selects only relevant files before sending anything to AI.
 
-**Example:**
+### MVP Approach
 
-User asks: *"how does authentication work?"*
+Do not use embeddings or semantic search in MVP.
 
-Context Builder selects:
+Use pragmatic heuristics first:
+
+- File path matching
+- Keyword matching
+- Import/export matching
+- Dependency matching
+- Known framework conventions
+
+Example:
+
+User asks:
+
+```txt
+how does authentication work?
 ```
+
+Extract likely keywords:
+
+```txt
+auth, authentication, login, session, token, middleware
+```
+
+Match against:
+
+- File paths
+- File names
+- Exports
+- Imports
+- Dependencies
+- Known services like `next-auth`, `jwt`, `clerk`, `supabase/auth`
+
+Selected context:
+
+```txt
 auth.ts
 middleware.ts
 session.ts
 app/api/auth/*
 ```
 
-Context Builder does not send: the entire project.
+Not selected:
 
-**Goals:**
+```txt
+entire project
+```
+
+### Goals
+
+- Reduce repeated exploration
 - Reduce token usage
-- Improve accuracy
-- Improve speed
+- Improve answer relevance
 - Avoid context overload
+
+### Validation
+
+The Context Builder must be manually tested using at least 20 questions.
 
 ---
 
-## 14. Token & Caching Strategy
+## 16. Token Benchmarking Strategy
+
+Token efficiency is an assumption until proven.
+
+### Benchmark Method
+
+Use Groq for both scenarios.
+
+Do not compare Groq usage against Codex/Claude Code UI percentages because those are not exact and not comparable.
+
+### Scenario A — Raw File Prompting
+
+Send selected raw files or large raw project context directly to Groq.
+
+Record:
+
+```json
+{
+  "prompt_tokens": 0,
+  "completion_tokens": 0,
+  "total_tokens": 0
+}
+```
+
+### Scenario B — DevMap Snapshot Prompting
+
+Send DevMap snapshot + selected relevant context to Groq.
+
+Record the same usage fields.
+
+### Test Projects
+
+- DevMap
+- DevNote
+- One unfamiliar public/open-source project
+
+### Test Questions
+
+Use the same questions for both scenarios.
+
+Example:
+
+- How does authentication work?
+- Where is payment logic handled?
+- Explain the main user flow.
+- Which files are most important for onboarding?
+- Where is database access implemented?
+
+### Success Criteria
+
+DevMap may claim token efficiency only if benchmark results show meaningful reduction.
+
+Before that, use careful wording:
+
+> Designed to reduce repeated exploration and provide reusable project context.
+
+---
+
+## 17. Token & Caching Strategy
 
 ### Token Rules
 
@@ -514,29 +826,44 @@ Context Builder does not send: the entire project.
 | | Token Usage |
 |---|---|
 | First `analyze` | Higher |
-| Subsequent `analyze` (same project, no changes) | Lower — uses snapshot cache |
+| Subsequent `analyze` with no project changes | Lower — reuse snapshot/cache |
 
 ### Cache Files
 
-**MVP:**
-```
+MVP:
+
+```txt
 .devmap/snapshot.json
 ```
 
-**Future optimization:**
+Future optimization:
+
+```txt
+.devmap/cache.json
 ```
-.devmap/cache.json   ← file hashes, dependency graph, extracted metadata
-```
+
+Potential future cache content:
+
+- File hashes
+- Dependency graph
+- Extracted metadata
+- Last analysis result per file
 
 ---
 
-## 15. Terminal UX Strategy
+## 18. Terminal UX Strategy
 
 DevMap should feel like a modern developer CLI.
 
-**Inspired by:** Vercel CLI, Railway CLI, GitHub CLI, Claude Code
+Inspired by:
 
-**Use:**
+- Vercel CLI
+- Railway CLI
+- GitHub CLI
+- Claude Code
+
+Use:
+
 - Aqua/cyan as primary accent color
 - Clean spacing
 - Short sections
@@ -544,7 +871,8 @@ DevMap should feel like a modern developer CLI.
 - Actionable errors
 - Copy-pasteable diagnostics
 
-**Avoid:**
+Avoid:
+
 - Giant ASCII art
 - Excessive emojis
 - Hacker-style visuals
@@ -553,17 +881,19 @@ DevMap should feel like a modern developer CLI.
 
 ---
 
-## 16. Error Handling Strategy
+## 19. Error Handling Strategy
 
 DevMap must never fail silently.
 
-**Bad:**
-```
+Bad:
+
+```txt
 Error: 429
 ```
 
-**Good:**
-```
+Good:
+
+```txt
 Rate limit reached.
 
 DevMap will retry in 12 seconds.
@@ -572,47 +902,96 @@ Tip: Use standard analyze instead of --deep for lower token usage.
 ```
 
 All error messages must be:
+
 - Understandable
 - Actionable
 - Non-scary
 - Free of raw stack traces
 
+### Required Error Cases
+
+Handle:
+
+- Missing API key
+- Invalid API key
+- Provider unavailable
+- Rate limit
+- No package.json found
+- Unsupported project structure
+- Corrupt snapshot
+- Missing snapshot
+- Permission errors
+- Node version too old
+
 ---
 
-## 17. Future Commands
+## 20. Cross-Platform Testing Strategy
+
+DevMap must work across:
+
+- Windows
+- macOS
+- Linux
+
+### Minimum Local Testing
+
+Before first publish:
+
+- Windows local machine
+- At least one non-Windows environment through GitHub Actions
+
+### GitHub Actions Matrix
+
+Future CI should test:
+
+- OS: Windows, Ubuntu, macOS
+- Node: 18, 20, 22
+
+### Windows-Specific Rules
+
+- Use `path.join()` and `path.resolve()`
+- Never hardcode `/`
+- Handle CRLF and LF line endings
+- Do not rely on Unix-only executable permissions
+- Avoid shell commands that only work on Bash
+
+---
+
+## 21. Future Commands
 
 ### Roadmap
 
 | Command | Phase | Priority |
 |---|---|---|
-| `devmap onboard` | Phase 3 | 🔴 High Priority |
+| `devmap onboard` | Phase 3 | High |
 | `devmap docs` | Phase 3 | Medium |
 | `devmap flow` | Phase 4 | Medium |
-| `devmap deadcode` | Phase 4 | Low |
-| `devmap report` | Phase 4 | Low |
 | `devmap trace` | Phase 4 | Medium |
-| `devmap watch` | Future | — |
-| `devmap visual` | Future | — |
+| `devmap report` | Phase 4 | Low |
+| `devmap deadcode` | Phase 4 | Low |
+| `devmap watch` | Future | Later |
+| `devmap visual` | Future | Later |
 
 ---
 
 ### `devmap onboard` *(Phase 3 — High Priority)*
 
-**Purpose:** Developer productivity accelerator — not documentation, not architecture explanation.
+Purpose: developer productivity accelerator.
 
-**Core question it answers:**
+Core question it answers:
+
 > Where should I start?
 
-**Output sections:**
+Output sections:
 
-1. **Project Summary** — what the project does, who uses it, major features, architecture
-2. **First Files To Read** — prioritized reading list with why each file matters and estimated reading time
-3. **Recommended Learning Path** — structured path optimized for understanding, not folder order
-4. **Feature Map** — major features mapped to their related files
-5. **Modification Guide** — if I want to change feature X, where do I start?
-6. **Entry Points** — UI, API, database, auth, middleware
-7. **Contribution Guide** — safe areas, caution areas, critical areas
-8. **Estimated Understanding Time** — basic / productive / advanced
+1. Project Summary
+2. First Files To Read
+3. Recommended Learning Path
+4. Feature Map
+5. Modification Guide
+6. Entry Points
+7. Contribution Guide
+8. Estimated Understanding Time
 
 ---
 
@@ -620,8 +999,9 @@ All error messages must be:
 
 Generate project documentation artifacts.
 
-**Output:**
-```
+Output:
+
+```txt
 docs/
 ├── project-overview.md
 ├── architecture.md
@@ -630,9 +1010,10 @@ docs/
 └── flow.md
 ```
 
-> `devmap docs` generates documentation artifacts.
-> `devmap onboard` generates a learning/productivity guide.
-> These are related but not the same.
+`devmap docs` generates documentation artifacts.  
+`devmap onboard` generates a learning/productivity guide.
+
+These are related but not the same.
 
 ---
 
@@ -640,7 +1021,8 @@ docs/
 
 Generate flow explanation.
 
-**Output:**
+Output:
+
 - User flow
 - API flow
 - Data flow
@@ -653,15 +1035,17 @@ Generate flow explanation.
 
 Trace how files, functions, or features are connected.
 
-**Usage:**
+Usage:
+
 ```bash
 devmap trace createWorkspace
 devmap trace auth.ts
 devmap trace "booking flow"
 ```
 
-**Output example:**
-```
+Output example:
+
+```txt
 createWorkspace
 
 Called By:
@@ -678,21 +1062,34 @@ Related Feature:
 
 ---
 
-## 18. Future AI Modes
+## 22. Future AI Modes
 
 ### Cloud Mode *(Phase 5)*
 
-Additional providers: OpenAI, Gemini
+Additional providers:
+
+- OpenAI
+- Gemini
 
 ### Local Mode *(Future)*
 
 Powered by Ollama.
 
-Purpose: privacy, offline usage, unlimited local inference, no API key required.
+Purpose:
 
-Potential models: Qwen3 8B, Qwen2.5-Coder 7B, DeepSeek R1 8B
+- Privacy
+- Offline usage
+- Unlimited local inference
+- No API key required
+
+Potential models:
+
+- Qwen3 8B
+- Qwen2.5-Coder 7B
+- DeepSeek R1 8B
 
 Before setup, DevMap must show:
+
 - Model size and download size
 - RAM requirement
 - Estimated download duration
@@ -706,11 +1103,11 @@ Combine local + cloud model for lower token usage, better privacy, and improved 
 
 ---
 
-## 19. Repository Structure
+## 23. Repository Structure
 
 DevMap uses a **pnpm monorepo**.
 
-```
+```txt
 devmap/
 ├── LICENSE
 ├── README.md
@@ -732,20 +1129,24 @@ devmap/
         └── src/
             ├── commands/
             ├── analyzer/
+            ├── scanner/
             ├── ai/
             │   ├── ai-client.ts
             │   ├── providers/
             │   ├── context-builder.ts
             │   └── prompts.ts
+            ├── config/
+            ├── output/
+            ├── types/
             ├── utils/
             └── index.ts
 ```
 
-Landing page/web can be added later under `apps/web` but must not distract from CLI MVP.
+Landing page/web can be added later under `apps/web`, but must not distract from CLI MVP.
 
 ---
 
-## 20. Success Metrics
+## 24. Success Metrics
 
 ### Launch — Month 1
 
@@ -756,76 +1157,94 @@ Landing page/web can be added later under `apps/web` but must not distract from 
 ### Early Traction — Month 3
 
 - 100+ GitHub stars
-- Someone shares DevMap on Twitter or Reddit without being asked
+- Someone shares DevMap on Twitter/Reddit without being asked
 - At least 1 bug report from a real user
 
 ### Validation — Month 6
 
-- A developer depends on DevMap for their daily workflow
+- A developer depends on DevMap for their workflow
 - At least 1 person requests a specific feature
 - Someone contributes a PR or opens a meaningful issue
 
 ---
 
-## 21. Risks & Mitigations
+## 25. Risks & Mitigations
 
 | Risk | Mitigation |
 |---|---|
 | Static analysis inaccurate on unconventional projects | Limit MVP to Next.js + Express only |
 | User frustrated by API key setup | `devmap init` wizard is fully guided |
-| AI output misleading | Frame output as "overview", not "ground truth" |
-| Windows / Mac / Linux inconsistency | Test on minimum two environments before publish |
+| AI output misleading | Frame output as overview, not absolute ground truth |
+| Windows / Mac / Linux inconsistency | Test with GitHub Actions matrix |
 | Scope creep during development | Re-read this PRD before adding anything new |
-| DevMap seen as weaker Claude Code | Position as project map/context layer, not AI coding assistant |
+| DevMap seen as weaker Claude Code | Position as project map/context layer |
 | Token usage too high | Static analysis first, compact context, snapshot reuse |
 | Local AI onboarding too heavy | Local Mode is future only and requires clear warnings |
-| Gemini CLI expanding into same niche | Ship fast, focus on `devmap onboard` as key differentiator |
+| Context builder selects wrong files | Start with heuristics, manually validate, improve later |
+| Snapshot schema changes too often | Version schema from the start |
+| User dislikes AGENTS.md modification | Ask before appending; never overwrite |
 
 ---
 
-## 22. Launch Checklist
+## 26. Launch Checklist
 
 DevMap is ready to publish when all of these are true:
 
-**Core Commands**
+### Core Commands
+
 - [ ] `devmap init` runs without crashing
 - [ ] `devmap analyze` runs without crashing on a Next.js project
 - [ ] `devmap analyze` runs without crashing on an Express project
 - [ ] `devmap ask` works using existing snapshot
 - [ ] `devmap doctor` returns useful diagnostic output
 
-**Quality**
-- [ ] All error scenarios handled — no raw stack traces exposed to user
-- [ ] Caching/snapshot works correctly
-- [ ] Second analyze of same project uses significantly fewer tokens or avoids unnecessary re-analysis
+### Quality
 
-**Distribution**
+- [ ] Snapshot schema is documented and versioned
+- [ ] All major error scenarios handled
+- [ ] No raw stack traces exposed on normal failure
+- [ ] Caching/snapshot works correctly
+- [ ] Context Builder manually tested on at least 20 questions
+
+### Distribution
+
 - [ ] README written with demo GIF
 - [ ] `npm pack` and install from packed file succeeds
 - [ ] `npx devmap` works without global install
 
-**Project Setup**
+### Project Setup
+
 - [ ] `.devmap/` automatically added to `.gitignore` on init
 - [ ] `DEVMAP.md` generated on init
+- [ ] Existing `AGENTS.md` is never overwritten
+- [ ] Existing `AGENTS.md` append requires confirmation
 
-**Testing**
+### Testing
+
 - [ ] Tested on at least 3 different real projects
 - [ ] Tested on Windows
 - [ ] Tested on at least one non-Windows environment
 - [ ] At least one person besides me has tried it and given feedback
 
+### Benchmarking
+
+- [ ] Raw-file vs snapshot benchmark tested using Groq usage data
+- [ ] Benchmark results recorded
+- [ ] Public token-efficiency claims adjusted based on evidence
+
 ---
 
-## 23. License
+## 27. License
 
 **MIT License**
 
 Reasons:
+
 - Friendly for open source adoption
 - Easy for contributors
 - Maximizes reach and distribution
 
 ---
 
-*Last updated: June 2026*
-*Maintained by: Fadil (@itsflaid)*
+_Last updated: June 2026_  
+_Maintained by: Fadil (@itsflaid)_

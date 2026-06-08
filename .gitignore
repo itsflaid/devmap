@@ -5,6 +5,9 @@ dist/
 .env.*
 *.log
 
+
+TEST.md
+
 # Test fixtures intentionally verify ignored paths.
 !packages/cli/test/fixtures/nextjs-project/.env
 !packages/cli/test/fixtures/nextjs-project/node_modules/

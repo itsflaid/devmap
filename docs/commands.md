@@ -1,293 +1,508 @@
 # DevMap — Commands Reference
 
+← Back to PRD: ../PRD.md
+
+---
+
+## Overview
+
+DevMap MVP provides four core commands:
+
+* `devmap init`
+* `devmap analyze`
+* `devmap ask`
+* `devmap doctor`
+
+No additional commands should be added until the MVP is shipped.
+
+Future commands are documented in:
+
+* [roadmap.md](./roadmap.md)
+
 ---
 
 ## `devmap init`
 
-Initialize DevMap configuration.
+Initialize DevMap configuration and prepare the current project.
 
 ### Purpose
-Validate the Groq API key, save global configuration, and prepare the current
-project. Run once per machine and again when changing credentials.
+
+`devmap init` sets up DevMap for local usage.
+
+It should be run once per machine/project, or again when changing provider credentials.
 
 ### Usage
+
 ```bash
 devmap init
 ```
 
+### Responsibilities
+
+* Confirm AI provider
+* Input API key or read environment variable
+* Validate API key
+* Save global configuration to `~/.devmap/config.json`
+* Detect current project framework
+* Create `.devmap/`
+* Add `.devmap/` to `.gitignore`
+* Generate `DEVMAP.md`
+* Handle `AGENTS.md` safely
+
 ### Flow
-```
-→ Confirm Groq provider
-→ Input API key or read GROQ_API_KEY
-→ Validate key against the Groq API
-→ Save to ~/.devmap/config.json
-→ Detect the current project framework
-→ Create .devmap/
-→ Add .devmap/ to .gitignore (current project)
-→ Generate DEVMAP.md without overwriting an existing file
+
+```txt
+Start
+  ↓
+Select Provider
+  ↓
+Input API Key
+  ↓
+Validate API Key
+  ↓
+Save Global Config
+  ↓
+Detect Project
+  ↓
+Create .devmap/
+  ↓
+Update .gitignore
+  ↓
+Generate DEVMAP.md
+  ↓
+Handle AGENTS.md
+  ↓
+Done
 ```
 
-### Output
-```
-✓ Provider: Groq
-✓ API key validated
-✓ Config saved to ~/.devmap/config.json
-✓ Added .devmap/ to .gitignore
-✓ Created DEVMAP.md
+### Output Example
 
-Ready. Run: devmap analyze
+```txt
+DevMap Setup
+
+Provider:   ✓ Groq
+API Key:    ✓ Valid
+Project:    ✓ Next.js detected
+
+Config saved: ~/.devmap/config.json
+Generated: DEVMAP.md
+Updated: .gitignore
+
+Run: devmap analyze
 ```
 
 ### Error Cases
-```
-✗ Invalid API key — check your key at console.groq.com/keys
 
-✗ Network error — check your internet connection and try again
+```txt
+✗ Invalid API key
 
-✗ API key missing — run interactively or set GROQ_API_KEY
+✗ Network connection failed
+
+✗ API key missing
+
+✗ Unable to write configuration file
+
+✗ Unable to update .gitignore
 ```
 
 ---
 
 ## `devmap analyze`
 
-Analyze current project structure and generate architecture overview.
+Analyze the current project and generate a reusable project snapshot.
+
+### Purpose
+
+`devmap analyze` scans the project, detects its structure, identifies important files, and generates `.devmap/snapshot.json`.
 
 ### Usage
+
 ```bash
-devmap analyze              # standard overview
-devmap analyze --deep       # detailed per-module explanation
-devmap analyze --fresh      # ignore cache, full re-analyze
-devmap analyze ./subfolder  # analyze specific directory
+devmap analyze
+devmap analyze --deep
 ```
+
+### Modes
+
+| Mode     | Purpose                                |
+| -------- | -------------------------------------- |
+| Standard | Fast project overview                  |
+| `--deep` | More detailed architecture explanation |
+
+### Responsibilities
+
+* Scan project files
+* Apply ignore rules
+* Detect framework
+* Detect package manager
+* Detect language
+* Detect routes
+* Detect API routes
+* Detect dependencies
+* Detect external services
+* Detect database usage
+* Detect entry points
+* Detect critical files
+* Generate architecture overview
+* Save snapshot to `.devmap/snapshot.json`
 
 ### Internal Flow
-```
-1. Scan filesystem → filter ignored paths
-2. Detect framework from package.json + file patterns
-3. Parse all imports → build dependency graph
-4. Detect entry points from graph topology
-5. Detect external services from imports
-6. Build compact project-map JSON (zero tokens so far)
-7. Send project-map to AI → get architecture overview
-8. Save snapshot to .devmap/snapshot.json
-9. Stream output to terminal
-```
 
-### Standard Output
-```
-─────────────────────────────────────────
-  PROJECT   devnote
-  STACK     Next.js 15 · Prisma · Neon
-  SIZE      67 files · 12,400 lines
-─────────────────────────────────────────
-
-  Entry Points
-  → app/layout.tsx         root layout
-  → app/page.tsx           home page
-  → middleware.ts          auth guard (runs on all routes)
-  → app/api/               8 API route handlers
-
-  Critical Files
-  → lib/db.ts              referenced by 23 files
-  → lib/auth.ts            referenced by 14 files
-  → types/index.ts         referenced by 31 files
-
-  External Services
-  → Neon PostgreSQL        via Prisma
-  → Google OAuth           via NextAuth v5
-  → Cloudinary             file uploads
-
-  Architecture
-  This is a full-stack Next.js app. Auth is handled server-side
-  via NextAuth with Google OAuth, enforced globally by middleware.ts.
-  Data layer uses Prisma ORM connected to Neon PostgreSQL.
-  Client state managed with Zustand. Snippets support public/private
-  visibility with shareable links via /s/[shareId].
-
-  Snapshot saved → .devmap/snapshot.json
-  Next: devmap ask "anything about this project"
+```txt
+Project Files
+  ↓
+Scanner
+  ↓
+Static Analyzer
+  ↓
+Project Map
+  ↓
+AI Interpretation
+  ↓
+Snapshot
+  ↓
+Terminal Output
 ```
 
-### Deep Output (`--deep` flag)
-Same as standard, plus per-module breakdown:
-```
-  Module Breakdown
+### Generated File
 
-  ── app/api/ ───────────────────────────
-  8 REST endpoints. Auth endpoints delegate to NextAuth.
-  Snippet CRUD routes validate ownership before mutation.
-  All routes use shared error handling from lib/api.ts.
-
-  ── lib/auth.ts ────────────────────────
-  Central auth configuration. Exports getSession() used across
-  server components and API routes. Integrates with lib/db.ts
-  for user lookup on OAuth callback.
-
-  [continues for each major module...]
+```txt
+.devmap/snapshot.json
 ```
 
-### Cache Behavior
+### Output Example
+
+```txt
+PROJECT      devnote
+FRAMEWORK    Next.js
+LANGUAGE     TypeScript
+
+Entry Points
+→ app/layout.tsx
+→ app/page.tsx
+→ middleware.ts
+
+Critical Files
+→ lib/db.ts
+→ lib/auth.ts
+→ types/index.ts
+
+External Services
+→ Neon
+→ Google OAuth
+
+Architecture
+This is a full-stack Next.js application. Authentication is handled
+server-side. Database access is centralized through the data layer.
+
+Snapshot saved:
+.devmap/snapshot.json
+
+Next:
+devmap ask "how does authentication work?"
 ```
-First run:   full analysis    ~5,000 tokens
-Second run:  uses cache       ~200 tokens  (if project unchanged)
-After edits: re-analyzes only changed files
+
+### Deep Output
+
+When using:
+
+```bash
+devmap analyze --deep
 ```
+
+DevMap adds a deeper module-level explanation.
+
+Example:
+
+```txt
+Module Breakdown
+
+app/
+Main application routes and layouts.
+
+app/api/
+Server-side API routes.
+
+lib/
+Shared utilities, database access, authentication logic, and helpers.
+```
+
+### Rules
+
+* Static analysis must run before AI interpretation
+* Do not send the entire project source to AI
+* Snapshot must be regenerated after analyze
+* Snapshot must remain compact and deterministic
+* Raw provider errors must not be shown directly to users
 
 ---
 
 ## `devmap ask`
 
-Ask any question about the codebase.
+Ask questions about the current project.
+
+### Purpose
+
+`devmap ask` answers natural-language questions about the codebase using the existing snapshot and selected relevant files.
 
 ### Usage
+
 ```bash
-devmap ask "how does authentication work"
-devmap ask "where is payment logic handled"
+devmap ask "how does authentication work?"
+devmap ask "where is payment logic handled?"
 devmap ask "explain the booking flow"
-devmap ask "where is user created"
-devmap ask "which files handle AI integration"
-devmap ask "what happens when a snippet is made public"
+devmap ask "which files handle AI integration?"
+devmap ask "where is a new user created?"
 ```
+
+### Responsibilities
+
+* Read `.devmap/snapshot.json`
+* Run quick analysis if no snapshot exists
+* Detect question language
+* Extract relevant keywords
+* Select relevant files
+* Build compact context
+* Send only relevant context to AI
+* Return answer in the same language as the question
 
 ### Internal Flow
-```
-1. Check if snapshot exists
-   → No snapshot: run quick analyze first, then continue
-   → Snapshot exists but stale (files changed): notify user, offer options
 
-2. Extract keywords from question
-
-3. Search snapshot fileIndex for relevant files:
-   → Match file paths containing keywords
-   → Match exported symbols containing keywords
-   → Expand one level via import graph
-
-4. Rank by relevance, take top 5 files max
-
-5. For files > 200 lines: extract relevant sections only
-
-6. Build prompt: question + selected file contents
-
-7. Stream answer to terminal
+```txt
+Question
+  ↓
+Detect Language
+  ↓
+Read Snapshot
+  ↓
+Find Relevant Files
+  ↓
+Build Context
+  ↓
+Send To AI
+  ↓
+Stream Answer
 ```
 
-### Output
-```
-$ devmap ask "how does authentication work"
+### Context Selection Rules
 
-  Searching relevant files...
-  → middleware.ts, lib/auth.ts, app/api/auth/[...nextauth]/route.ts,
-    lib/session.ts
+DevMap should select relevant files using:
 
-  Authentication Flow ──────────────────────────────
+* File path matching
+* Keyword matching
+* Import/export matching
+* Dependency matching
+* Known framework conventions
 
-  Auth is handled by NextAuth v5 configured in lib/auth.ts.
+Example question:
 
-  Flow:
-  1. All requests pass through middleware.ts
-  2. Middleware calls getSession() from lib/session.ts
-  3. No session → redirect to /login
-  4. Valid session → attach user to request context
-  5. API routes get user via getServerSession() directly
-
-  Google OAuth is the only configured provider. On first login,
-  a new user record is created in the database via the signIn callback
-  in lib/auth.ts (line 34).
-
-  Key files:
-  → middleware.ts       route protection rules
-  → lib/auth.ts         NextAuth config + callbacks
-  → lib/session.ts      session helper functions
+```txt
+how does authentication work?
 ```
 
-### Stale Snapshot Handling
+Likely relevant files:
+
+```txt
+middleware.ts
+lib/auth.ts
+lib/session.ts
+app/api/auth/*
 ```
-$ devmap ask "..."
 
-  ⚠ Project has changed since last analyze (4 files modified)
+### Hard Rules
 
-  [1] Use existing snapshot (faster, may be slightly outdated)
-  [2] Re-analyze changed files only (~600 tokens)
-  [3] Full re-analyze (~5,000 tokens)
+* Never send the entire project to AI
+* Prefer 3–5 most relevant files
+* Include related files in output
+* Keep answer readable
+* Respond in the same language as the question
+* Technical labels can remain in English
 
-  Choose [1]:
+### Output Example
+
+```txt
+Authentication Flow
+
+Authentication is handled using NextAuth.
+
+Flow:
+
+1. Request enters middleware.ts
+2. Session validation occurs
+3. Invalid session redirects to login
+4. Valid session continues to protected routes
+
+Key Files
+
+→ middleware.ts
+→ lib/auth.ts
+→ app/api/auth/*
+```
+
+### Missing Snapshot Behavior
+
+If no snapshot exists:
+
+```txt
+No snapshot found.
+
+Running quick analysis first...
+```
+
+Then continue answering the question.
+
+### Stale Snapshot Behavior
+
+If project files changed after last analyze:
+
+```txt
+Project changed since last analyze.
+
+Use existing snapshot or re-analyze first?
+
+[1] Use existing snapshot
+[2] Re-analyze now
 ```
 
 ---
 
 ## `devmap doctor`
 
-Run diagnostics. Use before filing a bug report.
+Run diagnostics for DevMap setup.
+
+### Purpose
+
+`devmap doctor` helps users debug setup issues and provides copy-pasteable diagnostic output for bug reports.
 
 ### Usage
+
 ```bash
 devmap doctor
 ```
 
-### Output — All Good
-```
-  DevMap Doctor ────────────────────────
+### Checks
 
-  DevMap version    1.0.0         ✓
-  Node.js version   20.11.0       ✓
-  Provider          Groq          ✓
-  API key           valid         ✓
-  Model             qwen-2.5-coder-32b  ✓
-  Model available   yes           ✓
-  Snapshot          exists        ✓
-  Snapshot age      2 hours ago   ✓
-  Cache             healthy       ✓
-  Daily tokens      12,400 used   ✓
+* DevMap version
+* Node.js version
+* Package manager
+* Provider configuration
+* API key status
+* Selected model
+* Snapshot status
+* Project detection
+* OS/platform
+* Permission issues
 
-  No issues found.
-  If you're experiencing problems, copy this output when reporting.
+### Output — No Issues
+
+```txt
+DevMap Doctor
+
+DevMap version     0.1.0        ✓
+Node.js version    20.11.0      ✓
+Provider           Groq         ✓
+API key            valid        ✓
+Model              configured   ✓
+Snapshot           exists       ✓
+Project            Next.js      ✓
+Platform           Windows      ✓
+
+No issues found.
 ```
 
 ### Output — Issues Found
+
+```txt
+DevMap Doctor
+
+DevMap version     0.1.0        ✓
+Node.js version    20.11.0      ✓
+Provider           Groq         ✓
+API key            invalid      ✗
+Snapshot           missing      ⚠
+
+Issues found:
+
+✗ API key is invalid
+  Run devmap init again and enter a valid API key.
+
+⚠ Snapshot is missing
+  Run devmap analyze before using devmap ask.
 ```
-  DevMap Doctor ────────────────────────
 
-  DevMap version    1.0.0         ✓
-  Node.js version   20.11.0       ✓
-  Provider          Groq          ✓
-  API key           valid         ✓
-  Model             qwen-2.5-coder-32b  ✗  (unavailable)
-  Fallback model    llama-3.3-70b       ✓
+### Rules
 
-  1 issue found:
-
-  ✗ Primary model unavailable
-    DevMap will use fallback model automatically.
-    Results may vary slightly from normal.
-    This is a Groq service issue, not a DevMap bug.
-    Status: https://status.groq.com
-```
+* Output must be readable
+* Errors must be actionable
+* Do not expose raw stack traces
+* Mention what command the user should run next
 
 ---
 
 ## Global Flags
 
-Available on all commands:
+Available globally:
 
 ```bash
-devmap --version        print version
-devmap --help           print help
-devmap [cmd] --help     print command-specific help
-devmap [cmd] --json     output as JSON (for piping to other tools)
-devmap [cmd] --no-color disable color output
+devmap --version
+devmap --help
+devmap [command] --help
 ```
+
+Available for supported commands:
+
+```bash
+devmap [command] --json
+devmap [command] --no-color
+```
+
+### Flag Purpose
+
+| Flag         | Purpose                         |
+| ------------ | ------------------------------- |
+| `--version`  | Print DevMap version            |
+| `--help`     | Print help                      |
+| `--json`     | Output machine-readable JSON    |
+| `--no-color` | Disable colored terminal output |
 
 ---
 
-## Future Commands (Post-MVP)
+## Future Commands
 
-| Command | Phase | Purpose |
-|---|---|---|
-| `devmap docs` | 3 | Generate markdown documentation |
-| `devmap onboard` | 3 | Generate onboarding guide for new team members |
-| `devmap flow [module]` | 4 | Explain system flow as narrative steps |
-| `devmap deadcode` | 4 | Find unused files, exports, and functions |
-| `devmap report` | 4 | Project health report with scores |
-| `devmap watch` | Future | Auto-update snapshot on file changes |
-| `devmap visual` | Future | Generate architecture diagram |
+The following commands are planned after MVP.
+
+They are not part of the current MVP command scope.
+
+| Command           | Purpose                                     |
+| ----------------- | ------------------------------------------- |
+| `devmap features` | Detect implemented project features         |
+| `devmap explain`  | Explain folders, modules, and architecture  |
+| `devmap flow`     | Explain system flows as narrative steps     |
+| `devmap docs`     | Generate project documentation              |
+| `devmap onboard`  | Generate onboarding guide                   |
+| `devmap deadcode` | Detect unused files, exports, and functions |
+| `devmap report`   | Generate project health report              |
+| `devmap watch`    | Auto-update snapshot on file changes        |
+| `devmap visual`   | Generate architecture diagram               |
+
+See:
+
+* [roadmap.md](./roadmap.md)
+
+---
+
+## Source of Truth
+
+Product direction belongs in:
+
+* `../PRD.md`
+
+Command behavior belongs in:
+
+* `docs/commands.md`
+
+Implementation details belong in:
+
+* `docs/architecture.md`
+
+If documentation conflicts, `PRD.md` takes precedence for product direction.

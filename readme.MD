@@ -24,13 +24,44 @@ Reading every file manually isn't the answer.
 
 DevMap analyzes your project using static analysis + AI, then tells you:
 
-- What the architecture looks like
-- Where the entry points are
-- Which files are critical
-- What external services are used
-- How specific features work — just ask
+* What the architecture looks like
+* Where the entry points are
+* Which files are critical
+* What external services are used
+* How specific features work — just ask
 
 One command. Under 10 minutes. Any codebase.
+
+---
+
+## How It Works
+
+DevMap works in three stages — init once, analyze when needed, ask anytime.
+
+```txt
+devmap init
+  → saves your AI provider config
+  → generates DEVMAP.md
+  → generates AGENTS.md
+
+devmap analyze
+  → runs static analysis
+  → builds compact project map
+  → generates snapshot.json
+
+devmap ask "how does auth work?"
+  → reads snapshot
+  → selects relevant files
+  → answers your question
+```
+
+Three files DevMap generates:
+
+| File                    | Purpose                                   | Regenerated   |
+| ----------------------- | ----------------------------------------- | ------------- |
+| `DEVMAP.md`             | Instructions for developers and AI agents | Once at init  |
+| `AGENTS.md`             | Tells AI agents to read DEVMAP.md first   | Once at init  |
+| `.devmap/snapshot.json` | Project snapshot generated from analysis  | Every analyze |
 
 ---
 
@@ -43,7 +74,7 @@ npm install -g devmap
 # Setup (one time)
 devmap init
 
-# Understand your project
+# Analyze project
 devmap analyze
 
 # Ask anything
@@ -52,124 +83,162 @@ devmap ask "how does authentication work"
 
 ---
 
-## Commands
+## Example Output
 
-### `devmap init`
+```txt
+PROJECT      devnote
+FRAMEWORK    Next.js
+LANGUAGE     TypeScript
 
-Setup your AI provider and API key. Run once per machine.
+Entry Points
+→ app/layout.tsx
+→ middleware.ts
 
-```bash
-devmap init
-```
+Critical Files
+→ lib/db.ts
+→ lib/auth.ts
 
-```
-Select provider:
-  [1] Groq (free tier — recommended)
-  [2] OpenAI
-  [3] Gemini
+External Services
+→ Neon
+→ Google OAuth
 
-✓ Provider: Groq
-✓ API key validated
-✓ Ready. Run: devmap analyze
-```
-
----
-
-### `devmap analyze`
-
-Analyze project structure and generate architecture overview.
-
-```bash
-devmap analyze              # standard overview
-devmap analyze --deep       # detailed per-module explanation
-devmap analyze --fresh      # ignore cache, full re-analyze
-devmap analyze ./src        # analyze specific folder
-```
-
-**Example output:**
-
-```
-─────────────────────────────────────────
-  PROJECT   devnote
-  STACK     Next.js 15 · Prisma · Neon
-  SIZE      67 files · 12,400 lines
-─────────────────────────────────────────
-
-  Entry Points
-  → app/layout.tsx         root layout
-  → app/page.tsx           home page
-  → middleware.ts          auth guard
-
-  Critical Files
-  → lib/db.ts              referenced by 23 files
-  → lib/auth.ts            referenced by 14 files
-  → types/index.ts         referenced by 31 files
-
-  External Services
-  → Neon PostgreSQL        via Prisma
-  → Google OAuth           via NextAuth v5
-
-  Architecture
-  Full-stack Next.js app. Auth is handled server-side via NextAuth
-  with Google OAuth, enforced globally by middleware.ts. Data layer
-  uses Prisma ORM connected to Neon PostgreSQL. Client state managed
-  with Zustand.
-
-  Snapshot saved → .devmap/snapshot.json
+Snapshot saved:
+.devmap/snapshot.json
 ```
 
 ---
 
-### `devmap ask`
+## For AI Agents
 
-Ask anything about the codebase. Uses cached snapshot — no re-scan.
+If you use Claude Code, Codex, Gemini CLI, Cursor, Aider, Windsurf, Copilot, or other AI agents — DevMap provides reusable project context.
 
-```bash
-devmap ask "how does authentication work"
-devmap ask "where is payment logic handled"
-devmap ask "explain the booking flow"
-devmap ask "which files handle AI integration"
-devmap ask "where is a new user created"
+Without DevMap:
+
+* AI explores repositories from scratch
+* Context is rebuilt every session
+* Tokens are spent on discovery before solving problems
+
+With DevMap:
+
+* AI reads `AGENTS.md`
+* AI is directed to `DEVMAP.md`
+* AI loads `.devmap/snapshot.json`
+* AI starts with project context already available
+
+```txt
+AI Agent
+   ↓
+AGENTS.md
+   ↓
+DEVMAP.md
+   ↓
+snapshot.json
+   ↓
+work immediately
 ```
 
-**Example output:**
-
-```
-$ devmap ask "how does authentication work"
-
-  Relevant files → middleware.ts, lib/auth.ts, lib/session.ts
-
-  Auth is handled by NextAuth v5 configured in lib/auth.ts.
-  All requests pass through middleware.ts which calls getSession().
-  No session → redirect to /login.
-  Valid session → user attached to request context.
-
-  Key files:
-  → middleware.ts    route protection rules
-  → lib/auth.ts      NextAuth config + callbacks
-  → lib/session.ts   session helper functions
-```
+One snapshot. Every tool. No repeated explanations.
 
 ---
 
-### `devmap doctor`
+## Supported Stacks
 
-Diagnose issues. Copy output when filing a bug report.
+### MVP
 
-```bash
-devmap doctor
+* Next.js
+* Express
+
+### Planned
+
+* React
+* NestJS
+* Laravel
+* Nuxt
+
+---
+
+## Documentation
+
+For detailed documentation:
+
+* [PRD.md](./PRD.md)
+* [docs/commands.md](./docs/commands.md)
+* [docs/architecture.md](./docs/architecture.md)
+* [docs/generated-files.md](./docs/generated-files.md)
+* [docs/benchmarking.md](./docs/benchmarking.md)
+* [docs/testing.md](./docs/testing.md)
+* [docs/roadmap.md](./docs/roadmap.md)
+* [docs/contributing.md](./docs/contributing.md)
+
+---
+
+## Roadmap
+
+### Now (MVP)
+
+* [x] `devmap init`
+* [x] `devmap analyze`
+* [x] `devmap ask`
+* [x] `devmap doctor`
+
+### Next
+
+* [ ] `devmap features`
+* [ ] OpenAI provider
+* [ ] Gemini provider
+
+### Later
+
+* [ ] `devmap explain`
+* [ ] `devmap flow`
+* [ ] `devmap docs`
+* [ ] `devmap onboard`
+* [ ] Local AI mode
+* [ ] VS Code Extension
+
+See [docs/roadmap.md](./docs/roadmap.md) for details.
+
+---
+
+## Vision
+
+DevMap is not an AI coding assistant.
+
+AI coding assistants help you write code.
+
+DevMap helps you understand code that already exists.
+
+They are complementary, not competitors.
+
+Use DevMap to understand the codebase.
+
+Use AI coding assistants to modify it.
+
+> DevMap is the context layer between developers, AI agents, and unfamiliar codebases.
+
+---
+
+## AI Provider Setup
+
+DevMap is free and open source.
+
+AI features require a provider API key.
+
+| Provider | Status  |
+| -------- | ------- |
+| Groq     | MVP     |
+| OpenAI   | Planned |
+| Gemini   | Planned |
+
+API keys are stored locally:
+
+```txt
+~/.devmap/config.json
 ```
 
-```
-  DevMap version    1.0.0              ✓
-  Node.js version   20.11.0            ✓
-  Provider          Groq               ✓
-  API key           valid              ✓
-  Model             qwen-2.5-coder-32b ✓
-  Snapshot          exists (2h ago)    ✓
+DevMap does not require a backend server.
 
-  No issues found.
-```
+Requests go directly from your machine to the selected AI provider.
 
 ---
 
@@ -182,103 +251,15 @@ npm install -g devmap
 # pnpm
 pnpm add -g devmap
 
-# without installing
+# run without installing
 npx devmap analyze
 ```
 
-**Requirements:** Node.js 18+
+Requirements:
 
----
-
-## AI Provider Setup
-
-DevMap is free and open source.
-AI features require an API key from your preferred provider:
-
-| Provider | Free Tier | Notes |
-|---|---|---|
-| [Groq](https://console.groq.com/keys) | ✓ 500k tokens/day | Recommended to start |
-| [OpenAI](https://platform.openai.com/api-keys) | ✗ Pay-as-you-go | ~$0.001 per analyze |
-| Gemini | Coming soon | — |
-
-**Estimated cost for active daily use: $0–2/month**
-
-DevMap uses your API key directly. Your key is stored locally at
-`~/.devmap/config.json` and never sent to any DevMap server.
-DevMap has no servers. Everything runs on your machine.
-
----
-
-## How Token Usage Is Kept Low
-
-DevMap does not send raw code to AI.
-
+```txt
+Node.js 18+
 ```
-Your files
-    ↓
-Static analysis (zero tokens)
-    ↓
-Compact JSON summary
-    ↓
-AI interprets summary
-    ↓
-Output
-```
-
-For `devmap ask`, only the 3–5 most relevant files are sent — not the whole project.
-Results are cached per file. Second and subsequent analyzes cost nearly nothing.
-
-**Typical usage:**
-
-| Command | First run | Cached |
-|---|---|---|
-| `devmap analyze` | ~5,000 tokens | ~200 tokens |
-| `devmap ask` | ~1,000 tokens | ~1,000 tokens |
-
----
-
-## Supported Stacks
-
-**MVP (stable):**
-- Next.js
-- Express
-
-**Coming soon:**
-- NestJS
-- Laravel
-- Vue / Nuxt
-
----
-
-## Roadmap
-
-**Now (v1.0)**
-- [x] `devmap init`
-- [x] `devmap analyze`
-- [x] `devmap ask`
-- [x] `devmap doctor`
-
-**Next (v2.0)**
-- [ ] `devmap docs` — generate project documentation
-- [ ] `devmap onboard` — generate onboarding guide for new team members
-
-**Later**
-- [ ] `devmap deadcode` — find unused files and exports
-- [ ] `devmap flow` — explain system flows as narrative steps
-- [ ] OpenAI + Gemini support
-- [ ] VS Code Extension
-
----
-
-## Vision
-
-DevMap is not an AI coding assistant.
-
-AI coding assistants help you **write** code.
-DevMap helps you **understand** code that already exists.
-
-They're not competitors. They're complementary.
-Use DevMap to understand the codebase. Use Cursor or Copilot to edit it.
 
 ---
 
@@ -289,20 +270,28 @@ DevMap is open source and welcomes contributions.
 ```bash
 git clone https://github.com/itsflaid/devmap
 cd devmap
+
 npm install
+
 npm link
-devmap analyze  # test on any project
+
+devmap analyze
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for how DevMap works internally.
-See [ROADMAP.md](./ROADMAP.md) for what's planned.
+Before contributing:
+
+1. Read `PRD.md`
+2. Read `docs/architecture.md`
+3. Read `docs/contributing.md`
 
 ---
 
 ## License
 
-MIT — use it, fork it, build on it.
+MIT License
+
+Use it, fork it, improve it, build on top of it.
 
 ---
 
-*Built by [@itsflaid](https://github.com/itsflaid)*
+Built by [@itsflaid](https://github.com/itsflaid)

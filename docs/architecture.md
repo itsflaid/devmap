@@ -1,199 +1,364 @@
 # DevMap — Architecture
 
+← Back to PRD: ../PRD.md
+
 ---
 
-## Repository Structure
+## Architecture Philosophy
 
+DevMap follows this principle:
+
+```txt
+80% Static Analysis
+20% AI Interpretation
 ```
-devmap/
-├── apps/
-│   └── web/                         ← landing page (post-MVP)
-│
-├── packages/
-│   └── cli/                         ← core CLI
-│       ├── src/
-│       │   ├── commands/
-│       │   │   ├── init.ts
-│       │   │   ├── analyze.ts
-│       │   │   ├── ask.ts
-│       │   │   └── doctor.ts
-│       │   ├── analyzers/
-│       │   │   ├── fileScanner.ts
-│       │   │   ├── filterEngine.ts
-│       │   │   ├── frameworkDetector.ts
-│       │   │   ├── dependencyGraph.ts
-│       │   │   ├── entryPoints.ts
-│       │   │   └── serviceDetector.ts
-│       │   ├── ai/
-│       │   │   ├── provider.ts
-│       │   │   ├── groq.ts
-│       │   │   └── prompts.ts
-│       │   ├── cache/
-│       │   │   ├── snapshot.ts
-│       │   │   └── fileHash.ts
-│       │   └── utils/
-│       │       ├── output.ts
-│       │       ├── config.ts
-│       │       └── gitignore.ts
-│       ├── test/
-│       │   └── fixtures/
-│       │       ├── nextjs-project/
-│       │       └── express-project/
-│       └── package.json
-│
-├── docs/
-│   ├── PRD.md
-│   ├── ARCHITECTURE.md
-│   ├── COMMANDS.md
-│   └── ROADMAP.md
-│
-├── README.md
-├── package.json                     ← workspace root
-└── pnpm-workspace.yaml
-```
+
+Static analysis is the foundation.
+
+AI is an enhancement layer.
+
+DevMap should not rely on AI to understand an entire project from raw source files.
+
+Instead, DevMap should first extract structured project information, then use AI to explain that information in a readable way.
 
 ---
 
 ## High-Level Flow
 
-```
+```txt
 Project Files
-     ↓
-  Scanner
-  (filesystem traversal + filtering)
-     ↓
-  Analyzer
-  (framework detection, dependency graph, entry points)
-     ↓
-  Project Map
-  (.devmap/snapshot.json)
-     ↓
-  Context Builder
-  (select only relevant files per query)
-     ↓
-  AI Layer
-  (Groq — interpret, explain, answer)
-     ↓
-  Output Layer
-  (CLI formatted + streamed output)
+  ↓
+Scanner
+  ↓
+Static Analyzer
+  ↓
+Project Map
+  ↓
+Snapshot
+  ↓
+Context Builder
+  ↓
+AI Layer
+  ↓
+Terminal Output
 ```
+
+### Explanation
+
+| Layer           | Purpose                              |
+| --------------- | ------------------------------------ |
+| Scanner         | Finds relevant project files         |
+| Static Analyzer | Extracts structure and relationships |
+| Project Map     | Internal structured analysis result  |
+| Snapshot        | Saved reusable project context       |
+| Context Builder | Selects relevant files for questions |
+| AI Layer        | Explains and answers                 |
+| Terminal Output | Displays result to user              |
+
+---
+
+## Supported MVP Stacks
+
+DevMap MVP focuses on:
+
+* Next.js
+* Express
+
+Other stacks are future roadmap items.
 
 ---
 
 ## Scanner
 
-`packages/cli/src/analyzers/fileScanner.ts`
-`packages/cli/src/analyzers/filterEngine.ts`
+The scanner is responsible for discovering project files.
 
-Responsible for discovering project structure from the filesystem.
+### Responsibilities
 
-**fileScanner.ts** — recursive directory traversal, returns flat list
-of file paths with metadata (size, extension, last modified).
+* Traverse project directories
+* Collect file metadata
+* Apply ignore rules
+* Return relevant source files
 
-**filterEngine.ts** — applies ignore rules, returns only relevant files.
+### Default Ignore Rules
 
-Default ignore list:
+```txt
+node_modules/
+.git/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+.vercel/
+out/
+*.min.js
+*.min.ts
+*.map
+*.lock
+*.log
+.env*
+public/assets/
 ```
-node_modules/   .git/         .next/        dist/
-build/          coverage/     .turbo/       .vercel/
-out/            *.min.ts      *.map         *.lock
-*.log           public/assets/ .env*
-```
 
-**Output:** flat list of relevant file paths + metadata
+### Scanner Output
+
+The scanner returns a list of relevant files with metadata such as:
+
+* path
+* extension
+* size
+* last modified time
 
 ---
 
-## Analyzer
+## Static Analyzer
 
-```
-packages/cli/src/analyzers/
-├── frameworkDetector.ts
-├── dependencyGraph.ts
-├── entryPoints.ts
-└── serviceDetector.ts
-```
+The analyzer extracts useful structure from scanned files.
 
-Responsible for understanding relationships between files.
+### Responsibilities
 
-**frameworkDetector.ts**
-Detect framework from `package.json` dependencies + file patterns.
-```
-package.json has "next" → Next.ts
-package.json has "express" → Express
-app/ folder exists → Next.ts App Router
-```
-
-**dependencyGraph.ts**
-Parse all `import` and `require` statements across all relevant files.
-Build a directed graph: file A → imports → file B.
-
-**entryPoints.ts**
-Detect entry points from graph topology:
-```
-Files imported by many others but import few = utility/library
-Files that import many others but are imported by few = entry points
-Files matching name patterns: page.tsx, layout.tsx, index.ts, server.ts, app.ts
-```
-
-**serviceDetector.ts**
-Detect external services from import patterns:
-```
-@prisma/client      → Prisma
-@supabase/supabase-js → Supabase
-stripe              → Stripe
-next-auth           → NextAuth
-midtrans-client     → Midtrans
-resend              → Resend
-```
-
-**Output:** structured data fed into Project Map
+* Detect framework
+* Detect language
+* Detect package manager
+* Detect routes
+* Detect API routes
+* Detect imports
+* Detect exports
+* Detect dependencies
+* Detect external services
+* Detect database usage
+* Detect entry points
+* Detect critical files
+* Detect common features
 
 ---
 
-## Project Map
+## Framework Detection
 
-Central source of truth. Generated by Analyzer.
-Saved to `.devmap/snapshot.json` in the user's project root.
+Framework detection should use:
 
-```json
-{
-  "generatedAt": "2025-01-01T00:00:00Z",
-  "projectHash": "abc123",
-  "framework": "nextjs",
-  "frameworkVersion": "15",
-  "stats": {
-    "totalFiles": 312,
-    "relevantFiles": 67,
-    "totalLines": 12400
-  },
-  "entryPoints": [
-    "app/layout.tsx",
-    "app/page.tsx",
-    "middleware.ts"
-  ],
-  "criticalFiles": [
-    { "path": "lib/auth.ts", "referencedBy": 14 },
-    { "path": "lib/db.ts", "referencedBy": 23 },
-    { "path": "types/index.ts", "referencedBy": 31 }
-  ],
-  "apiCount": 8,
-  "componentCount": 47,
-  "dependencies": {
-    "core": ["next", "react", "prisma"],
-    "auth": ["next-auth"],
-    "database": ["@prisma/client"],
-    "state": ["zustand"]
-  },
-  "externalServices": ["neon", "google-oauth", "cloudinary"],
-  "fileIndex": {
-    "lib/auth.ts": {
-      "hash": "md5hash_here",
-      "imports": ["lib/db.ts", "lib/session.ts"],
-      "exportedSymbols": ["getSession", "validateUser"],
-      "lines": 187
-    }
-  }
+* `package.json` dependencies
+* project folder patterns
+* framework-specific files
+
+### Examples
+
+| Signal                     | Detection                |
+| -------------------------- | ------------------------ |
+| `next` dependency          | Next.js                  |
+| `app/` directory           | Next.js App Router       |
+| `pages/` directory         | Next.js Pages Router     |
+| `express` dependency       | Express                  |
+| `server.ts` or `server.js` | Node/Express entry point |
+
+---
+
+## Dependency Graph
+
+The dependency graph maps relationships between files.
+
+### Purpose
+
+Understand which files import other files.
+
+### Example
+
+```txt
+app/page.tsx
+  → components/Hero.tsx
+  → lib/db.ts
+```
+
+### Used For
+
+* Critical file detection
+* Entry point detection
+* Context expansion
+* Better answers in `devmap ask`
+
+---
+
+## Entry Point Detection
+
+Entry points are files where application execution or routing commonly starts.
+
+### Next.js Examples
+
+```txt
+app/layout.tsx
+app/page.tsx
+middleware.ts
+app/api/*/route.ts
+pages/_app.tsx
+pages/index.tsx
+```
+
+### Express Examples
+
+```txt
+server.ts
+server.js
+app.ts
+app.js
+index.ts
+index.js
+```
+
+---
+
+## Critical File Detection
+
+Critical files are files that strongly affect project behavior.
+
+### Signals
+
+* Imported by many files
+* Used by entry points
+* Contains shared configuration
+* Contains auth, database, API, or provider logic
+* Has framework-specific importance
+
+### Examples
+
+```txt
+lib/db.ts
+lib/auth.ts
+middleware.ts
+prisma/schema.prisma
+src/server.ts
+```
+
+---
+
+## External Service Detection
+
+DevMap detects external services using dependency and import patterns.
+
+### Examples
+
+| Dependency / Import     | Service    |
+| ----------------------- | ---------- |
+| `@prisma/client`        | Prisma     |
+| `@supabase/supabase-js` | Supabase   |
+| `next-auth`             | NextAuth   |
+| `stripe`                | Stripe     |
+| `midtrans-client`       | Midtrans   |
+| `resend`                | Resend     |
+| `cloudinary`            | Cloudinary |
+| `openai`                | OpenAI     |
+| `@google/generative-ai` | Gemini     |
+| `groq-sdk`              | Groq       |
+
+---
+
+## Database Detection
+
+DevMap should detect database usage through:
+
+* dependencies
+* schema files
+* configuration files
+* imports
+* environment variable names
+
+### Examples
+
+| Signal                  | Detection           |
+| ----------------------- | ------------------- |
+| `prisma/schema.prisma`  | Prisma              |
+| `@prisma/client`        | Prisma Client       |
+| `drizzle.config.ts`     | Drizzle             |
+| `mongoose`              | MongoDB / Mongoose  |
+| `@supabase/supabase-js` | Supabase            |
+| `DATABASE_URL`          | Database connection |
+
+---
+
+## Feature Detection
+
+Feature detection identifies common application capabilities.
+
+### MVP Feature Categories
+
+* Authentication
+* Database
+* API routes
+* File upload
+* Payments
+* Email
+* AI integration
+* Notifications
+
+### Examples
+
+| Signal                                  | Feature        |
+| --------------------------------------- | -------------- |
+| `next-auth`, `auth`, `session`, `login` | Authentication |
+| `stripe`, `midtrans`, `payment`         | Payments       |
+| `cloudinary`, `upload`, `multer`        | File Upload    |
+| `resend`, `nodemailer`, `email`         | Email          |
+| `openai`, `groq`, `gemini`, `ai`        | AI Integration |
+
+---
+
+## Snapshot
+
+Snapshot is the reusable project context generated by DevMap.
+
+### File
+
+```txt
+.devmap/snapshot.json
+```
+
+### Purpose
+
+* Store current project analysis
+* Act as source of truth for `devmap ask`
+* Provide reusable context for AI agents
+* Avoid repeated project exploration
+
+### Snapshot Rules
+
+* Must include schema version
+* Must include generated timestamp
+* Must not contain full raw project source by default
+* Must be compact
+* Must be deterministic
+* Must be regenerated by `devmap analyze`
+
+---
+
+## Recommended Snapshot Shape
+
+```ts
+interface DevMapSnapshot {
+  version: string;
+  generatedAt: string;
+
+  project: {
+    name?: string;
+    root: string;
+    framework: "nextjs" | "express" | "react" | "node" | "unknown";
+    language: "typescript" | "javascript" | "mixed" | "unknown";
+    packageManager: "pnpm" | "npm" | "yarn" | "bun" | "unknown";
+  };
+
+  stats: {
+    totalFiles: number;
+    relevantFiles: number;
+    totalLines?: number;
+  };
+
+  entryPoints: EntryPoint[];
+  criticalFiles: CriticalFile[];
+  routes: RouteInfo[];
+  apiRoutes: ApiRouteInfo[];
+  dependencies: DependencyInfo[];
+  externalServices: ExternalServiceInfo[];
+  database?: DatabaseInfo;
+  features: FeatureInfo[];
+  fileIndex: Record<string, FileInfo>;
 }
 ```
 
@@ -201,242 +366,378 @@ Saved to `.devmap/snapshot.json` in the user's project root.
 
 ## Context Builder
 
-**Most critical module.** Determines what gets sent to AI.
+The Context Builder selects relevant context before sending anything to AI.
 
-Poor context = high token usage + low accuracy.
-Good context = low token usage + high accuracy.
+It is one of the most important parts of DevMap.
 
-`packages/cli/src/commands/ask.ts` uses this logic internally.
+Poor context selection creates:
 
-**Strategy:**
+* high token usage
+* irrelevant answers
+* slow responses
+* hallucinated explanations
 
+Good context selection creates:
+
+* lower token usage
+* better answers
+* faster responses
+* repeatable project understanding
+
+---
+
+## Context Builder Strategy
+
+MVP does not use embeddings or vector search.
+
+Use pragmatic heuristics first:
+
+* File path matching
+* Keyword matching
+* Import/export matching
+* Dependency matching
+* Known framework conventions
+
+### Example
+
+Question:
+
+```txt
+how does authentication work?
 ```
-User query: "how does authentication work"
-     ↓
-1. Extract keywords
-   → ["auth", "authentication", "session", "token", "login"]
-     ↓
-2. Search fileIndex — file paths matching keywords
-   → lib/auth.ts, lib/session.ts, middleware.ts
-     ↓
-3. Search fileIndex — exported symbols matching keywords
-   → getSession(), validateUser(), authOptions
-     ↓
-4. Expand one level via import graph
-   → files that import the matched files
-     ↓
-5. Rank by relevance score
-   → name match > symbol match > indirect reference
-     ↓
-6. Take top 5 files maximum
-     ↓
-7. For files > 200 lines: extract only sections
-   containing matched symbols, not full file
+
+Extract keywords:
+
+```txt
+auth
+authentication
+login
+session
+token
+middleware
 ```
 
-**Hard limits — never exceeded:**
+Likely selected files:
 
-| Limit | Value |
-|---|---|
-| Max files per AI request | 5 |
-| Max lines per file | 200 |
-| If file exceeds 200 lines | Extract relevant sections only |
+```txt
+middleware.ts
+lib/auth.ts
+lib/session.ts
+app/api/auth/*
+```
 
-**Why this matters:**
+---
 
-Without context builder: `devmap ask` on a 300-file project = 50k+ tokens.
-With context builder: same question = 800–2,000 tokens. Same answer quality.
+## Context Builder Limits
+
+| Limit                | Value                     |
+| -------------------- | ------------------------- |
+| Preferred file count | 3–5 files                 |
+| Maximum file count   | 5 files                   |
+| Large file behavior  | Extract relevant sections |
+| Full project source  | Never sent                |
 
 ---
 
 ## AI Layer
 
-All AI calls go through the provider abstraction.
-Never call a provider SDK directly from a command file.
+All AI interactions go through a provider abstraction.
 
-```
-packages/cli/src/ai/
-├── provider.ts    ← abstraction interface
-├── groq.ts        ← Groq adapter
-└── prompts.ts     ← all prompt templates
-```
+Commands should not call provider APIs directly.
 
-**Provider interface — every adapter must implement:**
+### MVP Provider
 
-```js
-export async function complete({ prompt, system, model, maxTokens, stream })
-export async function isAvailable()
-export function getModels()
-```
+* Groq
 
-Adding a new provider = create new adapter file implementing this interface.
-Zero changes needed in command files.
+### Future Providers
 
-**Model routing:**
+* OpenAI
+* Gemini
 
-```js
-const MODEL_ROUTER = {
-  analyze:      'qwen-2.5-coder-32b',
-  analyzeDeep:  'llama-3.3-70b-versatile',
-  ask:          'qwen-2.5-coder-32b',
-  fallback:     'llama-3.3-70b-versatile'
-}
-```
+### Provider Responsibilities
 
-**Retry logic:**
-
-```
-1. Try primary model
-2. On 503 (model unavailable) → fallback model, notify user
-3. On 429 (rate limit) → wait with countdown, retry same model
-4. On 3 consecutive failures → surface actionable error message
-```
-
-**Prompt templates** in `prompts.ts` — all prompts centralized here,
-never inline inside command files. Makes iteration and optimization easier.
+* Validate API key
+* Check model availability where possible
+* Send completion request
+* Stream response
+* Handle provider-specific errors
+* Normalize output for commands
 
 ---
 
-## Cache Layer
+## Model Routing
 
-Prevents redundant AI calls. Makes repeated analyzes nearly free.
+MVP default model routing:
 
-```
-packages/cli/src/cache/
-├── snapshot.ts    ← read/write .devmap/snapshot.json
-└── fileHash.ts    ← MD5 hashing per file
-```
+| Command          | Model                     |
+| ---------------- | ------------------------- |
+| `analyze`        | `qwen-2.5-coder-32b`      |
+| `ask`            | `qwen-2.5-coder-32b`      |
+| `analyze --deep` | `llama-3.3-70b-versatile` |
+| Fallback         | `llama-3.3-70b-versatile` |
 
-**Logic:**
+If a model is unavailable, DevMap should fall back gracefully.
 
-```js
-// Before sending a file to AI
-const currentHash = MD5(fileContent)
-const cached = cache.get(filePath)
-
-if (cached && cached.hash === currentHash) {
-  return cached.result   // zero tokens
-}
-
-const result = await callAI(file)
-cache.set(filePath, { hash: currentHash, result })
-return result
-```
-
-**Result:**
-
-| Run | Condition | Token cost |
-|---|---|---|
-| First analyze | No cache | ~5,000 tokens |
-| Second analyze | No file changes | ~200 tokens |
-| After editing 2 files | Partial cache hit | ~400 tokens |
-
-Full re-analyze only when user explicitly runs `devmap analyze --fresh`.
+Raw provider errors should not be shown directly to users.
 
 ---
 
-## Output Layer
+## Prompt Strategy
 
-All CLI output goes through a single utility.
-Never use `console.log` directly in command files.
+Prompt templates should be centralized.
 
-`packages/cli/src/utils/output.ts`
+### Rules
 
-```js
-output.step('Scanning files...')       // ⟳ spinner
-output.success('67 files found')       // ✓ green
-output.warning('Large project...')     // ⚠ yellow
-output.error('Rate limit reached')     // ✗ red
-output.section('Architecture')         // ── section header
-output.stream(asyncIterable)           // streaming AI output
+* Do not inline prompts inside command logic
+* Keep prompts versionable
+* Keep prompts short and structured
+* Prefer structured JSON input
+* Ask AI to explain, not discover
+* Do not ask AI to infer facts not present in the snapshot/context
+
+---
+
+## Token Strategy
+
+DevMap is designed to reduce repeated AI exploration.
+
+However, token-efficiency claims must be benchmarked before being used in public marketing.
+
+### Token Rules
+
+* Static analysis first
+* Never send the full raw project
+* Send compact snapshot data
+* For `ask`, send only relevant context
+* Cache and reuse snapshot
+
+---
+
+## Cache Strategy
+
+MVP cache source:
+
+```txt
+.devmap/snapshot.json
 ```
 
-All AI responses use **streaming** — text appears progressively.
-User sees output immediately, not after the full response completes.
+Future cache source:
+
+```txt
+.devmap/cache.json
+```
+
+### MVP Behavior
+
+* `devmap analyze` generates snapshot
+* `devmap ask` reuses snapshot
+* If no snapshot exists, `ask` may run quick analysis first
+* If project changes, user may be prompted to re-analyze
+
+### Future Optimization
+
+Future cache may include:
+
+* file hashes
+* dependency graph
+* extracted metadata
+* last analysis result per file
 
 ---
 
 ## Storage
 
-```
-~/.devmap/
-└── config.json              ← global config
-                                (API key, default provider, default model)
+### Global Config
 
-[user's project root]/
-└── .devmap/
-    ├── snapshot.json        ← last analyze result + full fileIndex
-    ├── cache/
-    │   └── [md5].json       ← per-file cached AI analysis
-    └── config.json          ← per-project config overrides (optional)
+```txt
+~/.devmap/config.json
 ```
 
-`.devmap/` is automatically added to `.gitignore` on `devmap init`.
-Users never need to think about this.
+Stores:
+
+* provider
+* API key
+* default model
+* language preference
+
+### Project Files
+
+```txt
+.devmap/
+└── snapshot.json
+```
+
+Stores:
+
+* latest project snapshot
+
+Future:
+
+```txt
+.devmap/
+├── snapshot.json
+└── cache.json
+```
 
 ---
 
-## Config Files
+## Generated Files
 
-**Global config** `~/.devmap/config.json`
-```json
-{
-  "provider": "groq",
-  "apiKey": "gsk_...",
-  "model": "auto"
-}
+DevMap may generate or update:
+
+```txt
+DEVMAP.md
+AGENTS.md
+.devmap/snapshot.json
 ```
 
-**Per-project config** `[project]/.devmap/config.json`
-```json
-{
-  "provider": "openai",
-  "model": "gpt-4o-mini",
-  "ignore": ["src/generated/", "*.test.ts"]
-}
-```
+Detailed generated file behavior is documented in:
 
-Per-project config overrides global config.
-Per-project config is optional — most users will never need it.
+* [generated-files.md](./generated-files.md)
 
 ---
 
-## Workspace Config
+## Language Strategy
 
-**`pnpm-workspace.yaml`** (root)
-```yaml
-packages:
-  - 'apps/*'
-  - 'packages/*'
+Default language mode:
+
+```txt
+auto
 ```
 
-**Root `package.json`**
-```json
-{
-  "name": "devmap",
-  "private": true,
-  "scripts": {
-    "dev:cli": "pnpm --filter @devmap/cli dev",
-    "build:cli": "pnpm --filter @devmap/cli build",
-    "test:cli": "pnpm --filter @devmap/cli test"
-  }
-}
+### Rules
+
+| Output Type     | Language                             |
+| --------------- | ------------------------------------ |
+| CLI labels      | English                              |
+| Technical terms | English where natural                |
+| AI explanation  | Same as user question                |
+| Generated docs  | Config language or detected language |
+| Error messages  | English                              |
+| Help text       | English                              |
+
+---
+
+## Error Handling
+
+Errors should be actionable.
+
+### Rules
+
+* Do not show raw stack traces by default
+* Explain what failed
+* Explain why it may have failed
+* Tell user what to do next
+* Use `devmap doctor` when useful
+
+### Example
+
+```txt
+Unable to validate API key.
+
+Possible causes:
+- API key is invalid
+- Internet connection failed
+- Provider service is unavailable
+
+Next:
+Run devmap init again or check your provider dashboard.
 ```
 
-**`packages/cli/package.json`**
-```json
-{
-  "name": "@devmap/cli",
-  "version": "0.1.0",
-  "bin": {
-    "devmap": "./src/index.ts"
-  },
-  "dependencies": {
-    "commander": "^12.0.0",
-    "ora": "^8.0.0",
-    "chalk": "^5.0.0",
-    "ts-morph": "^22.0.0",
-    "acorn": "^8.0.0"
-  }
-}
-```
+---
+
+## Output Strategy
+
+CLI output should be:
+
+* readable
+* minimal
+* actionable
+* friendly for developers
+* consistent across commands
+
+### Output Should Include
+
+* progress feedback
+* clear success messages
+* clear next step
+* useful error messages
+
+---
+
+## Cross-Platform Strategy
+
+DevMap should support:
+
+* Windows
+* macOS
+* Linux
+
+### Rules
+
+* Use cross-platform path utilities
+* Avoid shell-specific assumptions
+* Avoid hardcoded path separators
+* Test with different package managers
+
+---
+
+## Architecture Boundaries
+
+### Commands
+
+Commands orchestrate behavior.
+
+They should not contain heavy analysis logic.
+
+### Analyzer
+
+Analyzer extracts project structure.
+
+It should not call AI directly.
+
+### Context Builder
+
+Context Builder selects relevant project context.
+
+It should not format terminal output.
+
+### AI Layer
+
+AI Layer communicates with providers.
+
+It should not scan files directly.
+
+### Output Layer
+
+Output Layer formats terminal messages.
+
+It should not contain business logic.
+
+---
+
+## Source of Truth
+
+Product direction:
+
+* `../PRD.md`
+
+Command behavior:
+
+* [commands.md](./commands.md)
+
+Generated file behavior:
+
+* [generated-files.md](./generated-files.md)
+
+Benchmarking:
+
+* [benchmarking.md](./benchmarking.md)
+
+Testing:
+
+* [testing.md](./testing.md)
+
+Roadmap:
+
+* [roadmap.md](./roadmap.md)

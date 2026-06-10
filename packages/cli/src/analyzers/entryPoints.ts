@@ -1,4 +1,5 @@
 import type { FileGraph } from "./dependencyGraph.js";
+import { isArchitectureSource } from "./sourceScope.js";
 
 const ENTRY_PATTERNS = [
   /(^|\/)page\.[jt]sx?$/,
@@ -13,6 +14,7 @@ export function detectEntryPoints(graph: FileGraph): string[] {
 
   return Object.keys(graph)
     .filter((path) => isSourceFile(path))
+    .filter((path) => isArchitectureSource(path))
     .filter((path) => ENTRY_PATTERNS.some((pattern) => pattern.test(path)) || (!imported.has(path) && (graph[path]?.length ?? 0) > 0))
     .slice(0, 20);
 }

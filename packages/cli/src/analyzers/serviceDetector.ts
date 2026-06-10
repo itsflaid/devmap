@@ -1,4 +1,5 @@
 import type { ScannedFile } from "./fileScanner.js";
+import { isArchitectureSource } from "./sourceScope.js";
 
 const SERVICES: Array<[string[], string]> = [
   [["@prisma/client", "prisma"], "Prisma"],
@@ -15,8 +16,9 @@ const SERVICES: Array<[string[], string]> = [
 
 export function detectExternalServices(files: ScannedFile[]): string[] {
   const services = new Set<string>();
-  const packageDependencies = readPackageDependencyNames(files);
-  const importedPackages = readImportedPackageNames(files);
+  const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
+  const packageDependencies = readPackageDependencyNames(scopedFiles);
+  const importedPackages = readImportedPackageNames(scopedFiles);
   const candidates = new Set([...packageDependencies, ...importedPackages]);
 
   for (const [needles, name] of SERVICES) {

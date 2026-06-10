@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readSnapshot } from "../cache/snapshot.js";
+import { inspectSnapshot, isSnapshotStale } from "../cache/snapshot.js";
 import { analyzeCommand } from "./analyze.js";
 import { output } from "../utils/output.js";
 
@@ -11,16 +11,28 @@ export async function askCommand(questionParts: string[]): Promise<void> {
     return;
   }
 
-  let snapshot = await readSnapshot(process.cwd());
-  if (!snapshot) {
+  const projectRoot = process.cwd();
+  let snapshotResult = await inspectSnapshot(projectRoot);
+
+  if (snapshotResult.status === "corrupt" || snapshotResult.status === "unsupported") {
+    output.warning("The existing snapshot cannot be used. Running quick analyze first.");
+    await analyzeCommand(".");
+    snapshotResult = await inspectSnapshot(projectRoot);
+  } else if (snapshotResult.status === "missing") {
     output.warning("No snapshot found. Running quick analyze first.");
     await analyzeCommand(".");
-    snapshot = await readSnapshot(process.cwd());
+    snapshotResult = await inspectSnapshot(projectRoot);
   }
 
-  if (!snapshot) {
+  if (snapshotResult.status !== "valid") {
     output.error("Could not create snapshot.");
     return;
+  }
+
+  const snapshot = snapshotResult.snapshot;
+  if (await isSnapshotStale(projectRoot, snapshot)) {
+    output.warning("The project has changed since this snapshot was generated.");
+    output.note("Run devmap analyze before relying on this answer.");
   }
 
   const keywords = extractKeywords(question);
@@ -47,7 +59,7 @@ export async function askCommand(questionParts: string[]): Promise<void> {
   output.note("AI answering is planned for Phase 2. For now, DevMap found the files most likely related to your question.");
 
   for (const file of ranked.slice(0, 3)) {
-    const content = await readFile(join(process.cwd(), file.path), "utf8").catch(() => "");
+    const content = await readFile(join(projectRoot, file.path), "utf8").catch(() => "");
     const preview = content.split(/\r?\n/).slice(0, 12).join("\n");
     output.section(file.path);
     output.codeBlock(preview);

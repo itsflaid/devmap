@@ -1,16 +1,24 @@
 import type { ScannedFile } from "./fileScanner.js";
+import { isArchitectureSource } from "./sourceScope.js";
 
 export type Framework = "nextjs" | "express" | "unknown";
 
 export function detectFramework(files: ScannedFile[]): Framework {
   const packageJson = files.find((file) => file.path === "package.json");
   const dependencies = packageJson ? readDependencies(packageJson.content) : {};
+  const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
-  if ("next" in dependencies || files.some((file) => file.path.startsWith("app/"))) {
+  if (
+    "next" in dependencies
+    || sourceFiles.some((file) => /^(?:src\/)?(?:app|pages)\//.test(file.path))
+  ) {
     return "nextjs";
   }
 
-  if ("express" in dependencies || files.some((file) => /(^|\/)(server|app)\.[cm]?[jt]s$/.test(file.path))) {
+  if (
+    "express" in dependencies
+    || sourceFiles.some((file) => /^(?:src\/)?(?:server|app)\.[cm]?[jt]s$/.test(file.path))
+  ) {
     return "express";
   }
 

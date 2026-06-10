@@ -1,0 +1,10 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+persistent_instructions = "Follow the root AGENTS.md. Use .agents/skills when relevant. Prefer static analysis and verification."
+
+[features]
+multi_agent = true

@@ -4,7 +4,7 @@
 
 ---
 
-[Demo GIF placeholder — record with terminalizer before publishing]
+[Demo GIF placeholder — record with VHS before publishing]
 
 ---
 
@@ -12,56 +12,76 @@
 
 Modern AI tools generate code faster than developers can understand it.
 
-You clone a repo — 200 files stare back at you.
-You join a team mid-project — nobody has time to explain the architecture.
-You open an AI-generated codebase — even the person who built it isn't sure how it works.
+You clone a repository — hundreds of files stare back at you.
 
-Reading every file manually isn't the answer.
+You join a project halfway through development — nobody has time to explain the architecture.
+
+You return to an old project after months — and spend hours remembering how everything fits together.
+
+You ask AI for help — and the AI starts exploring the repository from scratch again.
+
+Reading every file manually does not scale.
 
 ---
 
 ## The Solution
 
-DevMap analyzes your project using static analysis + AI, then tells you:
+DevMap analyzes your project using static analysis and AI to generate a reusable project snapshot.
 
-* What the architecture looks like
-* Where the entry points are
-* Which files are critical
-* What external services are used
-* How specific features work — just ask
+The snapshot contains:
 
-One command. Under 10 minutes. Any codebase.
+* Architecture overview
+* Entry points
+* Critical files
+* Routes and APIs
+* External services
+* Database information
+* Detected features
+* Project relationships
+
+Instead of repeatedly exploring the codebase, developers and AI tools can start with a shared understanding of the project.
+
+One analysis.
+
+Reusable context.
+
+Any codebase.
 
 ---
 
 ## How It Works
 
-DevMap works in three stages — init once, analyze when needed, ask anytime.
+DevMap works in three stages.
 
 ```txt
 devmap init
-  → saves your AI provider config
+  → configures provider
   → generates DEVMAP.md
-  → generates AGENTS.md
+  → prepares project
 
 devmap analyze
   → runs static analysis
-  → builds compact project map
+  → discovers architecture
   → generates snapshot.json
 
-devmap ask "how does auth work?"
-  → reads snapshot
-  → selects relevant files
-  → answers your question
+snapshot.json
+  → reusable project context
+  → used by developers
+  → used by AI agents
+  → used by DevMap commands
 ```
 
-Three files DevMap generates:
+### Generated Files
 
-| File                    | Purpose                                   | Regenerated   |
-| ----------------------- | ----------------------------------------- | ------------- |
-| `DEVMAP.md`             | Instructions for developers and AI agents | Once at init  |
-| `AGENTS.md`             | Tells AI agents to read DEVMAP.md first   | Once at init  |
-| `.devmap/snapshot.json` | Project snapshot generated from analysis  | Every analyze |
+| File                    | Role                 |
+| ----------------------- | -------------------- |
+| `DEVMAP.md`             | DevMap instructions  |
+| `AGENTS.md`             | AI agent entry point |
+| `.devmap/snapshot.json` | Core project context |
+
+The snapshot is the primary output of DevMap.
+
+Everything else builds on top of it.
 
 ---
 
@@ -71,17 +91,41 @@ Three files DevMap generates:
 # Install
 npm install -g devmap
 
-# Setup (one time)
+# Setup
 devmap init
 
-# Analyze project
+# Generate project context
 devmap analyze
-
-# Ask anything
-devmap ask "how does authentication work"
 ```
 
----
+DevMap generates:
+
+```txt
+.devmap/snapshot.json
+```
+
+This snapshot becomes a reusable source of project context for:
+
+* Developers
+* AI agents
+* Future DevMap commands
+
+### What comes next?
+
+```bash
+# Generate reusable project context
+devmap analyze
+
+# Verify your setup
+devmap doctor
+
+# Explore the architecture
+devmap ask "explain the main architecture"
+
+# Future: generate onboarding guide
+devmap onboard
+```
+
 
 ## Example Output
 
@@ -102,15 +146,71 @@ External Services
 → Neon
 → Google OAuth
 
+Architecture
+This is a full-stack Next.js application. Authentication is handled
+server-side. Database access is centralized through the data layer.
+
 Snapshot saved:
 .devmap/snapshot.json
+
+Ready for:
+→ AI agents
+→ DevMap commands
+→ Future onboarding generation
 ```
+
+---
+
+## Why DevMap Exists
+
+Most AI tools rebuild project understanding every session.
+
+Without DevMap:
+
+```txt
+Repository
+   ↓
+AI explores files
+   ↓
+AI rebuilds context
+   ↓
+Task begins
+```
+
+With DevMap:
+
+```txt
+Repository
+   ↓
+DevMap Analysis
+   ↓
+snapshot.json
+   ↓
+Reusable Context
+   ↓
+Task begins
+```
+
+The goal is not to replace AI.
+
+The goal is to eliminate repeated project exploration.
 
 ---
 
 ## For AI Agents
 
-If you use Claude Code, Codex, Gemini CLI, Cursor, Aider, Windsurf, Copilot, or other AI agents — DevMap provides reusable project context.
+If you use:
+
+* Claude Code
+* OpenAI Codex
+* Gemini CLI
+* Cursor
+* Windsurf
+* Aider
+* GitHub Copilot
+* Amazon Q
+
+DevMap provides reusable project context.
 
 Without DevMap:
 
@@ -137,7 +237,11 @@ snapshot.json
 work immediately
 ```
 
-One snapshot. Every tool. No repeated explanations.
+One snapshot.
+
+Every tool.
+
+No repeated explanations.
 
 ---
 
@@ -159,14 +263,15 @@ One snapshot. Every tool. No repeated explanations.
 
 ## Documentation
 
-For detailed documentation:
+Detailed documentation:
 
 * [PRD.md](./PRD.md)
 * [docs/commands.md](./docs/commands.md)
 * [docs/architecture.md](./docs/architecture.md)
 * [docs/generated-files.md](./docs/generated-files.md)
+* [docs/design.md](./docs/design.md)
 * [docs/benchmarking.md](./docs/benchmarking.md)
-* [docs/testing.md](./docs/testing.md)
+* [docs/development-testing.md](./docs/development-testing.md)
 * [docs/roadmap.md](./docs/roadmap.md)
 * [docs/contributing.md](./docs/contributing.md)
 
@@ -174,7 +279,7 @@ For detailed documentation:
 
 ## Roadmap
 
-### Now (MVP)
+### MVP
 
 * [x] `devmap init`
 * [x] `devmap analyze`
@@ -183,6 +288,7 @@ For detailed documentation:
 
 ### Next
 
+* [ ] `devmap onboard`
 * [ ] `devmap features`
 * [ ] OpenAI provider
 * [ ] Gemini provider
@@ -192,11 +298,16 @@ For detailed documentation:
 * [ ] `devmap explain`
 * [ ] `devmap flow`
 * [ ] `devmap docs`
-* [ ] `devmap onboard`
 * [ ] Local AI mode
 * [ ] VS Code Extension
 
-See [docs/roadmap.md](./docs/roadmap.md) for details.
+See:
+
+```txt
+docs/roadmap.md
+```
+
+for details.
 
 ---
 
@@ -204,9 +315,9 @@ See [docs/roadmap.md](./docs/roadmap.md) for details.
 
 DevMap is not an AI coding assistant.
 
-AI coding assistants help you write code.
+AI coding assistants help developers write code.
 
-DevMap helps you understand code that already exists.
+DevMap helps developers understand code that already exists.
 
 They are complementary, not competitors.
 
@@ -238,7 +349,7 @@ API keys are stored locally:
 
 DevMap does not require a backend server.
 
-Requests go directly from your machine to the selected AI provider.
+Requests go directly from your machine to the selected provider.
 
 ---
 
@@ -290,7 +401,7 @@ Before contributing:
 
 MIT License
 
-Use it, fork it, improve it, build on top of it.
+Use it, fork it, improve it, and build on top of it.
 
 ---
 

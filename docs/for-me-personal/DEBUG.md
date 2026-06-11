@@ -461,6 +461,58 @@ Keamanan path wajib diperiksa sebelum membaca source file.
 
 ---
 
+## 9. Default Model Groq di PRD Sudah Tidak Tersedia
+
+**Tanggal:** 2026-06-11
+
+### Gejala
+
+PRD menetapkan model berikut sebagai default:
+
+```text
+qwen-2.5-coder-32b
+```
+
+Model tersebut tidak lagi tercantum pada daftar model aktif Groq.
+
+### Akar Masalah
+
+Ketersediaan model AI provider berubah dari waktu ke waktu. Model routing di PRD
+dibuat berdasarkan katalog lama dan belum diverifikasi ulang sebelum integrasi
+completion client.
+
+Groq saat ini menyediakan:
+
+- `openai/gpt-oss-20b` sebagai production model;
+- `llama-3.3-70b-versatile` sebagai production model;
+- `qwen/qwen3-32b` sebagai preview model.
+
+Preview model tidak aman dijadikan default public release karena dapat dihentikan
+dengan pemberitahuan singkat.
+
+### Solusi
+
+- Gunakan `openai/gpt-oss-20b` untuk `ask` dan standard `analyze`.
+- Gunakan `llama-3.3-70b-versatile` untuk `analyze --deep`.
+- Gunakan `llama-3.3-70b-versatile` sebagai fallback.
+- Perbarui PRD dan architecture docs.
+- Tambahkan model fallback pada Groq client.
+- Hormati custom model dari config jika user tidak memakai nilai `auto`.
+
+### Verifikasi
+
+- Model diverifikasi melalui dokumentasi resmi Groq pada 2026-06-11.
+- Automated test memastikan fallback dipakai ketika primary model menerima
+  response model unavailable.
+- Automated test memastikan config `auto` memakai default model terbaru.
+
+### Pelajaran
+
+Model ID provider bukan konstanta permanen. Verifikasi production model list
+sebelum release dan jangan menjadikan preview model sebagai default.
+
+---
+
 ## Checklist Saat Menambahkan Debug Baru
 
 Tambahkan catatan baru ketika:

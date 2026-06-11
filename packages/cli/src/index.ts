@@ -26,7 +26,7 @@ program
   .argument("[target]", "folder to analyze", ".")
   .option("--deep", "show a deeper static breakdown")
   .option("--fresh", "ignore cache and run a fresh analysis")
-  .action(analyzeCommand);
+  .action((target, options) => analyzeCommand(target, options));
 
 program
   .command("ask")

@@ -38,6 +38,16 @@ export type ProjectMap = {
   database?: DatabaseInfo;
   features: FeatureInfo[];
   dependencies: Record<string, string[]>;
+  ai?: {
+    architecture: string;
+    model: string;
+    generatedAt: string;
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    };
+  };
   fileIndex: Record<string, {
     hash: string;
     imports: string[];

@@ -471,12 +471,13 @@ MVP default model routing:
 
 | Command          | Model                     |
 | ---------------- | ------------------------- |
-| `analyze`        | `qwen-2.5-coder-32b`      |
-| `ask`            | `qwen-2.5-coder-32b`      |
+| `analyze`        | `openai/gpt-oss-20b`      |
+| `ask`            | `openai/gpt-oss-20b`      |
 | `analyze --deep` | `llama-3.3-70b-versatile` |
 | Fallback         | `llama-3.3-70b-versatile` |
 
 If a model is unavailable, DevMap should fall back gracefully.
+Only Groq production models should be used as public defaults.
 
 Raw provider errors should not be shown directly to users.
 

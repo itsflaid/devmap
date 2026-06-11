@@ -538,11 +538,15 @@ ai/
 
 | Command | Model | Reason |
 |---|---|---|
-| `analyze`, `ask` | `qwen-2.5-coder-32b` | Large context, code-focused |
-| `analyze --deep` | `llama-3.3-70b-versatile` | Better reasoning for explanations |
-| Fallback | `llama-3.3-70b-versatile` | When primary model unavailable |
+| `analyze`, `ask` | `openai/gpt-oss-20b` | Production model, fast and cost-efficient |
+| `analyze --deep` | `llama-3.3-70b-versatile` | Better reasoning for detailed explanations |
+| Fallback | `llama-3.3-70b-versatile` | Production fallback when primary model is unavailable |
 
 If a model becomes unavailable, DevMap gracefully falls back. No raw provider errors shown to users.
+
+Model availability changes over time. Before changing the default routing,
+verify the current Groq production model list. Preview models must not be used
+as the default for a public DevMap release.
 
 ### User API Key Principle
 

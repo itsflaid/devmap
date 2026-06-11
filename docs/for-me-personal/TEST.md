@@ -78,8 +78,8 @@ Saat ini test mencakup:
 Hasil minimum yang diharapkan:
 
 ```text
-tests 20
-pass 20
+tests 29
+pass 29
 fail 0
 ```
 
@@ -117,13 +117,75 @@ npx -p node@18 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test
 npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
 ```
 
-Hasil yang diharapkan untuk keduanya:
+Hasil minimum yang diharapkan untuk keduanya:
 
 ```text
-tests 20
-pass 20
+tests 29
+pass 29
 fail 0
 ```
+
+## Testing AI Client Tanpa API Call
+
+Automated test AI memakai fake `fetch` dan mock `AiClient`, sehingga tidak
+memerlukan Groq API key dan tidak menghabiskan token.
+
+Coverage saat ini:
+
+- normalisasi response dan token usage;
+- retry `429` menggunakan header `retry-after`;
+- fallback ketika primary model tidak tersedia;
+- invalid API key menjadi error actionable;
+- prompt hanya memakai selected context;
+- `ask` memakai model default ketika config bernilai `auto`;
+- provider failure jatuh ke static context.
+- standard analyze menyimpan AI architecture interpretation;
+- analyze kedua memakai cached interpretation tanpa request baru;
+- analyze prompt tidak mengandung full raw source.
+
+Jalankan:
+
+```powershell
+pnpm test:cli
+```
+
+## Testing AI Ask dengan Groq
+
+Testing manual ini memakai API key dan dapat menggunakan quota Groq.
+
+```powershell
+pnpm build:cli
+node packages\cli\dist\index.js init
+node packages\cli\dist\index.js analyze
+node packages\cli\dist\index.js ask "Bagaimana autentikasi bekerja?"
+```
+
+Pastikan:
+
+- file relevan ditampilkan;
+- jawaban memakai bahasa pertanyaan;
+- jawaban menyebut path yang benar;
+- model dan token usage ditampilkan;
+- raw provider error dan stack trace tidak muncul.
+
+## Testing AI Analyze dengan Groq
+
+```powershell
+pnpm build:cli
+node packages\cli\dist\index.js analyze --fresh
+node packages\cli\dist\index.js analyze
+node packages\cli\dist\index.js analyze --deep --fresh
+```
+
+Pastikan:
+
+- command pertama menghasilkan section `Architecture`;
+- model dan total token ditampilkan;
+- `.devmap/snapshot.json` memiliki object `ai`;
+- command kedua menampilkan `Cached: yes`;
+- command kedua tidak melakukan request AI baru;
+- `--deep --fresh` memakai model deep analysis;
+- static snapshot tetap tersimpan jika Groq gagal.
 
 ## GitHub Actions
 

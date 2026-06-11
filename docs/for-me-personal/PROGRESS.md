@@ -31,6 +31,38 @@ Terakhir diperbarui: 2026-06-11
 - Automated test saat ini berjumlah 20 dan seluruhnya lulus.
 - Context Builder sudah siap digunakan sebagai input AI layer.
 
+### AI Ask
+
+- Provider abstraction `AiClient` sudah ditambahkan.
+- Groq chat completion memakai endpoint REST resmi tanpa SDK tambahan.
+- Default model `ask` menggunakan production model
+  `openai/gpt-oss-20b`.
+- Fallback model menggunakan `llama-3.3-70b-versatile`.
+- Request 429 di-retry satu kali berdasarkan header `retry-after`.
+- Invalid API key, rate limit, provider failure, empty response, dan response
+  yang tidak valid diterjemahkan menjadi error actionable.
+- Prompt `ask` hanya memakai context terpilih dan meminta jawaban dalam bahasa
+  yang sama dengan pertanyaan.
+- `devmap ask` menampilkan token usage agar benchmarking dapat dilakukan.
+- Jika AI belum dikonfigurasi atau gagal, selected static context tetap
+  ditampilkan.
+- Automated test AI memakai fake provider sehingga tidak menggunakan quota.
+
+### AI Analyze
+
+- Standard `devmap analyze` memakai `openai/gpt-oss-20b` ketika config bernilai
+  `auto`.
+- `devmap analyze --deep` memakai `llama-3.3-70b-versatile`.
+- Prompt hanya mengirim compact static snapshot, bukan full raw source.
+- Interpretasi arsitektur menyebut entry point, critical file, route, feature,
+  database, service, dan relationship yang didukung snapshot.
+- Hasil AI, model, generated time, dan token usage disimpan di snapshot.
+- Project yang tidak berubah memakai cached AI interpretation tanpa API call
+  baru.
+- `--fresh` memaksa static analysis dan AI interpretation baru.
+- Jika AI gagal, static analysis dan snapshot tetap berhasil.
+- Automated test saat ini berjumlah 29 dan seluruhnya lulus.
+
 ### Cross-Platform CI
 
 - GitHub Actions matrix sudah ditambahkan untuk:
@@ -55,8 +87,8 @@ Terakhir diperbarui: 2026-06-11
 ### Prioritas Berikutnya
 
 1. Pastikan rerun GitHub Actions hijau pada seluruh 9 kombinasi.
-2. Buat AI provider abstraction dan Groq completion client.
-3. Integrasikan AI interpretation ke `analyze` dan AI answer ke `ask`.
+2. Tingkatkan `doctor` untuk memvalidasi provider dan selected model.
+3. Tambahkan streaming output untuk jawaban AI.
 4. Rapikan package npm dan verifikasi tarball sebelum publish.
 
 ## Status Saat Ini

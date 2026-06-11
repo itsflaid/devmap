@@ -2,6 +2,10 @@
   "name": "devmap",
   "private": true,
   "version": "1.0.0",
+  "packageManager": "pnpm@10.34.2",
+  "engines": {
+    "node": ">=18"
+  },
   "description": "Understand any codebase in minutes, not days.",
   "scripts": {
     "dev:web": "pnpm --filter @devmap/web dev",
@@ -19,12 +23,5 @@
   ],
   "author": "itsflaid",
   "license": "MIT",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.5.0",
-      "onFail": "download"
-    }
-  },
   "type": "module"
 }

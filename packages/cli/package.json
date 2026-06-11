@@ -14,7 +14,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "test": "pnpm run test:unit && pnpm run test:types",
-    "test:unit": "tsx --test test/*.test.ts",
+    "test:unit": "tsx test/run-tests.ts",
     "test:types": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [

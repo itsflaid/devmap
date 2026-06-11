@@ -1,5 +1,4 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { buildQuestionContext } from "../ai/contextBuilder.js";
 import { inspectSnapshot, isSnapshotStale } from "../cache/snapshot.js";
 import { analyzeCommand } from "./analyze.js";
 import { output } from "../utils/output.js";
@@ -35,51 +34,28 @@ export async function askCommand(questionParts: string[]): Promise<void> {
     output.note("Run devmap analyze before relying on this answer.");
   }
 
-  const keywords = extractKeywords(question);
-  const ranked = Object.entries(snapshot.fileIndex)
-    .map(([path, metadata]) => ({
-      path,
-      score: scoreFile(path, metadata.exportedSymbols, keywords)
-    }))
-    .filter((file) => file.score > 0)
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 5);
+  const context = await buildQuestionContext(projectRoot, snapshot, question);
 
   output.section("Relevant Files");
-  if (ranked.length === 0) {
+  if (context.files.length === 0) {
     output.warning("No strong file matches found. Try running devmap analyze --fresh after more code exists.");
     return;
   }
 
-  for (const file of ranked) {
-    output.item(file.path);
+  for (const file of context.files) {
+    output.item(`${file.path} (${file.reasons.join(", ")})`);
   }
 
   output.section("Static Answer");
   output.note("AI answering is planned for Phase 2. For now, DevMap found the files most likely related to your question.");
 
-  for (const file of ranked.slice(0, 3)) {
-    const content = await readFile(join(projectRoot, file.path), "utf8").catch(() => "");
-    const preview = content.split(/\r?\n/).slice(0, 12).join("\n");
-    output.section(file.path);
-    output.codeBlock(preview);
+  for (const file of context.files.slice(0, 3)) {
+    const previewLines = file.content.split(/\r?\n/).slice(0, 24);
+    const previewEndLine = file.startLine + previewLines.length - 1;
+    const lineRange = file.startLine === previewEndLine
+      ? `line ${file.startLine}`
+      : `lines ${file.startLine}-${previewEndLine}`;
+    output.section(`${file.path} (${lineRange})`);
+    output.codeBlock(previewLines.join("\n"));
   }
-}
-
-function extractKeywords(question: string): string[] {
-  return question
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 2);
-}
-
-function scoreFile(path: string, symbols: string[], keywords: string[]): number {
-  const normalizedPath = path.toLowerCase();
-  const normalizedSymbols = symbols.join(" ").toLowerCase();
-
-  return keywords.reduce((score, keyword) => {
-    const pathScore = normalizedPath.includes(keyword) ? 5 : 0;
-    const symbolScore = normalizedSymbols.includes(keyword) ? 3 : 0;
-    return score + pathScore + symbolScore;
-  }, 0);
 }

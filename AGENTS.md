@@ -1,7 +1,13 @@
-# DevMap — Agent 
+# DevMap — Agent
 
 read PRD and all documentation first before hands-on.
- 
+
+## Source of Truth
+
+The PRD is the source of truth for product behavior, requirements, and priorities.
+
+If there is any conflict between the PRD and other documents (README, docs, comments, plans, or specifications), follow the PRD.
+
 ## Relevant Skills
 
 ECC skills are stored in `.agents/skills/`.
@@ -19,3 +25,19 @@ Use these when relevant:
 - `strategic-compact` — keep long agent sessions manageable.
 - `agent-introspection-debugging` — recover when the agent loops or gets stuck.
 
+## Personal Development Documentation
+
+Keep the private development notes under `docs/for-me-personal/` current while
+working on DevMap.
+
+- Record completed work, current status, important decisions, and remaining
+  tasks in `docs/for-me-personal/PROGRESS.md`.
+- Record the latest development testing commands, prerequisites, expected
+  results, manual test flows, and cross-platform verification steps in
+  `docs/for-me-personal/TEST.md`.
+- Record meaningful debugging incidents in `docs/for-me-personal/DEBUG.md`,
+  including the symptom, root cause, solution, verification, and lesson learned.
+
+Update the relevant document whenever implementation or verification changes
+its contents. Do not duplicate these personal notes into the public `docs/`
+folder unless the information is intended for users or contributors.

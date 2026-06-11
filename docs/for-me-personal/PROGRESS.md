@@ -1,6 +1,63 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-07
+Terakhir diperbarui: 2026-06-11
+
+## Update 2026-06-11
+
+### Analyzer dan Snapshot
+
+- Snapshot schema versi 1 sudah ditambahkan.
+- Snapshot sekarang memiliki project fingerprint untuk stale detection dan
+  reuse ketika source tidak berubah.
+- Snapshot corrupt, missing, dan unsupported schema sudah dibedakan.
+- Project metadata sekarang mencakup nama, framework, language, dan package
+  manager.
+- Analyzer sekarang mendeteksi routes, API routes, database, dan features.
+- Critical files memakai score dan alasan, bukan hanya jumlah import.
+- Test fixture dan file test tidak lagi mencemari kesimpulan framework, route,
+  service, database, feature, atau entry point production.
+
+### Context Builder
+
+- Context Builder heuristic sudah diimplementasikan secara lokal.
+- Ranking memakai path, exported symbols, imports, routes, feature evidence, dan
+  critical file signals.
+- Pertanyaan Bahasa Indonesia dan English didukung melalui concept aliases.
+- Context dapat diperluas satu tingkat ke imported file dan importer terkait.
+- Batas context adalah maksimal 5 file dan 200 baris per file.
+- File besar memakai relevant line window.
+- Path traversal dan symlink escape di luar project root ditolak.
+- `devmap ask` sudah memakai Context Builder secara lokal.
+- Automated test saat ini berjumlah 20 dan seluruhnya lulus.
+- Context Builder sudah siap digunakan sebagai input AI layer.
+
+### Cross-Platform CI
+
+- GitHub Actions matrix sudah ditambahkan untuk:
+  - Ubuntu, Windows, dan macOS
+  - Node.js 18, 20, dan 22
+- Workspace diturunkan dari pnpm 11 ke pnpm 10.34.2 agar kompatibel dengan
+  Node.js 18 dan 20.
+- Frozen install, test CLI, build CLI, smoke CLI, dan build web dijalankan di CI.
+- Windows Node.js 18/20 sempat gagal karena shell wildcard
+  `test/*.test.ts`.
+- Test runner cross-platform `packages/cli/test/run-tests.ts` sudah dibuat.
+- Runner sudah diverifikasi langsung pada Windows dengan Node.js 18.20.8 dan
+  20.20.2; keduanya lulus 20/20 test.
+
+### Commit Terkait
+
+```text
+07b62d2 Add cross-platform CI with pnpm 10
+745f1ed Fix test discovery on Windows
+```
+
+### Prioritas Berikutnya
+
+1. Pastikan rerun GitHub Actions hijau pada seluruh 9 kombinasi.
+2. Buat AI provider abstraction dan Groq completion client.
+3. Integrasikan AI interpretation ke `analyze` dan AI answer ke `ask`.
+4. Rapikan package npm dan verifikasi tarball sebelum publish.
 
 ## Status Saat Ini
 

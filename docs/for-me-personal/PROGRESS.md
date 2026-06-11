@@ -4,6 +4,11 @@ Terakhir diperbarui: 2026-06-11
 
 ## Update 2026-06-11
 
+### Workflow Agent
+
+- Alur branch `codex/`, commit dengan identitas `devmap-agent`, push branch, dan
+  draft pull request sudah diverifikasi.
+
 ### Analyzer dan Snapshot
 
 - Snapshot schema versi 1 sudah ditambahkan.

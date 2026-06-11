@@ -28,7 +28,18 @@ const STOP_WORDS = new Set([
 ]);
 
 const CONCEPT_ALIASES: Record<string, string[]> = {
-  auth: ["auth", "authentication", "autentikasi", "login", "session", "sesi", "token", "jwt", "middleware"],
+  auth: [
+    "auth",
+    "authentication",
+    "autentikasi",
+    "login",
+    "session",
+    "sesi",
+    "token",
+    "jwt",
+    "middleware",
+    "nextauth"
+  ],
   database: ["database", "db", "data", "prisma", "drizzle", "mongoose", "supabase"],
   payment: ["payment", "payments", "pembayaran", "stripe", "midtrans", "checkout"],
   route: ["route", "routes", "routing", "api", "endpoint"],

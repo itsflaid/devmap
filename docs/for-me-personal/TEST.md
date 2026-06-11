@@ -78,8 +78,8 @@ Saat ini test mencakup:
 Hasil minimum yang diharapkan:
 
 ```text
-tests 33
-pass 33
+tests 34
+pass 34
 fail 0
 ```
 
@@ -120,8 +120,8 @@ npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test
 Hasil minimum yang diharapkan untuk keduanya:
 
 ```text
-tests 33
-pass 33
+tests 34
+pass 34
 fail 0
 ```
 
@@ -147,6 +147,36 @@ Jalankan:
 
 ```powershell
 pnpm test:cli
+```
+
+## Benchmark Context Builder
+
+Benchmark deterministic berada di:
+
+```text
+packages/cli/test/context-builder-eval.test.ts
+```
+
+Jalankan benchmark saja:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/context-builder-eval.test.ts
+```
+
+Benchmark terdiri dari 20 pertanyaan Bahasa Indonesia dan English untuk:
+
+- authentication dan NextAuth;
+- database dan Prisma;
+- API session;
+- page dan layout Next.js;
+- payment dan Stripe;
+- entry point Express.
+
+Target minimum saat ini:
+
+```text
+Context Builder top-1 accuracy: 20/20
+Context Builder top-3 recall: 20/20
 ```
 
 ## Testing AI Ask dengan Groq

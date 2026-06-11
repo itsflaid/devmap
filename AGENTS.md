@@ -1,5 +1,31 @@
 # DevMap — Agent
 
+When working in this repository:
+
+- Create a branch before making changes unless the user explicitly asks to work on the current branch.
+- Use branch names with the `codex/` prefix, for example `codex/fix-analyzer`.
+- Keep changes scoped to the user request.
+- Do not revert unrelated user changes.
+- Prefer opening a pull request instead of pushing directly to `main`, unless the user explicitly asks to push to `main`.
+
+## Commits
+
+- Commit AI-authored work as:
+
+  ```bash
+  git -c user.name="devmap-agent" -c user.email="238585242+devmap-agent@users.noreply.github.com" commit -m "Clear commit message"
+  ```
+
+- Do not change global or repository Git config for the author identity unless the user explicitly asks.
+- If the user wants their own account as the main author, keep their author identity and add this trailer to the commit message:
+
+  ```text
+  Co-authored-by: devmap-agent <238585242+devmap-agent@users.noreply.github.com>
+  ```
+
+- Keep commit messages short, specific, and focused on the user-visible fix or feature.
+
+
 read PRD and all documentation first before hands-on.
 
 ## Source of Truth
@@ -7,6 +33,9 @@ read PRD and all documentation first before hands-on.
 The PRD is the source of truth for product behavior, requirements, and priorities.
 
 If there is any conflict between the PRD and other documents (README, docs, comments, plans, or specifications), follow the PRD.
+
+
+
 
 ## Relevant Skills
 

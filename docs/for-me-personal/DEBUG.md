@@ -558,6 +558,54 @@ cache yang sama. Smoke test distribusi harus deterministik dan berurutan.
 
 ---
 
+## 11. Pertanyaan NextAuth Jatuh ke Fallback Critical File
+
+**Tanggal:** 2026-06-11
+
+**Status:** Selesai.
+
+### Gejala
+
+Pada benchmark Context Builder, pertanyaan:
+
+```text
+Explain the NextAuth configuration
+```
+
+menempatkan `app/api/session/route.ts` di posisi pertama, bukan `lib/auth.ts`.
+File yang benar masih masuk top-3, tetapi top-1 accuracy hanya 19/20.
+
+### Akar Masalah
+
+Keyword tokenizer menghasilkan `nextauth`, sedangkan concept alias auth hanya
+memiliki `auth` dan tidak memiliki bentuk nama provider tersebut. Karena tidak
+ada direct match, ranking jatuh ke fallback critical file.
+
+### Solusi
+
+Tambahkan `nextauth` ke concept alias authentication.
+
+### Verifikasi
+
+```powershell
+pnpm --filter devmap exec tsx --test test/context-builder-eval.test.ts
+```
+
+Hasil:
+
+```text
+Context Builder top-1 accuracy: 20/20
+Context Builder top-3 recall: 20/20
+```
+
+### Pelajaran
+
+Concept alias perlu mencakup nama provider populer, bukan hanya nama concern
+generik. Eval bilingual membantu menemukan gap yang tidak terlihat dari unit
+test satu pertanyaan.
+
+---
+
 ## Checklist Saat Menambahkan Debug Baru
 
 Tambahkan catatan baru ketika:

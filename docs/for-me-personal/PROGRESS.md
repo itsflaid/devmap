@@ -28,7 +28,11 @@ Terakhir diperbarui: 2026-06-11
 - File besar memakai relevant line window.
 - Path traversal dan symlink escape di luar project root ditolak.
 - `devmap ask` sudah memakai Context Builder secara lokal.
-- Automated test saat ini berjumlah 20 dan seluruhnya lulus.
+- Benchmark 20 pertanyaan mencakup auth, database, route session, halaman,
+  layout, payment, dan entry point dalam Bahasa Indonesia dan English.
+- Hasil benchmark saat ini: top-1 accuracy 20/20 dan top-3 recall 20/20.
+- Alias `nextauth` ditambahkan setelah eval menemukan satu fallback ranking yang
+  salah.
 - Context Builder sudah siap digunakan sebagai input AI layer.
 
 ### AI Ask
@@ -73,7 +77,7 @@ Terakhir diperbarui: 2026-06-11
 - Availability selected model ikut diperiksa.
 - Snapshot dibedakan menjadi valid, missing, corrupt, dan unsupported schema.
 - API key dan raw stack trace tidak pernah ditampilkan.
-- Automated test saat ini berjumlah 33 dan seluruhnya lulus.
+- Automated test saat ini berjumlah 34 dan seluruhnya lulus.
 
 ### Distribusi npm
 
@@ -113,7 +117,7 @@ Terakhir diperbarui: 2026-06-11
 
 1. Pastikan rerun GitHub Actions hijau pada seluruh 9 kombinasi.
 2. Lakukan manual verification Groq pada project nyata.
-3. Benchmark Context Builder dengan minimal 20 pertanyaan.
+3. Uji `init`, `analyze`, `ask`, dan `doctor` dari tarball pada project nyata.
 4. Tambahkan streaming output untuk jawaban AI jika waktu MVP masih tersedia.
 
 ## Status Saat Ini

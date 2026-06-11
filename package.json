@@ -1,5 +1,5 @@
 {
-  "name": "devmap",
+  "name": "devmap-workspace",
   "private": true,
   "version": "1.0.0",
   "packageManager": "pnpm@10.34.2",
@@ -11,9 +11,9 @@
     "dev:web": "pnpm --filter @devmap/web dev",
     "build:web": "pnpm --filter @devmap/web build",
     "preview:web": "pnpm --filter @devmap/web preview",
-    "dev:cli": "pnpm --filter @devmap/cli dev",
-    "build:cli": "pnpm --filter @devmap/cli build",
-    "test:cli": "pnpm --filter @devmap/cli test"
+    "dev:cli": "pnpm --filter devmap dev",
+    "build:cli": "pnpm --filter devmap build",
+    "test:cli": "pnpm --filter devmap test"
   },
   "keywords": [
     "codebase",

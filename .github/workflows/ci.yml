@@ -62,3 +62,36 @@ jobs:
 
       - name: Build web
         run: pnpm build:web
+
+  package:
+    name: Package smoke test
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.2
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pack CLI
+        run: pnpm --filter devmap pack --pack-destination artifacts
+
+      - name: Smoke test packed CLI
+        run: |
+          npm exec --yes --package ./artifacts/devmap-0.1.0.tgz -- devmap --version
+          npm exec --yes --package ./artifacts/devmap-0.1.0.tgz -- devmap --help

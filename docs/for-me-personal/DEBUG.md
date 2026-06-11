@@ -362,14 +362,14 @@ menulis artifact project yang sama.
 
 **Tanggal ditemukan:** 2026-06-10
 
-**Status:** Belum diperbaiki.
+**Status:** Selesai.
 
 ### Gejala
 
 Dry-run package:
 
 ```powershell
-pnpm --filter @devmap/cli pack --dry-run
+pnpm --filter devmap pack --dry-run
 ```
 
 menunjukkan tarball ikut membawa:
@@ -385,7 +385,7 @@ menunjukkan tarball ikut membawa:
 
 Package CLI belum memiliki allowlist `files` atau `.npmignore` yang ketat.
 
-### Rencana Solusi
+### Solusi
 
 Gunakan allowlist pada `packages/cli/package.json`, misalnya:
 
@@ -404,14 +404,16 @@ Tambahkan script `prepack` untuk memastikan build selalu dibuat sebelum tarball.
 Pastikan fixture `.env`, test, source development, dan snapshot lokal tidak
 masuk package.
 
-### Verifikasi yang Diperlukan
+### Verifikasi
 
 ```powershell
-pnpm --filter @devmap/cli pack --dry-run
-npm install -g .\devmap-cli-*.tgz
-devmap --version
-devmap --help
+pnpm --filter devmap pack --pack-destination artifacts
+npm exec --yes --package .\artifacts\devmap-0.1.0.tgz -- devmap --version
+npm exec --yes --package .\artifacts\devmap-0.1.0.tgz -- devmap --help
 ```
+
+Tarball hanya berisi `dist`, `package.json`, `README.md`, dan `LICENSE`.
+Command versi dan help berhasil langsung dari tarball.
 
 ### Pelajaran
 
@@ -510,6 +512,49 @@ dengan pemberitahuan singkat.
 
 Model ID provider bukan konstanta permanen. Verifikasi production model list
 sebelum release dan jangan menjadikan preview model sebagai default.
+
+---
+
+## 10. Smoke Test npx Paralel Membaca Instalasi yang Belum Selesai
+
+**Tanggal:** 2026-06-11
+
+**Status:** Selesai.
+
+### Gejala
+
+`devmap --version` berhasil, tetapi `devmap --help` sempat gagal dengan:
+
+```text
+ENOENT: no such file or directory, open '...\node_modules\devmap\dist\commands\init.js'
+```
+
+### Akar Masalah
+
+Dua command `npx` dijalankan paralel dan memakai cache `_npx` yang sama.
+Salah satu proses mulai menjalankan binary ketika proses lain masih menyiapkan
+isi package. Tarball dan instalasi akhirnya sama-sama memiliki `init.js`.
+
+### Solusi
+
+- Jalankan smoke test package secara berurutan.
+- Gunakan cache npm terpisah untuk setiap instalasi ketika perlu isolasi penuh.
+- Jangan menyimpulkan file tarball hilang sebelum memeriksa isi arsip dengan
+  `tar -tf`.
+
+### Verifikasi
+
+```powershell
+npm exec --yes --cache "$env:TEMP\devmap-version" --package $tarball -- devmap --version
+npm exec --yes --cache "$env:TEMP\devmap-help" --package $tarball -- devmap --help
+```
+
+Keduanya berhasil.
+
+### Pelajaran
+
+Package installation bukan operasi yang aman diparalelkan ketika proses berbagi
+cache yang sama. Smoke test distribusi harus deterministik dan berurutan.
 
 ---
 

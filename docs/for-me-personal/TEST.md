@@ -54,8 +54,8 @@ pnpm test:cli
 Command tersebut menjalankan:
 
 ```powershell
-pnpm --filter @devmap/cli test:unit
-pnpm --filter @devmap/cli test:types
+pnpm --filter devmap test:unit
+pnpm --filter devmap test:types
 ```
 
 Saat ini test mencakup:
@@ -78,8 +78,8 @@ Saat ini test mencakup:
 Hasil minimum yang diharapkan:
 
 ```text
-tests 32
-pass 32
+tests 33
+pass 33
 fail 0
 ```
 
@@ -120,8 +120,8 @@ npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test
 Hasil minimum yang diharapkan untuk keduanya:
 
 ```text
-tests 32
-pass 32
+tests 33
+pass 33
 fail 0
 ```
 
@@ -234,8 +234,11 @@ pnpm build:web
 Total job yang harus hijau:
 
 ```text
-9
+10
 ```
+
+Sembilan job berasal dari matrix OS/Node. Satu job tambahan membuat dan menguji
+tarball npm setelah seluruh matrix lulus.
 
 ## Development CLI Tanpa Build
 
@@ -499,5 +502,32 @@ devmap doctor
 Untuk melepas link global:
 
 ```powershell
-npm unlink -g @devmap/cli
+npm unlink -g devmap
 ```
+
+## Testing Tarball npm
+
+Buat package dari root repository:
+
+```powershell
+pnpm --filter devmap pack --pack-destination artifacts
+```
+
+Pastikan daftar file hanya berisi:
+
+- `dist/`
+- `package.json`
+- `README.md`
+- `LICENSE`
+
+Pastikan tidak ada `src/`, `test/`, `.devmap/`, `.env`, atau `node_modules/`.
+
+Jalankan smoke test secara berurutan dengan cache terpisah:
+
+```powershell
+$tarball = "C:\path\to\artifacts\devmap-0.1.0.tgz"
+npm exec --yes --cache "$env:TEMP\devmap-version" --package $tarball -- devmap --version
+npm exec --yes --cache "$env:TEMP\devmap-help" --package $tarball -- devmap --help
+```
+
+Jangan menjalankan dua instalasi `npx` secara paralel dengan cache yang sama.

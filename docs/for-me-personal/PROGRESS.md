@@ -73,7 +73,20 @@ Terakhir diperbarui: 2026-06-11
 - Availability selected model ikut diperiksa.
 - Snapshot dibedakan menjadi valid, missing, corrupt, dan unsupported schema.
 - API key dan raw stack trace tidak pernah ditampilkan.
-- Automated test saat ini berjumlah 32 dan seluruhnya lulus.
+- Automated test saat ini berjumlah 33 dan seluruhnya lulus.
+
+### Distribusi npm
+
+- Package CLI publik sekarang bernama `devmap`, sedangkan root private workspace
+  bernama `devmap-workspace`.
+- Allowlist package hanya memasukkan `dist`; npm tetap menyertakan
+  `package.json`, `README.md`, dan `LICENSE`.
+- Script `prepack` selalu membangun CLI sebelum tarball dibuat.
+- Source, test, `.devmap`, fixture `.env`, dan fixture `node_modules` tidak lagi
+  masuk tarball.
+- Tarball `devmap-0.1.0.tgz` berhasil dijalankan melalui `npm exec` untuk
+  `devmap --version` dan `devmap --help`.
+- GitHub Actions memiliki package smoke test setelah seluruh matrix CI lulus.
 
 ### Cross-Platform CI
 
@@ -99,9 +112,9 @@ Terakhir diperbarui: 2026-06-11
 ### Prioritas Berikutnya
 
 1. Pastikan rerun GitHub Actions hijau pada seluruh 9 kombinasi.
-2. Rapikan package npm dan verifikasi tarball sebelum publish.
-3. Tambahkan streaming output untuk jawaban AI.
-4. Lakukan manual verification Groq pada project nyata.
+2. Lakukan manual verification Groq pada project nyata.
+3. Benchmark Context Builder dengan minimal 20 pertanyaan.
+4. Tambahkan streaming output untuk jawaban AI jika waktu MVP masih tersedia.
 
 ## Status Saat Ini
 
@@ -143,15 +156,15 @@ Saat ini CLI sudah bisa:
 
 ### Setup Package CLI
 
-- Package CLI diganti namanya menjadi `@devmap/cli`.
+- Package CLI publik memakai nama `devmap` agar `npx devmap` bekerja.
 - Entry binary `devmap` ditambahkan dan diarahkan ke `./dist/index.js`.
 - Welcome screen aqua ditambahkan untuk command `devmap` tanpa argumen. Desainnya
   memakai ASCII wordmark DevMap sebagai brand signal, memakai warna truecolor
   `#2EE6D6`, lalu isi di bawahnya tetap ringkas dan command-focused.
 - Script package CLI ditambahkan:
-  - `pnpm --filter @devmap/cli dev`
-  - `pnpm --filter @devmap/cli build`
-  - `pnpm --filter @devmap/cli test`
+  - `pnpm --filter devmap dev`
+  - `pnpm --filter devmap build`
+  - `pnpm --filter devmap test`
 - `commander` dipasang di versi `^12.0.0` supaya tetap kompatibel dengan
   requirement Node.js 18+ yang tertulis di dokumentasi.
 - Node types ditambahkan ke `tsconfig.json` supaya TypeScript mengenali
@@ -179,9 +192,9 @@ Saat ini CLI sudah bisa:
   menambah framework test baru.
 - Script test CLI sekarang menjalankan unit/integration test dan TypeScript
   type-check:
-  - `pnpm --filter @devmap/cli test`
-  - `pnpm --filter @devmap/cli test:unit`
-  - `pnpm --filter @devmap/cli test:types`
+  - `pnpm --filter devmap test`
+  - `pnpm --filter devmap test:unit`
+  - `pnpm --filter devmap test:types`
 - Fixture Next.js mencakup:
   - App Router
   - import lokal dengan suffix `.js`
@@ -566,8 +579,8 @@ Mencakup:
 Pengecekan berikut sudah berhasil:
 
 ```bash
-pnpm --filter @devmap/cli test
-pnpm --filter @devmap/cli build
+pnpm --filter devmap test
+pnpm --filter devmap build
 pnpm --filter @devmap/web build
 node packages\cli\dist\index.js --help
 node packages\cli\dist\index.js init

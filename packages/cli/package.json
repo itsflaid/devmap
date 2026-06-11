@@ -1,5 +1,5 @@
 {
-  "name": "@devmap/cli",
+  "name": "devmap",
   "version": "0.1.0",
   "description": "DevMap command line interface.",
   "bin": {
@@ -7,12 +7,16 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "prepack": "pnpm run build",
     "test": "pnpm run test:unit && pnpm run test:types",
     "test:unit": "tsx test/run-tests.ts",
     "test:types": "tsc -p tsconfig.json --noEmit"
@@ -22,8 +26,20 @@
     "cli",
     "static-analysis"
   ],
-  "author": "itsflaid",
+  "author": "Muhammad Fadil",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itsflaid/devmap.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/itsflaid/devmap/issues"
+  },
+  "homepage": "https://github.com/itsflaid/devmap#readme",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "dependencies": {
     "commander": "^12.0.0"

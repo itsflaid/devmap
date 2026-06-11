@@ -78,8 +78,8 @@ Saat ini test mencakup:
 Hasil minimum yang diharapkan:
 
 ```text
-tests 29
-pass 29
+tests 32
+pass 32
 fail 0
 ```
 
@@ -120,8 +120,8 @@ npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test
 Hasil minimum yang diharapkan untuk keduanya:
 
 ```text
-tests 29
-pass 29
+tests 32
+pass 32
 fail 0
 ```
 
@@ -186,6 +186,27 @@ Pastikan:
 - command kedua tidak melakukan request AI baru;
 - `--deep --fresh` memakai model deep analysis;
 - static snapshot tetap tersimpan jika Groq gagal.
+
+## Testing `devmap doctor`
+
+Jalankan automated test dan hasil build:
+
+```powershell
+pnpm test:cli
+pnpm build:cli
+node packages\cli\dist\index.js doctor
+```
+
+Pastikan output menampilkan:
+
+- versi DevMap dan Node.js;
+- OS dan arsitektur;
+- lokasi project, framework, dan package manager;
+- provider, status API key, dan selected model;
+- status snapshot;
+- warning actionable ketika config, key, model, atau snapshot bermasalah.
+
+API key asli dan raw stack trace tidak boleh muncul pada output.
 
 ## GitHub Actions
 

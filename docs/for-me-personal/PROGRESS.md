@@ -61,7 +61,19 @@ Terakhir diperbarui: 2026-06-11
   baru.
 - `--fresh` memaksa static analysis dan AI interpretation baru.
 - Jika AI gagal, static analysis dan snapshot tetap berhasil.
-- Automated test saat ini berjumlah 29 dan seluruhnya lulus.
+- Automated test AI memakai mock provider dan tidak menggunakan quota.
+
+### Doctor Diagnostics
+
+- `devmap doctor` sekarang menampilkan versi DevMap, Node.js, OS/arsitektur,
+  lokasi project, framework, package manager, provider, config, dan snapshot.
+- Node.js di bawah versi 18 ditandai sebagai unsupported.
+- Model `auto` di-resolve ke model aktual `openai/gpt-oss-20b`.
+- API key divalidasi melalui endpoint daftar model Groq.
+- Availability selected model ikut diperiksa.
+- Snapshot dibedakan menjadi valid, missing, corrupt, dan unsupported schema.
+- API key dan raw stack trace tidak pernah ditampilkan.
+- Automated test saat ini berjumlah 32 dan seluruhnya lulus.
 
 ### Cross-Platform CI
 
@@ -87,9 +99,9 @@ Terakhir diperbarui: 2026-06-11
 ### Prioritas Berikutnya
 
 1. Pastikan rerun GitHub Actions hijau pada seluruh 9 kombinasi.
-2. Tingkatkan `doctor` untuk memvalidasi provider dan selected model.
+2. Rapikan package npm dan verifikasi tarball sebelum publish.
 3. Tambahkan streaming output untuk jawaban AI.
-4. Rapikan package npm dan verifikasi tarball sebelum publish.
+4. Lakukan manual verification Groq pada project nyata.
 
 ## Status Saat Ini
 

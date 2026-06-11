@@ -414,7 +414,7 @@ DevMap version    0.1.0               ✓
 Node.js version   20.11.0             ✓
 Provider          Groq                ✓
 API key           valid               ✓
-Model             qwen-2.5-coder-32b  ✓
+Model             openai/gpt-oss-20b  ✓
 Snapshot          exists              ✓
 
 No issues found.

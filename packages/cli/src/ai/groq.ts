@@ -23,6 +23,11 @@ export type GroqClientDependencies = {
   sleep?: (milliseconds: number) => Promise<void>;
 };
 
+export type GroqProviderInspection = {
+  reachable: true;
+  modelAvailable: boolean;
+};
+
 export class GroqClient implements AiClient {
   private readonly fetchImplementation: typeof fetch;
   private readonly sleep: (milliseconds: number) => Promise<void>;
@@ -130,10 +135,19 @@ export class GroqClient implements AiClient {
 }
 
 export async function validateGroqApiKey(apiKey: string): Promise<void> {
+  await inspectGroqProvider(apiKey);
+}
+
+export async function inspectGroqProvider(
+  apiKey: string,
+  model?: string,
+  dependencies: Pick<GroqClientDependencies, "fetch"> = {}
+): Promise<GroqProviderInspection> {
+  const fetchImplementation = dependencies.fetch ?? fetch;
   let response: Response;
 
   try {
-    response = await fetch(GROQ_MODELS_URL, {
+    response = await fetchImplementation(GROQ_MODELS_URL, {
       headers: {
         Authorization: `Bearer ${apiKey}`
       }
@@ -158,6 +172,12 @@ export async function validateGroqApiKey(apiKey: string): Promise<void> {
       "Try again shortly or check https://status.groq.com."
     );
   }
+
+  const modelIds = await readModelIds(response);
+  return {
+    reachable: true,
+    modelAvailable: !model || modelIds.includes(model)
+  };
 }
 
 type GroqCompletionPayload = {
@@ -264,4 +284,21 @@ function normalizeUsage(usage: NonNullable<GroqCompletionPayload["usage"]>): AiT
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function readModelIds(response: Response): Promise<string[]> {
+  try {
+    const payload = await response.json() as {
+      data?: Array<{ id?: unknown }>;
+    };
+
+    return (payload.data ?? [])
+      .map((model) => model.id)
+      .filter((id): id is string => typeof id === "string");
+  } catch {
+    throw new DevmapError(
+      "Groq returned an unreadable model list.",
+      "Try again shortly or check https://status.groq.com."
+    );
+  }
 }

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { buildDependencyGraph, countReferences } from "../src/analyzers/dependencyGraph.js";
 import { scanFiles } from "../src/analyzers/fileScanner.js";
+import { shouldIgnorePath } from "../src/analyzers/filterEngine.js";
 import { detectFramework } from "../src/analyzers/frameworkDetector.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 import { detectExternalServices } from "../src/analyzers/serviceDetector.js";
@@ -30,6 +31,19 @@ test("scanner ignores generated and secret paths", async () => {
   assert.ok(paths.includes("lib/auth.ts"));
   assert.ok(!paths.some((path) => path.startsWith("node_modules/")));
   assert.ok(!paths.some((path) => path.startsWith(".env")));
+});
+
+test("scanner ignores package manager lockfiles", () => {
+  for (const lockfile of [
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb"
+  ]) {
+    assert.equal(shouldIgnorePath(lockfile, false), true, lockfile);
+  }
 });
 
 test("framework detector recognizes Next.js and Express fixtures", async () => {

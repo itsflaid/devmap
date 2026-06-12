@@ -102,8 +102,8 @@ Saat ini test mencakup:
 Hasil minimum yang diharapkan:
 
 ```text
-tests 34
-pass 34
+tests 36
+pass 36
 fail 0
 ```
 
@@ -144,8 +144,8 @@ npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test
 Hasil minimum yang diharapkan untuk keduanya:
 
 ```text
-tests 34
-pass 34
+tests 36
+pass 36
 fail 0
 ```
 
@@ -585,3 +585,38 @@ npm exec --yes --cache "$env:TEMP\devmap-help" --package $tarball -- devmap --he
 ```
 
 Jangan menjalankan dua instalasi `npx` secara paralel dengan cache yang sama.
+
+### End-to-End Project Sementara
+
+Pasang tarball pada project sementara yang memiliki:
+
+- `package.json` dengan dependency Express;
+- `src/server.ts` dengan satu route;
+- `AGENTS.md` yang sudah memiliki isi.
+
+Jalankan binary dari `node_modules/.bin`:
+
+```powershell
+devmap --version
+devmap --help
+devmap init
+devmap analyze
+devmap ask "where is the server entry point?"
+devmap doctor
+```
+
+Tanpa `GROQ_API_KEY`, hasil yang diharapkan:
+
+- `init` exit `1` dengan pesan actionable dan tidak membuat config parsial;
+- `analyze`, `ask`, dan `doctor` exit `0`;
+- `ask` menampilkan static context;
+- snapshot mendeteksi Express, npm, dan route project;
+- lockfile package manager tidak masuk `fileIndex` atau statistik line;
+- `AGENTS.md` yang sudah ada tidak berubah.
+
+Dengan `GROQ_API_KEY` valid, ulangi flow untuk memverifikasi:
+
+- `init` membuat config, `.gitignore`, dan `DEVMAP.md`;
+- `analyze` menghasilkan AI architecture interpretation;
+- `ask` menghasilkan jawaban AI dan token usage;
+- `doctor` memvalidasi key dan model.

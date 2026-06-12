@@ -25,9 +25,22 @@ const IGNORED_EXTENSIONS = new Set([
   ".zip"
 ]);
 
+const IGNORED_FILES = new Set([
+  "package-lock.json",
+  "npm-shrinkwrap.json",
+  "pnpm-lock.yaml",
+  "yarn.lock",
+  "bun.lock",
+  "bun.lockb"
+]);
+
 export function shouldIgnorePath(path: string, isDirectory: boolean): boolean {
   const segments = path.split("/");
   if (segments.some((segment) => IGNORED_DIRECTORIES.has(segment))) {
+    return true;
+  }
+
+  if (!isDirectory && IGNORED_FILES.has(segments.at(-1) ?? "")) {
     return true;
   }
 
@@ -35,7 +48,7 @@ export function shouldIgnorePath(path: string, isDirectory: boolean): boolean {
     return true;
   }
 
-  if (path.includes("public/assets/") || path.endsWith(".min.ts") || path.endsWith("-lock.yaml")) {
+  if (path.includes("public/assets/") || path.endsWith(".min.ts")) {
     return true;
   }
 

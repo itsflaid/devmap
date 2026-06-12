@@ -37,6 +37,7 @@ export type ProjectMap = {
   externalServices: string[];
   database?: DatabaseInfo;
   features: FeatureInfo[];
+  warnings?: string[];
   dependencies: Record<string, string[]>;
   ai?: {
     architecture: string;
@@ -93,6 +94,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     externalServices: detectExternalServices(files),
     ...(database ? { database } : {}),
     features: detectFeatures(files, routes, database),
+    warnings: detectAnalysisWarnings(files),
     dependencies: readPackageDependencies(files),
     fileIndex
   };
@@ -168,6 +170,22 @@ function readPackageDependencies(files: ScannedFile[]): Record<string, string[]>
     };
   } catch {
     return {};
+  }
+}
+
+function detectAnalysisWarnings(files: ScannedFile[]): string[] {
+  const packageJson = files.find((file) => file.path === "package.json");
+  if (!packageJson) {
+    return [];
+  }
+
+  try {
+    JSON.parse(packageJson.content);
+    return [];
+  } catch {
+    return [
+      "package.json could not be parsed. Dependency-based detection may be incomplete."
+    ];
   }
 }
 

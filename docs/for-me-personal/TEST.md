@@ -8,6 +8,30 @@ Semua command dijalankan dari root repository:
 cd "path\to\devmap"
 ```
 
+## Testing Malformed `package.json`
+
+Automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/analyze-ai.test.ts
+```
+
+Manual flow:
+
+1. Buat project sementara dengan `package.json` yang berisi JSON invalid.
+2. Tambahkan `server.ts` atau struktur `app/` agar framework dapat dideteksi
+   dari source convention.
+3. Jalankan `devmap analyze <path-project>`.
+
+Hasil yang diharapkan:
+
+- analysis tetap selesai dan snapshot tersimpan;
+- framework fallback tetap terdeteksi dari struktur source;
+- terminal menampilkan warning bahwa `package.json` tidak dapat diparse;
+- terminal menyarankan memperbaiki file lalu menjalankan
+  `devmap analyze --fresh`;
+- snapshot memiliki array `warnings` tanpa menyimpan raw error parser.
+
 ## Persiapan Awal
 
 Pastikan Node.js dan pnpm tersedia:

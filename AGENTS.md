@@ -10,20 +10,24 @@ When working in this repository:
 
 ## Commits
 
-- Commit AI-authored work as:
+* Keep the user's Git identity as the primary author whenever possible.
+* For AI-assisted work, add the following trailer to every commit message:
 
-  ```bash
-  git -c user.name="devmap-agent" -c user.email="238585242+devmap-agent@users.noreply.github.com" commit -m "Clear commit message"
-  ```
+```text
+Co-authored-by: devmap-agent <238585242+devmap-agent@users.noreply.github.com>
+```
 
-- Do not change global or repository Git config for the author identity unless the user explicitly asks.
-- If the user wants their own account as the main author, keep their author identity and add this trailer to the commit message:
+* Example:
 
-  ```text
-  Co-authored-by: devmap-agent <238585242+devmap-agent@users.noreply.github.com>
-  ```
+```text
+feat: add analyzer cache
 
-- Keep commit messages short, specific, and focused on the user-visible fix or feature.
+Co-authored-by: devmap-agent <238585242+devmap-agent@users.noreply.github.com>
+```
+
+* Only use the `devmap-agent` identity as the primary commit author when the user explicitly requests agent-authored commits.
+
+* Do not modify global Git configuration.
 
 
 read PRD and all documentation first before hands-on.

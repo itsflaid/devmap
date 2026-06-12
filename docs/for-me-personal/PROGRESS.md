@@ -1,6 +1,21 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-11
+Terakhir diperbarui: 2026-06-12
+
+## Update 2026-06-12
+
+### Analyzer Resilience
+
+- `devmap analyze` sekarang tetap menyelesaikan static analysis ketika root
+  `package.json` tidak dapat diparse.
+- Framework fallback dari struktur source tetap digunakan sehingga project
+  Express atau Next.js masih dapat dikenali tanpa dependency metadata.
+- Snapshot menyimpan warning bahwa dependency-based detection mungkin tidak
+  lengkap.
+- Output terminal memberi langkah perbaikan untuk membetulkan `package.json`
+  lalu menjalankan `devmap analyze --fresh`.
+- Automated test mencakup warning terminal, snapshot persistence, framework
+  fallback, dan keberhasilan pembuatan snapshot.
 
 ## Update 2026-06-11
 
@@ -82,7 +97,7 @@ Terakhir diperbarui: 2026-06-11
 - Availability selected model ikut diperiksa.
 - Snapshot dibedakan menjadi valid, missing, corrupt, dan unsupported schema.
 - API key dan raw stack trace tidak pernah ditampilkan.
-- Automated test saat ini berjumlah 34 dan seluruhnya lulus.
+- Automated test saat ini berjumlah 35 dan seluruhnya lulus.
 
 ### Distribusi npm
 

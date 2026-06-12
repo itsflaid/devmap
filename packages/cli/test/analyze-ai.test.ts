@@ -88,6 +88,44 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
   }
 });
 
+test("analyze warns and continues when package.json is malformed", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-malformed-package-"));
+
+  try {
+    await writeFile(join(projectRoot, "package.json"), "{broken", "utf8");
+    await writeFile(
+      join(projectRoot, "server.ts"),
+      "import express from \"express\";\nexport const app = express();\n",
+      "utf8"
+    );
+
+    const logs = stripAnsi(await captureOutput(() => analyzeCommand(
+      projectRoot,
+      {},
+      { loadConfig: async () => null }
+    )));
+
+    assert.match(logs, /Framework\s+express/);
+    assert.match(logs, /WARN package\.json could not be parsed/);
+    assert.match(logs, /Fix package\.json and run devmap analyze --fresh/);
+    assert.match(logs, /Snapshot saved/);
+
+    const saved = await inspectSnapshot(projectRoot);
+    assert.equal(saved.status, "valid");
+    if (saved.status === "valid") {
+      assert.deepEqual(saved.snapshot.warnings, [
+        "package.json could not be parsed. Dependency-based detection may be incomplete."
+      ]);
+    }
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001B\[[0-9;]*m/g, "");
+}
+
 async function captureOutput(action: () => Promise<void>): Promise<string> {
   const logs: string[] = [];
   const originalLog = console.log;

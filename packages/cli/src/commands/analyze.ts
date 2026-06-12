@@ -65,6 +65,11 @@ function printSnapshot(
   output.keyValue("Files", snapshot.stats.relevantFiles);
   output.keyValue("Lines", snapshot.stats.totalLines);
 
+  for (const warning of snapshot.warnings ?? []) {
+    output.warning(warning);
+    output.note("Fix package.json and run devmap analyze --fresh.");
+  }
+
   printList("Entry Points", snapshot.entryPoints);
   printList(
     "Critical Files",

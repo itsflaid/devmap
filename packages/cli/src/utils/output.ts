@@ -1,3 +1,5 @@
+import { renderTerminalMarkdown } from "./markdownTerminal.js";
+
 export const theme = {
   aqua: "\x1b[38;2;46;230;214m",
   gray: "\x1b[90m",
@@ -50,5 +52,12 @@ export const output = {
 
   codeBlock(content: string): void {
     console.log(color(content, "gray"));
+  },
+
+  markdown(content: string): void {
+    console.log(renderTerminalMarkdown(content, {
+      width: process.stdout.columns ?? 80,
+      colors: true
+    }));
   }
 };

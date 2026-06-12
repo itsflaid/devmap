@@ -112,7 +112,7 @@ async function printOrGenerateInterpretation(
 ): Promise<void> {
   if (snapshot.ai && !options.fresh) {
     output.section("Architecture");
-    output.codeBlock(snapshot.ai.architecture);
+    output.markdown(snapshot.ai.architecture);
     output.note(formatAiMetadata(snapshot.ai.model, snapshot.ai.usage, true));
     return;
   }
@@ -154,7 +154,7 @@ async function printOrGenerateInterpretation(
 
     await saveSnapshot(projectRoot, updatedSnapshot);
     output.section("Architecture");
-    output.codeBlock(interpretation.content);
+    output.markdown(interpretation.content);
     output.note(formatAiMetadata(
       interpretation.model,
       interpretation.usage,

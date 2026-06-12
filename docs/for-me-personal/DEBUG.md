@@ -606,6 +606,48 @@ test satu pertanyaan.
 
 ---
 
+## 12. Jawaban AI Menampilkan Markdown Mentah di Terminal
+
+**Tanggal:** 2026-06-12
+
+**Status:** Selesai.
+
+### Gejala
+
+Jawaban `devmap ask` menampilkan marker seperti `**bold**`, backtick, dan table
+pipe secara literal. Tabel lebar terpotong oleh terminal dan sulit dipindai.
+
+### Akar Masalah
+
+Konten AI langsung dikirim ke `output.codeBlock()`. Helper tersebut cocok untuk
+source preview, tetapi tidak memahami struktur Markdown yang dihasilkan model.
+
+### Solusi
+
+- Tambahkan pure utility `renderTerminalMarkdown()`.
+- Render heading, prose, list, fenced code, dan inline formatting.
+- Ubah Markdown table menjadi record vertikal.
+- Bungkus text berdasarkan lebar terminal.
+- Gunakan renderer hanya untuk jawaban AI `ask` dan interpretation `analyze`.
+- Pertahankan `codeBlock()` untuk static source context.
+
+### Verifikasi
+
+- Unit test mencakup heading, inline marker, list, table, wrapping, dan code
+  fence.
+- Integration test memastikan output `ask` dan cached `analyze` tidak
+  menampilkan marker Markdown mentah.
+- Preview manual dengan contoh database menghasilkan blok `users` dan `rooms`
+  yang terbaca tanpa table pipe.
+
+### Pelajaran
+
+AI response dan source preview adalah dua jenis output berbeda. AI response
+memerlukan semantic rendering, sedangkan source code harus dipertahankan
+literal.
+
+---
+
 ## Checklist Saat Menambahkan Debug Baru
 
 Tambahkan catatan baru ketika:

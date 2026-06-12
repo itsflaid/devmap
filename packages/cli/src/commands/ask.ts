@@ -87,7 +87,7 @@ export async function askCommand(
     });
 
     output.section("Answer");
-    output.codeBlock(answer.content);
+    output.markdown(answer.content);
     output.note(formatUsage(answer.model, answer.usage));
   } catch (error) {
     if (!(error instanceof DevmapError)) {

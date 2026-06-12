@@ -17,6 +17,23 @@ Terakhir diperbarui: 2026-06-12
 - Automated test mencakup warning terminal, snapshot persistence, framework
   fallback, dan keberhasilan pembuatan snapshot.
 
+### Terminal Markdown Rendering
+
+- Jawaban AI dari `devmap ask` dan architecture interpretation dari
+  `devmap analyze` sekarang dirender sebagai output terminal yang terstruktur.
+- Heading memakai accent aqua dan separator.
+- Marker Markdown inline seperti bold, italic, strikethrough, link, dan
+  backtick tidak lagi tampil mentah.
+- Ordered dan unordered list mempertahankan indentasi yang mudah dipindai.
+- Markdown table diubah menjadi record vertikal agar tetap terbaca pada
+  terminal sempit.
+- Prose dibungkus berdasarkan `process.stdout.columns` dengan minimum width
+  yang aman.
+- Fenced code tetap ditampilkan sebagai source block dan static context tidak
+  diproses sebagai Markdown.
+- Automated test mencakup heading, inline formatting, list, table, wrapping,
+  fenced code, serta integrasi `ask` dan cached `analyze`.
+
 ## Update 2026-06-11
 
 ### Workflow Agent
@@ -97,7 +114,7 @@ Terakhir diperbarui: 2026-06-12
 - Availability selected model ikut diperiksa.
 - Snapshot dibedakan menjadi valid, missing, corrupt, dan unsupported schema.
 - API key dan raw stack trace tidak pernah ditampilkan.
-- Automated test saat ini berjumlah 35 dan seluruhnya lulus.
+- Automated test saat ini berjumlah 38 dan seluruhnya lulus.
 
 ### Distribusi npm
 

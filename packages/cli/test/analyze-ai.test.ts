@@ -18,7 +18,7 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
     async complete(request): Promise<AiCompletionResult> {
       requests.push(request);
       return {
-        content: "This project exposes a small TypeScript entry point.",
+        content: "## Overview\n\nThis project exposes a **TypeScript** entry point.",
         model: request.model,
         usage: {
           promptTokens: 80,
@@ -62,7 +62,7 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
     if (saved.status === "valid") {
       assert.equal(
         saved.snapshot.ai?.architecture,
-        "This project exposes a small TypeScript entry point."
+        "## Overview\n\nThis project exposes a **TypeScript** entry point."
       );
       assert.equal(saved.snapshot.ai?.usage?.totalTokens, 95);
     }
@@ -83,6 +83,8 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
     assert.equal(requests.length, 1);
     assert.match(secondLogs, /Reused existing snapshot/);
     assert.match(secondLogs, /Cached: yes/);
+    assert.match(stripAnsi(secondLogs), /Overview\n-+/);
+    assert.doesNotMatch(stripAnsi(secondLogs), /\*\*/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

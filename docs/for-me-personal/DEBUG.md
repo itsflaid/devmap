@@ -606,7 +606,7 @@ test satu pertanyaan.
 
 ---
 
-## 12. `package-lock.json` Mencemari Statistik Snapshot
+## 12. Jawaban AI Menampilkan Markdown Mentah di Terminal
 
 **Tanggal:** 2026-06-12
 
@@ -614,38 +614,37 @@ test satu pertanyaan.
 
 ### Gejala
 
-Tarball DevMap dipasang pada project Express sementara dengan source sekitar
-dua baris, tetapi `devmap analyze` melaporkan 875 baris.
+Jawaban `devmap ask` menampilkan marker seperti `**bold**`, backtick, dan table
+pipe secara literal. Tabel lebar terpotong oleh terminal dan sulit dipindai.
 
 ### Akar Masalah
 
-Scanner hanya mengabaikan extension `.lock` dan nama yang berakhir dengan
-`-lock.yaml`. File npm `package-lock.json` dan `npm-shrinkwrap.json` tidak cocok
-dengan aturan tersebut sehingga ikut masuk `fileIndex`, fingerprint, dan
-statistik line.
+Konten AI langsung dikirim ke `output.codeBlock()`. Helper tersebut cocok untuk
+source preview, tetapi tidak memahami struktur Markdown yang dihasilkan model.
 
 ### Solusi
 
-- Tambahkan allowlist nama lockfile package manager yang harus diabaikan:
-  `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`,
-  `bun.lock`, dan `bun.lockb`.
-- Pertahankan package manager detection melalui pemeriksaan file langsung pada
-  project root.
-- Tambahkan automated regression test untuk seluruh lockfile yang didukung.
+- Tambahkan pure utility `renderTerminalMarkdown()`.
+- Render heading, prose, list, fenced code, dan inline formatting.
+- Ubah Markdown table menjadi record vertikal.
+- Bungkus text berdasarkan lebar terminal.
+- Gunakan renderer hanya untuk jawaban AI `ask` dan interpretation `analyze`.
+- Pertahankan `codeBlock()` untuk static source context.
 
 ### Verifikasi
 
-- Automated analyzer test lulus untuk enam nama lockfile.
-- Tarball dibangun ulang dan dipasang pada project sementara.
-- Snapshot tidak memiliki `package-lock.json` di `fileIndex`.
-- Project tetap terdeteksi memakai package manager npm.
-- Statistik turun menjadi 3 file dan 9 baris untuk fixture E2E.
+- Unit test mencakup heading, inline marker, list, table, wrapping, dan code
+  fence.
+- Integration test memastikan output `ask` dan cached `analyze` tidak
+  menampilkan marker Markdown mentah.
+- Preview manual dengan contoh database menghasilkan blok `users` dan `rooms`
+  yang terbaca tanpa table pipe.
 
 ### Pelajaran
 
-Deteksi package manager membutuhkan keberadaan lockfile, tetapi static scanner
-tidak perlu membaca kontennya. Metadata project dan source analysis harus
-memiliki aturan akses yang berbeda.
+AI response dan source preview adalah dua jenis output berbeda. AI response
+memerlukan semantic rendering, sedangkan source code harus dipertahankan
+literal.
 
 ---
 

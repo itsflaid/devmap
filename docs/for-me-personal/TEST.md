@@ -102,8 +102,8 @@ Saat ini test mencakup:
 Hasil minimum yang diharapkan:
 
 ```text
-tests 36
-pass 36
+tests 38
+pass 38
 fail 0
 ```
 
@@ -144,10 +144,41 @@ npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test
 Hasil minimum yang diharapkan untuk keduanya:
 
 ```text
-tests 36
-pass 36
+tests 38
+pass 38
 fail 0
 ```
+
+## Testing Terminal Markdown Renderer
+
+Jalankan unit dan integration test terkait:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/markdown-terminal.test.ts test/ask-command.test.ts test/analyze-ai.test.ts
+```
+
+Pastikan:
+
+- heading tidak menampilkan marker `##`;
+- bold, italic, dan inline code tidak menampilkan marker Markdown mentah;
+- ordered dan unordered list tetap memiliki indentasi;
+- table diubah menjadi blok vertikal tanpa karakter pipe;
+- prose dibungkus sesuai lebar terminal;
+- fenced code tetap terbaca sebagai code block;
+- jawaban `ask` dan architecture `analyze` memakai renderer;
+- static source context tetap ditampilkan literal.
+
+Manual test dengan AI live:
+
+```powershell
+devmap ask "Jelaskan struktur database dalam tabel dan alur utama aplikasi"
+```
+
+Hasil yang diharapkan:
+
+- tidak ada `**bold**`, backtick, atau table pipe mentah;
+- tabel tetap terbaca pada terminal VS Code yang sempit;
+- output tidak melewati lebar terminal secara berlebihan.
 
 ## Testing AI Client Tanpa API Call
 

@@ -21,7 +21,7 @@ test("ask command uses configured AI client and prints token usage", async () =>
     async complete(request): Promise<AiCompletionResult> {
       requests.push(request);
       return {
-        content: "Authentication is handled in auth.ts.",
+        content: "## Authentication\n\nAuthentication is handled in **`auth.ts`**.",
         model: request.model,
         usage: {
           promptTokens: 100,
@@ -50,7 +50,10 @@ test("ask command uses configured AI client and prints token usage", async () =>
     assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.ask);
     assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
     assert.match(requests[0]?.messages[1]?.content ?? "", /auth\.ts/);
-    assert.match(logs, /Authentication is handled in auth\.ts/);
+    const plainLogs = stripAnsi(logs);
+    assert.match(plainLogs, /Authentication\n-+/);
+    assert.match(plainLogs, /Authentication is handled in auth\.ts/);
+    assert.doesNotMatch(plainLogs, /\*\*|`/);
     assert.match(logs, /Total tokens: 112/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -107,6 +110,10 @@ async function createAskProject(): Promise<string> {
   const snapshot = await createProjectMap(projectRoot);
   await saveSnapshot(projectRoot, snapshot);
   return projectRoot;
+}
+
+function stripAnsi(value: string): string {
+  return value.replace(/\u001B\[[0-9;]*m/g, "");
 }
 
 async function captureOutput(action: () => Promise<void>): Promise<string> {

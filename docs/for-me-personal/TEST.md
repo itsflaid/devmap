@@ -1,45 +1,66 @@
 # Panduan Testing DevMap
 
-Dokumen ini adalah panduan testing lokal untuk development DevMap.
+Dokumen ini adalah panduan praktis untuk menguji DevMap selama development dan
+sebelum release.
 
-Semua command dijalankan dari root repository:
+Ada beberapa versi DevMap yang dapat diuji:
 
-```powershell
-cd "path\to\devmap"
-```
+| Jenis tes | Yang dijalankan | Kapan digunakan |
+|---|---|---|
+| Source langsung | `packages/cli/src/` melalui `tsx` | Melihat perubahan terbaru secepat mungkin |
+| Automated test | Test unit dan integration | Memastikan perubahan tidak merusak behavior |
+| Build lokal | `packages/cli/dist/` | Memastikan hasil compile production bekerja |
+| Tarball external | Package `.tgz` di project lain | Meniru instalasi pengguna npm |
+| npm exec | Tarball tanpa global install | Memastikan gaya penggunaan `npx` bekerja |
+| npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
+| CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
-## Testing Malformed `package.json`
+## Urutan Testing Yang Direkomendasikan
 
-Automated test:
+Untuk development harian:
 
-```powershell
-pnpm --filter devmap exec tsx --test test/analyze-ai.test.ts
-```
+1. Jalankan source langsung tanpa build.
+2. Jalankan test yang berhubungan dengan perubahan.
+3. Jalankan seluruh automated test.
+4. Build CLI dan uji file `dist`.
 
-Manual flow:
+Sebelum membuat PR:
 
-1. Buat project sementara dengan `package.json` yang berisi JSON invalid.
-2. Tambahkan `server.ts` atau struktur `app/` agar framework dapat dideteksi
-   dari source convention.
-3. Jalankan `devmap analyze <path-project>`.
+1. Jalankan seluruh automated test.
+2. Build CLI.
+3. Build web.
+4. Jalankan `git diff --check`.
+5. Review staged diff.
 
-Hasil yang diharapkan:
+Sebelum publish MVP:
 
-- analysis tetap selesai dan snapshot tersimpan;
-- framework fallback tetap terdeteksi dari struktur source;
-- terminal menampilkan warning bahwa `package.json` tidak dapat diparse;
-- terminal menyarankan memperbaiki file lalu menjalankan
-  `devmap analyze --fresh`;
-- snapshot memiliki array `warnings` tanpa menyimpan raw error parser.
+1. Jalankan seluruh langkah sebelum PR.
+2. Buat tarball.
+3. Install tarball pada project lain.
+4. Uji `init`, `analyze`, `ask`, dan `doctor`.
+5. Uji `npm exec` tanpa global install.
+6. Uji Groq live.
+7. Pastikan seluruh GitHub Actions hijau.
 
 ## Persiapan Awal
 
-Pastikan Node.js dan pnpm tersedia:
+Semua command development dijalankan dari root repository DevMap:
+
+```powershell
+cd "C:\path\to\devmap"
+```
+
+Pastikan requirement tersedia:
 
 ```powershell
 node --version
 pnpm --version
 ```
+
+Requirement:
+
+- Node.js 18 atau lebih baru;
+- pnpm 10.34.2.
 
 Install dependency:
 
@@ -47,29 +68,76 @@ Install dependency:
 pnpm install
 ```
 
-Requirement project:
+---
 
-- Node.js 18+
-- pnpm 10.34.2
+## 1. Tes Source Langsung Tanpa Build
 
-Versi package manager dikunci pada root `package.json`:
+Ini adalah cara tercepat untuk melihat perubahan terbaru di source DevMap.
 
-```json
-{
-  "packageManager": "pnpm@10.34.2"
-}
-```
+Tidak perlu menjalankan `pnpm build:cli`. Command menggunakan `tsx` dan membaca
+file dalam `packages/cli/src/` secara langsung.
 
-Untuk meniru environment CI:
+### Menjalankan DevMap Pada Repository DevMap
 
 ```powershell
-$env:CI="true"
-npx pnpm@10.34.2 install --frozen-lockfile
+pnpm dev:cli
+pnpm dev:cli -- --help
+pnpm dev:cli -- doctor
+pnpm dev:cli -- analyze
+pnpm dev:cli -- analyze --fresh
+pnpm dev:cli -- ask "bagaimana analyzer bekerja?"
 ```
 
-## Testing Otomatis CLI
+Gunakan mode ini setelah mengubah:
 
-Jalankan seluruh automated test dan TypeScript check:
+- command CLI;
+- analyzer;
+- Context Builder;
+- AI prompt;
+- output terminal;
+- error handling.
+
+Perubahan source langsung terlihat pada command berikutnya.
+
+### Menjalankan Analyzer Pada Fixture
+
+Fixture aman digunakan karena tidak mengubah project pribadi:
+
+```powershell
+pnpm dev:cli -- analyze packages/cli/test/fixtures/nextjs-project --fresh
+pnpm dev:cli -- analyze packages/cli/test/fixtures/express-project --fresh
+```
+
+Hasil penting Next.js:
+
+- framework `nextjs`;
+- entry point `app/page.tsx` dan `app/layout.tsx`;
+- NextAuth dan Prisma terdeteksi;
+- `.env`, lockfile, dan `node_modules` tidak dipindai.
+
+Hasil penting Express:
+
+- framework `express`;
+- entry point `src/server.ts`;
+- route payment dan Stripe terdeteksi.
+
+### Catatan Tentang `init`
+
+`devmap init` membuat atau mengubah file pada current working directory.
+
+Jika hanya ingin menguji output terbaru, jalankan `analyze`, `ask`, dan `doctor`
+di repository DevMap. Untuk menguji `init` secara lengkap, lebih aman gunakan
+project sementara atau project lain agar `.gitignore`, `DEVMAP.md`, dan
+`.devmap/` tidak mengganggu repository DevMap.
+
+---
+
+## 2. Automated Test
+
+Automated test memakai fake provider untuk AI sehingga tidak memakai quota
+Groq.
+
+Jalankan seluruh test dan TypeScript check:
 
 ```powershell
 pnpm test:cli
@@ -82,24 +150,7 @@ pnpm --filter devmap test:unit
 pnpm --filter devmap test:types
 ```
 
-Saat ini test mencakup:
-
-- file scanner dan ignore rules
-- deteksi Next.js dan Express
-- dependency graph
-- import TypeScript dengan suffix `.js`
-- external service detection
-- project map
-- snapshot save/read
-- generator `DEVMAP.md`
-- perlindungan agar `DEVMAP.md` tidak tertimpa
-- alur `devmap init`
-- missing API key
-- unsupported provider
-- global error handler
-- missing project path
-
-Hasil minimum yang diharapkan:
+Hasil minimum saat ini:
 
 ```text
 tests 38
@@ -107,367 +158,393 @@ pass 38
 fail 0
 ```
 
-## Test Runner Lintas OS
+### Menjalankan Test Tertentu
 
-Test CLI tidak lagi memakai shell wildcard:
-
-```text
-tsx --test test/*.test.ts
-```
-
-Gunakan runner berikut:
-
-```text
-packages/cli/test/run-tests.ts
-```
-
-Script package:
-
-```json
-{
-  "test:unit": "tsx test/run-tests.ts"
-}
-```
-
-Runner membaca seluruh file `*.test.ts` melalui Node.js sehingga bekerja
-konsisten pada Windows, Ubuntu, dan macOS.
-
-## Verifikasi Node.js 18 dan 20 di Windows
-
-Untuk mereproduksi runtime CI tanpa mengganti Node.js utama:
+Analyzer dan snapshot:
 
 ```powershell
-npx -p node@18 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
-npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
+pnpm --filter devmap exec tsx --test test/analyzers.test.ts
 ```
 
-Hasil minimum yang diharapkan untuk keduanya:
-
-```text
-tests 38
-pass 38
-fail 0
-```
-
-## Testing Terminal Markdown Renderer
-
-Jalankan unit dan integration test terkait:
+AI client:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/markdown-terminal.test.ts test/ask-command.test.ts test/analyze-ai.test.ts
+pnpm --filter devmap exec tsx --test test/ai-client.test.ts
 ```
 
-Pastikan:
-
-- heading tidak menampilkan marker `##`;
-- bold, italic, dan inline code tidak menampilkan marker Markdown mentah;
-- ordered dan unordered list tetap memiliki indentasi;
-- table diubah menjadi blok vertikal tanpa karakter pipe;
-- prose dibungkus sesuai lebar terminal;
-- fenced code tetap terbaca sebagai code block;
-- jawaban `ask` dan architecture `analyze` memakai renderer;
-- static source context tetap ditampilkan literal.
-
-Manual test dengan AI live:
+Command `ask`:
 
 ```powershell
-devmap ask "Jelaskan struktur database dalam tabel dan alur utama aplikasi"
+pnpm --filter devmap exec tsx --test test/ask-command.test.ts
 ```
 
-Hasil yang diharapkan:
-
-- tidak ada `**bold**`, backtick, atau table pipe mentah;
-- tabel tetap terbaca pada terminal VS Code yang sempit;
-- output tidak melewati lebar terminal secara berlebihan.
-
-## Testing AI Client Tanpa API Call
-
-Automated test AI memakai fake `fetch` dan mock `AiClient`, sehingga tidak
-memerlukan Groq API key dan tidak menghabiskan token.
-
-Coverage saat ini:
-
-- normalisasi response dan token usage;
-- retry `429` menggunakan header `retry-after`;
-- fallback ketika primary model tidak tersedia;
-- invalid API key menjadi error actionable;
-- prompt hanya memakai selected context;
-- `ask` memakai model default ketika config bernilai `auto`;
-- provider failure jatuh ke static context.
-- standard analyze menyimpan AI architecture interpretation;
-- analyze kedua memakai cached interpretation tanpa request baru;
-- analyze prompt tidak mengandung full raw source.
-
-Jalankan:
+AI analyze:
 
 ```powershell
-pnpm test:cli
+pnpm --filter devmap exec tsx --test test/analyze-ai.test.ts
 ```
 
-## Benchmark Context Builder
+Doctor:
 
-Benchmark deterministic berada di:
-
-```text
-packages/cli/test/context-builder-eval.test.ts
+```powershell
+pnpm --filter devmap exec tsx --test test/doctor.test.ts
 ```
 
-Jalankan benchmark saja:
+Terminal Markdown:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/markdown-terminal.test.ts
+```
+
+Context Builder benchmark:
 
 ```powershell
 pnpm --filter devmap exec tsx --test test/context-builder-eval.test.ts
 ```
 
-Benchmark terdiri dari 20 pertanyaan Bahasa Indonesia dan English untuk:
-
-- authentication dan NextAuth;
-- database dan Prisma;
-- API session;
-- page dan layout Next.js;
-- payment dan Stripe;
-- entry point Express.
-
-Target minimum saat ini:
+Target Context Builder:
 
 ```text
 Context Builder top-1 accuracy: 20/20
 Context Builder top-3 recall: 20/20
 ```
 
-## Testing AI Ask dengan Groq
+---
 
-Testing manual ini memakai API key dan dapat menggunakan quota Groq.
+## 3. Tes Hasil Build Lokal
 
-```powershell
-pnpm build:cli
-node packages\cli\dist\index.js init
-node packages\cli\dist\index.js analyze
-node packages\cli\dist\index.js ask "Bagaimana autentikasi bekerja?"
-```
+Mode ini menguji JavaScript production dalam `packages/cli/dist/`.
 
-Pastikan:
-
-- file relevan ditampilkan;
-- jawaban memakai bahasa pertanyaan;
-- jawaban menyebut path yang benar;
-- model dan token usage ditampilkan;
-- raw provider error dan stack trace tidak muncul.
-
-## Testing AI Analyze dengan Groq
+Build CLI:
 
 ```powershell
 pnpm build:cli
-node packages\cli\dist\index.js analyze --fresh
-node packages\cli\dist\index.js analyze
-node packages\cli\dist\index.js analyze --deep --fresh
 ```
 
-Pastikan:
-
-- command pertama menghasilkan section `Architecture`;
-- model dan total token ditampilkan;
-- `.devmap/snapshot.json` memiliki object `ai`;
-- command kedua menampilkan `Cached: yes`;
-- command kedua tidak melakukan request AI baru;
-- `--deep --fresh` memakai model deep analysis;
-- static snapshot tetap tersimpan jika Groq gagal.
-
-## Testing `devmap doctor`
-
-Jalankan automated test dan hasil build:
+Jalankan hasil build:
 
 ```powershell
-pnpm test:cli
-pnpm build:cli
-node packages\cli\dist\index.js doctor
-```
-
-Pastikan output menampilkan:
-
-- versi DevMap dan Node.js;
-- OS dan arsitektur;
-- lokasi project, framework, dan package manager;
-- provider, status API key, dan selected model;
-- status snapshot;
-- warning actionable ketika config, key, model, atau snapshot bermasalah.
-
-API key asli dan raw stack trace tidak boleh muncul pada output.
-
-## GitHub Actions
-
-Workflow:
-
-```text
-.github/workflows/ci.yml
-```
-
-Matrix:
-
-- OS: Ubuntu, Windows, macOS
-- Node.js: 18, 20, 22
-
-Setiap job menjalankan:
-
-```powershell
-pnpm install --frozen-lockfile
-pnpm test:cli
-pnpm build:cli
+node packages/cli/dist/index.js
 node packages/cli/dist/index.js --version
-pnpm build:web
+node packages/cli/dist/index.js --help
+node packages/cli/dist/index.js doctor
+node packages/cli/dist/index.js analyze --fresh
+node packages/cli/dist/index.js ask "bagaimana analyzer bekerja?"
 ```
 
-Total job yang harus hijau:
+Perbedaan dengan source mode:
+
+- source mode membaca perubahan terbaru secara langsung;
+- build mode membaca file lama dalam `dist`;
+- setelah source berubah, jalankan `pnpm build:cli` lagi sebelum menguji `dist`.
+
+Gunakan build mode untuk menemukan:
+
+- import yang gagal setelah compile;
+- file output yang hilang;
+- perbedaan source dan production build;
+- masalah entry binary.
+
+---
+
+## 4. Tes Tarball Pada Project Lain
+
+Ini adalah tes distribusi paling realistis sebelum package dipublish ke npm.
+
+### A. Buat Tarball Dari Repository DevMap
+
+Dari root repository DevMap:
+
+```powershell
+pnpm --filter devmap pack --pack-destination artifacts
+```
+
+Tarball akan dibuat di:
 
 ```text
-10
+artifacts/devmap-0.1.0.tgz
 ```
 
-Sembilan job berasal dari matrix OS/Node. Satu job tambahan membuat dan menguji
-tarball npm setelah seluruh matrix lulus.
-
-## Development CLI Tanpa Build
-
-Untuk menguji source terbaru tanpa build:
+Simpan path absolutnya:
 
 ```powershell
-pnpm dev:cli
+$tarball = (Resolve-Path ".\artifacts\devmap-0.1.0.tgz").Path
+$tarball
 ```
 
-Menjalankan command tertentu:
+Pastikan isi package hanya mencakup:
+
+- `dist/`;
+- `package.json`;
+- `README.md`;
+- `LICENSE`.
+
+Tidak boleh ada:
+
+- `src/`;
+- `test/`;
+- `.env`;
+- `.devmap/`;
+- `node_modules/`.
+
+### B. Buka Project Yang Akan Diuji
+
+Contoh:
 
 ```powershell
-pnpm dev:cli -- --help
-pnpm dev:cli -- doctor
-pnpm dev:cli -- analyze
-pnpm dev:cli -- analyze --deep
-pnpm dev:cli -- ask "where is scanner logic"
+cd "C:\path\to\project-lain"
 ```
 
-Gunakan mode ini selama development karena perubahan di `src/` langsung dipakai.
-
-## Testing Hasil Build CLI
-
-Build TypeScript:
+Pastikan terminal berada di root project:
 
 ```powershell
-pnpm build:cli
+Get-Location
+Get-ChildItem
 ```
 
-Kemudian jalankan hasil production dari `dist/`:
+Biasanya root project memiliki `package.json`.
+
+### C. Install Tarball
 
 ```powershell
-node packages\cli\dist\index.js
-node packages\cli\dist\index.js --help
-node packages\cli\dist\index.js doctor
-node packages\cli\dist\index.js analyze
-node packages\cli\dist\index.js ask "how does the analyzer work?"
+npm install --save-dev "$tarball"
 ```
 
-Jika menjalankan file dari `dist/`, lakukan build ulang setelah source berubah.
-
-## Testing `devmap init`
-
-`devmap init` memvalidasi API key langsung ke Groq. Testing ini memerlukan
-internet dan API key yang valid.
-
-### Mode Interaktif
+Setelah install, jalankan DevMap melalui:
 
 ```powershell
-pnpm dev:cli -- init
+npx devmap --version
+npx devmap --help
 ```
 
-Alur yang diharapkan:
+### D. Integrasikan DevMap Ke Project
 
-1. Provider memakai Groq.
-2. Masukkan Groq API key.
-3. Key divalidasi.
-4. Config disimpan ke `~/.devmap/config.json`.
-5. Folder `.devmap/` dibuat.
-6. `.devmap/` ditambahkan ke `.gitignore`.
-7. `DEVMAP.md` dibuat jika belum ada.
-8. Framework project ditampilkan.
-
-Catatan: input API key saat ini belum disamarkan di terminal.
-
-### Mode Environment Variable
-
-Set API key hanya untuk terminal aktif:
+Untuk AI live, set API key hanya pada terminal aktif:
 
 ```powershell
 $env:GROQ_API_KEY="gsk_your_key"
-pnpm dev:cli -- init
+```
+
+Jalankan:
+
+```powershell
+npx devmap init
+npx devmap analyze --fresh
+npx devmap ask "jelaskan struktur dan alur utama project ini"
+npx devmap doctor
+```
+
+`init` seharusnya:
+
+- memvalidasi Groq API key;
+- menyimpan config global ke `~/.devmap/config.json`;
+- membuat `.devmap/`;
+- menambahkan `.devmap/` ke `.gitignore`;
+- membuat `DEVMAP.md` jika belum ada;
+- tidak menimpa `AGENTS.md` atau `DEVMAP.md` yang sudah ada.
+
+`analyze` seharusnya:
+
+- mendeteksi framework dan package manager;
+- menampilkan entry point, route, feature, database, dan service;
+- membuat `.devmap/snapshot.json`;
+- menampilkan architecture interpretation jika AI dikonfigurasi;
+- menampilkan model dan token usage.
+
+`ask` seharusnya:
+
+- memilih file yang relevan;
+- menjawab sesuai bahasa pertanyaan;
+- merender heading, list, table, dan inline code dengan rapi;
+- menampilkan model dan token usage;
+- tidak menampilkan raw stack trace.
+
+`doctor` seharusnya:
+
+- menampilkan status config, key, model, snapshot, framework, OS, dan Node;
+- tidak pernah menampilkan API key asli.
+
+Hapus API key dari terminal setelah testing:
+
+```powershell
 Remove-Item Env:GROQ_API_KEY
 ```
 
-Jangan menulis API key asli ke repository, screenshot, issue, atau dokumentasi.
+### E. Setelah Source DevMap Berubah
 
-### Hasil Yang Perlu Dicek
+Tarball yang sudah terpasang pada project lain tidak otomatis ikut berubah.
 
-```powershell
-Test-Path "$HOME\.devmap\config.json"
-Test-Path ".devmap"
-Test-Path "DEVMAP.md"
-Select-String -Path ".gitignore" -Pattern ".devmap/"
-```
-
-Jangan menampilkan isi `~/.devmap/config.json` saat merekam demo karena file
-tersebut berisi API key.
-
-## Testing `DEVMAP.md`
-
-Setelah `devmap init` berhasil:
+Ulangi:
 
 ```powershell
-Get-Content DEVMAP.md
+cd "C:\path\to\devmap"
+pnpm --filter devmap pack --pack-destination artifacts
+
+cd "C:\path\to\project-lain"
+npm install --save-dev "C:\path\to\devmap\artifacts\devmap-0.1.0.tgz"
 ```
 
-Pastikan file berisi:
+Kemudian jalankan kembali:
 
-- framework yang terdeteksi
-- lokasi `.devmap/snapshot.json`
-- command `analyze`, `ask`, dan `doctor`
-- panduan untuk AI agent
-- peringatan agar API key tidak di-commit
+```powershell
+npx devmap analyze --fresh
+npx devmap ask "pertanyaan pengujian"
+```
 
-DevMap tidak boleh menimpa `DEVMAP.md` yang sudah ada.
+### F. Cleanup Project Uji
 
-Untuk menguji perlindungan tersebut:
+Hapus package development:
 
-1. Tambahkan satu baris pribadi ke `DEVMAP.md`.
-2. Jalankan `devmap init` lagi.
-3. Pastikan baris pribadi masih ada.
+```powershell
+npm uninstall devmap
+```
 
-## Testing Error Handler
+File berikut adalah artifact integrasi DevMap:
 
-### Project Path Tidak Ada
+```text
+.devmap/
+DEVMAP.md
+```
+
+Hapus hanya jika project tersebut memang project uji dan file tidak memiliki
+perubahan penting. Periksa juga entry `.devmap/` pada `.gitignore`.
+
+---
+
+## 5. Tes Dengan `npm exec` Tanpa Install Global
+
+Tes ini memastikan gaya penggunaan seperti `npx devmap` bekerja.
+
+Dari root DevMap:
+
+```powershell
+$tarball = (Resolve-Path ".\artifacts\devmap-0.1.0.tgz").Path
+```
+
+Jalankan secara berurutan:
+
+```powershell
+npm exec --yes --cache "$env:TEMP\devmap-version" --package $tarball -- devmap --version
+npm exec --yes --cache "$env:TEMP\devmap-help" --package $tarball -- devmap --help
+```
+
+Gunakan cache berbeda untuk menghindari race pada instalasi package.
+
+---
+
+## 6. Tes Dengan `npm link`
+
+Ini opsional. Gunakan jika ingin command `devmap` tersedia secara global dan
+tetap mengarah ke repository lokal.
+
+Setup:
+
+```powershell
+pnpm build:cli
+cd packages/cli
+npm link
+```
+
+Sekarang command dapat dijalankan dari project mana pun:
+
+```powershell
+devmap --version
+devmap analyze --fresh
+devmap ask "jelaskan project ini"
+devmap doctor
+```
+
+Setiap source berubah, build ulang:
+
+```powershell
+cd "C:\path\to\devmap"
+pnpm build:cli
+```
+
+Lepaskan global link setelah selesai:
+
+```powershell
+npm unlink -g devmap
+```
+
+---
+
+## 7. Tes AI Live Dengan Groq
+
+Automated test tidak memakai quota. Bagian ini memakai API key dan quota Groq.
+
+Set API key:
+
+```powershell
+$env:GROQ_API_KEY="gsk_your_key"
+```
+
+Flow minimum:
+
+```powershell
+devmap init
+devmap analyze --fresh
+devmap analyze
+devmap ask "Bagaimana autentikasi bekerja?"
+devmap ask "Jelaskan struktur database dalam tabel"
+devmap doctor
+```
+
+Pastikan:
+
+- `init` menyatakan key valid;
+- analyze pertama menampilkan architecture dan token usage;
+- analyze kedua memakai cache dan menampilkan `Cached: yes`;
+- jawaban mengikuti bahasa pertanyaan;
+- table dan Markdown tampil rapi;
+- file yang disebut memang relevan;
+- raw provider error dan stack trace tidak muncul;
+- `doctor` menyatakan key dan model valid.
+
+Tes deep model:
+
+```powershell
+devmap analyze --deep --fresh
+```
+
+Hapus key:
+
+```powershell
+Remove-Item Env:GROQ_API_KEY
+```
+
+Jangan menaruh API key dalam repository, screenshot, issue, atau chat.
+
+---
+
+## 8. Error Dan Recovery Testing
+
+### Project Tidak Ada
 
 ```powershell
 pnpm dev:cli -- analyze "Z:\path-that-does-not-exist"
 ```
 
-Hasil yang diharapkan:
+Expected:
 
-- exit code gagal
-- pesan project path tidak ditemukan
-- tip untuk memeriksa path
-- tidak ada raw stack trace
+- exit code gagal;
+- pesan path tidak ditemukan;
+- tip actionable;
+- tanpa raw stack trace.
 
-### API Key Tidak Tersedia
-
-Pada shell non-interaktif atau automation:
+### API Key Tidak Ada
 
 ```powershell
 Remove-Item Env:GROQ_API_KEY -ErrorAction SilentlyContinue
-node packages\cli\dist\index.js init
+pnpm dev:cli -- init
 ```
 
-Hasil yang diharapkan:
+Expected:
 
-- pesan API key diperlukan
-- saran menjalankan terminal interaktif atau memakai `GROQ_API_KEY`
-- tidak ada raw stack trace
+- API key diminta atau command menjelaskan cara memberikannya;
+- config parsial tidak dibuat.
 
-### API Key Tidak Valid
+### API Key Invalid
 
 ```powershell
 $env:GROQ_API_KEY="invalid-key"
@@ -475,76 +552,78 @@ pnpm dev:cli -- init
 Remove-Item Env:GROQ_API_KEY
 ```
 
-Hasil yang diharapkan:
+Expected:
 
-- pesan Groq API key invalid
-- link menuju Groq Console
-- config valid sebelumnya tidak ditimpa
+- pesan key invalid;
+- config valid sebelumnya tidak ditimpa;
+- tanpa raw provider stack trace.
 
-## Testing Analyzer Pada Fixture
+### Malformed `package.json`
 
-Fixture adalah project mini untuk testing yang berada di:
+Buat project sementara dengan JSON invalid lalu jalankan analyze.
 
-```text
-packages/cli/test/fixtures/
-├── nextjs-project/
-└── express-project/
-```
+Expected:
 
-Analisis fixture Next.js:
+- analysis tetap selesai;
+- framework fallback dari source tetap bekerja;
+- warning disimpan pada snapshot;
+- user diarahkan memperbaiki `package.json` dan menjalankan `--fresh`.
 
-```powershell
-pnpm dev:cli -- analyze packages/cli/test/fixtures/nextjs-project
-```
+---
 
-Hasil penting:
+## 9. Cross-Version Dan CI Testing
 
-- Framework: `nextjs`
-- Entry points mencakup `app/page.tsx` dan `app/layout.tsx`
-- External services mencakup NextAuth dan Prisma
-- `.env` dan `node_modules` tidak ikut dianalisis
-
-Analisis fixture Express:
+Verifikasi Windows Node.js 18 dan 20:
 
 ```powershell
-pnpm dev:cli -- analyze packages/cli/test/fixtures/express-project
+npx -p node@18 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
+npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
 ```
 
-Hasil penting:
+GitHub Actions menguji:
 
-- Framework: `express`
-- Entry point mencakup `src/server.ts`
-- External services mencakup Stripe
+- Windows, Ubuntu, dan macOS;
+- Node.js 18, 20, dan 22;
+- frozen install;
+- CLI test;
+- CLI build;
+- CLI smoke test;
+- web build;
+- package tarball smoke test.
 
-## Testing Landing Page
+Sebelum merge, cek:
 
-Jalankan development server:
+```powershell
+gh pr checks
+```
+
+Seluruh job wajib hijau.
+
+---
+
+## 10. Testing Landing Page
+
+Development:
 
 ```powershell
 pnpm dev:web
 ```
 
-Buka URL yang ditampilkan Vite, biasanya:
-
-```text
-http://localhost:5173
-```
-
-Build production:
+Production build:
 
 ```powershell
 pnpm build:web
 ```
 
-Preview hasil production:
+Preview:
 
 ```powershell
 pnpm preview:web
 ```
 
-## Checklist Sebelum Commit
+---
 
-Jalankan:
+## Checklist Sebelum Commit
 
 ```powershell
 pnpm test:cli
@@ -554,100 +633,17 @@ git diff --check
 git status --short
 ```
 
-Checklist manual:
+Pastikan:
 
-- Semua test lulus.
-- CLI build berhasil.
-- Web build berhasil.
-- Tidak ada raw stack trace.
-- Tidak ada API key di staged files.
-- Tidak ada `.devmap/`, `dist/`, atau `node_modules/` yang ikut staged.
-- `PROGRESS.md` sudah diperbarui jika ada milestone baru.
+- seluruh test lulus;
+- CLI dan web berhasil dibuild;
+- tidak ada API key;
+- tidak ada `.devmap/`, `dist/`, `artifacts/`, atau `node_modules/` yang staged;
+- `PROGRESS.md`, `TEST.md`, atau `DEBUG.md` diperbarui bila relevan.
 
-Periksa staged diff sebelum commit:
+Review staged files:
 
 ```powershell
 git diff --cached --stat
 git diff --cached
 ```
-
-## Testing Setelah Install Global
-
-Tahap ini digunakan saat distribution testing sudah dimulai:
-
-```powershell
-pnpm build:cli
-cd packages\cli
-npm link
-devmap
-devmap --help
-devmap doctor
-```
-
-Untuk melepas link global:
-
-```powershell
-npm unlink -g devmap
-```
-
-## Testing Tarball npm
-
-Buat package dari root repository:
-
-```powershell
-pnpm --filter devmap pack --pack-destination artifacts
-```
-
-Pastikan daftar file hanya berisi:
-
-- `dist/`
-- `package.json`
-- `README.md`
-- `LICENSE`
-
-Pastikan tidak ada `src/`, `test/`, `.devmap/`, `.env`, atau `node_modules/`.
-
-Jalankan smoke test secara berurutan dengan cache terpisah:
-
-```powershell
-$tarball = "C:\path\to\artifacts\devmap-0.1.0.tgz"
-npm exec --yes --cache "$env:TEMP\devmap-version" --package $tarball -- devmap --version
-npm exec --yes --cache "$env:TEMP\devmap-help" --package $tarball -- devmap --help
-```
-
-Jangan menjalankan dua instalasi `npx` secara paralel dengan cache yang sama.
-
-### End-to-End Project Sementara
-
-Pasang tarball pada project sementara yang memiliki:
-
-- `package.json` dengan dependency Express;
-- `src/server.ts` dengan satu route;
-- `AGENTS.md` yang sudah memiliki isi.
-
-Jalankan binary dari `node_modules/.bin`:
-
-```powershell
-devmap --version
-devmap --help
-devmap init
-devmap analyze
-devmap ask "where is the server entry point?"
-devmap doctor
-```
-
-Tanpa `GROQ_API_KEY`, hasil yang diharapkan:
-
-- `init` exit `1` dengan pesan actionable dan tidak membuat config parsial;
-- `analyze`, `ask`, dan `doctor` exit `0`;
-- `ask` menampilkan static context;
-- snapshot mendeteksi Express, npm, dan route project;
-- lockfile package manager tidak masuk `fileIndex` atau statistik line;
-- `AGENTS.md` yang sudah ada tidak berubah.
-
-Dengan `GROQ_API_KEY` valid, ulangi flow untuk memverifikasi:
-
-- `init` membuat config, `.gitignore`, dan `DEVMAP.md`;
-- `analyze` menghasilkan AI architecture interpretation;
-- `ask` menghasilkan jawaban AI dan token usage;
-- `doctor` memvalidasi key dan model.

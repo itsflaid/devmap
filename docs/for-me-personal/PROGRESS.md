@@ -34,6 +34,16 @@ Terakhir diperbarui: 2026-06-12
 - Automated test mencakup heading, inline formatting, list, table, wrapping,
   fenced code, serta integrasi `ask` dan cached `analyze`.
 
+### Testing Guide
+
+- `TEST.md` disusun ulang sebagai panduan testing praktis untuk maintainer.
+- Panduan sekarang membedakan source tanpa build, automated test, build `dist`,
+  tarball external, `npm exec`, `npm link`, AI live, dan CI/runtime testing.
+- Alur tarball menjelaskan cara membuat artifact, install pada project lain,
+  mengulang install setelah source berubah, expected result, dan cleanup.
+- Source mode dijelaskan sebagai cara tercepat melihat perubahan terbaru tanpa
+  build atau install ulang.
+
 ## Update 2026-06-11
 
 ### Workflow Agent

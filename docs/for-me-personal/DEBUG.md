@@ -606,6 +606,49 @@ test satu pertanyaan.
 
 ---
 
+## 12. `package-lock.json` Mencemari Statistik Snapshot
+
+**Tanggal:** 2026-06-12
+
+**Status:** Selesai.
+
+### Gejala
+
+Tarball DevMap dipasang pada project Express sementara dengan source sekitar
+dua baris, tetapi `devmap analyze` melaporkan 875 baris.
+
+### Akar Masalah
+
+Scanner hanya mengabaikan extension `.lock` dan nama yang berakhir dengan
+`-lock.yaml`. File npm `package-lock.json` dan `npm-shrinkwrap.json` tidak cocok
+dengan aturan tersebut sehingga ikut masuk `fileIndex`, fingerprint, dan
+statistik line.
+
+### Solusi
+
+- Tambahkan allowlist nama lockfile package manager yang harus diabaikan:
+  `package-lock.json`, `npm-shrinkwrap.json`, `pnpm-lock.yaml`, `yarn.lock`,
+  `bun.lock`, dan `bun.lockb`.
+- Pertahankan package manager detection melalui pemeriksaan file langsung pada
+  project root.
+- Tambahkan automated regression test untuk seluruh lockfile yang didukung.
+
+### Verifikasi
+
+- Automated analyzer test lulus untuk enam nama lockfile.
+- Tarball dibangun ulang dan dipasang pada project sementara.
+- Snapshot tidak memiliki `package-lock.json` di `fileIndex`.
+- Project tetap terdeteksi memakai package manager npm.
+- Statistik turun menjadi 3 file dan 9 baris untuk fixture E2E.
+
+### Pelajaran
+
+Deteksi package manager membutuhkan keberadaan lockfile, tetapi static scanner
+tidak perlu membaca kontennya. Metadata project dan source analysis harus
+memiliki aturan akses yang berbeda.
+
+---
+
 ## Checklist Saat Menambahkan Debug Baru
 
 Tambahkan catatan baru ketika:

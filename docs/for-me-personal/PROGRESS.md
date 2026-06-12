@@ -17,6 +17,26 @@ Terakhir diperbarui: 2026-06-12
 - Automated test mencakup warning terminal, snapshot persistence, framework
   fallback, dan keberhasilan pembuatan snapshot.
 
+### Tarball End-to-End
+
+- Tarball `devmap-0.1.0.tgz` berhasil dibuat dan hanya berisi `dist/`,
+  `package.json`, `README.md`, dan `LICENSE`.
+- Tarball berhasil dipasang pada project Express sementara dengan npm.
+- `devmap analyze`, `devmap ask`, dan `devmap doctor` berhasil dijalankan dari
+  package terpasang.
+- `npm exec --package <tarball> -- devmap --version` dan `--help` berhasil tanpa
+  global install.
+- `devmap init` tanpa API key gagal secara aman dengan exit code `1`, pesan
+  actionable, dan tidak membuat config parsial.
+- Verifikasi AI live belum dijalankan karena sesi testing tidak memiliki
+  `GROQ_API_KEY`.
+- E2E menemukan `package-lock.json` ikut dipindai sebagai source. Filter scanner
+  sekarang mengabaikan lockfile npm, pnpm, Yarn, dan Bun.
+- Snapshot E2E setelah perbaikan mendeteksi Express, npm, route `/health`, dan
+  tidak memasukkan `package-lock.json`.
+- Kesiapan launch checklist PRD saat ini diperkirakan 17 dari 24 item, sekitar
+  71%. Core implementation diperkirakan sekitar 85%.
+
 ## Update 2026-06-11
 
 ### Workflow Agent
@@ -97,7 +117,7 @@ Terakhir diperbarui: 2026-06-12
 - Availability selected model ikut diperiksa.
 - Snapshot dibedakan menjadi valid, missing, corrupt, dan unsupported schema.
 - API key dan raw stack trace tidak pernah ditampilkan.
-- Automated test saat ini berjumlah 35 dan seluruhnya lulus.
+- Automated test saat ini berjumlah 36 dan seluruhnya lulus.
 
 ### Distribusi npm
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
+import { exec, execFile } from "node:child_process";
 import {
   cp,
   mkdtemp,
@@ -15,11 +15,15 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const execute = promisify(execFile);
+const executeShell = promisify(exec);
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(testDirectory, "..");
 const workspaceRoot = resolve(packageRoot, "../..");
 const pnpmCli = process.env.npm_execpath;
-const npmCli = resolve(dirname(process.execPath), "node_modules/npm/bin/npm-cli.js");
+const npmExecutable = join(
+  dirname(process.execPath),
+  process.platform === "win32" ? "npm.cmd" : "npm"
+);
 
 if (!pnpmCli) {
   throw new Error("Run this test through pnpm so npm_execpath is available.");
@@ -64,7 +68,7 @@ try {
       private: true
     }, null, 2), "utf8");
 
-    await runNodeCli(npmCli, [
+    await runNpm([
       "install",
       "--no-package-lock",
       "--ignore-scripts",
@@ -106,11 +110,30 @@ try {
 }
 
 async function runDevmap(cwd, args) {
-  return runNodeCli(npmCli, ["exec", "--", "devmap", ...args], cwd);
+  return runNpm(["exec", "--", "devmap", ...args], cwd);
 }
 
 async function runNodeCli(cliPath, args, cwd) {
-  return execute(process.execPath, [cliPath, ...args], {
+  return runExecutable(process.execPath, [cliPath, ...args], cwd);
+}
+
+async function runNpm(args, cwd) {
+  if (process.platform !== "win32") {
+    return runExecutable(npmExecutable, args, cwd);
+  }
+
+  const command = [npmExecutable, ...args]
+    .map(quoteWindowsArgument)
+    .join(" ");
+  return executeShell(command, commandOptions(cwd));
+}
+
+async function runExecutable(executable, args, cwd) {
+  return execute(executable, args, commandOptions(cwd));
+}
+
+function commandOptions(cwd) {
+  return {
     cwd,
     env: {
       ...process.env,
@@ -120,7 +143,11 @@ async function runNodeCli(cliPath, args, cwd) {
     },
     maxBuffer: 10 * 1024 * 1024,
     windowsHide: true
-  });
+  };
+}
+
+function quoteWindowsArgument(value) {
+  return `"${value.replaceAll('"', '""')}"`;
 }
 
 function stripAnsi(value) {

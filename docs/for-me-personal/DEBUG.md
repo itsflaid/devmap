@@ -1,6 +1,6 @@
 # Catatan Debugging DevMap
 
-Terakhir diperbarui: 2026-06-11
+Terakhir diperbarui: 2026-06-13
 
 Dokumen ini menyimpan masalah teknis yang pernah ditemukan selama development
 DevMap. Tujuannya supaya penyebab, solusi, dan cara verifikasinya tidak perlu
@@ -672,3 +672,39 @@ Gunakan format:
 ### Verifikasi
 ### Pelajaran
 ```
+## 12. Packed E2E Mengasumsikan Layout Internal npm
+
+**Tanggal:** 2026-06-13
+**Status:** Selesai
+
+### Gejala
+
+Package smoke test gagal pada GitHub Actions Ubuntu dengan `MODULE_NOT_FOUND`
+untuk path `node_modules/npm/bin/npm-cli.js`.
+
+### Akar Masalah
+
+Harness menyusun path internal npm relatif terhadap `process.execPath`.
+Layout tersebut tersedia pada instalasi Node lokal tertentu, tetapi bukan
+kontrak lintas platform dan tidak dipakai oleh image Node GitHub Actions.
+
+### Solusi
+
+Jalankan executable npm resmi yang berada di samping binary Node:
+
+- `npm.cmd` pada Windows;
+- `npm` pada Linux dan macOS.
+
+Windows menjalankan `npm.cmd` melalui shell, sedangkan Node, pnpm, dan binary
+Linux/macOS tetap dijalankan langsung. pnpm tetap memakai `npm_execpath` yang
+disediakan oleh pnpm.
+
+### Verifikasi
+
+- `pnpm test:package-e2e`
+- package smoke test GitHub Actions
+
+### Pelajaran
+
+Jangan bergantung pada struktur internal instalasi package manager. Gunakan
+executable publiknya ketika menguji perilaku CLI lintas platform.

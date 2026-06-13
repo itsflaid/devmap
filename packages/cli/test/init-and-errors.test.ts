@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { initCommand } from "../src/commands/init.js";
+import { ensureAgentsFile } from "../src/utils/agentsFile.js";
 import type { DevmapConfig } from "../src/utils/config.js";
 import { buildDevmapFile, ensureDevmapFile } from "../src/utils/devmapFile.js";
 import { DevmapError, handleError } from "../src/utils/errors.js";
@@ -63,6 +64,90 @@ test("init uses environment API key and creates project setup files", async () =
     await access(join(projectRoot, ".devmap"));
     assert.match(await readFile(join(projectRoot, ".gitignore"), "utf8"), /\.devmap\//);
     assert.match(await readFile(join(projectRoot, "DEVMAP.md"), "utf8"), /Detected framework: Not detected yet/);
+    assert.match(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), /DevMap Context/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("interactive init appends DevMap instructions only after confirmation", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agents-confirm-test-"));
+  const original = "# Existing Instructions\n\nKeep this content.\n";
+
+  try {
+    await writeFile(join(projectRoot, "AGENTS.md"), original, "utf8");
+
+    await initCommand({
+      projectRoot,
+      prompt: createFakePrompt(["", "gsk_fixture", "yes"]),
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async () => undefined,
+      validateApiKey: async () => undefined
+    });
+
+    const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
+    assert.ok(content.startsWith(original));
+    assert.match(content, /<!-- DEVMap Instruction Block -->/);
+    assert.match(content, /read `DEVMAP\.md` first/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("interactive init preserves existing AGENTS.md when confirmation is declined", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agents-decline-test-"));
+  const original = "# Existing Instructions\n\nKeep this content.\n";
+
+  try {
+    await writeFile(join(projectRoot, "AGENTS.md"), original, "utf8");
+
+    await initCommand({
+      projectRoot,
+      prompt: createFakePrompt(["", "gsk_fixture", "no"]),
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async () => undefined,
+      validateApiKey: async () => undefined
+    });
+
+    assert.equal(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), original);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("non-interactive init never appends to an existing AGENTS.md", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agents-noninteractive-test-"));
+  const original = "# Existing Instructions\n\nKeep this content.\n";
+
+  try {
+    await writeFile(join(projectRoot, "AGENTS.md"), original, "utf8");
+
+    await initCommand({
+      projectRoot,
+      isInteractive: false,
+      environmentApiKey: "gsk_fixture",
+      loadConfig: async () => null,
+      persistConfig: async () => undefined,
+      validateApiKey: async () => undefined
+    });
+
+    assert.equal(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), original);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("AGENTS.md integration is idempotent", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agents-idempotent-test-"));
+
+  try {
+    assert.equal(await ensureAgentsFile(projectRoot, false), "created");
+    assert.equal(await ensureAgentsFile(projectRoot, true), "unchanged");
+
+    const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
+    assert.equal(content.match(/<!-- DEVMap Instruction Block -->/g)?.length, 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

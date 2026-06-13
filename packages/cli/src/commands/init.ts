@@ -4,6 +4,11 @@ import { scanFiles } from "../analyzers/fileScanner.js";
 import { detectFramework } from "../analyzers/frameworkDetector.js";
 import { validateGroqApiKey } from "../ai/groq.js";
 import { readConfig, writeConfig, type DevmapConfig } from "../utils/config.js";
+import {
+  ensureAgentsFile,
+  inspectAgentsFile,
+  type AgentsFileResult
+} from "../utils/agentsFile.js";
 import { ensureDevmapFile } from "../utils/devmapFile.js";
 import { DevmapError } from "../utils/errors.js";
 import { ensureDevmapIgnored } from "../utils/gitignore.js";
@@ -45,6 +50,15 @@ export async function initCommand(dependencies: InitDependencies = {}): Promise<
     await validateApiKey(apiKey);
     output.success("Groq API key is valid");
 
+    const agentsStatus = await inspectAgentsFile(projectRoot);
+    const appendToExistingAgents = agentsStatus === "existing"
+      && interactive
+      && prompt
+      ? isAffirmative(await prompt.ask(
+        "AGENTS.md exists. Append DevMap instructions? [y/N]: "
+      ))
+      : false;
+
     const files = await scanFiles(projectRoot);
     const framework = detectFramework(files);
 
@@ -57,15 +71,40 @@ export async function initCommand(dependencies: InitDependencies = {}): Promise<
 
     const ignored = await ensureDevmapIgnored(projectRoot);
     const devmapFileCreated = await ensureDevmapFile(projectRoot, framework);
+    const agentsResult = await ensureAgentsFile(projectRoot, appendToExistingAgents);
 
     output.keyValue("Project", framework);
     output.success("Config saved to ~/.devmap/config.json");
     output.success(ignored ? "Added .devmap/ to .gitignore" : ".devmap/ already ignored");
     output.success(devmapFileCreated ? "Created DEVMAP.md" : "DEVMAP.md already exists");
+    printAgentsResult(agentsResult);
     output.step("Next: devmap analyze");
   } finally {
     prompt?.close();
   }
+}
+
+function isAffirmative(answer: string): boolean {
+  return ["y", "yes"].includes(answer.trim().toLowerCase());
+}
+
+function printAgentsResult(result: AgentsFileResult): void {
+  if (result === "created") {
+    output.success("Created AGENTS.md");
+    return;
+  }
+
+  if (result === "appended") {
+    output.success("Added DevMap instructions to AGENTS.md");
+    return;
+  }
+
+  if (result === "unchanged") {
+    output.success("AGENTS.md already includes DevMap context");
+    return;
+  }
+
+  output.warning("Skipped AGENTS.md update; run devmap init interactively to confirm.");
 }
 
 type ResolveApiKeyOptions = {

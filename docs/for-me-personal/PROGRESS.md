@@ -1,6 +1,6 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-12
+Terakhir diperbarui: 2026-06-13
 
 ## Update 2026-06-12
 
@@ -43,6 +43,17 @@ Terakhir diperbarui: 2026-06-12
   mengulang install setelah source berubah, expected result, dan cleanup.
 - Source mode dijelaskan sebagai cara tercepat melihat perubahan terbaru tanpa
   build atau install ulang.
+
+### Safe `AGENTS.md` Integration
+
+- `devmap init` sekarang membuat `AGENTS.md` dasar jika file belum ada.
+- Existing `AGENTS.md` tidak pernah ditimpa.
+- Append DevMap instruction block hanya dilakukan setelah konfirmasi eksplisit
+  `y` atau `yes`.
+- Mode non-interaktif selalu skip existing `AGENTS.md`.
+- Block yang sudah ada tidak ditambahkan ulang.
+- Symlink `AGENTS.md` ditolak untuk mencegah write di luar project.
+- Automated test saat ini berjumlah 43 dan seluruhnya lulus.
 
 ## Update 2026-06-11
 

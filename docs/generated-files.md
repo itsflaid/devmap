@@ -27,8 +27,21 @@ Direct AI agents to DevMap.
 Rules:
 
 - Never overwrite existing file
-- Ask before appending
-- Append only DevMap block
+- Create a basic file when `AGENTS.md` does not exist
+- Ask before appending to an existing regular file
+- Append only the small DevMap instruction block
+- Skip an existing file in non-interactive mode
+- Do not append the block more than once
+- Refuse to update a symlinked `AGENTS.md`
+
+Confirmation:
+
+```text
+AGENTS.md exists. Append DevMap instructions? [y/N]:
+```
+
+Only `y` or `yes` appends the block. Any other answer preserves the existing
+file unchanged.
 
 ---
 

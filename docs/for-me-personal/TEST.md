@@ -153,8 +153,8 @@ pnpm --filter devmap test:types
 Hasil minimum saat ini:
 
 ```text
-tests 38
-pass 38
+tests 43
+pass 43
 fail 0
 ```
 
@@ -341,6 +341,8 @@ npx devmap doctor
 - membuat `.devmap/`;
 - menambahkan `.devmap/` ke `.gitignore`;
 - membuat `DEVMAP.md` jika belum ada;
+- membuat `AGENTS.md` dasar jika belum ada;
+- meminta konfirmasi sebelum append ke existing `AGENTS.md`;
 - tidak menimpa `AGENTS.md` atau `DEVMAP.md` yang sudah ada.
 
 `analyze` seharusnya:
@@ -517,7 +519,76 @@ Jangan menaruh API key dalam repository, screenshot, issue, atau chat.
 
 ---
 
-## 8. Error Dan Recovery Testing
+## 8. Testing Safe `AGENTS.md` Integration
+
+Gunakan project sementara agar file pribadi tidak berubah.
+
+### File Belum Ada
+
+Pastikan project tidak memiliki `AGENTS.md`, lalu jalankan:
+
+```powershell
+devmap init
+```
+
+Expected:
+
+- DevMap membuat `AGENTS.md`;
+- file berisi `DevMap Context`;
+- block mengarahkan agent membaca `DEVMAP.md`.
+
+### Existing File Dan User Menyetujui
+
+Buat file:
+
+```powershell
+Set-Content AGENTS.md "# Existing Instructions"
+devmap init
+```
+
+Jawab:
+
+```text
+AGENTS.md exists. Append DevMap instructions? [y/N]: yes
+```
+
+Expected:
+
+- isi lama tetap ada;
+- DevMap block ditambahkan di bagian akhir;
+- rerun `init` tidak menggandakan block.
+
+### Existing File Dan User Menolak
+
+Jalankan `init`, lalu jawab `n` atau tekan Enter.
+
+Expected:
+
+- existing `AGENTS.md` sama persis;
+- terminal menyatakan update dilewati.
+
+### Mode Non-Interaktif
+
+```powershell
+$env:GROQ_API_KEY="gsk_your_key"
+devmap init
+Remove-Item Env:GROQ_API_KEY
+```
+
+Jika existing `AGENTS.md` ditemukan tanpa prompt interaktif:
+
+- file tidak diubah;
+- terminal meminta user menjalankan `init` secara interaktif untuk konfirmasi.
+
+Automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/init-and-errors.test.ts
+```
+
+---
+
+## 9. Error Dan Recovery Testing
 
 ### Project Tidak Ada
 
@@ -571,7 +642,7 @@ Expected:
 
 ---
 
-## 9. Cross-Version Dan CI Testing
+## 10. Cross-Version Dan CI Testing
 
 Verifikasi Windows Node.js 18 dan 20:
 
@@ -601,7 +672,7 @@ Seluruh job wajib hijau.
 
 ---
 
-## 10. Testing Landing Page
+## 11. Testing Landing Page
 
 Development:
 

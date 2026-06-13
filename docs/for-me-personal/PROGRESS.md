@@ -2,6 +2,21 @@
 
 Terakhir diperbarui: 2026-06-13
 
+## Update 2026-06-13
+
+### Packed CLI End-to-End
+
+- Manual tarball test pada project eksternal dengan Groq API key sudah berhasil
+  dijalankan oleh maintainer.
+- Script `pnpm test:package-e2e` membuat tarball CLI dari source terbaru.
+- Tarball dipasang sebagai dependency pada project Next.js dan Express
+  sementara, bukan dijalankan langsung dari workspace.
+- E2E memverifikasi `--version`, `--help`, `analyze --fresh`, `ask`, `doctor`,
+  dan isi snapshot.
+- Home directory diisolasi agar config Groq pribadi tidak terbaca dan tes tidak
+  memakai quota AI.
+- Package smoke test di CI sekarang menjalankan alur distribusi end-to-end ini.
+
 ## Update 2026-06-12
 
 ### Analyzer Resilience

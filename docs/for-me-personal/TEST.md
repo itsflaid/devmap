@@ -251,6 +251,23 @@ Gunakan build mode untuk menemukan:
 
 Ini adalah tes distribusi paling realistis sebelum package dipublish ke npm.
 
+Automated E2E untuk membuat tarball, memasangnya pada project Next.js dan
+Express sementara, lalu menjalankan binary hasil install:
+
+```powershell
+pnpm test:package-e2e
+```
+
+Tes ini memakai home directory sementara agar config Groq pribadi tidak
+terbaca dan tidak melakukan request AI live.
+
+Status manual terakhir:
+
+- install tarball pada project eksternal berhasil;
+- validasi API key Groq berhasil;
+- command AI live berhasil dijalankan;
+- nilai API key tidak dicatat dalam repository.
+
 ### A. Buat Tarball Dari Repository DevMap
 
 Dari root repository DevMap:

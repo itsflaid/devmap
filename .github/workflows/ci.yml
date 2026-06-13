@@ -88,10 +88,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Pack CLI
-        run: pnpm --filter devmap pack --pack-destination artifacts
-
-      - name: Smoke test packed CLI
-        run: |
-          npm exec --yes --package ./artifacts/devmap-0.1.0.tgz -- devmap --version
-          npm exec --yes --package ./artifacts/devmap-0.1.0.tgz -- devmap --help
+      - name: Test packed CLI end to end
+        run: pnpm test:package-e2e

@@ -13,7 +13,8 @@
     "preview:web": "pnpm --filter @devmap/web preview",
     "dev:cli": "pnpm --filter devmap dev",
     "build:cli": "pnpm --filter devmap build",
-    "test:cli": "pnpm --filter devmap test"
+    "test:cli": "pnpm --filter devmap test",
+    "test:package-e2e": "node packages/cli/test/package-e2e.mjs"
   },
   "keywords": [
     "codebase",

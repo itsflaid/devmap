@@ -21,10 +21,13 @@ Terakhir diperbarui: 2026-06-14
 
 ### Welcome Brand Panel
 
-- Welcome screen sekarang menampilkan simbol logo DevMap di atas ASCII
-  wordmark.
-- Logo, wordmark, dan border memakai warna aqua brand yang sama.
-- Terminal lebar memakai wordmark penuh dalam panel maksimal 76 kolom.
+- Simbol logo terpisah dan border luar dihapus agar welcome screen lebih bersih.
+- Terminal lebar memakai wordmark blok berpinggiran seperti identitas awal.
+- Label `DEVMAP CLI`, capability line, dan separator aqua solid memperjelas
+  identitas produk sebagai developer tool.
+- Perbedaan render glyph Unicode pada sebagian font terminal dicatat sebagai
+  known issue untuk compatibility pass berikutnya.
+- Terminal lebar memakai wordmark penuh dalam area maksimal 76 kolom.
 - Terminal sempit memakai judul `DEVMAP` ringkas agar panel tidak wrap atau
   terpotong.
 - Renderer panel dipisahkan agar layout lebar dan sempit dapat diuji langsung.

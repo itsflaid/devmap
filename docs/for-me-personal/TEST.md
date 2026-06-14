@@ -15,6 +15,35 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Context Builder Ranking
+
+Jalankan focused test ranking dan evaluation:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/context-builder-eval.test.ts
+```
+
+Expected result:
+
+- Pertanyaan produk tidak memilih `test/`, `tests/`, `__tests__/`, fixture,
+  `*.test.*`, atau `*.spec.*`.
+- Pertanyaan testing dalam English dapat memilih file tersebut.
+- Pertanyaan navigasi English memilih maksimal dua file dan 60 baris per file.
+- Istilah CLI dan web UI memprioritaskan package yang sesuai.
+- Evaluation tetap top-1 accuracy 20/20 dan top-3 recall 20/20.
+
+Manual source-mode check:
+
+```powershell
+pnpm dev:cli ask "where scanner"
+pnpm dev:cli ask "which tests cover the scanner?"
+pnpm dev:cli ask "where is the web UI dashboard component?"
+```
+
+Periksa `Relevant Files` dan prompt token usage. Query pertama seharusnya
+memprioritaskan production CLI source dan memakai context jauh lebih kecil
+daripada default lama lima file dengan maksimal 200 baris per file.
+
 ## Urutan Testing Yang Direkomendasikan
 
 Untuk development harian:

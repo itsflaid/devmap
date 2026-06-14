@@ -4,6 +4,21 @@ Terakhir diperbarui: 2026-06-14
 
 ## Update 2026-06-14
 
+### Context Builder Token Optimization
+
+- Pertanyaan navigasi English seperti `where` dan `find` sekarang memakai
+  maksimal dua file dengan maksimal 60 baris per file.
+- Test, spec, dan fixture dikeluarkan dari pertanyaan produk biasa sehingga
+  dummy authentication fixture tidak lagi dianggap sebagai fitur production.
+- File test dapat dipilih kembali ketika query English menyebut `test`,
+  `testing`, `spec`, `fixture`, atau `coverage`.
+- Scope English untuk CLI, web UI, dan documentation memberi ranking boost
+  tanpa melakukan hard exclusion terhadap package lain.
+- Benchmark existing tetap mencapai top-1 accuracy 20/20 dan top-3 recall
+  20/20.
+- Payload `where scanner` pada snapshot DevMap turun dari sekitar 20.844
+  karakter menjadi 4.423 karakter sebelum tokenisasi.
+
 ### Reliability Fixes
 
 - Groq HTTP 429 sekarang di-retry maksimal tiga kali dengan exponential

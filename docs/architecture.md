@@ -440,8 +440,22 @@ app/api/auth/*
 | -------------------- | ------------------------- |
 | Preferred file count | 3–5 files                 |
 | Maximum file count   | 5 files                   |
+| English navigation queries | 2 files, 60 lines each |
 | Large file behavior  | Extract relevant sections |
 | Full project source  | Never sent                |
+
+Test files and fixtures are excluded from normal product questions. They are
+eligible when an English query explicitly mentions testing terms such as
+`test`, `spec`, `fixture`, or `coverage`.
+
+Explicit English scope terms provide a ranking boost:
+
+* `cli`, `command`, `terminal`
+* `web`, `ui`, `frontend`, `component`, `page`
+* `docs`, `documentation`, `readme`
+
+Scope matching is a boost rather than a hard exclusion so cross-package
+dependencies can still be selected when their direct relevance is stronger.
 
 ---
 

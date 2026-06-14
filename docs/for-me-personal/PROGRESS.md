@@ -19,6 +19,17 @@ Terakhir diperbarui: 2026-06-14
   sama-sama menghitung hasil scanner setelah ignore filtering.
 - Automated test saat ini berjumlah 47 dan seluruhnya lulus.
 
+### Welcome Brand Panel
+
+- Welcome screen sekarang menampilkan simbol logo DevMap di atas ASCII
+  wordmark.
+- Logo, wordmark, dan border memakai warna aqua brand yang sama.
+- Terminal lebar memakai wordmark penuh dalam panel maksimal 76 kolom.
+- Terminal sempit memakai judul `DEVMAP` ringkas agar panel tidak wrap atau
+  terpotong.
+- Renderer panel dipisahkan agar layout lebar dan sempit dapat diuji langsung.
+- Automated test saat ini berjumlah 49 dan seluruhnya lulus.
+
 ## Update 2026-06-13
 
 ### Packed CLI End-to-End

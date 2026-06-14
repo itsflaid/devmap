@@ -146,6 +146,10 @@ The wordmark should use the aqua brand color.
 
 Everything below the wordmark should stay concise.
 
+The welcome brand signal is framed in a single aqua panel. Wide terminals show
+the DevMap symbol above the large wordmark. Narrow terminals keep the symbol
+but use a compact `DEVMAP` title so the panel does not wrap or clip.
+
 Example:
 
 ```text

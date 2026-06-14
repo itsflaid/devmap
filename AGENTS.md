@@ -8,6 +8,34 @@ When working in this repository:
 - Do not revert unrelated user changes.
 - Prefer opening a pull request instead of pushing directly to `main`, unless the user explicitly asks to push to `main`.
 
+## Issue-First Pull Request Workflow
+
+Use an issue before opening a pull request for:
+
+- bug reports and bug fixes;
+- reliability or security fixes;
+- MVP features or launch-checklist work;
+- user-facing UX or terminal-output changes.
+
+Workflow:
+
+1. Read the PRD and relevant documentation.
+2. Create a `codex/` branch and prepare the implementation locally.
+3. Add or update tests, documentation, and personal development notes.
+4. Run the relevant verification gates.
+5. Before committing, pushing, or opening the PR, stop and ask the user to
+   create a GitHub issue. Provide a ready-to-use issue title and body.
+6. Wait for the user to provide the issue number.
+7. Commit and push the verified work, then open a PR that includes
+   `Closes #<issue-number>` in the PR body.
+8. Give the user the PR link so they can review and merge it. The merge should
+   close the linked issue automatically.
+
+Do not create the GitHub issue on the user's behalf unless they explicitly ask.
+Small documentation-only, repository-process, typo, dependency-maintenance, or
+CI housekeeping changes may proceed without an issue unless the user requests
+one.
+
 ## Commits
 
 * Keep the user's Git identity as the primary author whenever possible.

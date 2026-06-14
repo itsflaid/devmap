@@ -30,6 +30,18 @@ Terakhir diperbarui: 2026-06-14
 - Renderer panel dipisahkan agar layout lebar dan sempit dapat diuji langsung.
 - Automated test saat ini berjumlah 49 dan seluruhnya lulus.
 
+### Issue-First PR Workflow
+
+- Bug, reliability/security fix, fitur MVP, dan perubahan UX sekarang memakai
+  issue GitHub sebelum PR dibuat.
+- Implementasi dan verification boleh diselesaikan lokal terlebih dahulu.
+- Sebelum commit, push, atau PR, agent berhenti dan memberi title/body issue
+  siap pakai kepada maintainer.
+- Setelah nomor issue diberikan, PR harus memakai `Closes #N` agar issue
+  tertutup otomatis ketika merge.
+- Perubahan dokumentasi/proses kecil, typo, dependency maintenance, dan CI
+  housekeeping tidak wajib memakai issue.
+
 ## Update 2026-06-13
 
 ### Packed CLI End-to-End

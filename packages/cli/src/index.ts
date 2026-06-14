@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { analyzeCommand } from "./commands/analyze.js";
 import { askCommand } from "./commands/ask.js";
+import { configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
 import { printHelp } from "./utils/help.js";
@@ -33,6 +34,14 @@ program
   .description("Find files relevant to a codebase question")
   .argument("<question...>", "question to ask")
   .action(askCommand);
+
+program
+  .command("config")
+  .description("Update DevMap configuration")
+  .command("model")
+  .description("Set a model override or restore automatic routing")
+  .argument("<model>", "Groq model ID or auto")
+  .action(configModelCommand);
 
 program
   .command("doctor")

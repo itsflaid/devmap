@@ -4,6 +4,16 @@ Terakhir diperbarui: 2026-06-14
 
 ## Update 2026-06-14
 
+### Model Routing And Config
+
+- Default `devmap ask` memakai `llama-3.1-8b-instant`.
+- Standard `devmap analyze` tetap memakai `openai/gpt-oss-20b`.
+- `devmap analyze --deep` memakai `openai/gpt-oss-120b`.
+- Fallback model memakai `openai/gpt-oss-20b`.
+- Command `devmap config model <model>` dapat menetapkan override global tanpa
+  mengubah provider atau API key.
+- `devmap config model auto` mengembalikan routing default per command.
+
 ### Context Builder Token Optimization
 
 - Pertanyaan navigasi English seperti `where` dan `find` sekarang memakai

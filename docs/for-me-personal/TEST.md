@@ -44,6 +44,32 @@ Periksa `Relevant Files` dan prompt token usage. Query pertama seharusnya
 memprioritaskan production CLI source dan memakai context jauh lebih kecil
 daripada default lama lima file dengan maksimal 200 baris per file.
 
+## Model Routing And Override
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/config-command.test.ts test/analyze-ai.test.ts test/ask-command.test.ts
+```
+
+Expected automatic routing:
+
+- `ask`: `llama-3.1-8b-instant`
+- `analyze`: `openai/gpt-oss-20b`
+- `analyze --deep`: `openai/gpt-oss-120b`
+- fallback: `openai/gpt-oss-20b`
+
+Manual override:
+
+```powershell
+pnpm dev:cli config model openai/gpt-oss-120b
+pnpm dev:cli doctor
+pnpm dev:cli config model auto
+```
+
+The first command should preserve the existing API key and provider. The last
+command should restore automatic command-based routing.
+
 ## Urutan Testing Yang Direkomendasikan
 
 Untuk development harian:

@@ -251,7 +251,7 @@ MVP success means DevMap can:
 
 ## 9. Core Commands — MVP
 
-Four commands. No more, no less.
+Four core project commands plus one configuration command.
 
 > Nothing removed. Nothing added until MVP is shipped.
 
@@ -422,6 +422,21 @@ No issues found.
 
 ---
 
+### `devmap config model`
+
+Set a global Groq model override or restore automatic command-based routing.
+
+```bash
+devmap config model llama-3.1-8b-instant
+devmap config model openai/gpt-oss-120b
+devmap config model auto
+```
+
+The override applies to AI-powered commands. `auto` restores the defaults in
+the model routing table.
+
+---
+
 ## 10. Generated Files
 
 DevMap uses generated files to create reusable context for humans and AI agents.
@@ -538,9 +553,10 @@ ai/
 
 | Command | Model | Reason |
 |---|---|---|
-| `analyze`, `ask` | `openai/gpt-oss-20b` | Production model, fast and cost-efficient |
-| `analyze --deep` | `llama-3.3-70b-versatile` | Better reasoning for detailed explanations |
-| Fallback | `llama-3.3-70b-versatile` | Production fallback when primary model is unavailable |
+| `ask` | `llama-3.1-8b-instant` | Fast model for focused codebase questions |
+| `analyze` | `openai/gpt-oss-20b` | Balanced architecture interpretation |
+| `analyze --deep` | `openai/gpt-oss-120b` | Heavy cross-module reasoning |
+| Fallback | `openai/gpt-oss-20b` | Production fallback when a different primary model is unavailable |
 
 If a model becomes unavailable, DevMap gracefully falls back. No raw provider errors shown to users.
 

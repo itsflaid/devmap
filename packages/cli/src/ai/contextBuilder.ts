@@ -4,6 +4,8 @@ import type { ProjectMap } from "../analyzers/projectMap.js";
 
 const DEFAULT_MAX_FILES = 5;
 const DEFAULT_MAX_LINES_PER_FILE = 200;
+const NAVIGATION_MAX_FILES = 2;
+const NAVIGATION_MAX_LINES_PER_FILE = 60;
 
 const STOP_WORDS = new Set([
   "about",
@@ -13,6 +15,8 @@ const STOP_WORDS = new Set([
   "bekerja",
   "dalam",
   "does",
+  "find",
+  "have",
   "dimana",
   "dengan",
   "from",
@@ -26,6 +30,23 @@ const STOP_WORDS = new Set([
   "which",
   "yang"
 ]);
+
+const TEST_QUERY_TERMS = new Set([
+  "coverage",
+  "fixture",
+  "fixtures",
+  "spec",
+  "specs",
+  "test",
+  "testing",
+  "tests"
+]);
+
+const SCOPE_QUERY_TERMS = {
+  cli: new Set(["cli", "command", "commands", "terminal"]),
+  docs: new Set(["documentation", "docs", "readme"]),
+  web: new Set(["component", "frontend", "page", "ui", "web"])
+} as const;
 
 const CONCEPT_ALIASES: Record<string, string[]> = {
   auth: [
@@ -75,6 +96,12 @@ type RankedFile = {
   reasons: string[];
 };
 
+type QueryProfile = {
+  includeTests: boolean;
+  isNavigation: boolean;
+  scopes: Set<keyof typeof SCOPE_QUERY_TERMS>;
+};
+
 export async function buildQuestionContext(
   projectRoot: string,
   snapshot: ProjectMap,
@@ -82,12 +109,19 @@ export async function buildQuestionContext(
   options: ContextBuilderOptions = {}
 ): Promise<QuestionContext> {
   const keywords = extractContextKeywords(question);
-  const maxFiles = normalizeLimit(options.maxFiles, DEFAULT_MAX_FILES);
+  const profile = classifyQuery(question);
+  const defaultMaxFiles = profile.isNavigation
+    ? NAVIGATION_MAX_FILES
+    : DEFAULT_MAX_FILES;
+  const defaultMaxLines = profile.isNavigation
+    ? NAVIGATION_MAX_LINES_PER_FILE
+    : DEFAULT_MAX_LINES_PER_FILE;
+  const maxFiles = normalizeLimit(options.maxFiles, defaultMaxFiles);
   const maxLinesPerFile = normalizeLimit(
     options.maxLinesPerFile,
-    DEFAULT_MAX_LINES_PER_FILE
+    defaultMaxLines
   );
-  const rankedFiles = rankContextFiles(snapshot, keywords);
+  const rankedFiles = rankContextFiles(snapshot, keywords, profile);
   const files: ContextFile[] = [];
 
   for (const rankedFile of rankedFiles) {
@@ -130,10 +164,18 @@ export function extractContextKeywords(question: string): string[] {
   return [...keywords];
 }
 
-function rankContextFiles(snapshot: ProjectMap, keywords: string[]): RankedFile[] {
+function rankContextFiles(
+  snapshot: ProjectMap,
+  keywords: string[],
+  profile: QueryProfile
+): RankedFile[] {
   const ranked = new Map<string, RankedFile>();
 
   for (const [path, metadata] of Object.entries(snapshot.fileIndex)) {
+    if (!profile.includeTests && isTestPath(path)) {
+      continue;
+    }
+
     const reasons: string[] = [];
     const normalizedPath = path.toLowerCase();
     const symbols = metadata.exportedSymbols.join(" ").toLowerCase();
@@ -165,6 +207,10 @@ function rankContextFiles(snapshot: ProjectMap, keywords: string[]): RankedFile[
     score += routeScore.score;
     reasons.push(...routeScore.reasons);
 
+    const scopeScore = scoreScopeEvidence(path, profile.scopes);
+    score += scopeScore.score;
+    reasons.push(...scopeScore.reasons);
+
     const criticalFile = snapshot.criticalFiles.find((file) => file.path === path);
     if (criticalFile && score > 0) {
       score += Math.min(criticalFile.score, 5);
@@ -180,10 +226,10 @@ function rankContextFiles(snapshot: ProjectMap, keywords: string[]): RankedFile[
     }
   }
 
-  expandGraphNeighbors(snapshot, ranked);
+  expandGraphNeighbors(snapshot, ranked, profile);
 
   if (ranked.size === 0) {
-    addFallbackFiles(snapshot, ranked);
+    addFallbackFiles(snapshot, ranked, profile);
   }
 
   return [...ranked.values()]
@@ -233,7 +279,8 @@ function scoreRouteEvidence(
 
 function expandGraphNeighbors(
   snapshot: ProjectMap,
-  ranked: Map<string, RankedFile>
+  ranked: Map<string, RankedFile>,
+  profile: QueryProfile
 ): void {
   const directMatches = [...ranked.values()]
     .sort((left, right) => right.score - left.score)
@@ -242,6 +289,10 @@ function expandGraphNeighbors(
   for (const match of directMatches) {
     const imports = snapshot.fileIndex[match.path]?.imports ?? [];
     for (const importedPath of imports) {
+      if (!profile.includeTests && isTestPath(importedPath)) {
+        continue;
+      }
+
       addRelatedFile(
         ranked,
         importedPath,
@@ -251,6 +302,10 @@ function expandGraphNeighbors(
     }
 
     for (const [candidatePath, metadata] of Object.entries(snapshot.fileIndex)) {
+      if (!profile.includeTests && isTestPath(candidatePath)) {
+        continue;
+      }
+
       if (metadata.imports.includes(match.path)) {
         addRelatedFile(
           ranked,
@@ -261,6 +316,87 @@ function expandGraphNeighbors(
       }
     }
   }
+}
+
+function classifyQuery(question: string): QueryProfile {
+  const terms = new Set(
+    question
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(Boolean)
+  );
+  const scopes = new Set<keyof typeof SCOPE_QUERY_TERMS>();
+
+  for (const [scope, scopeTerms] of Object.entries(SCOPE_QUERY_TERMS) as Array<
+    [keyof typeof SCOPE_QUERY_TERMS, Set<string>]
+  >) {
+    if ([...scopeTerms].some((term) => terms.has(term))) {
+      scopes.add(scope);
+    }
+  }
+
+  return {
+    includeTests: [...TEST_QUERY_TERMS].some((term) => terms.has(term)),
+    isNavigation: terms.has("where") || terms.has("find"),
+    scopes
+  };
+}
+
+function scoreScopeEvidence(
+  path: string,
+  scopes: Set<keyof typeof SCOPE_QUERY_TERMS>
+): Pick<RankedFile, "score" | "reasons"> {
+  const normalizedPath = path.toLowerCase().replaceAll("\\", "/");
+  let score = 0;
+  const reasons: string[] = [];
+
+  if (
+    scopes.has("cli")
+    && (
+      normalizedPath.includes("/cli/")
+      || normalizedPath.startsWith("cli/")
+      || normalizedPath.includes("/commands/")
+    )
+  ) {
+    score += 8;
+    reasons.push("matches CLI scope");
+  }
+
+  if (
+    scopes.has("web")
+    && (
+      normalizedPath.includes("/web/")
+      || normalizedPath.includes("/components/")
+      || normalizedPath.includes("/pages/")
+      || normalizedPath.includes("/app/")
+    )
+  ) {
+    score += 8;
+    reasons.push("matches web scope");
+  }
+
+  if (
+    scopes.has("docs")
+    && (normalizedPath.startsWith("docs/") || normalizedPath.endsWith(".md"))
+  ) {
+    score += 8;
+    reasons.push("matches documentation scope");
+  }
+
+  return { score, reasons };
+}
+
+function isTestPath(path: string): boolean {
+  const normalizedPath = path.toLowerCase().replaceAll("\\", "/");
+  return (
+    normalizedPath.startsWith("test/")
+    || normalizedPath.startsWith("tests/")
+    || normalizedPath.includes("/test/")
+    || normalizedPath.includes("/tests/")
+    || normalizedPath.includes("/__tests__/")
+    || normalizedPath.includes("/fixtures/")
+    || /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(normalizedPath)
+  );
 }
 
 function addRelatedFile(
@@ -288,9 +424,14 @@ function addRelatedFile(
 
 function addFallbackFiles(
   snapshot: ProjectMap,
-  ranked: Map<string, RankedFile>
+  ranked: Map<string, RankedFile>,
+  profile: QueryProfile
 ): void {
-  for (const criticalFile of snapshot.criticalFiles.slice(0, DEFAULT_MAX_FILES)) {
+  const fallbackFiles = snapshot.criticalFiles
+    .filter((file) => profile.includeTests || !isTestPath(file.path))
+    .slice(0, DEFAULT_MAX_FILES);
+
+  for (const criticalFile of fallbackFiles) {
     ranked.set(criticalFile.path, {
       path: criticalFile.path,
       score: criticalFile.score,

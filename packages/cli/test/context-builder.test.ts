@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -122,3 +122,110 @@ test("context builder enforces file limits and rejects paths outside the project
     await rm(outsidePath, { force: true });
   }
 });
+
+test("context builder excludes test fixtures from product questions", async () => {
+  const projectRoot = await createScopedContextProject();
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Does this project have authentication?"
+    );
+
+    assert.equal(context.files[0]?.path, "src/auth.ts");
+    assert.ok(context.files.every((file) => !file.path.includes("test/fixtures")));
+    assert.ok(context.files.every((file) => !file.path.endsWith(".test.ts")));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder excludes tests from fallback context", async () => {
+  const projectRoot = await createScopedContextProject();
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    snapshot.criticalFiles = [
+      { path: "src/auth.test.ts", score: 20, reasons: ["fixture critical file"] },
+      { path: "src/auth.ts", score: 10, reasons: ["production critical file"] }
+    ];
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Explain the zqxv subsystem"
+    );
+
+    assert.ok(context.files.some((file) => file.path === "src/auth.ts"));
+    assert.ok(context.files.every((file) => !file.path.endsWith(".test.ts")));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder includes tests only when the English query requests them", async () => {
+  const projectRoot = await createScopedContextProject();
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Which tests and fixtures cover authentication?"
+    );
+
+    assert.ok(context.files.some((file) => file.path.endsWith("auth.test.ts")));
+    assert.ok(context.files.some((file) => file.path.includes("test/fixtures")));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder boosts explicit CLI and web scopes without hard exclusion", async () => {
+  const projectRoot = await createScopedContextProject();
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    const cliContext = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is the CLI dashboard command?"
+    );
+    const webContext = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is the web UI dashboard component?"
+    );
+
+    assert.equal(cliContext.files[0]?.path, "packages/cli/src/dashboard.ts");
+    assert.equal(webContext.files[0]?.path, "apps/web/src/Dashboard.ts");
+    assert.ok(cliContext.files.length <= 2);
+    assert.ok(webContext.files.length <= 2);
+    assert.ok(cliContext.files.every((file) =>
+      file.content.split(/\r?\n/).length <= 60
+    ));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+async function createScopedContextProject(): Promise<string> {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-scope-"));
+  const files = {
+    "package.json": JSON.stringify({ name: "context-scope" }),
+    "src/auth.ts": "export function authenticateUser() { return true; }\n",
+    "src/auth.test.ts": "export function authenticationTest() { return true; }\n",
+    "test/fixtures/auth.ts": "export function fixtureAuthentication() { return true; }\n",
+    "packages/cli/src/dashboard.ts": "export function dashboardCommand() { return true; }\n",
+    "apps/web/src/Dashboard.ts": "export function DashboardComponent() { return true; }\n"
+  };
+
+  for (const [path, content] of Object.entries(files)) {
+    const target = join(projectRoot, path);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, content, "utf8");
+  }
+
+  return projectRoot;
+}

@@ -45,17 +45,17 @@ test("Groq client returns normalized content and token usage", async () => {
   });
 });
 
-test("Groq client retries rate limits using retry-after", async () => {
+test("Groq client retries rate limits with exponential backoff", async () => {
   let requestCount = 0;
   const delays: number[] = [];
   const dependencies: GroqClientDependencies = {
     fetch: async () => {
       requestCount += 1;
-      if (requestCount === 1) {
+      if (requestCount <= 3) {
         return jsonResponse(
           { error: { message: "Rate limit reached." } },
           429,
-          { "retry-after": "2" }
+          { "retry-after": "1" }
         );
       }
 
@@ -75,9 +75,38 @@ test("Groq client retries rate limits using retry-after", async () => {
     model: DEFAULT_AI_MODELS.ask
   });
 
-  assert.equal(requestCount, 2);
-  assert.deepEqual(delays, [2000]);
+  assert.equal(requestCount, 4);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
   assert.equal(result.content, "Recovered.");
+});
+
+test("Groq client stops after three rate-limit retries", async () => {
+  let requestCount = 0;
+  const delays: number[] = [];
+  const client = new GroqClient("gsk_test", {
+    fetch: async () => {
+      requestCount += 1;
+      return jsonResponse(
+        { error: { message: "Rate limit reached." } },
+        429
+      );
+    },
+    sleep: async (milliseconds) => {
+      delays.push(milliseconds);
+    }
+  });
+
+  await assert.rejects(
+    client.complete({
+      messages: [{ role: "user", content: "Explain auth." }],
+      model: DEFAULT_AI_MODELS.ask
+    }),
+    (error: unknown) => error instanceof DevmapError
+      && /rate limit reached after retrying/i.test(error.message)
+  );
+
+  assert.equal(requestCount, 4);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
 });
 
 test("Groq client falls back when the primary model is unavailable", async () => {

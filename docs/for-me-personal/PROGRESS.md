@@ -1,6 +1,23 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-13
+Terakhir diperbarui: 2026-06-14
+
+## Update 2026-06-14
+
+### Reliability Fixes
+
+- Groq HTTP 429 sekarang di-retry maksimal tiga kali dengan exponential
+  backoff sebelum menampilkan error actionable.
+- Snapshot reader memvalidasi setiap entry `fileIndex` sebelum snapshot dipakai
+  oleh Context Builder.
+- Config yang corrupt atau memiliki schema tidak valid diperlakukan sebagai
+  config missing.
+- `devmap doctor` membaca versi langsung dari package metadata.
+- Marker baru `AGENTS.md` memakai kapitalisasi `DevMap`, sambil tetap mengenali
+  marker legacy agar block lama tidak diduplikasi.
+- Kontrak stats schema v1 didokumentasikan: `totalFiles` dan `relevantFiles`
+  sama-sama menghitung hasil scanner setelah ignore filtering.
+- Automated test saat ini berjumlah 47 dan seluruhnya lulus.
 
 ## Update 2026-06-13
 
@@ -68,7 +85,7 @@ Terakhir diperbarui: 2026-06-13
 - Mode non-interaktif selalu skip existing `AGENTS.md`.
 - Block yang sudah ada tidak ditambahkan ulang.
 - Symlink `AGENTS.md` ditolak untuk mencegah write di luar project.
-- Automated test saat ini berjumlah 43 dan seluruhnya lulus.
+- Automated test pada tahap ini berjumlah 43 dan seluruhnya lulus.
 
 ## Update 2026-06-11
 
@@ -115,7 +132,8 @@ Terakhir diperbarui: 2026-06-13
 - Default model `ask` menggunakan production model
   `openai/gpt-oss-20b`.
 - Fallback model menggunakan `llama-3.3-70b-versatile`.
-- Request 429 di-retry satu kali berdasarkan header `retry-after`.
+- Request 429 di-retry maksimal tiga kali memakai exponential backoff dan
+  header `retry-after`.
 - Invalid API key, rate limit, provider failure, empty response, dan response
   yang tidak valid diterjemahkan menjadi error actionable.
 - Prompt `ask` hanya memakai context terpilih dan meminta jawaban dalam bahasa

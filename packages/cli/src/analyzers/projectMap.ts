@@ -21,6 +21,7 @@ export type ProjectMap = {
   framework: Framework;
   project: ProjectMetadata;
   stats: {
+    // Schema v1 only tracks files returned by scanFiles(), after ignore filtering.
     totalFiles: number;
     relevantFiles: number;
     totalLines: number;
@@ -83,6 +84,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     framework,
     project: detectProjectMetadata(projectRoot, framework, files),
     stats: {
+      // A pre-filter filesystem count is not collected in schema v1.
       totalFiles: files.length,
       relevantFiles: files.length,
       totalLines: files.reduce((sum, file) => sum + file.lines, 0)

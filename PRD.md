@@ -492,7 +492,7 @@ If `AGENTS.md` already exists:
 Example append block:
 
 ```md
-<!-- DEVMap Instruction Block -->
+<!-- DevMap Instruction Block -->
 ## DevMap Context
 
 Before working in this repository, read `DEVMAP.md` first.

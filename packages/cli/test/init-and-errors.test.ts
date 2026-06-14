@@ -1,11 +1,19 @@
 import assert from "node:assert/strict";
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { initCommand } from "../src/commands/init.js";
-import { ensureAgentsFile } from "../src/utils/agentsFile.js";
-import type { DevmapConfig } from "../src/utils/config.js";
+import {
+  DEVMAP_AGENTS_BLOCK,
+  ensureAgentsFile,
+  inspectAgentsFile
+} from "../src/utils/agentsFile.js";
+import {
+  getConfigPath,
+  readConfig,
+  type DevmapConfig
+} from "../src/utils/config.js";
 import { buildDevmapFile, ensureDevmapFile } from "../src/utils/devmapFile.js";
 import { DevmapError, handleError } from "../src/utils/errors.js";
 import type { Prompt } from "../src/utils/prompt.js";
@@ -88,7 +96,7 @@ test("interactive init appends DevMap instructions only after confirmation", asy
 
     const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
     assert.ok(content.startsWith(original));
-    assert.match(content, /<!-- DEVMap Instruction Block -->/);
+    assert.match(content, /<!-- DevMap Instruction Block -->/);
     assert.match(content, /read `DEVMAP\.md` first/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -147,9 +155,61 @@ test("AGENTS.md integration is idempotent", async () => {
     assert.equal(await ensureAgentsFile(projectRoot, true), "unchanged");
 
     const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
-    assert.equal(content.match(/<!-- DEVMap Instruction Block -->/g)?.length, 1);
+    assert.equal(content.match(/<!-- DevMap Instruction Block -->/g)?.length, 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("AGENTS.md recognizes canonical and legacy DevMap markers", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agents-marker-test-"));
+
+  try {
+    await writeFile(join(projectRoot, "AGENTS.md"), DEVMAP_AGENTS_BLOCK, "utf8");
+    assert.equal(await inspectAgentsFile(projectRoot), "integrated");
+
+    await writeFile(
+      join(projectRoot, "AGENTS.md"),
+      "<!-- DEVMap Instruction Block -->\nLegacy block.\n",
+      "utf8"
+    );
+    assert.equal(await inspectAgentsFile(projectRoot), "integrated");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("readConfig returns null for invalid config schemas", async () => {
+  const temporaryHome = await mkdtemp(join(tmpdir(), "devmap-config-test-"));
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+
+  try {
+    process.env.HOME = temporaryHome;
+    process.env.USERPROFILE = temporaryHome;
+    const configPath = getConfigPath();
+    await mkdir(join(temporaryHome, ".devmap"), { recursive: true });
+
+    await writeFile(configPath, JSON.stringify({
+      provider: "openai",
+      model: 42
+    }), "utf8");
+    assert.equal(await readConfig(), null);
+
+    await writeFile(configPath, JSON.stringify({
+      provider: "groq",
+      model: "auto",
+      apiKey: "gsk_fixture"
+    }), "utf8");
+    assert.deepEqual(await readConfig(), {
+      provider: "groq",
+      model: "auto",
+      apiKey: "gsk_fixture"
+    });
+  } finally {
+    restoreEnvironment("HOME", originalHome);
+    restoreEnvironment("USERPROFILE", originalUserProfile);
+    await rm(temporaryHome, { recursive: true, force: true });
   }
 });
 
@@ -265,4 +325,13 @@ function createFakePrompt(answers: string[]): FakePrompt {
       this.closed = true;
     }
   };
+}
+
+function restoreEnvironment(name: "HOME" | "USERPROFILE", value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+
+  process.env[name] = value;
 }

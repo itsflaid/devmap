@@ -1,6 +1,6 @@
 # Catatan Debugging DevMap
 
-Terakhir diperbarui: 2026-06-13
+Terakhir diperbarui: 2026-06-14
 
 Dokumen ini menyimpan masalah teknis yang pernah ditemukan selama development
 DevMap. Tujuannya supaya penyebab, solusi, dan cara verifikasinya tidak perlu
@@ -708,3 +708,39 @@ disediakan oleh pnpm.
 
 Jangan bergantung pada struktur internal instalasi package manager. Gunakan
 executable publiknya ketika menguji perilaku CLI lintas platform.
+
+## 13. Persisted Data Dipercaya Tanpa Validasi Mendalam
+
+**Tanggal:** 2026-06-14
+**Status:** Selesai
+
+### Gejala
+
+Config dengan schema salah tetap dianggap valid, dan snapshot dengan entry
+`fileIndex` tidak lengkap dapat membuat Context Builder melempar `TypeError`.
+Groq client juga berhenti setelah satu retry ketika beberapa respons 429 muncul
+berturut-turut.
+
+### Akar Masalah
+
+Validasi hanya dilakukan pada JSON dan field snapshot tingkat atas. Data lokal
+yang dapat rusak atau berasal dari versi lama langsung di-cast ke type
+TypeScript. Retry rate limit memakai satu cabang `if`, bukan loop berbatas.
+
+### Solusi
+
+- Validasi provider dan model config sebelum mengembalikan config.
+- Validasi shape setiap entry `fileIndex` sebelum snapshot dianggap valid.
+- Retry HTTP 429 maksimal tiga kali dengan backoff 1x, 2x, dan 4x.
+
+### Verifikasi
+
+- Automated tests untuk config invalid dan entry `fileIndex` invalid.
+- Automated tests untuk recovery setelah tiga 429 dan error setelah retry habis.
+- `pnpm test:cli`
+- `pnpm test:package-e2e`
+
+### Pelajaran
+
+TypeScript type assertion tidak memvalidasi data runtime. Semua data persisted
+harus melewati boundary validation sebelum dipakai oleh command lain.

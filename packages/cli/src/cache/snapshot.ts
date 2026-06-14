@@ -95,6 +95,10 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
       return { status: "corrupt", error: "Snapshot is missing required fields." };
     }
 
+    if (!Object.values(parsed.fileIndex).every(isFileIndexEntry)) {
+      return { status: "corrupt", error: "fileIndex contains invalid entries." };
+    }
+
     return { status: "valid", snapshot: parsed as ProjectMap };
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
@@ -110,6 +114,16 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isFileIndexEntry(value: unknown): boolean {
+  return (
+    isRecord(value)
+    && typeof value.hash === "string"
+    && Array.isArray(value.imports)
+    && Array.isArray(value.exportedSymbols)
+    && typeof value.lines === "number"
+  );
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

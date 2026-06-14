@@ -210,3 +210,25 @@ test("snapshot inspection distinguishes corrupt and unsupported files", async ()
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+test("snapshot inspection rejects invalid fileIndex entries", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-snapshot-index-test-"));
+
+  try {
+    const snapshot = await createProjectMap(nextFixture);
+    snapshot.fileIndex["app/page.tsx"] = {
+      hash: "fixture",
+      imports: undefined as unknown as string[],
+      exportedSymbols: [],
+      lines: 1
+    };
+    await saveSnapshot(projectRoot, snapshot);
+
+    assert.deepEqual(await inspectSnapshot(projectRoot), {
+      status: "corrupt",
+      error: "fileIndex contains invalid entries."
+    });
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

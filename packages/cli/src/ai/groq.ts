@@ -10,6 +10,7 @@ const GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models";
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_RATE_LIMIT_DELAY_MS = 1000;
 const MAX_RATE_LIMIT_DELAY_MS = 10_000;
+const MAX_RATE_LIMIT_RETRIES = 3;
 
 export const DEFAULT_AI_MODELS = {
   ask: "openai/gpt-oss-20b",
@@ -69,8 +70,16 @@ export class GroqClient implements AiClient {
   ): Promise<GroqRequestResult> {
     let response = await this.sendRequest(request, model);
 
-    if (response.status === 429) {
-      await this.sleep(readRetryDelay(response));
+    for (
+      let retryAttempt = 0;
+      response.status === 429 && retryAttempt < MAX_RATE_LIMIT_RETRIES;
+      retryAttempt += 1
+    ) {
+      const delay = Math.min(
+        readRetryDelay(response) * (2 ** retryAttempt),
+        MAX_RATE_LIMIT_DELAY_MS
+      );
+      await this.sleep(delay);
       response = await this.sendRequest(request, model);
     }
 

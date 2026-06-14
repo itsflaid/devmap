@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
@@ -32,7 +33,11 @@ test("doctor reports project, provider, model, and snapshot diagnostics", async 
       })
     }));
 
-    assert.match(logs, /DevMap\s+0\.1\.0/);
+    const packageJson = JSON.parse(await readFile(
+      join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"),
+      "utf8"
+    )) as { version: string };
+    assert.match(logs, new RegExp(`DevMap\\s+${escapeRegExp(packageJson.version)}`));
     assert.match(logs, /Framework\s+express/);
     assert.match(logs, /Provider\s+groq/);
     assert.match(logs, /API key\s+valid/);
@@ -118,4 +123,8 @@ async function captureOutput(action: () => Promise<void>): Promise<string> {
 
 function stripAnsi(value: string): string {
   return value.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

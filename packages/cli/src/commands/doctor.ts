@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { resolve } from "node:path";
 import {
@@ -13,7 +14,10 @@ import { readConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { output } from "../utils/output.js";
 
-const DEVMAP_VERSION = "0.1.0";
+const require = createRequire(import.meta.url);
+const { version: DEVMAP_VERSION } = require("../../package.json") as {
+  version: string;
+};
 const MINIMUM_NODE_MAJOR = 18;
 
 export type DoctorDependencies = {

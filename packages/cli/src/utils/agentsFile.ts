@@ -2,7 +2,10 @@ import { appendFile, lstat, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DevmapError } from "./errors.js";
 
-export const DEVMAP_AGENTS_BLOCK = `<!-- DEVMap Instruction Block -->
+const DEVMAP_AGENTS_MARKER = "<!-- DevMap Instruction Block -->";
+const LEGACY_DEVMAP_AGENTS_MARKER = "<!-- DEVMap Instruction Block -->";
+
+export const DEVMAP_AGENTS_BLOCK = `${DEVMAP_AGENTS_MARKER}
 ## DevMap Context
 
 Before working in this repository, read \`DEVMAP.md\` first.
@@ -25,7 +28,10 @@ export async function inspectAgentsFile(projectRoot: string): Promise<AgentsFile
     }
 
     const content = await readFile(path, "utf8");
-    return content.includes("<!-- DEVMap Instruction Block -->")
+    return (
+      content.includes(DEVMAP_AGENTS_MARKER)
+      || content.includes(LEGACY_DEVMAP_AGENTS_MARKER)
+    )
       ? "integrated"
       : "existing";
   } catch (error) {

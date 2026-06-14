@@ -362,6 +362,12 @@ interface DevMapSnapshot {
 }
 ```
 
+In snapshot schema v1, `totalFiles` and `relevantFiles` both count the files
+returned by the filtered scanner. DevMap does not currently walk the ignored
+filesystem paths to calculate a separate pre-filter total. Both fields remain
+in the schema for compatibility and for a future analyzer that may collect
+those counts separately.
+
 ---
 
 ## Context Builder

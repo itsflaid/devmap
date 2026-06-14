@@ -153,8 +153,8 @@ pnpm --filter devmap test:types
 Hasil minimum saat ini:
 
 ```text
-tests 43
-pass 43
+tests 47
+pass 47
 fail 0
 ```
 

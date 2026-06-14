@@ -2,18 +2,6 @@ import { existsSync } from "node:fs";
 import { getSnapshotPath } from "../cache/snapshot.js";
 import { theme } from "./output.js";
 
-const SYMBOL_LOGO = [
-  "           ╷        ╱╲",
-  "    ╭──────┼──────╱  ╲",
-  "  ╭─╯      ●─────╯   ╱",
-  " ╱        ╱│        ╱",
-  "│       ╱  │  ╭────╯",
-  "│     ╱    │╱╱",
-  " ╲__╱     ╱│",
-  "    ╲____╱ │",
-  "           ╵"
-];
-
 const WIDE_WORDMARK = [
   "██████╗ ███████╗██╗   ██╗███╗   ███╗ █████╗ ██████╗",
   "██╔══██╗██╔════╝██║   ██║████╗ ████║██╔══██╗██╔══██╗",
@@ -26,6 +14,8 @@ const WIDE_WORDMARK = [
 const WIDE_PANEL_WIDTH = 76;
 const COMPACT_PANEL_WIDTH = 48;
 const WIDE_TERMINAL_MINIMUM = 72;
+const PRODUCT_LABEL = "DEVMAP CLI";
+const PRODUCT_CAPABILITIES = "CODEBASE MAP  /  STATIC ANALYSIS  /  AI CONTEXT";
 
 export function printWelcome(projectRoot: string): void {
   const hasSnapshot = existsSync(getSnapshotPath(projectRoot));
@@ -49,32 +39,39 @@ export function printWelcome(projectRoot: string): void {
 
 export function renderWelcomeBrandPanel(terminalWidth: number): string {
   const isWide = terminalWidth >= WIDE_TERMINAL_MINIMUM;
-  const panelWidth = Math.max(
-    28,
-    Math.min(
-      terminalWidth,
-      isWide ? WIDE_PANEL_WIDTH : COMPACT_PANEL_WIDTH
-    )
+  const contentWidth = Math.max(
+    24,
+    Math.min(terminalWidth, isWide ? WIDE_PANEL_WIDTH : COMPACT_PANEL_WIDTH)
   );
-  const contentWidth = panelWidth - 4;
   const wordmark = isWide ? WIDE_WORDMARK : ["DEVMAP"];
-  const content = [
-    ...SYMBOL_LOGO,
-    "",
-    ...wordmark
-  ];
-  const top = `╭${"─".repeat(panelWidth - 2)}╮`;
-  const bottom = `╰${"─".repeat(panelWidth - 2)}╯`;
-  const rows = content.map((line) => {
-    const visibleLine = line.slice(0, contentWidth);
-    const leftPadding = Math.floor((contentWidth - visibleLine.length) / 2);
-    const rightPadding = contentWidth - visibleLine.length - leftPadding;
-    return `│ ${" ".repeat(leftPadding)}${visibleLine}${" ".repeat(rightPadding)} │`;
-  });
+  const label = centerLine(`[ ${PRODUCT_LABEL} ]`, contentWidth);
+  const wordmarkRows = centerBlock(wordmark, contentWidth);
+  const capabilities = centerLine(
+    isWide ? PRODUCT_CAPABILITIES : "CODEBASE INTELLIGENCE",
+    contentWidth
+  );
+  const separator = "━".repeat(Math.min(contentWidth, 64));
 
-  return [top, ...rows, bottom]
-    .map((line) => `${theme.aqua}${line}${theme.reset}`)
-    .join("\n");
+  return [
+    `${theme.gray}${label}${theme.reset}`,
+    "",
+    ...wordmarkRows.map((line) => `${theme.aqua}${line}${theme.reset}`),
+    "",
+    `${theme.gray}${capabilities}${theme.reset}`,
+    `${theme.aqua}${separator}${theme.reset}`
+  ].join("\n");
+}
+
+function centerLine(line: string, width: number): string {
+  const visibleLine = line.slice(0, width);
+  const leftPadding = Math.floor((width - visibleLine.length) / 2);
+  return `${" ".repeat(leftPadding)}${visibleLine}`;
+}
+
+function centerBlock(lines: string[], width: number): string[] {
+  const blockWidth = Math.min(width, Math.max(...lines.map((line) => line.length)));
+  const leftPadding = Math.floor((width - blockWidth) / 2);
+  return lines.map((line) => `${" ".repeat(leftPadding)}${line.slice(0, width)}`);
 }
 
 function printCommand(command: string, description?: string): void {

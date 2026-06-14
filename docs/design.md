@@ -146,9 +146,15 @@ The wordmark should use the aqua brand color.
 
 Everything below the wordmark should stay concise.
 
-The welcome brand signal is framed in a single aqua panel. Wide terminals show
-the DevMap symbol above the large wordmark. Narrow terminals keep the symbol
-but use a compact `DEVMAP` title so the panel does not wrap or clip.
+The welcome brand signal uses a large outlined block DevMap wordmark
+without a surrounding panel or separate symbol. A small CLI label, concise
+capability line, and solid aqua separator make it feel like a professional
+developer tool without adding decorative terminal noise.
+
+Narrow terminals use a compact `DEVMAP` title and shorter capability label so
+the welcome header does not wrap or clip. The wide wordmark relies on Unicode
+block and box-drawing glyphs; terminals without compatible fonts may use the
+compact fallback or require a font configuration adjustment.
 
 Example:
 

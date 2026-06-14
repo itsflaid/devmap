@@ -13,10 +13,10 @@ const MAX_RATE_LIMIT_DELAY_MS = 10_000;
 const MAX_RATE_LIMIT_RETRIES = 3;
 
 export const DEFAULT_AI_MODELS = {
-  ask: "openai/gpt-oss-20b",
+  ask: "llama-3.1-8b-instant",
   analyze: "openai/gpt-oss-20b",
-  deepAnalyze: "llama-3.3-70b-versatile",
-  fallback: "llama-3.3-70b-versatile"
+  deepAnalyze: "openai/gpt-oss-120b",
+  fallback: "openai/gpt-oss-20b"
 } as const;
 
 export type GroqClientDependencies = {

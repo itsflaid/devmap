@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { DEFAULT_AI_MODELS } from "../src/ai/groq.js";
 import type {
   AiClient,
   AiCompletionRequest,
@@ -119,6 +120,56 @@ test("analyze warns and continues when package.json is malformed", async () => {
         "package.json could not be parsed. Dependency-based detection may be incomplete."
       ]);
     }
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("analyze auto routing uses 20B normally and 120B for deep analysis", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-model-routing-"));
+  const requests: AiCompletionRequest[] = [];
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      requests.push(request);
+      return {
+        content: "Architecture result.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "model-routing-fixture" }),
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "index.ts"), "export const ready = true;\n", "utf8");
+
+    const dependencies = {
+      loadConfig: async () => ({
+        provider: "groq" as const,
+        apiKey: "gsk_fixture",
+        model: "auto"
+      }),
+      createAiClient: () => client
+    };
+
+    await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { fresh: true },
+      dependencies
+    ));
+    await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { deep: true, fresh: true },
+      dependencies
+    ));
+
+    assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.analyze);
+    assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.deepAnalyze);
+    assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
+    assert.equal(requests[1]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

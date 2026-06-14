@@ -4,6 +4,7 @@ const commands = [
   ["init", "Initialize DevMap configuration"],
   ["analyze", "Analyze project structure"],
   ["ask <question>", "Ask about your codebase"],
+  ["config model", "Set model override or automatic routing"],
   ["doctor", "Diagnose DevMap setup"]
 ] as const;
 

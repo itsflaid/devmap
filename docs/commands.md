@@ -6,14 +6,15 @@
 
 ## Overview
 
-DevMap MVP provides four core commands:
+DevMap MVP provides four core project commands and one configuration command:
 
 * `devmap init`
 * `devmap analyze`
 * `devmap ask`
 * `devmap doctor`
+* `devmap config model`
 
-No additional commands should be added until the MVP is shipped.
+No additional product commands should be added until the MVP is shipped.
 
 Future commands are documented in:
 
@@ -436,6 +437,29 @@ Issues found:
 * Errors must be actionable
 * Do not expose raw stack traces
 * Mention what command the user should run next
+
+---
+
+## `devmap config model`
+
+Set a global model override for AI-powered commands.
+
+### Usage
+
+```bash
+devmap config model llama-3.1-8b-instant
+devmap config model openai/gpt-oss-120b
+devmap config model auto
+```
+
+`auto` restores command-based routing:
+
+* `ask` uses `llama-3.1-8b-instant`
+* `analyze` uses `openai/gpt-oss-20b`
+* `analyze --deep` uses `openai/gpt-oss-120b`
+
+The command preserves the configured provider and API key. DevMap must be
+initialized before changing the model.
 
 ---
 

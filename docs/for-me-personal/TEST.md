@@ -160,6 +160,32 @@ Sebelum publish MVP:
 5. Uji `npm exec` tanpa global install.
 6. Uji Groq live.
 7. Pastikan seluruh GitHub Actions hijau.
+8. Ikuti checklist version, package inspection, npm publish, dan post-publish
+   verification di `docs/releasing.md`.
+
+## Release Hardening 0.1.0
+
+Focused metadata test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/package-distribution.test.ts
+```
+
+Inspect metadata before packing:
+
+```powershell
+node -p "require('./packages/cli/package.json').version"
+node -p "require('./packages/cli/package.json').description"
+```
+
+Expected:
+
+- version `0.1.0`;
+- package name `devmap`;
+- description matches the product positioning;
+- keyword includes AI, codebase, developer tools, and static analysis;
+- package README includes `GROQ_API_KEY`, `--json`, privacy, and beta scope;
+- root `CHANGELOG.md` contains the `0.1.0` release.
 
 ## Persiapan Awal
 

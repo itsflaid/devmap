@@ -315,6 +315,8 @@ See [docs/roadmap.md](./docs/roadmap.md) for details.
 * [docs/design.md](./docs/design.md)
 * [docs/benchmarking.md](./docs/benchmarking.md)
 * [docs/roadmap.md](./docs/roadmap.md)
+* [docs/releasing.md](./docs/releasing.md)
+* [CHANGELOG.md](./CHANGELOG.md)
 * [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---

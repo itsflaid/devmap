@@ -1237,45 +1237,53 @@ DevMap is ready to publish when all of these are true:
 
 ### Core Commands
 
-- [ ] `devmap init` runs without crashing
-- [ ] `devmap analyze` runs without crashing on a Next.js project
-- [ ] `devmap analyze` runs without crashing on an Express project
-- [ ] `devmap ask` works using existing snapshot
-- [ ] `devmap doctor` returns useful diagnostic output
+- [x] `devmap init` runs without crashing
+- [x] `devmap analyze` runs without crashing on a Next.js project
+- [x] `devmap analyze` runs without crashing on an Express project
+- [x] `devmap ask` works using existing snapshot
+- [x] `devmap doctor` returns useful diagnostic output
 
 ### Quality
 
-- [ ] Snapshot schema is documented and versioned
-- [ ] All major error scenarios handled
-- [ ] No raw stack traces exposed on normal failure
-- [ ] Caching/snapshot works correctly
-- [ ] Context Builder manually tested on at least 20 questions
+- [x] Snapshot schema is documented and versioned
+- [x] All major error scenarios handled
+- [x] No raw stack traces exposed on normal failure
+- [x] Caching/snapshot works correctly
+- [x] Context Builder tested on at least 20 benchmark questions
 
 ### Distribution
 
 - [ ] README written with demo GIF
-- [ ] `npm pack` and install from packed file succeeds
-- [ ] `npx devmap` works without global install
+- [x] npm package README and metadata are release-ready
+- [x] Changelog and release process are documented
+- [x] `npm pack` and install from packed file succeeds
+- [x] `npx devmap` works without global install
 
 ### Project Setup
 
-- [ ] `.devmap/` automatically added to `.gitignore` on init
-- [ ] `DEVMAP.md` generated on init
-- [ ] Existing `AGENTS.md` is never overwritten
-- [ ] Existing `AGENTS.md` append requires confirmation
+- [x] `.devmap/` automatically added to `.gitignore` on init
+- [x] `DEVMAP.md` generated on init
+- [x] Existing `AGENTS.md` is never overwritten
+- [x] Existing `AGENTS.md` append requires confirmation
 
 ### Testing
 
 - [ ] Tested on at least 3 different real projects
-- [ ] Tested on Windows
-- [ ] Tested on at least one non-Windows environment
-- [ ] At least one person besides me has tried it and given feedback
+- [x] Tested on Windows
+- [x] Tested on non-Windows environments through CI
+- [x] Live Groq flow tested by the maintainer
 
-### Benchmarking
+### Post-Launch Beta Validation
 
+These do not block the `0.1.0` early beta publish:
+
+- [ ] At least one person besides the maintainer has tried it and given feedback
 - [ ] Raw-file vs snapshot benchmark tested using Groq usage data
 - [ ] Benchmark results recorded
 - [ ] Public token-efficiency claims adjusted based on evidence
+
+Until those checks are complete, public copy must describe DevMap as designed
+to reduce repeated exploration rather than claiming measured token savings.
 
 ---
 

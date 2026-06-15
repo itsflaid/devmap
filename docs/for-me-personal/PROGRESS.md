@@ -4,6 +4,20 @@ Terakhir diperbarui: 2026-06-15
 
 ## Update 2026-06-15
 
+### Release Hardening 0.1.0
+
+- Versi beta pertama ditetapkan sebagai `0.1.0`.
+- Metadata npm sekarang memakai deskripsi dan keyword product yang jelas.
+- README package npm menjelaskan instalasi, Groq setup, command, generated
+  files, agent JSON output, supported stacks, privacy, dan known scope beta.
+- `CHANGELOG.md` mencatat fitur, security/privacy behavior, dan known
+  limitations `0.1.0`.
+- `docs/releasing.md` mendefinisikan release gates, tarball inspection, first
+  npm publish, verification setelah publish, tag GitHub, dan rancangan CD.
+- Launch checklist PRD disinkronkan dengan bukti automated test dan CI.
+- Feedback external dan benchmarking dipindahkan menjadi post-launch beta
+  validation, tanpa mengizinkan claim token savings sebelum ada hasil.
+
 ### AI Response Streaming
 
 - Human-readable `devmap ask` dan AI interpretation pada `devmap analyze`

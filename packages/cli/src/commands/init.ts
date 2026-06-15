@@ -12,10 +12,11 @@ import {
 import { ensureDevmapFile } from "../utils/devmapFile.js";
 import { DevmapError } from "../utils/errors.js";
 import { ensureDevmapIgnored } from "../utils/gitignore.js";
-import { output } from "../utils/output.js";
+import { output, withJsonOutput } from "../utils/output.js";
 import { createPrompt, type Prompt } from "../utils/prompt.js";
 
 export type InitDependencies = {
+  json?: boolean;
   projectRoot?: string;
   prompt?: Prompt;
   validateApiKey?: (apiKey: string) => Promise<void>;
@@ -26,8 +27,23 @@ export type InitDependencies = {
 };
 
 export async function initCommand(dependencies: InitDependencies = {}): Promise<void> {
+  if (dependencies.json) {
+    await withJsonOutput(async () => {
+      output.json(await runInit(dependencies));
+    });
+    return;
+  }
+
+  await runInit(dependencies);
+}
+
+async function runInit(
+  dependencies: InitDependencies
+): Promise<Record<string, unknown>> {
   const projectRoot = resolve(dependencies.projectRoot ?? process.cwd());
-  const interactive = dependencies.isInteractive ?? Boolean(process.stdin.isTTY && process.stdout.isTTY);
+  const interactive = dependencies.json
+    ? false
+    : dependencies.isInteractive ?? Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const loadConfig = dependencies.loadConfig ?? readConfig;
   const persistConfig = dependencies.persistConfig ?? writeConfig;
   const existingConfig = await loadConfig();
@@ -79,6 +95,18 @@ export async function initCommand(dependencies: InitDependencies = {}): Promise<
     output.success(devmapFileCreated ? "Created DEVMAP.md" : "DEVMAP.md already exists");
     printAgentsResult(agentsResult);
     output.step("Next: devmap analyze");
+    return {
+      status: "ok",
+      provider: "groq",
+      model: "auto",
+      framework,
+      files: {
+        gitignoreUpdated: ignored,
+        devmapFileCreated,
+        agentsFile: agentsResult
+      },
+      next: "devmap analyze"
+    };
   } finally {
     prompt?.close();
   }

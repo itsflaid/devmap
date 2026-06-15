@@ -12,7 +12,7 @@ import { detectProjectMetadata } from "../analyzers/projectMetadata.js";
 import { inspectSnapshot } from "../cache/snapshot.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
-import { output } from "../utils/output.js";
+import { output, withJsonOutput } from "../utils/output.js";
 
 const require = createRequire(import.meta.url);
 const { version: DEVMAP_VERSION } = require("../../package.json") as {
@@ -21,6 +21,7 @@ const { version: DEVMAP_VERSION } = require("../../package.json") as {
 const MINIMUM_NODE_MAJOR = 18;
 
 export type DoctorDependencies = {
+  json?: boolean;
   projectRoot?: string;
   loadConfig?: () => Promise<DevmapConfig | null>;
   inspectProvider?: (
@@ -32,6 +33,19 @@ export type DoctorDependencies = {
 export async function doctorCommand(
   dependencies: DoctorDependencies = {}
 ): Promise<void> {
+  if (dependencies.json) {
+    await withJsonOutput(async () => {
+      output.json(await runDoctor(dependencies));
+    });
+    return;
+  }
+
+  await runDoctor(dependencies);
+}
+
+async function runDoctor(
+  dependencies: DoctorDependencies
+): Promise<Record<string, unknown>> {
   const projectRoot = resolve(dependencies.projectRoot ?? process.cwd());
   const loadConfig = dependencies.loadConfig ?? readConfig;
   const inspectProvider = dependencies.inspectProvider ?? inspectGroqProvider;
@@ -47,6 +61,8 @@ export async function doctorCommand(
     : config?.model;
   const issues: string[] = [];
   const nodeSupported = readNodeMajor(process.version) >= MINIMUM_NODE_MAJOR;
+  let apiKeyStatus = "not configured";
+  let modelStatus = selectedModel ?? "not configured";
 
   output.section("DevMap Doctor");
   output.keyValue("DevMap", DEVMAP_VERSION);
@@ -67,14 +83,16 @@ export async function doctorCommand(
     issues.push("Run devmap init again to configure Groq.");
     output.keyValue("API key", "missing");
     output.keyValue("Model", selectedModel ?? "not configured");
+    apiKeyStatus = "missing";
   } else {
     try {
       const provider = await inspectProvider(config.apiKey, selectedModel);
-      output.keyValue("API key", provider.reachable ? "valid" : "unreachable");
-      output.keyValue(
-        "Model",
-        provider.modelAvailable ? selectedModel : `unavailable: ${selectedModel}`
-      );
+      apiKeyStatus = provider.reachable ? "valid" : "unreachable";
+      modelStatus = provider.modelAvailable
+        ? selectedModel
+        : `unavailable: ${selectedModel}`;
+      output.keyValue("API key", apiKeyStatus);
+      output.keyValue("Model", modelStatus);
 
       if (!provider.modelAvailable) {
         issues.push("Run devmap init or choose an available Groq model.");
@@ -85,6 +103,8 @@ export async function doctorCommand(
         : "Provider diagnostics failed.";
       output.keyValue("API key", "invalid or unreachable");
       output.keyValue("Model", selectedModel);
+      apiKeyStatus = "invalid or unreachable";
+      modelStatus = selectedModel;
       issues.push(message);
     }
   }
@@ -99,13 +119,32 @@ export async function doctorCommand(
 
   if (issues.length === 0) {
     output.success("No issues found");
-    return;
+  } else {
+    output.section("Issues");
+    for (const issue of issues) {
+      output.warning(issue);
+    }
   }
 
-  output.section("Issues");
-  for (const issue of issues) {
-    output.warning(issue);
-  }
+  return {
+    status: issues.length === 0 ? "ok" : "issues",
+    devmapVersion: DEVMAP_VERSION,
+    node: {
+      version: process.version,
+      supported: nodeSupported
+    },
+    os: {
+      platform: platform(),
+      arch: arch()
+    },
+    project,
+    provider: config?.provider ?? null,
+    config: config ? "exists" : "missing",
+    snapshot: snapshotResult.status,
+    apiKey: apiKeyStatus,
+    model: modelStatus,
+    issues
+  };
 }
 
 function readNodeMajor(version: string): number {

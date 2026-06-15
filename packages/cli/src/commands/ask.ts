@@ -6,9 +6,10 @@ import { inspectSnapshot, isSnapshotStale } from "../cache/snapshot.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { analyzeCommand } from "./analyze.js";
-import { output } from "../utils/output.js";
+import { output, withJsonOutput } from "../utils/output.js";
 
 export type AskDependencies = {
+  json?: boolean;
   projectRoot?: string;
   loadConfig?: () => Promise<DevmapConfig | null>;
   createAiClient?: (config: DevmapConfig) => AiClient;
@@ -18,10 +19,24 @@ export async function askCommand(
   questionParts: string[],
   dependencies: AskDependencies = {}
 ): Promise<void> {
+  if (dependencies.json) {
+    await withJsonOutput(async () => {
+      output.json(await runAsk(questionParts, dependencies));
+    });
+    return;
+  }
+
+  await runAsk(questionParts, dependencies);
+}
+
+async function runAsk(
+  questionParts: string[],
+  dependencies: AskDependencies
+): Promise<Record<string, unknown>> {
   const question = questionParts.join(" ").trim();
   if (!question) {
     output.error("Please include a question.");
-    return;
+    return { status: "error", error: "Please include a question." };
   }
 
   const projectRoot = dependencies.projectRoot ?? process.cwd();
@@ -39,7 +54,7 @@ export async function askCommand(
 
   if (snapshotResult.status !== "valid") {
     output.error("Could not create snapshot.");
-    return;
+    return { status: "error", error: "Could not create snapshot." };
   }
 
   const snapshot = snapshotResult.snapshot;
@@ -53,7 +68,11 @@ export async function askCommand(
   output.section("Relevant Files");
   if (context.files.length === 0) {
     output.warning("No strong file matches found. Try running devmap analyze --fresh after more code exists.");
-    return;
+    return {
+      status: "no_context",
+      question,
+      relevantFiles: []
+    };
   }
 
   for (const file of context.files) {
@@ -67,7 +86,14 @@ export async function askCommand(
     output.warning("AI answering is not configured yet.");
     output.note("Run devmap init to configure a Groq API key.");
     printStaticContext(context.files);
-    return;
+    return {
+      status: "static",
+      question,
+      relevantFiles: serializeContextFiles(context.files),
+      answer: null,
+      model: null,
+      usage: null
+    };
   }
 
   const createAiClient = dependencies.createAiClient
@@ -89,6 +115,14 @@ export async function askCommand(
     output.section("Answer");
     output.markdown(answer.content);
     output.note(formatUsage(answer.model, answer.usage));
+    return {
+      status: "ok",
+      question,
+      relevantFiles: serializeContextFiles(context.files),
+      answer: answer.content,
+      model: answer.model,
+      usage: answer.usage ?? null
+    };
   } catch (error) {
     if (!(error instanceof DevmapError)) {
       throw error;
@@ -100,7 +134,30 @@ export async function askCommand(
     }
     output.note("Showing selected source context instead.");
     printStaticContext(context.files);
+    return {
+      status: "fallback",
+      question,
+      relevantFiles: serializeContextFiles(context.files),
+      answer: null,
+      model,
+      usage: null,
+      error: error.message,
+      hint: error.hint ?? null
+    };
   }
+}
+
+function serializeContextFiles(
+  files: Awaited<ReturnType<typeof buildQuestionContext>>["files"]
+): Array<Record<string, unknown>> {
+  return files.map((file) => ({
+    path: file.path,
+    score: file.score,
+    reasons: file.reasons,
+    startLine: file.startLine,
+    endLine: file.endLine,
+    truncated: file.truncated
+  }));
 }
 
 function printStaticContext(

@@ -24,6 +24,11 @@ Purpose:
 
 Direct AI agents to DevMap.
 
+Generated `DEVMAP.md` tells AI agents to use command-level `--json` output
+instead of parsing decorated terminal text. This applies to `analyze`, `ask`,
+and `doctor`, while `init --json` is intended for non-interactive setup with an
+environment API key.
+
 Rules:
 
 - Never overwrite existing file

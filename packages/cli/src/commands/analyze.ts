@@ -6,11 +6,12 @@ import { createProjectMap } from "../analyzers/projectMap.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
-import { output } from "../utils/output.js";
+import { output, withJsonOutput } from "../utils/output.js";
 
 export type AnalyzeOptions = {
   deep?: boolean;
   fresh?: boolean;
+  json?: boolean;
 };
 
 export type AnalyzeDependencies = {
@@ -23,6 +24,22 @@ export async function analyzeCommand(
   options: AnalyzeOptions = {},
   dependencies: AnalyzeDependencies = {}
 ): Promise<void> {
+  if (options.json) {
+    await withJsonOutput(async () => {
+      const snapshot = await runAnalyze(target, options, dependencies);
+      output.json(snapshot);
+    });
+    return;
+  }
+
+  await runAnalyze(target, options, dependencies);
+}
+
+async function runAnalyze(
+  target: string,
+  options: AnalyzeOptions,
+  dependencies: AnalyzeDependencies
+): Promise<Awaited<ReturnType<typeof createProjectMap>>> {
   const projectRoot = resolve(target);
 
   output.section("DevMap Analyze");
@@ -34,13 +51,12 @@ export async function analyzeCommand(
   if (previous.status === "valid" && previous.snapshot.fingerprint === snapshot.fingerprint) {
     printSnapshot(previous.snapshot, options.deep);
     output.success("Project is unchanged. Reused existing snapshot.");
-    await printOrGenerateInterpretation(
+    return printOrGenerateInterpretation(
       projectRoot,
       previous.snapshot,
       options,
       dependencies
     );
-    return;
   }
 
   await saveSnapshot(projectRoot, snapshot);
@@ -51,7 +67,7 @@ export async function analyzeCommand(
     output.success("Fresh analysis completed");
   }
 
-  await printOrGenerateInterpretation(projectRoot, snapshot, options, dependencies);
+  return printOrGenerateInterpretation(projectRoot, snapshot, options, dependencies);
 }
 
 function printSnapshot(
@@ -109,19 +125,19 @@ async function printOrGenerateInterpretation(
   snapshot: Awaited<ReturnType<typeof createProjectMap>>,
   options: AnalyzeOptions,
   dependencies: AnalyzeDependencies
-): Promise<void> {
+): Promise<Awaited<ReturnType<typeof createProjectMap>>> {
   if (snapshot.ai && !options.fresh) {
     output.section("Architecture");
     output.markdown(snapshot.ai.architecture);
     output.note(formatAiMetadata(snapshot.ai.model, snapshot.ai.usage, true));
-    return;
+    return snapshot;
   }
 
   const loadConfig = dependencies.loadConfig ?? readConfig;
   const config = await loadConfig();
   if (!config?.apiKey) {
     output.note("AI architecture interpretation is not configured. Run devmap init to enable it.");
-    return;
+    return snapshot;
   }
 
   const createAiClient = dependencies.createAiClient
@@ -160,6 +176,7 @@ async function printOrGenerateInterpretation(
       interpretation.usage,
       false
     ));
+    return updatedSnapshot;
   } catch (error) {
     if (!(error instanceof DevmapError)) {
       throw error;
@@ -170,6 +187,7 @@ async function printOrGenerateInterpretation(
       output.note(`Tip: ${error.hint}`);
     }
     output.note("Static analysis and snapshot were still completed successfully.");
+    return snapshot;
   }
 }
 

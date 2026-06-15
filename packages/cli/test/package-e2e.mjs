@@ -94,16 +94,37 @@ try {
     const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
     assert.equal(snapshot.project.framework, expectedFramework);
 
+    const analyzeJson = parseJsonOutput(await runDevmap(projectRoot, [
+      "analyze",
+      "--fresh",
+      "--json"
+    ]));
+    assert.equal(analyzeJson.project.framework, expectedFramework);
+
     const ask = await runDevmap(projectRoot, [
       "ask",
       "Where is the main application entry point?"
     ]);
     assert.match(stripAnsi(ask.stdout), /Relevant Files/);
 
+    const askJson = parseJsonOutput(await runDevmap(projectRoot, [
+      "ask",
+      "Where is the main application entry point?",
+      "--json"
+    ]));
+    assert.equal(askJson.status, "static");
+    assert.ok(Array.isArray(askJson.relevantFiles));
+
     const doctor = await runDevmap(projectRoot, ["doctor"]);
     const doctorOutput = stripAnsi(doctor.stdout);
     assert.match(doctorOutput, /DevMap Doctor/);
     assert.match(doctorOutput, /Config\s+missing/i);
+
+    const doctorJson = parseJsonOutput(await runDevmap(projectRoot, [
+      "doctor",
+      "--json"
+    ]));
+    assert.equal(doctorJson.config, "missing");
   }
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
@@ -152,4 +173,9 @@ function quoteWindowsArgument(value) {
 
 function stripAnsi(value) {
   return value.replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
+function parseJsonOutput(result) {
+  assert.doesNotMatch(result.stdout, /\u001B\[|─|•/);
+  return JSON.parse(result.stdout);
 }

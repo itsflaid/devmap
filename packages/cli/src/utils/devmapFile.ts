@@ -39,14 +39,19 @@ This repository uses DevMap to create reusable project context for developers an
 \`\`\`bash
 devmap analyze
 devmap analyze --deep
+devmap analyze --json
 devmap ask "how does authentication work?"
+devmap ask "where is authentication handled?" --json
 devmap doctor
+devmap doctor --json
 \`\`\`
 
 ## Guidance For AI Agents
 
 - Read this file before exploring the repository.
 - Prefer the DevMap snapshot to blind repository-wide exploration.
+- Use \`--json\` when calling DevMap programmatically so stdout remains one
+  parseable JSON document without ANSI or terminal decoration.
 - Start from entry points and critical files reported by DevMap.
 - Do not edit generated files inside \`.devmap/\`.
 - Re-run analysis when the snapshot may be stale.

@@ -489,6 +489,35 @@ devmap [command] --no-color
 | `--json`     | Output machine-readable JSON    |
 | `--no-color` | Disable colored terminal output |
 
+### JSON Contract
+
+Use `--json` when DevMap is called by an AI agent, script, CI job, or editor
+integration.
+
+```bash
+devmap init --json
+devmap analyze --json
+devmap analyze --deep --json
+devmap ask "where is authentication handled?" --json
+devmap doctor --json
+devmap config model auto --json
+```
+
+Contract:
+
+* stdout contains exactly one JSON document
+* ANSI codes and terminal decoration are disabled
+* progress sections and Markdown rendering are omitted
+* runtime failures return a JSON object with `status`, `error`, and optional `hint`
+* `init --json` never prompts and therefore requires `GROQ_API_KEY` or an
+  existing API key
+* package-manager wrapper warnings may appear on stderr and are not part of the
+  DevMap JSON document
+
+`analyze --json` returns the project snapshot. `ask --json` returns the answer,
+selected files, model, and token usage. `doctor --json` returns diagnostics and
+issues as structured fields.
+
 ---
 
 ## Future Commands

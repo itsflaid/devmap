@@ -45,6 +45,52 @@ test("Groq client returns normalized content and token usage", async () => {
   });
 });
 
+test("Groq client streams split SSE deltas and returns the complete result", async () => {
+  const deltas: string[] = [];
+  const encoder = new TextEncoder();
+  const client = new GroqClient("gsk_test", {
+    fetch: async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        stream?: boolean;
+        stream_options?: { include_usage?: boolean };
+      };
+      assert.equal(body.stream, true);
+      assert.equal(body.stream_options?.include_usage, true);
+
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(
+            'data: {"model":"llama-3.1-8b-instant","choices":[{"delta":{"content":"Auth"}}]}\n'
+          ));
+          controller.enqueue(encoder.encode(
+            '\ndata: {"model":"llama-3.1-8b-instant","choices":[{"delta":{"content":" works."}}],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}\n\n'
+          ));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
+      }), {
+        headers: { "content-type": "text/event-stream" }
+      });
+    }
+  });
+
+  const result = await client.stream({
+    messages: [{ role: "user", content: "Explain auth." }],
+    model: DEFAULT_AI_MODELS.ask
+  }, (delta) => {
+    deltas.push(delta);
+  });
+
+  assert.deepEqual(deltas, ["Auth", " works."]);
+  assert.equal(result.content, "Auth works.");
+  assert.equal(result.model, DEFAULT_AI_MODELS.ask);
+  assert.deepEqual(result.usage, {
+    promptTokens: 10,
+    completionTokens: 2,
+    totalTokens: 12
+  });
+});
+
 test("Groq client retries rate limits with exponential backoff", async () => {
   let requestCount = 0;
   const delays: number[] = [];

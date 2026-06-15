@@ -34,7 +34,7 @@ adding AI on top. If the foundation is wrong, AI output will be wrong too.
 - Groq integration with provider abstraction layer
 - Prompt templates for analyze and ask
 - Context Builder — keyword search + file ranking
-- Streaming output
+- [x] Streaming output for human `analyze` and `ask` responses
 - Retry logic + model fallback
 - Token-aware context trimming (max 5 files, max 200 lines each)
 - Cache integration — skip AI for unchanged files

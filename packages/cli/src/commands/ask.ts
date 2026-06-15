@@ -1,4 +1,5 @@
 import { buildQuestionContext } from "../ai/contextBuilder.js";
+import { completeWithOptionalStreaming } from "../ai/completion.js";
 import { DEFAULT_AI_MODELS, GroqClient } from "../ai/groq.js";
 import { buildAskMessages } from "../ai/prompts.js";
 import type { AiClient } from "../ai/types.js";
@@ -104,16 +105,19 @@ async function runAsk(
   output.step(`Asking Groq with ${model}`);
 
   try {
-    const answer = await client.complete({
+    const execution = await completeWithOptionalStreaming(client, {
       messages: buildAskMessages(context, snapshot.project),
       model,
       fallbackModel: DEFAULT_AI_MODELS.fallback,
       maxCompletionTokens: 1200,
       temperature: 0.2
-    });
+    }, !dependencies.json, () => output.section("Answer"));
+    const answer = execution.result;
 
-    output.section("Answer");
-    output.markdown(answer.content);
+    if (!execution.streamed) {
+      output.section("Answer");
+      output.markdown(answer.content);
+    }
     output.note(formatUsage(answer.model, answer.usage));
     return {
       status: "ok",

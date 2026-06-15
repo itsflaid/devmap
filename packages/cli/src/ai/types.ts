@@ -23,6 +23,12 @@ export type AiCompletionResult = {
   usage?: AiTokenUsage;
 };
 
+export type AiDeltaHandler = (delta: string) => void;
+
 export interface AiClient {
   complete(request: AiCompletionRequest): Promise<AiCompletionResult>;
+  stream?(
+    request: AiCompletionRequest,
+    onDelta: AiDeltaHandler
+  ): Promise<AiCompletionResult>;
 }

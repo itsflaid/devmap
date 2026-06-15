@@ -91,6 +91,62 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
   }
 });
 
+test("analyze streams new AI interpretation and persists the complete text", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-analyze-stream-"));
+  let streamCalls = 0;
+  const client: AiClient = {
+    async complete(): Promise<AiCompletionResult> {
+      throw new Error("complete should not be used for human output");
+    },
+    async stream(request, onDelta): Promise<AiCompletionResult> {
+      streamCalls += 1;
+      onDelta("## Overview\n\n");
+      onDelta("The project has one entry point.");
+      return {
+        content: "## Overview\n\nThe project has one entry point.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "analyze-stream-fixture" }),
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "index.ts"), "export const ready = true;\n", "utf8");
+
+    const logs = stripAnsi(await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { fresh: true },
+      {
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    )));
+
+    assert.equal(streamCalls, 1);
+    assert.match(logs, /Overview\n-+/);
+    assert.match(logs, /The project has one entry point/);
+
+    const saved = await inspectSnapshot(projectRoot);
+    assert.equal(saved.status, "valid");
+    if (saved.status === "valid") {
+      assert.equal(
+        saved.snapshot.ai?.architecture,
+        "## Overview\n\nThe project has one entry point."
+      );
+    }
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("analyze warns and continues when package.json is malformed", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-malformed-package-"));
 

@@ -60,6 +60,49 @@ test("ask command uses configured AI client and prints token usage", async () =>
   }
 });
 
+test("ask command streams AI paragraphs when the client supports streaming", async () => {
+  const projectRoot = await createAskProject();
+  let completeCalls = 0;
+  let streamCalls = 0;
+  const client: AiClient = {
+    async complete(): Promise<AiCompletionResult> {
+      completeCalls += 1;
+      throw new Error("complete should not be used for human output");
+    },
+    async stream(request, onDelta): Promise<AiCompletionResult> {
+      streamCalls += 1;
+      onDelta("## Authentication\n\n");
+      onDelta("Authentication uses `auth.ts`.");
+      return {
+        content: "## Authentication\n\nAuthentication uses `auth.ts`.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    const logs = stripAnsi(await captureOutput(() => askCommand(
+      ["where", "is", "auth"],
+      {
+        projectRoot,
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    )));
+
+    assert.equal(streamCalls, 1);
+    assert.equal(completeCalls, 0);
+    assert.match(logs, /Authentication\n-+/);
+    assert.match(logs, /Authentication uses auth\.ts\./);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("ask command falls back to static context after actionable AI errors", async () => {
   const projectRoot = await createAskProject();
   const client: AiClient = {

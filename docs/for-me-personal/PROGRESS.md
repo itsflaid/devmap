@@ -1,6 +1,24 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-14
+Terakhir diperbarui: 2026-06-15
+
+## Update 2026-06-15
+
+### AI Response Streaming
+
+- Human-readable `devmap ask` dan AI interpretation pada `devmap analyze`
+  sekarang memakai Groq server-sent events.
+- Delta response direkonstruksi menjadi hasil lengkap untuk token metadata,
+  snapshot persistence, dan cache.
+- Output ditampilkan progresif per paragraf agar heading, list, table, wrapping,
+  dan inline Markdown tetap rapi.
+- Provider yang belum memiliki method streaming tetap memakai regular
+  completion tanpa mengubah public command behavior.
+- Retry rate limit dan model fallback tetap berjalan sebelum stream dibaca.
+- `--json` sengaja tidak memakai streaming agar stdout tetap satu dokumen JSON.
+- Automated test mencakup SSE yang terpecah antar-network chunk, command
+  streaming, snapshot persistence, dan JSON non-streaming.
+- Automated test saat ini berjumlah 65 dan seluruhnya lulus.
 
 ## Update 2026-06-14
 

@@ -3,6 +3,7 @@ import type {
   AiClient,
   AiCompletionRequest,
   AiCompletionResult,
+  AiDeltaHandler,
   AiTokenUsage
 } from "./types.js";
 
@@ -64,46 +65,55 @@ export class GroqClient implements AiClient {
     throw primaryResult.error;
   }
 
+  async stream(
+    request: AiCompletionRequest,
+    onDelta: AiDeltaHandler
+  ): Promise<AiCompletionResult> {
+    const primaryResult = await this.requestModelStream(
+      request,
+      request.model,
+      onDelta
+    );
+
+    if (primaryResult.ok) {
+      return primaryResult.result;
+    }
+
+    if (
+      primaryResult.modelUnavailable
+      && request.fallbackModel
+      && request.fallbackModel !== request.model
+    ) {
+      const fallbackResult = await this.requestModelStream(
+        request,
+        request.fallbackModel,
+        onDelta
+      );
+      if (fallbackResult.ok) {
+        return fallbackResult.result;
+      }
+
+      throw fallbackResult.error;
+    }
+
+    throw primaryResult.error;
+  }
+
   private async requestModel(
     request: AiCompletionRequest,
     model: string
   ): Promise<GroqRequestResult> {
-    let response = await this.sendRequest(request, model);
-
-    for (
-      let retryAttempt = 0;
-      response.status === 429 && retryAttempt < MAX_RATE_LIMIT_RETRIES;
-      retryAttempt += 1
-    ) {
-      const delay = Math.min(
-        readRetryDelay(response) * (2 ** retryAttempt),
-        MAX_RATE_LIMIT_DELAY_MS
-      );
-      await this.sleep(delay);
-      response = await this.sendRequest(request, model);
-    }
+    const response = await this.sendWithRateLimitRetries(request, model, false);
 
     if (!response.ok) {
-      const providerMessage = await readProviderError(response);
-      return {
-        ok: false,
-        modelUnavailable: isModelUnavailable(response.status, providerMessage),
-        error: mapGroqError(response.status, providerMessage)
-      };
+      return readFailedRequest(response);
     }
 
     const payload = await readCompletionPayload(response);
     const content = payload.choices[0]?.message?.content?.trim();
 
     if (!content) {
-      return {
-        ok: false,
-        modelUnavailable: false,
-        error: new DevmapError(
-          "Groq returned an empty response.",
-          "Try the question again or run devmap doctor."
-        )
-      };
+      return emptyResponseResult();
     }
 
     return {
@@ -116,9 +126,59 @@ export class GroqClient implements AiClient {
     };
   }
 
+  private async requestModelStream(
+    request: AiCompletionRequest,
+    model: string,
+    onDelta: AiDeltaHandler
+  ): Promise<GroqRequestResult> {
+    const response = await this.sendWithRateLimitRetries(request, model, true);
+
+    if (!response.ok) {
+      return readFailedRequest(response);
+    }
+
+    const payload = await readCompletionStream(response, model, onDelta);
+    if (!payload.content.trim()) {
+      return emptyResponseResult();
+    }
+
+    return {
+      ok: true,
+      result: {
+        content: payload.content.trim(),
+        model: payload.model,
+        ...(payload.usage ? { usage: payload.usage } : {})
+      }
+    };
+  }
+
+  private async sendWithRateLimitRetries(
+    request: AiCompletionRequest,
+    model: string,
+    stream: boolean
+  ): Promise<Response> {
+    let response = await this.sendRequest(request, model, stream);
+
+    for (
+      let retryAttempt = 0;
+      response.status === 429 && retryAttempt < MAX_RATE_LIMIT_RETRIES;
+      retryAttempt += 1
+    ) {
+      const delay = Math.min(
+        readRetryDelay(response) * (2 ** retryAttempt),
+        MAX_RATE_LIMIT_DELAY_MS
+      );
+      await this.sleep(delay);
+      response = await this.sendRequest(request, model, stream);
+    }
+
+    return response;
+  }
+
   private async sendRequest(
     request: AiCompletionRequest,
-    model: string
+    model: string,
+    stream = false
   ): Promise<Response> {
     try {
       return await this.fetchImplementation(GROQ_CHAT_COMPLETIONS_URL, {
@@ -131,7 +191,11 @@ export class GroqClient implements AiClient {
           model,
           messages: request.messages,
           max_completion_tokens: request.maxCompletionTokens ?? 1200,
-          temperature: request.temperature ?? 0.2
+          temperature: request.temperature ?? 0.2,
+          ...(stream ? {
+            stream: true,
+            stream_options: { include_usage: true }
+          } : {})
         })
       });
     } catch {
@@ -203,9 +267,42 @@ type GroqCompletionPayload = {
   };
 };
 
+type GroqStreamPayload = {
+  model?: string;
+  choices?: Array<{
+    delta?: {
+      content?: string | null;
+    };
+  }>;
+  usage?: GroqCompletionPayload["usage"];
+  x_groq?: {
+    usage?: GroqCompletionPayload["usage"];
+  };
+};
+
 type GroqRequestResult =
   | { ok: true; result: AiCompletionResult }
   | { ok: false; modelUnavailable: boolean; error: DevmapError };
+
+async function readFailedRequest(response: Response): Promise<GroqRequestResult> {
+  const providerMessage = await readProviderError(response);
+  return {
+    ok: false,
+    modelUnavailable: isModelUnavailable(response.status, providerMessage),
+    error: mapGroqError(response.status, providerMessage)
+  };
+}
+
+function emptyResponseResult(): GroqRequestResult {
+  return {
+    ok: false,
+    modelUnavailable: false,
+    error: new DevmapError(
+      "Groq returned an empty response.",
+      "Try the question again or run devmap doctor."
+    )
+  };
+}
 
 async function readCompletionPayload(response: Response): Promise<GroqCompletionPayload> {
   try {
@@ -234,6 +331,104 @@ async function readProviderError(response: Response): Promise<string> {
   } catch {
     return `HTTP ${response.status}`;
   }
+}
+
+async function readCompletionStream(
+  response: Response,
+  requestedModel: string,
+  onDelta: AiDeltaHandler
+): Promise<{
+  content: string;
+  model: string;
+  usage?: AiTokenUsage;
+}> {
+  if (!response.body) {
+    throw new DevmapError(
+      "Groq returned an unreadable streaming response.",
+      "Try again shortly or run devmap doctor."
+    );
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let content = "";
+  let model = requestedModel;
+  let usage: AiTokenUsage | undefined;
+
+  const consumeEvent = (event: string): boolean => {
+    const data = event
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart())
+      .join("\n");
+
+    if (!data) return false;
+    if (data.trim() === "[DONE]") return true;
+
+    let payload: GroqStreamPayload;
+    try {
+      payload = JSON.parse(data) as GroqStreamPayload;
+    } catch {
+      throw new DevmapError(
+        "Groq returned an unreadable streaming response.",
+        "Try again shortly or check https://status.groq.com."
+      );
+    }
+
+    model = payload.model || model;
+    const delta = payload.choices?.[0]?.delta?.content;
+    if (delta) {
+      content += delta;
+      onDelta(delta);
+    }
+
+    const rawUsage = payload.usage ?? payload.x_groq?.usage;
+    if (rawUsage) {
+      usage = normalizeUsage(rawUsage);
+    }
+
+    return false;
+  };
+
+  try {
+    let done = false;
+    while (!done) {
+      const readResult = await reader.read();
+      buffer += decoder.decode(readResult.value, { stream: !readResult.done });
+
+      const events = buffer.split(/\r?\n\r?\n/);
+      buffer = events.pop() ?? "";
+      for (const event of events) {
+        if (consumeEvent(event)) {
+          done = true;
+          break;
+        }
+      }
+
+      if (readResult.done) {
+        if (!done && buffer.trim()) {
+          consumeEvent(buffer);
+        }
+        break;
+      }
+    }
+  } catch (error) {
+    if (error instanceof DevmapError) {
+      throw error;
+    }
+
+    throw new DevmapError(
+      "The Groq response stream ended unexpectedly.",
+      "Try again or run devmap doctor if the problem continues."
+    );
+  }
+
+  return {
+    content,
+    model,
+    ...(usage ? { usage } : {})
+  };
 }
 
 function mapGroqError(status: number, providerMessage: string): DevmapError {

@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { completeWithOptionalStreaming } from "../ai/completion.js";
 import { DEFAULT_AI_MODELS, GroqClient } from "../ai/groq.js";
 import { buildAnalyzeMessages } from "../ai/prompts.js";
 import type { AiClient } from "../ai/types.js";
@@ -151,13 +152,14 @@ async function printOrGenerateInterpretation(
   output.step(`Interpreting architecture with ${model}`);
 
   try {
-    const interpretation = await client.complete({
+    const execution = await completeWithOptionalStreaming(client, {
       messages: buildAnalyzeMessages(snapshot, options.deep),
       model,
       fallbackModel: DEFAULT_AI_MODELS.fallback,
       maxCompletionTokens: options.deep ? 1800 : 1000,
       temperature: 0.2
-    });
+    }, !options.json, () => output.section("Architecture"));
+    const interpretation = execution.result;
     const updatedSnapshot = {
       ...snapshot,
       ai: {
@@ -169,8 +171,10 @@ async function printOrGenerateInterpretation(
     };
 
     await saveSnapshot(projectRoot, updatedSnapshot);
-    output.section("Architecture");
-    output.markdown(interpretation.content);
+    if (!execution.streamed) {
+      output.section("Architecture");
+      output.markdown(interpretation.content);
+    }
     output.note(formatAiMetadata(
       interpretation.model,
       interpretation.usage,

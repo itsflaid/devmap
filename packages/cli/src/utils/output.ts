@@ -26,6 +26,11 @@ function color(value: string | number, tone: keyof typeof theme): string {
   return `${theme[tone]}${value}${theme.reset}`;
 }
 
+export type MarkdownStream = {
+  write(chunk: string): void;
+  end(): void;
+};
+
 export const output = {
   section(title: string): void {
     if (isJsonOutput()) return;
@@ -79,6 +84,35 @@ export const output = {
       width: process.stdout.columns ?? 80,
       colors: true
     }));
+  },
+
+  markdownStream(): MarkdownStream {
+    let buffer = "";
+
+    const renderParagraph = (paragraph: string): void => {
+      if (isJsonOutput() || paragraph.trim() === "") return;
+      console.log(renderTerminalMarkdown(paragraph, {
+        width: process.stdout.columns ?? 80,
+        colors: true
+      }));
+    };
+
+    return {
+      write(chunk: string): void {
+        buffer += chunk.replace(/\r\n?/g, "\n");
+
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary >= 0) {
+          renderParagraph(buffer.slice(0, boundary));
+          buffer = buffer.slice(boundary + 2);
+          boundary = buffer.indexOf("\n\n");
+        }
+      },
+      end(): void {
+        renderParagraph(buffer);
+        buffer = "";
+      }
+    };
   },
 
   json(value: unknown): void {

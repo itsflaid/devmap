@@ -34,8 +34,11 @@ test("ask --json emits answer, relevant files, model, and usage", async () => {
   const projectRoot = await createProject("json-ask");
   const snapshot = await createProjectMap(projectRoot);
   await saveSnapshot(projectRoot, snapshot);
+  let completeCalls = 0;
+  let streamCalls = 0;
   const client: AiClient = {
     async complete(request) {
+      completeCalls += 1;
       return {
         content: "The entry point is index.ts.",
         model: request.model,
@@ -45,6 +48,10 @@ test("ask --json emits answer, relevant files, model, and usage", async () => {
           totalTokens: 28
         }
       };
+    },
+    async stream() {
+      streamCalls += 1;
+      throw new Error("JSON output must not use streaming");
     }
   };
 
@@ -69,6 +76,8 @@ test("ask --json emits answer, relevant files, model, and usage", async () => {
     assert.equal(payload.model, "llama-3.1-8b-instant");
     assert.equal(payload.usage.totalTokens, 28);
     assert.ok(Array.isArray(payload.relevantFiles));
+    assert.equal(completeCalls, 1);
+    assert.equal(streamCalls, 0);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

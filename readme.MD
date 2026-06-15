@@ -105,6 +105,10 @@ The snapshot is the primary output of DevMap.
 
 Everything else builds on top of it.
 
+Human `analyze` and `ask` responses stream progressively while preserving
+readable terminal Markdown. Agent-facing `--json` output stays buffered as one
+complete JSON document.
+
 ---
 
 ## Quick Start
@@ -126,6 +130,9 @@ devmap doctor
 devmap ask "explain the main architecture"
 devmap ask "where is the auth logic?"
 devmap ask "what external services does this use?"
+
+# Machine-readable output for AI agents and scripts
+devmap ask "where is the auth logic?" --json
 ```
 
 ---
@@ -184,6 +191,10 @@ work immediately
 ```
 
 One snapshot. Every tool. No repeated explanations.
+
+Use `--json` when an agent or script calls DevMap. Human terminal output streams
+AI explanations progressively, while JSON mode returns one complete parseable
+document without ANSI or terminal decoration.
 
 > Benchmark results coming — with and without DevMap, same task, measured token usage.
 > See [docs/benchmarking.md](./docs/benchmarking.md) for methodology.

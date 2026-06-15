@@ -101,6 +101,39 @@ Expected:
 - API keys are never included;
 - packed package E2E verifies JSON output after tarball installation.
 
+## AI Response Streaming
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/ai-client.test.ts test/ask-command.test.ts test/analyze-ai.test.ts test/json-output.test.ts
+```
+
+Coverage penting:
+
+- SSE event tetap terbaca ketika JSON event terpecah pada network chunk;
+- delta dikirim berurutan dan hasil lengkap dikembalikan provider;
+- `ask` dan fresh AI interpretation `analyze` memakai streaming jika tersedia;
+- hasil lengkap `analyze` tetap disimpan ke snapshot;
+- `--json` memakai completion penuh dan tidak memanggil streaming.
+
+Manual live check:
+
+```powershell
+$env:GROQ_API_KEY="gsk_your_key"
+pnpm dev:cli -- analyze --fresh
+pnpm dev:cli -- ask "explain the main architecture"
+pnpm dev:cli -- ask "explain the main architecture" --json | ConvertFrom-Json
+Remove-Item Env:GROQ_API_KEY
+```
+
+Expected:
+
+- human output mulai tampil sebelum seluruh AI response selesai;
+- Markdown tidak tampil mentah;
+- model dan token usage tetap muncul setelah stream selesai;
+- JSON baru dicetak setelah response lengkap dan dapat diparse langsung.
+
 ## Urutan Testing Yang Direkomendasikan
 
 Untuk development harian:

@@ -506,6 +506,26 @@ Raw provider errors should not be shown directly to users.
 
 ---
 
+## Streaming AI Output
+
+Groq chat completions use server-sent events for human-readable `analyze` and
+`ask` output. The provider adapter reconstructs the complete response while
+emitting incremental deltas to the output layer.
+
+Terminal Markdown is buffered to paragraph boundaries before rendering. This
+keeps headings, lists, tables, wrapping, and inline formatting readable while
+still showing the answer before generation has fully completed.
+
+Rules:
+
+* streaming is an optional `AiClient` capability
+* commands fall back to regular completion for clients without streaming
+* the final reconstructed text is used for snapshot persistence and metadata
+* rate-limit retry and model fallback happen before consuming response deltas
+* `--json` never streams because stdout must contain one complete JSON document
+
+---
+
 ## Prompt Strategy
 
 Prompt templates should be centralized.

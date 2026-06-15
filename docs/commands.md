@@ -235,6 +235,8 @@ Shared utilities, database access, authentication logic, and helpers.
 * Snapshot must be regenerated after analyze
 * Snapshot must remain compact and deterministic
 * Raw provider errors must not be shown directly to users
+* New AI interpretation streams progressively in human-readable mode
+* Cached interpretation is rendered immediately without a provider request
 
 ---
 
@@ -318,6 +320,8 @@ app/api/auth/*
 * Keep answer readable
 * Respond in the same language as the question
 * Technical labels can remain in English
+* Stream new AI answers progressively in human-readable mode
+* Do not stream `--json`; emit one complete JSON document instead
 
 ### Output Example
 
@@ -508,6 +512,7 @@ Contract:
 * stdout contains exactly one JSON document
 * ANSI codes and terminal decoration are disabled
 * progress sections and Markdown rendering are omitted
+* AI responses are buffered instead of streamed
 * runtime failures return a JSON object with `status`, `error`, and optional `hint`
 * `init --json` never prompts and therefore requires `GROQ_API_KEY` or an
   existing API key

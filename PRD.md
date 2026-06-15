@@ -379,6 +379,8 @@ Question
 - Prefer 3–5 most relevant files
 - Include related files in output
 - Keep technical labels readable and consistent
+- Stream human-readable AI responses progressively
+- Keep `--json` buffered so stdout remains exactly one valid JSON document
 
 ---
 
@@ -454,6 +456,7 @@ JSON mode rules:
 - no ANSI colors, Markdown rendering, box drawing, or progress text
 - runtime errors use a stable `{ "status": "error", "error": "...", "hint": "..." }` shape
 - `init --json` is non-interactive and requires `GROQ_API_KEY` or existing config
+- AI responses are buffered instead of streamed
 - human-readable output remains the default
 - package-manager wrappers may still write their own warnings to stderr
 

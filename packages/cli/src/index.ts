@@ -8,13 +8,14 @@ import { initCommand } from "./commands/init.js";
 import { printHelp } from "./utils/help.js";
 import { printWelcome } from "./utils/welcome.js";
 import { runSafely } from "./utils/errors.js";
+import { DEVMAP_VERSION } from "./utils/packageMetadata.js";
 
 const program = new Command();
 
 program
   .name("devmap")
   .description("Understand any codebase in minutes, not days.")
-  .version("0.1.0");
+  .version(DEVMAP_VERSION);
 
 program
   .command("init")

@@ -1,7 +1,7 @@
 {
   "name": "devmap",
   "version": "0.1.0",
-  "description": "DevMap command line interface.",
+  "description": "AI-powered CLI to analyze, map, and explain codebases.",
   "bin": {
     "devmap": "./dist/index.js"
   },
@@ -23,8 +23,14 @@
   },
   "keywords": [
     "devmap",
+    "ai",
     "cli",
-    "static-analysis"
+    "codebase",
+    "code-analysis",
+    "developer-tools",
+    "static-analysis",
+    "architecture",
+    "groq"
   ],
   "author": "Muhammad Fadil",
   "license": "MIT",

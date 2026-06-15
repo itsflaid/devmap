@@ -113,9 +113,9 @@ Not planned. Not scheduled. Revisit when Phase 5 ships.
 
 | Version | Phase | Description |
 |---|---|---|
-| 0.1.0 | 1 | Static analysis only — no AI |
-| 0.2.0 | 1 | `devmap init` + `devmap doctor` |
-| 1.0.0 | 2 | `devmap analyze` + `devmap ask` with AI — first public release |
+| 0.1.0 | 2 | Early beta with static analysis, Groq AI, JSON output, and streaming |
+| 0.2.0 | 2 | Feedback-driven reliability and analyzer improvements |
+| 1.0.0 | 2 | Stable `devmap analyze` + `devmap ask` release |
 | 1.1.0 | 2 | Performance improvements, cache optimization |
 | 1.2.0 | 2 | Express support solidified |
 | 2.0.0 | 3 | `devmap docs` + `devmap onboard` |

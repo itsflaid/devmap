@@ -680,6 +680,20 @@ CLI output should be:
 * friendly for developers
 * consistent across commands
 
+### Agent Output
+
+Every MVP command supports `--json`. JSON mode is implemented at the output
+context layer so nested operations, such as `ask` triggering quick analysis,
+do not leak human progress text into stdout.
+
+Rules:
+
+* emit exactly one JSON document to stdout
+* suppress ANSI, Markdown rendering, bullets, and separators
+* keep human output as the default
+* use structured error objects and preserve non-zero exit codes for thrown failures
+* keep command result schemas stable enough for agents and scripts
+
 ### Output Should Include
 
 * progress feedback

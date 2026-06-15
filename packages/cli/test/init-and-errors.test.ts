@@ -24,6 +24,7 @@ test("DEVMAP.md contains workflow and AI-agent guidance", () => {
   assert.match(content, /Detected framework: nextjs/);
   assert.match(content, /devmap analyze/);
   assert.match(content, /Guidance For AI Agents/);
+  assert.match(content, /--json/);
   assert.match(content, /\.devmap\/snapshot\.json/);
   assert.match(content, /Never commit API keys/);
 });
@@ -303,6 +304,27 @@ test("global error handler translates missing paths into actionable output", () 
     assert.doesNotMatch(output, /internal ENOENT details/);
   } finally {
     console.error = originalError;
+    console.log = originalLog;
+  }
+});
+
+test("global error handler emits parseable JSON for machine output", () => {
+  const logs: string[] = [];
+  const originalLog = console.log;
+
+  console.log = (...values: unknown[]) => logs.push(values.join(" "));
+
+  try {
+    assert.equal(
+      handleError(new DevmapError("Readable failure.", "Use doctor."), true),
+      1
+    );
+    assert.deepEqual(JSON.parse(logs.join("\n")), {
+      status: "error",
+      error: "Readable failure.",
+      hint: "Use doctor."
+    });
+  } finally {
     console.log = originalLog;
   }
 });

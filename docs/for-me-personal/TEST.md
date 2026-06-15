@@ -70,6 +70,37 @@ pnpm dev:cli config model auto
 The first command should preserve the existing API key and provider. The last
 command should restore automatic command-based routing.
 
+## Agent JSON Output
+
+Focused contract test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/json-output.test.ts
+```
+
+Manual source-mode checks:
+
+```powershell
+pnpm dev:cli analyze --json
+pnpm dev:cli ask "where scanner" --json
+pnpm dev:cli doctor --json
+pnpm dev:cli config model auto --json
+```
+
+Pipe output into a JSON parser:
+
+```powershell
+pnpm dev:cli doctor --json | ConvertFrom-Json
+```
+
+Expected:
+
+- parsing succeeds without stripping ANSI;
+- stdout contains one JSON document;
+- no section header, separator, bullet, or Markdown formatting appears;
+- API keys are never included;
+- packed package E2E verifies JSON output after tarball installation.
+
 ## Urutan Testing Yang Direkomendasikan
 
 Untuk development harian:

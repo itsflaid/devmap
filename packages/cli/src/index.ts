@@ -19,7 +19,8 @@ program
 program
   .command("init")
   .description("Initialize DevMap configuration")
-  .action(() => initCommand());
+  .option("--json", "output machine-readable JSON")
+  .action((options) => initCommand({ json: options.json }));
 
 program
   .command("analyze")
@@ -27,26 +28,32 @@ program
   .argument("[target]", "folder to analyze", ".")
   .option("--deep", "show a deeper static breakdown")
   .option("--fresh", "ignore cache and run a fresh analysis")
+  .option("--json", "output machine-readable JSON")
   .action((target, options) => analyzeCommand(target, options));
 
 program
   .command("ask")
   .description("Find files relevant to a codebase question")
   .argument("<question...>", "question to ask")
-  .action(askCommand);
+  .option("--json", "output machine-readable JSON")
+  .action((question, options) => askCommand(question, { json: options.json }));
 
-program
+const configCommand = program
   .command("config")
-  .description("Update DevMap configuration")
+  .description("Update DevMap configuration");
+
+configCommand
   .command("model")
   .description("Set a model override or restore automatic routing")
   .argument("<model>", "Groq model ID or auto")
-  .action(configModelCommand);
+  .option("--json", "output machine-readable JSON")
+  .action((model, options) => configModelCommand(model, { json: options.json }));
 
 program
   .command("doctor")
   .description("Diagnose DevMap setup")
-  .action(doctorCommand);
+  .option("--json", "output machine-readable JSON")
+  .action((options) => doctorCommand({ json: options.json }));
 
 await runSafely(async () => {
   if (process.argv.length === 2) {

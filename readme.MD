@@ -1,6 +1,10 @@
 # devmap
 
-> Understand any codebase in minutes, not days.
+> The first command you run after git clone.
+
+AI should spend tokens solving problems, not rediscovering your codebase.
+
+Built by [Fadil (@itsflaid)](https://github.com/itsflaid)
 
 ---
 
@@ -10,17 +14,17 @@
 
 ## The Problem
 
-Modern AI tools generate code faster than developers can understand it.
+You ask AI for help.
 
-You clone a repository — hundreds of files stare back at you.
+It starts exploring the repository. Again.
 
-You join a project halfway through development — nobody has time to explain the architecture.
+You switch tools. It starts again.
 
-You return to an old project after months — and spend hours remembering how everything fits together.
+New session. Again.
 
-You ask AI for help — and the AI starts exploring the repository from scratch again.
+You join a project halfway through — nobody has time to explain the architecture.
 
-Reading every file manually does not scale.
+Every AI agent rebuilds context from scratch before real work begins.
 
 ---
 
@@ -39,19 +43,37 @@ The snapshot contains:
 * Detected features
 * Project relationships
 
-Instead of repeatedly exploring the codebase, developers and AI tools can start with a shared understanding of the project.
+One analysis. Reusable context. Any codebase.
 
-One analysis.
+Without DevMap:
 
-Reusable context.
+```txt
+Repository
+   ↓
+AI explores files
+   ↓
+AI rebuilds context
+   ↓
+Task begins
+```
 
-Any codebase.
+With DevMap:
+
+```txt
+Repository
+   ↓
+devmap analyze
+   ↓
+snapshot.json
+   ↓
+Reusable context
+   ↓
+Task begins immediately
+```
 
 ---
 
 ## How It Works
-
-DevMap works in three stages.
 
 ```txt
 devmap init
@@ -60,8 +82,8 @@ devmap init
   → prepares project
 
 devmap analyze
-  → runs static analysis
-  → discovers architecture
+  → runs static analysis (80%)
+  → AI interprets structure (20%)
   → generates snapshot.json
 
 snapshot.json
@@ -96,36 +118,17 @@ devmap init
 
 # Generate project context
 devmap analyze
-```
-
-DevMap generates:
-
-```txt
-.devmap/snapshot.json
-```
-
-This snapshot becomes a reusable source of project context for:
-
-* Developers
-* AI agents
-* Future DevMap commands
-
-### What comes next?
-
-```bash
-# Generate reusable project context
-devmap analyze
 
 # Verify your setup
 devmap doctor
 
-# Explore the architecture
+# Ask questions about your codebase
 devmap ask "explain the main architecture"
-
-# Future: generate onboarding guide
-devmap onboard
+devmap ask "where is the auth logic?"
+devmap ask "what external services does this use?"
 ```
 
+---
 
 ## Example Output
 
@@ -152,78 +155,21 @@ server-side. Database access is centralized through the data layer.
 
 Snapshot saved:
 .devmap/snapshot.json
-
-Ready for:
-→ AI agents
-→ DevMap commands
-→ Future onboarding generation
 ```
-
----
-
-## Why DevMap Exists
-
-Most AI tools rebuild project understanding every session.
-
-Without DevMap:
-
-```txt
-Repository
-   ↓
-AI explores files
-   ↓
-AI rebuilds context
-   ↓
-Task begins
-```
-
-With DevMap:
-
-```txt
-Repository
-   ↓
-DevMap Analysis
-   ↓
-snapshot.json
-   ↓
-Reusable Context
-   ↓
-Task begins
-```
-
-The goal is not to replace AI.
-
-The goal is to eliminate repeated project exploration.
 
 ---
 
 ## For AI Agents
 
-If you use:
-
-* Claude Code
-* OpenAI Codex
-* Gemini CLI
-* Cursor
-* Windsurf
-* Aider
-* GitHub Copilot
-* Amazon Q
-
-DevMap provides reusable project context.
+If you use Claude Code, OpenAI Codex, Gemini CLI, Cursor, Windsurf, Aider, GitHub Copilot, or Amazon Q — DevMap provides reusable project context that works across all of them.
 
 Without DevMap:
 
-* AI explores repositories from scratch
-* Context is rebuilt every session
+* AI explores repositories from scratch every session
 * Tokens are spent on discovery before solving problems
+* Context is lost when you switch tools
 
 With DevMap:
-
-* AI reads `AGENTS.md`
-* AI is directed to `DEVMAP.md`
-* AI loads `.devmap/snapshot.json`
-* AI starts with project context already available
 
 ```txt
 AI Agent
@@ -237,11 +183,26 @@ snapshot.json
 work immediately
 ```
 
-One snapshot.
+One snapshot. Every tool. No repeated explanations.
 
-Every tool.
+> Benchmark results coming — with and without DevMap, same task, measured token usage.
+> See [docs/benchmarking.md](./docs/benchmarking.md) for methodology.
 
-No repeated explanations.
+---
+
+## Vision
+
+DevMap is not an AI coding assistant.
+
+AI coding assistants help developers write code.
+DevMap helps developers understand code that already exists.
+
+They are complementary, not competitors.
+
+Use DevMap to understand the codebase.
+Use AI coding assistants to modify it.
+
+> DevMap is the context layer between developers, AI agents, and unfamiliar codebases.
 
 ---
 
@@ -261,79 +222,11 @@ No repeated explanations.
 
 ---
 
-## Documentation
-
-Detailed documentation:
-
-* [PRD.md](./PRD.md)
-* [docs/commands.md](./docs/commands.md)
-* [docs/architecture.md](./docs/architecture.md)
-* [docs/generated-files.md](./docs/generated-files.md)
-* [docs/design.md](./docs/design.md)
-* [docs/benchmarking.md](./docs/benchmarking.md)
-* [docs/development-testing.md](./docs/development-testing.md)
-* [docs/roadmap.md](./docs/roadmap.md)
-* [docs/contributing.md](./docs/contributing.md)
-
----
-
-## Roadmap
-
-### MVP
-
-* [x] `devmap init`
-* [x] `devmap analyze`
-* [x] `devmap ask`
-* [x] `devmap doctor`
-
-### Next
-
-* [ ] `devmap onboard`
-* [ ] `devmap features`
-* [ ] OpenAI provider
-* [ ] Gemini provider
-
-### Later
-
-* [ ] `devmap explain`
-* [ ] `devmap flow`
-* [ ] `devmap docs`
-* [ ] Local AI mode
-* [ ] VS Code Extension
-
-See:
-
-```txt
-docs/roadmap.md
-```
-
-for details.
-
----
-
-## Vision
-
-DevMap is not an AI coding assistant.
-
-AI coding assistants help developers write code.
-
-DevMap helps developers understand code that already exists.
-
-They are complementary, not competitors.
-
-Use DevMap to understand the codebase.
-
-Use AI coding assistants to modify it.
-
-> DevMap is the context layer between developers, AI agents, and unfamiliar codebases.
-
----
-
 ## AI Provider Setup
 
 DevMap is free and open source.
 
-AI features require a provider API key.
+AI features require a provider API key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
 
 | Provider | Status  |
 | -------- | ------- |
@@ -374,6 +267,47 @@ Node.js 18+
 
 ---
 
+## Roadmap
+
+### MVP
+
+* [x] `devmap init`
+* [x] `devmap analyze`
+* [x] `devmap ask`
+* [x] `devmap doctor`
+
+### Next
+
+* [ ] `devmap onboard`
+* [ ] `devmap features`
+* [ ] OpenAI provider
+* [ ] Gemini provider
+
+### Later
+
+* [ ] `devmap explain`
+* [ ] `devmap flow`
+* [ ] `devmap docs`
+* [ ] Local AI mode
+* [ ] VS Code Extension
+
+See [docs/roadmap.md](./docs/roadmap.md) for details.
+
+---
+
+## Documentation
+
+* [PRD.md](./PRD.md)
+* [docs/commands.md](./docs/commands.md)
+* [docs/architecture.md](./docs/architecture.md)
+* [docs/generated-files.md](./docs/generated-files.md)
+* [docs/design.md](./docs/design.md)
+* [docs/benchmarking.md](./docs/benchmarking.md)
+* [docs/roadmap.md](./docs/roadmap.md)
+* [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+---
+
 ## Contributing
 
 DevMap is open source and welcomes contributions.
@@ -383,7 +317,6 @@ git clone https://github.com/itsflaid/devmap
 cd devmap
 
 npm install
-
 npm link
 
 devmap analyze
@@ -393,16 +326,10 @@ Before contributing:
 
 1. Read `PRD.md`
 2. Read `docs/architecture.md`
-3. Read `docs/contributing.md`
+3. Read `CONTRIBUTING.md`
 
 ---
 
 ## License
 
-MIT License
-
-Use it, fork it, improve it, and build on top of it.
-
----
-
-Built by [@itsflaid](https://github.com/itsflaid)
+MIT License — use it, fork it, improve it, build on top of it.

@@ -4,6 +4,19 @@ Terakhir diperbarui: 2026-06-14
 
 ## Update 2026-06-14
 
+### Agent JSON Output
+
+- Seluruh command MVP mendukung `--json`.
+- stdout JSON hanya berisi satu dokumen valid tanpa ANSI, Markdown renderer,
+  bullet, separator, atau progress text.
+- `analyze --json` mengembalikan snapshot project.
+- `ask --json` mengembalikan answer, relevant files, model, dan token usage.
+- `doctor --json` mengembalikan diagnostics dan issues terstruktur.
+- `config model --json` mengembalikan model state tanpa membocorkan API key.
+- `init --json` berjalan non-interaktif dan membutuhkan environment API key
+  atau existing config.
+- Generated `DEVMAP.md` sekarang mengarahkan AI agent memakai `--json`.
+
 ### Model Routing And Config
 
 - Default `devmap ask` memakai `llama-3.1-8b-instant`.

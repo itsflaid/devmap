@@ -435,6 +435,28 @@ devmap config model auto
 The override applies to AI-powered commands. `auto` restores the defaults in
 the model routing table.
 
+### Machine-Readable Output
+
+All MVP commands support `--json` for AI agents, scripts, and editor
+integrations:
+
+```bash
+devmap init --json
+devmap analyze --json
+devmap ask "how does authentication work?" --json
+devmap doctor --json
+devmap config model auto --json
+```
+
+JSON mode rules:
+
+- stdout contains exactly one valid JSON document
+- no ANSI colors, Markdown rendering, box drawing, or progress text
+- runtime errors use a stable `{ "status": "error", "error": "...", "hint": "..." }` shape
+- `init --json` is non-interactive and requires `GROQ_API_KEY` or existing config
+- human-readable output remains the default
+- package-manager wrappers may still write their own warnings to stderr
+
 ---
 
 ## 10. Generated Files

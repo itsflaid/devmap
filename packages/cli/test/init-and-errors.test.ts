@@ -88,7 +88,7 @@ test("interactive init appends DevMap instructions only after confirmation", asy
 
     await initCommand({
       projectRoot,
-      prompt: createFakePrompt(["", "gsk_fixture", "yes"]),
+      prompt: createFakePrompt(["gsk_fixture", "yes"]),
       isInteractive: true,
       loadConfig: async () => null,
       persistConfig: async () => undefined,
@@ -113,7 +113,7 @@ test("interactive init preserves existing AGENTS.md when confirmation is decline
 
     await initCommand({
       projectRoot,
-      prompt: createFakePrompt(["", "gsk_fixture", "no"]),
+      prompt: createFakePrompt(["gsk_fixture", "no"]),
       isInteractive: true,
       loadConfig: async () => null,
       persistConfig: async () => undefined,
@@ -214,28 +214,30 @@ test("readConfig returns null for invalid config schemas", async () => {
   }
 });
 
-test("interactive init rejects unsupported providers without persisting config", async () => {
+test("interactive init uses Groq without prompting for a provider", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-provider-test-"));
-  let persisted = false;
-  const prompt = createFakePrompt(["openai"]);
+  const prompt = createFakePrompt(["gsk_fixture"]);
+  let savedConfig: DevmapConfig | null = null;
 
   try {
-    await assert.rejects(
-      initCommand({
-        projectRoot,
-        prompt,
-        isInteractive: true,
-        loadConfig: async () => null,
-        persistConfig: async () => {
-          persisted = true;
-        },
-        validateApiKey: async () => undefined
-      }),
-      (error: unknown) => error instanceof DevmapError && /not available/.test(error.message)
-    );
+    await initCommand({
+      projectRoot,
+      prompt,
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async (config) => {
+        savedConfig = config;
+      },
+      validateApiKey: async () => undefined
+    });
 
     assert.equal(prompt.closed, true);
-    assert.equal(persisted, false);
+    assert.deepEqual(savedConfig, {
+      provider: "groq",
+      apiKey: "gsk_fixture",
+      model: "auto"
+    });
+    assert.ok(prompt.questions.every((question) => !/^Provider\b/.test(question)));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -331,6 +333,7 @@ test("global error handler emits parseable JSON for machine output", () => {
 
 type FakePrompt = Prompt & {
   closed: boolean;
+  questions: string[];
 };
 
 function createFakePrompt(answers: string[]): FakePrompt {
@@ -338,7 +341,9 @@ function createFakePrompt(answers: string[]): FakePrompt {
 
   return {
     closed: false,
-    async ask(): Promise<string> {
+    questions: [],
+    async ask(question: string): Promise<string> {
+      this.questions.push(question);
       const answer = answers[index] ?? "";
       index += 1;
       return answer;

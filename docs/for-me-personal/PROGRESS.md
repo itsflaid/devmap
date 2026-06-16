@@ -1,6 +1,50 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-15
+Terakhir diperbarui: 2026-06-16
+
+## Update 2026-06-16
+
+### Ask Output Polish
+
+- Human-readable `devmap ask` sekarang hanya menampilkan path pada bagian
+  `Relevant Files`; alasan scoring tetap tersedia di `--json`.
+- Query understanding memisahkan intent umum (`add_feature`, `change`,
+  `debug`, `explain`, `navigate`, `general`) dari keyword pencarian agar
+  action word seperti `add`, `change`, atau `where` tidak mengganggu ranking.
+- Retrieval sekarang menyimpan `confidence` (`high`, `medium`, `low`) dan
+  `topScore` pada `QuestionContext`.
+- Minimum relevance threshold mencegah file dengan skor lemah dikirim hanya
+  karena menjadi kandidat terbaik dari hasil yang sama-sama tidak relevan.
+- Jika tidak ada file melewati threshold, `relevantFiles` kosong dan `ask`
+  memberi jawaban lokal low-confidence tanpa memanggil Groq.
+- Context keyword extraction mengabaikan connector word English seperti `to`
+  dan `in` agar file seperti `doctor.ts` tidak menang hanya karena partial
+  stop-word match.
+- Scoring path/export sekarang memprioritaskan exact search term dibanding
+  substring match, sehingga ranking lebih stabil untuk berbagai jenis
+  pertanyaan.
+- Prompt `ask` sekarang meminta jawaban langsung, tidak mengulang pertanyaan,
+  tidak mengulang section/sentence, dan tidak memberi contoh kode panjang
+  kecuali user memintanya eksplisit.
+- Prompt `ask` menerima intent generik dan diarahkan untuk memulai dari file
+  atau fungsi existing yang tersedia di context sebelum menyarankan file baru.
+- Context file sudah menyiapkan field future-oriented seperti `exports`,
+  `topFunctions`, dan `purpose`; extraction fungsi lengkap belum masuk scope.
+- Scoring kembali memakai data project map utama seperti route metadata dan
+  entry points agar `ask` tetap navigation helper berbasis snapshot.
+- Focused tests mencakup keyword extraction, ranking anti stop-word, output
+  terminal ringkas, intent extraction generik, relevance confidence, threshold
+  low-confidence, dan prompt contract.
+- Verification lulus untuk `pnpm test:cli`, `pnpm build:cli`, dan
+  `git diff --check`.
+
+### Init UX Polish
+
+- `devmap init` human-mode sekarang menampilkan DevMap welcome brand panel di
+  awal command.
+- Provider tidak lagi diprompt terpisah karena MVP hanya mendukung Groq.
+  Output cukup menampilkan `Provider Groq`, lalu meminta Groq API key.
+- Focused verification lulus untuk init dan welcome tests.
 
 ## Update 2026-06-15
 

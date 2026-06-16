@@ -6,30 +6,65 @@ const DEFAULT_MAX_FILES = 5;
 const DEFAULT_MAX_LINES_PER_FILE = 200;
 const NAVIGATION_MAX_FILES = 2;
 const NAVIGATION_MAX_LINES_PER_FILE = 60;
+const FOCUSED_MAX_FILES = 2;
+const FOCUSED_MAX_LINES_PER_FILE = 60;
+const MIN_RELEVANCE_SCORE = 25;
+const HIGH_CONFIDENCE_SCORE = 70;
+const MEDIUM_CONFIDENCE_SCORE = MIN_RELEVANCE_SCORE;
 
 const STOP_WORDS = new Set([
   "about",
   "adalah",
+  "a",
+  "an",
   "apa",
   "bagaimana",
   "bekerja",
+  "code",
   "dalam",
+  "do",
   "does",
   "find",
+  "feature",
+  "file",
   "have",
   "dimana",
   "dengan",
   "from",
   "how",
+  "i",
+  "if",
+  "in",
+  "is",
   "mana",
+  "me",
+  "my",
+  "need",
   "project",
+  "started",
   "the",
   "this",
+  "to",
   "untuk",
   "where",
   "which",
+  "want",
+  "you",
+  "youll",
   "yang"
 ]);
+
+const INTENT_TERMS = {
+  add_feature: new Set(["add", "build", "create", "implement", "make", "support"]),
+  change: new Set(["change", "modify", "refactor", "update"]),
+  debug: new Set(["bug", "debug", "error", "fail", "fails", "fix", "issue", "wrong"]),
+  explain: new Set(["explain", "how", "what", "why"]),
+  navigate: new Set(["find", "start", "where"])
+} as const;
+
+const ACTION_WORDS = new Set(
+  Object.values(INTENT_TERMS).flatMap((terms) => [...terms])
+);
 
 const TEST_QUERY_TERMS = new Set([
   "coverage",
@@ -40,6 +75,14 @@ const TEST_QUERY_TERMS = new Set([
   "test",
   "testing",
   "tests"
+]);
+
+const ENTRY_POINT_QUERY_TERMS = new Set([
+  "entry",
+  "entrypoint",
+  "main",
+  "start",
+  "startup"
 ]);
 
 const SCOPE_QUERY_TERMS = {
@@ -56,9 +99,6 @@ const CONCEPT_ALIASES: Record<string, string[]> = {
     "login",
     "session",
     "sesi",
-    "token",
-    "jwt",
-    "middleware",
     "nextauth"
   ],
   database: ["database", "db", "data", "prisma", "drizzle", "mongoose", "supabase"],
@@ -66,7 +106,9 @@ const CONCEPT_ALIASES: Record<string, string[]> = {
   route: ["route", "routes", "routing", "api", "endpoint"],
   upload: ["upload", "unggah", "file", "multer", "cloudinary"],
   email: ["email", "mail", "resend", "nodemailer"],
-  ai: ["ai", "openai", "groq", "gemini", "model", "prompt"]
+  ai: ["ai", "openai", "groq", "gemini", "model", "prompt"],
+  framework: ["framework", "frameworks", "detect", "detection", "detector"],
+  config: ["config", "configuration", "settings", "setup"]
 };
 
 export type ContextBuilderOptions = {
@@ -78,6 +120,9 @@ export type ContextFile = {
   path: string;
   score: number;
   reasons: string[];
+  exports: string[];
+  topFunctions: Array<Record<string, unknown>>;
+  purpose?: string;
   startLine: number;
   endLine: number;
   truncated: boolean;
@@ -86,18 +131,28 @@ export type ContextFile = {
 
 export type QuestionContext = {
   question: string;
+  intent: QueryIntent;
   keywords: string[];
+  confidence: RelevanceConfidence;
+  topScore: number;
+  relevantFiles: ContextFile[];
   files: ContextFile[];
 };
+
+export type QueryIntent = keyof typeof INTENT_TERMS | "general";
+export type RelevanceConfidence = "high" | "medium" | "low";
 
 type RankedFile = {
   path: string;
   score: number;
   reasons: string[];
+  direct: boolean;
 };
 
 type QueryProfile = {
+  intent: QueryIntent;
   includeTests: boolean;
+  includeRelatedFiles: boolean;
   isNavigation: boolean;
   scopes: Set<keyof typeof SCOPE_QUERY_TERMS>;
 };
@@ -110,10 +165,14 @@ export async function buildQuestionContext(
 ): Promise<QuestionContext> {
   const keywords = extractContextKeywords(question);
   const profile = classifyQuery(question);
-  const defaultMaxFiles = profile.isNavigation
+  const defaultMaxFiles = usesFocusedContext(profile.intent)
+    ? FOCUSED_MAX_FILES
+    : profile.isNavigation
     ? NAVIGATION_MAX_FILES
     : DEFAULT_MAX_FILES;
-  const defaultMaxLines = profile.isNavigation
+  const defaultMaxLines = usesFocusedContext(profile.intent)
+    ? FOCUSED_MAX_LINES_PER_FILE
+    : profile.isNavigation
     ? NAVIGATION_MAX_LINES_PER_FILE
     : DEFAULT_MAX_LINES_PER_FILE;
   const maxFiles = normalizeLimit(options.maxFiles, defaultMaxFiles);
@@ -122,6 +181,8 @@ export async function buildQuestionContext(
     defaultMaxLines
   );
   const rankedFiles = rankContextFiles(snapshot, keywords, profile);
+  const topScore = rankedFiles[0]?.score ?? 0;
+  const confidence = getRelevanceConfidence(topScore);
   const files: ContextFile[] = [];
 
   for (const rankedFile of rankedFiles) {
@@ -129,8 +190,13 @@ export async function buildQuestionContext(
       break;
     }
 
+    if (rankedFile.score < MIN_RELEVANCE_SCORE) {
+      continue;
+    }
+
     const selectedFile = await readContextFile(
       projectRoot,
+      snapshot,
       rankedFile,
       keywords,
       maxLinesPerFile
@@ -143,16 +209,22 @@ export async function buildQuestionContext(
 
   return {
     question,
+    intent: profile.intent,
     keywords,
+    confidence: files.length === 0 ? "low" : confidence,
+    topScore,
+    relevantFiles: files,
     files
   };
 }
 
 export function extractContextKeywords(question: string): string[] {
-  const baseWords = question
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length > 1 && !STOP_WORDS.has(word));
+  const baseWords = tokenizeQuestion(question)
+    .filter((word) =>
+      word.length > 1
+      && !STOP_WORDS.has(word)
+      && !ACTION_WORDS.has(word)
+    );
   const keywords = new Set(baseWords);
 
   for (const aliases of Object.values(CONCEPT_ALIASES)) {
@@ -178,19 +250,27 @@ function rankContextFiles(
 
     const reasons: string[] = [];
     const normalizedPath = path.toLowerCase();
+    const pathTerms = splitSearchTerms(path);
     const symbols = metadata.exportedSymbols.join(" ").toLowerCase();
+    const symbolTerms = splitSearchTerms(metadata.exportedSymbols.join(" "));
     const imports = metadata.imports.join(" ").toLowerCase();
     let score = 0;
 
     for (const keyword of keywords) {
-      if (normalizedPath.includes(keyword)) {
-        score += 8;
-        reasons.push(`path matches "${keyword}"`);
+      if (pathTerms.has(keyword)) {
+        score += 30;
+        reasons.push(`path term matches "${keyword}"`);
+      } else if (normalizedPath.includes(keyword)) {
+        score += 6;
+        reasons.push(`path contains "${keyword}"`);
       }
 
-      if (symbols.includes(keyword)) {
-        score += 6;
-        reasons.push(`export matches "${keyword}"`);
+      if (symbolTerms.has(keyword)) {
+        score += 26;
+        reasons.push(`export term matches "${keyword}"`);
+      } else if (symbols.includes(keyword)) {
+        score += 8;
+        reasons.push(`export contains "${keyword}"`);
       }
 
       if (imports.includes(keyword)) {
@@ -207,6 +287,10 @@ function rankContextFiles(
     score += routeScore.score;
     reasons.push(...routeScore.reasons);
 
+    const entryPointScore = scoreEntryPointEvidence(snapshot, path, keywords);
+    score += entryPointScore.score;
+    reasons.push(...entryPointScore.reasons);
+
     const scopeScore = scoreScopeEvidence(path, profile.scopes);
     score += scopeScore.score;
     reasons.push(...scopeScore.reasons);
@@ -221,19 +305,22 @@ function rankContextFiles(
       ranked.set(path, {
         path,
         score,
-        reasons: unique(reasons)
+        reasons: unique(reasons),
+        direct: true
       });
     }
   }
 
-  expandGraphNeighbors(snapshot, ranked, profile);
-
-  if (ranked.size === 0) {
-    addFallbackFiles(snapshot, ranked, profile);
+  if (profile.includeRelatedFiles) {
+    expandGraphNeighbors(snapshot, ranked, profile);
   }
 
   return [...ranked.values()]
-    .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path));
+    .sort((left, right) =>
+      right.score - left.score
+      || Number(right.direct) - Number(left.direct)
+      || left.path.localeCompare(right.path)
+    );
 }
 
 function scoreFeatureEvidence(
@@ -269,12 +356,30 @@ function scoreRouteEvidence(
   for (const route of snapshot.routes.filter((item) => item.file === path)) {
     const routeText = `${route.path} ${(route.methods ?? []).join(" ")}`.toLowerCase();
     if (keywords.some((keyword) => routeText.includes(keyword))) {
-      score += 8;
+      score += 30;
       reasons.push(`handles route ${route.path}`);
     }
   }
 
   return { score, reasons };
+}
+
+function scoreEntryPointEvidence(
+  snapshot: ProjectMap,
+  path: string,
+  keywords: string[]
+): Pick<RankedFile, "score" | "reasons"> {
+  if (
+    snapshot.entryPoints.includes(path)
+    && keywords.some((keyword) => ENTRY_POINT_QUERY_TERMS.has(keyword))
+  ) {
+    return {
+      score: 30,
+      reasons: ["project entry point"]
+    };
+  }
+
+  return { score: 0, reasons: [] };
 }
 
 function expandGraphNeighbors(
@@ -296,7 +401,7 @@ function expandGraphNeighbors(
       addRelatedFile(
         ranked,
         importedPath,
-        Math.max(4, Math.floor(match.score / 4)),
+        Math.max(MIN_RELEVANCE_SCORE, Math.floor(match.score / 4)),
         `imported by relevant file ${match.path}`
       );
     }
@@ -310,7 +415,7 @@ function expandGraphNeighbors(
         addRelatedFile(
           ranked,
           candidatePath,
-          Math.max(3, Math.floor(match.score / 5)),
+          Math.max(MIN_RELEVANCE_SCORE, Math.floor(match.score / 5)),
           `imports relevant file ${match.path}`
         );
       }
@@ -319,13 +424,9 @@ function expandGraphNeighbors(
 }
 
 function classifyQuery(question: string): QueryProfile {
-  const terms = new Set(
-    question
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter(Boolean)
-  );
+  const terms = new Set(tokenizeQuestion(question));
   const scopes = new Set<keyof typeof SCOPE_QUERY_TERMS>();
+  const intent = detectIntent(terms);
 
   for (const [scope, scopeTerms] of Object.entries(SCOPE_QUERY_TERMS) as Array<
     [keyof typeof SCOPE_QUERY_TERMS, Set<string>]
@@ -336,10 +437,28 @@ function classifyQuery(question: string): QueryProfile {
   }
 
   return {
+    intent,
     includeTests: [...TEST_QUERY_TERMS].some((term) => terms.has(term)),
-    isNavigation: terms.has("where") || terms.has("find"),
+    includeRelatedFiles: !usesFocusedContext(intent),
+    isNavigation: intent === "navigate",
     scopes
   };
+}
+
+function usesFocusedContext(intent: QueryIntent): boolean {
+  return intent === "add_feature" || intent === "change" || intent === "navigate";
+}
+
+function detectIntent(terms: Set<string>): QueryIntent {
+  for (const [intent, intentTerms] of Object.entries(INTENT_TERMS) as Array<
+    [QueryIntent, Set<string>]
+  >) {
+    if ([...intentTerms].some((term) => terms.has(term))) {
+      return intent;
+    }
+  }
+
+  return "general";
 }
 
 function scoreScopeEvidence(
@@ -409,7 +528,8 @@ function addRelatedFile(
   if (existing) {
     ranked.set(path, {
       ...existing,
-      score: existing.score + score,
+      score: Math.max(existing.score, score),
+      direct: existing.direct,
       reasons: unique([...existing.reasons, reason])
     });
     return;
@@ -418,30 +538,14 @@ function addRelatedFile(
   ranked.set(path, {
     path,
     score,
+    direct: false,
     reasons: [reason]
   });
 }
 
-function addFallbackFiles(
-  snapshot: ProjectMap,
-  ranked: Map<string, RankedFile>,
-  profile: QueryProfile
-): void {
-  const fallbackFiles = snapshot.criticalFiles
-    .filter((file) => profile.includeTests || !isTestPath(file.path))
-    .slice(0, DEFAULT_MAX_FILES);
-
-  for (const criticalFile of fallbackFiles) {
-    ranked.set(criticalFile.path, {
-      path: criticalFile.path,
-      score: criticalFile.score,
-      reasons: ["high-value project context"]
-    });
-  }
-}
-
 async function readContextFile(
   projectRoot: string,
+  snapshot: ProjectMap,
   rankedFile: RankedFile,
   keywords: string[],
   maxLines: number
@@ -461,6 +565,8 @@ async function readContextFile(
 
   return {
     ...rankedFile,
+    exports: snapshot.fileIndex[rankedFile.path]?.exportedSymbols ?? [],
+    topFunctions: [],
     startLine: window.start + 1,
     endLine: window.end,
     truncated: lines.length > maxLines,
@@ -532,4 +638,31 @@ function normalizeLimit(value: number | undefined, fallback: number): number {
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
+}
+
+function getRelevanceConfidence(topScore: number): RelevanceConfidence {
+  if (topScore >= HIGH_CONFIDENCE_SCORE) {
+    return "high";
+  }
+
+  if (topScore >= MEDIUM_CONFIDENCE_SCORE) {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function tokenizeQuestion(value: string): string[] {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function splitSearchTerms(value: string): Set<string> {
+  const spaced = value
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+
+  return new Set(tokenizeQuestion(spaced));
 }

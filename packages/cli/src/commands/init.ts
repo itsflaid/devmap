@@ -14,6 +14,7 @@ import { DevmapError } from "../utils/errors.js";
 import { ensureDevmapIgnored } from "../utils/gitignore.js";
 import { output, withJsonOutput } from "../utils/output.js";
 import { createPrompt, type Prompt } from "../utils/prompt.js";
+import { renderWelcomeBrandPanel } from "../utils/welcome.js";
 
 export type InitDependencies = {
   json?: boolean;
@@ -50,6 +51,11 @@ async function runInit(
   const environmentApiKey = dependencies.environmentApiKey ?? process.env.GROQ_API_KEY;
   const validateApiKey = dependencies.validateApiKey ?? validateGroqApiKey;
   const prompt = dependencies.prompt ?? (interactive ? createPrompt() : null);
+
+  if (!dependencies.json) {
+    console.log(renderWelcomeBrandPanel(process.stdout.columns ?? 80));
+    console.log("");
+  }
 
   output.section("DevMap Init");
   output.keyValue("Provider", "Groq");
@@ -155,14 +161,6 @@ async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
     throw new DevmapError(
       "A Groq API key is required to initialize DevMap.",
       "Run devmap init in an interactive terminal or set GROQ_API_KEY."
-    );
-  }
-
-  const provider = (await options.prompt.ask("Provider [groq]: ")).trim().toLowerCase();
-  if (provider && provider !== "groq") {
-    throw new DevmapError(
-      `Provider "${provider}" is not available in the MVP.`,
-      "Press Enter to use Groq."
     );
   }
 

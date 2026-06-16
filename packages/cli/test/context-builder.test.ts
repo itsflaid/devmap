@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { buildQuestionContext } from "../src/ai/contextBuilder.js";
+import {
+  buildQuestionContext,
+  extractContextKeywords
+} from "../src/ai/contextBuilder.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
@@ -20,6 +23,8 @@ test("context builder ranks feature evidence and expands local dependencies", as
   );
 
   assert.equal(context.files[0]?.path, "lib/auth.ts");
+  assert.equal(context.confidence, "high");
+  assert.ok(context.topScore >= 70);
   assert.ok(context.files.some((file) => file.path === "lib/db.ts"));
   assert.ok(context.files.some((file) =>
     file.path === "lib/db.ts"
@@ -40,6 +45,161 @@ test("context builder expands Indonesian architecture terms", async () => {
   assert.equal(context.files[0]?.path, "lib/auth.ts");
   assert.ok(context.keywords.includes("auth"));
   assert.ok(context.keywords.includes("session"));
+});
+
+test("context builder ignores common English connector words", () => {
+  const keywords = extractContextKeywords(
+    "How to change the ask response format in this project?"
+  );
+
+  assert.deepEqual(keywords, ["ask", "response", "format"]);
+});
+
+test("context builder keeps action words as intent instead of search keywords", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-intent-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-intent" }),
+      "src/analyzers/frameworkDetector.ts": [
+        "export type Framework = 'nextjs' | 'express' | 'unknown';",
+        "export function detectFramework() { return 'unknown'; }"
+      ].join("\n"),
+      "src/utils/config.ts": "export function readConfig() { return null; }\n",
+      "src/routes/router.ts": "export function detectRoutes() { return []; }\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, `${content}\n`, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const frameworkContext = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "If I want to add Svelte framework detection, where do I start?"
+    );
+    const configContext = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where do I change config setup?"
+    );
+
+    assert.equal(frameworkContext.intent, "add_feature");
+    assert.equal(frameworkContext.confidence, "high");
+    assert.ok(!frameworkContext.keywords.includes("add"));
+    assert.ok(!frameworkContext.keywords.includes("where"));
+    assert.ok(frameworkContext.keywords.includes("framework"));
+    assert.ok(frameworkContext.keywords.includes("detect"));
+    assert.equal(frameworkContext.files[0]?.path, "src/analyzers/frameworkDetector.ts");
+
+    assert.equal(configContext.intent, "change");
+    assert.ok(configContext.topScore >= 25);
+    assert.equal(configContext.files[0]?.path, "src/utils/config.ts");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder does not rank files from partial stop-word matches", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-stop-words-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-stop-words" }),
+      "src/ai/prompts.ts": "export function buildAskMessages() { return 'format'; }\n",
+      "src/commands/doctor.ts": "export function doctorCommand() { return true; }\n",
+      "src/cache/snapshot.ts": "export function inspectSnapshot() { return true; }\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "How to change the ask response format?"
+    );
+
+    assert.equal(context.files[0]?.path, "src/ai/prompts.ts");
+    assert.ok(context.files.every((file) => file.path !== "src/commands/doctor.ts"));
+    assert.ok(context.files.every((file) => file.path !== "src/cache/snapshot.ts"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder keeps change questions focused on direct matches", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-theme-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-theme" }),
+      "src/utils/output.ts": [
+        "export const theme = {",
+        "  aqua: '\\u001b[38;2;46;230;214m',",
+        "  red: '\\u001b[31m'",
+        "};"
+      ].join("\n"),
+      "src/analyzers/featureDetector.ts": "export function detectFeatures() { return []; }\n",
+      "src/analyzers/projectMap.ts": "import { detectFeatures } from './featureDetector.js';\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, `${content}\n`, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "if i want to change theme form aqua to red, where i started?"
+    );
+
+    assert.equal(context.intent, "change");
+    assert.equal(context.files[0]?.path, "src/utils/output.ts");
+    assert.ok(context.files.every((file) => !file.path.includes("featureDetector")));
+    assert.ok(context.files.every((file) => file.content.split(/\r?\n/).length <= 60));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder uses project entry points for entry point questions", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-entry-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "context-entry" }),
+      "utf8"
+    );
+    await writeFile(
+      join(projectRoot, "index.ts"),
+      "export function start() { return true; }\n",
+      "utf8"
+    );
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is the entry point?"
+    );
+
+    assert.equal(context.files[0]?.path, "index.ts");
+    assert.equal(context.confidence, "medium");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 });
 
 test("context builder selects a relevant window from large files", async () => {
@@ -142,7 +302,7 @@ test("context builder excludes test fixtures from product questions", async () =
   }
 });
 
-test("context builder excludes tests from fallback context", async () => {
+test("context builder returns low confidence with no files when nothing matches", async () => {
   const projectRoot = await createScopedContextProject();
 
   try {
@@ -157,8 +317,45 @@ test("context builder excludes tests from fallback context", async () => {
       "Explain the zqxv subsystem"
     );
 
-    assert.ok(context.files.some((file) => file.path === "src/auth.ts"));
-    assert.ok(context.files.every((file) => !file.path.endsWith(".test.ts")));
+    assert.equal(context.confidence, "low");
+    assert.equal(context.topScore, 0);
+    assert.deepEqual(context.files, []);
+    assert.deepEqual(context.relevantFiles, []);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder does not treat analyzer internals as a product feature match", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-meta-feature-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-meta-feature" }),
+      "src/analyzers/featureDetector.ts": [
+        "export function detectFeatures() { return ['Authentication']; }",
+        "const terms = ['auth', 'login', 'session'];"
+      ].join("\n"),
+      "src/ai/types.ts": "export type TokenUsage = { totalTokens: number };\n",
+      "src/analyzers/projectMap.ts": "import { detectFeatures } from './featureDetector.js';\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, `${content}\n`, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "if i want to add login-regis feature, where i started?"
+    );
+
+    assert.equal(context.intent, "add_feature");
+    assert.equal(context.confidence, "low");
+    assert.deepEqual(context.files, []);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

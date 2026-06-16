@@ -60,24 +60,32 @@ async function runAsk(
 
   const snapshot = snapshotResult.snapshot;
   if (await isSnapshotStale(projectRoot, snapshot)) {
-    output.warning("The project has changed since this snapshot was generated.");
-    output.note("Run devmap analyze before relying on this answer.");
+    output.warning("Snapshot is stale: this answer may use outdated project structure.");
+    output.note("Run devmap analyze --fresh, then repeat devmap ask for the latest result.");
   }
 
   const context = await buildQuestionContext(projectRoot, snapshot, question);
 
   output.section("Relevant Files");
   if (context.files.length === 0) {
-    output.warning("No strong file matches found. Try running devmap analyze --fresh after more code exists.");
+    output.warning("No strong file matches found in the current snapshot.");
+    printLowConfidenceAnswer(context);
     return {
       status: "no_context",
       question,
-      relevantFiles: []
+      intent: context.intent,
+      keywords: context.keywords,
+      confidence: context.confidence,
+      topScore: context.topScore,
+      relevantFiles: [],
+      answer: buildLowConfidenceAnswer(context),
+      model: null,
+      usage: null
     };
-  }
-
-  for (const file of context.files) {
-    output.item(`${file.path} (${file.reasons.join(", ")})`);
+  } else {
+    for (const file of context.files) {
+      output.item(file.path);
+    }
   }
 
   const loadConfig = dependencies.loadConfig ?? readConfig;
@@ -90,6 +98,10 @@ async function runAsk(
     return {
       status: "static",
       question,
+      intent: context.intent,
+      keywords: context.keywords,
+      confidence: context.confidence,
+      topScore: context.topScore,
       relevantFiles: serializeContextFiles(context.files),
       answer: null,
       model: null,
@@ -122,6 +134,10 @@ async function runAsk(
     return {
       status: "ok",
       question,
+      intent: context.intent,
+      keywords: context.keywords,
+      confidence: context.confidence,
+      topScore: context.topScore,
       relevantFiles: serializeContextFiles(context.files),
       answer: answer.content,
       model: answer.model,
@@ -141,6 +157,10 @@ async function runAsk(
     return {
       status: "fallback",
       question,
+      intent: context.intent,
+      keywords: context.keywords,
+      confidence: context.confidence,
+      topScore: context.topScore,
       relevantFiles: serializeContextFiles(context.files),
       answer: null,
       model,
@@ -151,6 +171,28 @@ async function runAsk(
   }
 }
 
+function printLowConfidenceAnswer(
+  context: Awaited<ReturnType<typeof buildQuestionContext>>
+): void {
+  output.section("Answer");
+  output.markdown(buildLowConfidenceAnswer(context));
+}
+
+function buildLowConfidenceAnswer(
+  context: Awaited<ReturnType<typeof buildQuestionContext>>
+): string {
+  const target = context.keywords.length > 0
+    ? context.keywords.slice(0, 4).join(", ")
+    : context.question;
+
+  return [
+    `No strong matching files found for "${target}".`,
+    "",
+    "This may be new behavior that is not represented in the current snapshot yet.",
+    "Try a more specific term or run `devmap analyze --fresh` if the project changed."
+  ].join("\n");
+}
+
 function serializeContextFiles(
   files: Awaited<ReturnType<typeof buildQuestionContext>>["files"]
 ): Array<Record<string, unknown>> {
@@ -158,6 +200,9 @@ function serializeContextFiles(
     path: file.path,
     score: file.score,
     reasons: file.reasons,
+    exports: file.exports,
+    topFunctions: file.topFunctions,
+    purpose: file.purpose ?? null,
     startLine: file.startLine,
     endLine: file.endLine,
     truncated: file.truncated

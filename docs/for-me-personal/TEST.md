@@ -23,6 +23,12 @@ Jalankan focused test ranking dan evaluation:
 pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/context-builder-eval.test.ts
 ```
 
+Untuk polish output `ask`, jalankan focused contract test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ask-command.test.ts test/ai-client.test.ts
+```
+
 Expected result:
 
 - Pertanyaan produk tidak memilih `test/`, `tests/`, `__tests__/`, fixture,
@@ -30,6 +36,17 @@ Expected result:
 - Pertanyaan testing dalam English dapat memilih file tersebut.
 - Pertanyaan navigasi English memilih maksimal dua file dan 60 baris per file.
 - Istilah CLI dan web UI memprioritaskan package yang sesuai.
+- Connector word English seperti `to` dan `in` tidak menjadi keyword ranking.
+- Action word English seperti `add`, `change`, dan `where` dipakai sebagai
+  intent, bukan keyword ranking.
+- Query perubahan fitur yang berbeda topik tetap memilih file existing yang
+  relevan berdasarkan path/export/import, bukan special-case satu framework.
+- Query tanpa match kuat mengembalikan `confidence: "low"`, `topScore: 0`,
+  dan `relevantFiles: []`, bukan fallback ke critical file acak.
+- Query low-confidence tidak memanggil Groq. Command memberi template lokal
+  agar hemat token dan tidak mengarang file.
+- Human-readable `Relevant Files` hanya menampilkan path; alasan scoring tetap
+  dicek melalui output `--json`.
 - Evaluation tetap top-1 accuracy 20/20 dan top-3 recall 20/20.
 
 Manual source-mode check:
@@ -43,6 +60,12 @@ pnpm dev:cli ask "where is the web UI dashboard component?"
 Periksa `Relevant Files` dan prompt token usage. Query pertama seharusnya
 memprioritaskan production CLI source dan memakai context jauh lebih kecil
 daripada default lama lima file dengan maksimal 200 baris per file.
+Untuk pertanyaan implementasi, jawaban seharusnya langsung menyebut file yang
+perlu diperiksa/diedit lebih dulu dan tidak menampilkan contoh kode panjang
+kecuali diminta.
+Jika confidence rendah, jawaban seharusnya mengatakan tidak ada strong match,
+tidak menampilkan `Asking Groq`, dan tidak menyebut file random sebagai sumber
+pasti.
 
 ## Model Routing And Override
 

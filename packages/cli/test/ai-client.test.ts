@@ -212,12 +212,18 @@ test("Groq client maps invalid credentials to an actionable error", async () => 
 test("ask prompt grounds the answer in snapshot context and preserves language", () => {
   const context: QuestionContext = {
     question: "Bagaimana autentikasi bekerja?",
+    intent: "explain",
     keywords: ["auth", "session"],
+    confidence: "high",
+    topScore: 72,
+    relevantFiles: [],
     files: [
       {
         path: "lib/auth.ts",
         score: 20,
         reasons: ["evidence for Authentication"],
+        exports: ["getSession"],
+        topFunctions: [],
         startLine: 1,
         endLine: 4,
         truncated: false,
@@ -233,6 +239,16 @@ test("ask prompt grounds the answer in snapshot context and preserves language",
 
   assert.match(messages[0]?.content ?? "", /only the supplied DevMap context/i);
   assert.match(messages[0]?.content ?? "", /same language/i);
+  assert.match(messages[0]?.content ?? "", /Do not restate the question/i);
+  assert.match(messages[0]?.content ?? "", /Do not repeat/i);
+  assert.match(messages[0]?.content ?? "", /Only mention files as existing files/i);
+  assert.match(messages[0]?.content ?? "", /suggested new or possible file/i);
+  assert.match(messages[0]?.content ?? "", /Key Files/);
+  assert.match(messages[0]?.content ?? "", /Limits/);
+  assert.match(messages[0]?.content ?? "", /existing supplied files/i);
+  assert.match(messages[1]?.content ?? "", /INTENT: explain/);
+  assert.match(messages[1]?.content ?? "", /RETRIEVAL_CONFIDENCE: high/);
+  assert.match(messages[1]?.content ?? "", /EXPORTS: getSession/);
   assert.match(messages[1]?.content ?? "", /Bagaimana autentikasi bekerja/);
   assert.match(messages[1]?.content ?? "", /lib\/auth\.ts/);
   assert.match(messages[1]?.content ?? "", /getSession/);

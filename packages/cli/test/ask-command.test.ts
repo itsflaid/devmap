@@ -51,6 +51,11 @@ test("ask command uses configured AI client and prints token usage", async () =>
     assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
     assert.match(requests[0]?.messages[1]?.content ?? "", /auth\.ts/);
     const plainLogs = stripAnsi(logs);
+    assert.equal(countMatches(plainLogs, /Relevant Files/g), 1);
+    assert.equal(countMatches(plainLogs, /Asking Groq/g), 1);
+    assert.equal(countMatches(plainLogs, /^Answer$/gm), 1);
+    assert.match(plainLogs, /[•*]\s+auth\.ts/);
+    assert.doesNotMatch(plainLogs, /path matches|export matches|dependency matches/);
     assert.match(plainLogs, /Authentication\n-+/);
     assert.match(plainLogs, /Authentication is handled in auth\.ts/);
     assert.doesNotMatch(plainLogs, /\*\*|`/);
@@ -98,6 +103,78 @@ test("ask command streams AI paragraphs when the client supports streaming", asy
     assert.equal(completeCalls, 0);
     assert.match(logs, /Authentication\n-+/);
     assert.match(logs, /Authentication uses auth\.ts\./);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("ask command clearly warns when the snapshot is stale", async () => {
+  const projectRoot = await createAskProject();
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      return {
+        content: "Authentication uses `auth.ts`.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, "auth.ts"),
+      "export async function getSession() { return { user: 'changed' }; }\n",
+      "utf8"
+    );
+
+    const logs = stripAnsi(await captureOutput(() => askCommand(
+      ["where", "is", "auth"],
+      {
+        projectRoot,
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    )));
+
+    assert.match(logs, /Snapshot is stale/i);
+    assert.match(logs, /devmap analyze --fresh/i);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("ask command answers low-confidence questions locally without calling AI", async () => {
+  const projectRoot = await createAskProject();
+  const requests: AiCompletionRequest[] = [];
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      requests.push(request);
+      throw new Error("low-confidence ask should not call AI");
+    }
+  };
+
+  try {
+    const logs = stripAnsi(await captureOutput(() => askCommand(
+      ["If", "I", "want", "to", "add", "payments,", "where", "should", "I", "start?"],
+      {
+        projectRoot,
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    )));
+
+    assert.equal(requests.length, 0);
+    assert.match(logs, /No strong file matches found/i);
+    assert.match(logs, /No strong matching files found for ".*payments/i);
+    assert.doesNotMatch(logs, /auth\.ts/);
+    assert.doesNotMatch(logs, /Asking Groq/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -157,6 +234,10 @@ async function createAskProject(): Promise<string> {
 
 function stripAnsi(value: string): string {
   return value.replace(/\u001B\[[0-9;]*m/g, "");
+}
+
+function countMatches(value: string, pattern: RegExp): number {
+  return value.match(pattern)?.length ?? 0;
 }
 
 async function captureOutput(action: () => Promise<void>): Promise<string> {

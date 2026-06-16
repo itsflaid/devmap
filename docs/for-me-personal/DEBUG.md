@@ -744,3 +744,51 @@ TypeScript. Retry rate limit memakai satu cabang `if`, bukan loop berbatas.
 
 TypeScript type assertion tidak memvalidasi data runtime. Semua data persisted
 harus melewati boundary validation sebelum dipakai oleh command lain.
+
+## 14. Ask Output Terlalu Ramai Dan Jawaban Berulang
+
+**Tanggal:** 2026-06-16
+**Status:** Selesai
+
+### Gejala
+
+`devmap ask` menampilkan `Relevant Files` dengan alasan scoring yang panjang
+dan jawaban AI dapat mengulang kalimat, memberi high-level outline terlalu
+panjang, atau menampilkan contoh kode padahal user hanya butuh arah file.
+
+### Akar Masalah
+
+Output human-readable memakai detail ranking internal yang lebih cocok untuk
+machine/debug output. Keyword extraction juga masih menyimpan connector word
+English seperti `to` dan `in`, sehingga partial match dapat menaikkan file yang
+tidak relevan. Prompt `ask` belum memberi kontrak format yang cukup tegas.
+
+### Solusi
+
+- Human output `Relevant Files` hanya menampilkan path.
+- Alasan scoring tetap dipertahankan pada `ask --json`.
+- Connector word English umum dikeluarkan dari keyword ranking.
+- Action word English dipisahkan menjadi intent generik, bukan hardcoded ke
+  satu topik atau satu file.
+- Path/export scoring lebih memprioritaskan exact search terms daripada
+  substring match.
+- Retrieval menambahkan confidence dan minimum relevance threshold. Jika tidak
+  ada file yang melewati threshold, `ask` berhenti dengan jawaban lokal
+  low-confidence tanpa memanggil Groq.
+- Context file menyiapkan field `exports`, `topFunctions`, dan `purpose` untuk
+  function-level navigation berikutnya tanpa mengubah scope extraction sekarang.
+- Prompt `ask` meminta direct answer, `Key Files`, `Evidence` jika perlu,
+  `Limits` jika context kurang, dan melarang repetisi serta code example panjang
+  kecuali diminta. Untuk pertanyaan implementasi, prompt mengarahkan jawaban ke
+  file/fungsi existing dalam context sebelum menyarankan file baru.
+
+### Verifikasi
+
+- `pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ask-command.test.ts test/ai-client.test.ts`
+
+### Pelajaran
+
+Informasi ranking bagus untuk agent dan debugging, tetapi terlalu bising untuk
+terminal manusia. Human mode harus ringkas; machine detail harus berada di JSON.
+Untuk MVP, `ask` adalah navigation helper berbasis snapshot, bukan coding
+agent. Low-confidence harus hemat token dan jujur, bukan meminta AI menebak.

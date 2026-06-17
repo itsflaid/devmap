@@ -5,6 +5,11 @@ import { isArchitectureSource } from "./sourceScope.js";
 
 export type FeatureInfo = {
   name: string;
+  purpose: string;
+  files: string[];
+  entryPoints: string[];
+  searchTerms: string[];
+  confidence: "high" | "medium" | "low";
   evidence: string[];
 };
 
@@ -35,23 +40,51 @@ export function detectFeatures(
       .slice(0, 5);
 
     if (evidence.length > 0) {
-      features.push({ name: signal.name, evidence });
+      features.push(createFeatureInfo(signal.name, evidence, signal.terms));
     }
   }
 
   if (database) {
-    features.push({
-      name: "Database",
-      evidence: database.files.length > 0 ? database.files : [database.provider]
-    });
+    const evidence = database.files.length > 0 ? database.files : [database.provider];
+    features.push(createFeatureInfo("Database", evidence, [
+      "database",
+      "schema",
+      "model",
+      "repository",
+      database.provider.toLowerCase()
+    ]));
   }
 
   const apiFiles = [...new Set(routes.filter((route) => route.kind === "api").map((route) => route.file))];
   if (apiFiles.length > 0) {
-    features.push({ name: "API Routes", evidence: apiFiles.slice(0, 5) });
+    features.push(createFeatureInfo("API Routes", apiFiles.slice(0, 5), [
+      "api",
+      "route",
+      "endpoint",
+      "request",
+      "response"
+    ]));
   }
 
   return features.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function createFeatureInfo(
+  name: string,
+  evidence: string[],
+  terms: string[]
+): FeatureInfo {
+  const files = evidence.filter((item) => item.includes("/") || /\.[A-Za-z0-9]+$/.test(item));
+
+  return {
+    name,
+    purpose: `Identifies ${name.toLowerCase()} capability in the project.`,
+    files,
+    entryPoints: [],
+    searchTerms: [...new Set(terms.map((term) => term.toLowerCase()))].slice(0, 8),
+    confidence: evidence.length >= 2 ? "high" : "medium",
+    evidence
+  };
 }
 
 function matchesSignal(file: ScannedFile, terms: string[]): boolean {

@@ -718,6 +718,18 @@ interface DevMapSnapshot {
   externalServices: ExternalServiceInfo[];
   database?: DatabaseInfo;
   features: FeatureInfo[];
+  flows: FlowInfo[];
+  fileIndex: Record<string, {
+    hash: string;
+    imports: string[];
+    exportedSymbols: string[];
+    lines: number;
+    purpose?: string;
+    scope: "api" | "ui" | "database" | "config" | "service" | "cli" | "test" | "docs" | "unknown";
+    featureRefs: string[];
+    searchTerms: string[];
+    importance: number;
+  }>;
 }
 ```
 
@@ -728,6 +740,12 @@ interface DevMapSnapshot {
 - Snapshot should be deterministic
 - Snapshot must include a schema version
 - Future schema changes must be versioned
+- File index entries should include compact navigation metadata such as
+  purpose, responsibility scope, feature references, search terms, and
+  importance. These fields help `devmap ask`, future onboarding output, and
+  future flow generation without storing full raw source.
+- AI-generated file purpose and search terms must be batched and optional.
+  Analyze must continue if enrichment fails.
 
 ---
 

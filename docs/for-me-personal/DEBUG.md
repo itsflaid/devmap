@@ -839,3 +839,43 @@ LLM boleh membantu recall, tetapi deterministic scorer tetap harus memegang
 kendali ranking. Untuk MVP, Ask harus menjadi navigator yang jujur: kalau bukti
 lemah, lebih baik mengaku tidak menemukan strong match daripada menyusun
 jawaban yang terdengar yakin.
+
+## 16. Snapshot Perlu Purpose Tanpa Membuat Analyze Lambat
+
+**Tanggal:** 2026-06-17
+**Status:** Selesai
+
+### Gejala
+
+Snapshot lama menyimpan path, imports, exports, dan line count, tetapi belum
+menjelaskan file dipakai untuk apa. Akibatnya Ask dan calon onboarding/flow
+harus menebak purpose dari nama file atau membaca source context lagi.
+
+### Akar Masalah
+
+`fileIndex` belum memiliki metadata navigasi seperti purpose, responsibility
+scope, feature ownership, search terms, dan importance. Jika purpose dibuat
+dengan AI per file, analyze akan lambat dan boros.
+
+### Solusi
+
+- Tambahkan metadata Tier 1 di `fileIndex`.
+- Isi `scope`, `featureRefs`, `searchTerms`, dan `importance` secara statis.
+- Beri fallback purpose deterministik untuk file penting.
+- Tambahkan AI enrichment batched maksimal 20 file per call untuk memperbaiki
+  purpose/searchTerms saat API key tersedia.
+- Jika AI enrichment gagal, analyze tetap menyimpan snapshot valid.
+- Tambahkan `flows` minimal hanya untuk high-confidence features.
+
+### Verifikasi
+
+- `test/analyzers.test.ts` mengecek field snapshot Tier 1.
+- `test/analyze-ai.test.ts` mengecek batch AI dan failure fallback.
+- `test/context-builder.test.ts` mengecek searchTerms/feature metadata ikut
+  retrieval.
+
+### Pelajaran
+
+Snapshot kuat bukan berarti menyimpan source lebih banyak. Yang paling berguna
+adalah metadata kecil yang menjelaskan tujuan file dan hubungan antar bagian,
+supaya AI agent dapat bergerak lebih cepat tanpa eksplorasi ulang.

@@ -53,14 +53,11 @@ test("ask command uses configured AI client and prints token usage", async () =>
       }
     ));
 
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 1);
     assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.ask);
     assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
-    assert.equal(requests[0]?.maxCompletionTokens, 180);
-    assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.ask);
-    assert.equal(requests[1]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
-    assert.match(requests[1]?.messages[1]?.content ?? "", /EXPANDED_TERMS: none/);
-    assert.match(requests[1]?.messages[1]?.content ?? "", /auth\.ts/);
+    assert.match(requests[0]?.messages[1]?.content ?? "", /EXPANDED_TERMS: none/);
+    assert.match(requests[0]?.messages[1]?.content ?? "", /auth\.ts/);
     const plainLogs = stripAnsi(logs);
     assert.equal(countMatches(plainLogs, /Relevant Files/g), 1);
     assert.equal(countMatches(plainLogs, /Asking Groq/g), 1);
@@ -118,7 +115,7 @@ test("ask command streams AI paragraphs when the client supports streaming", asy
     )));
 
     assert.equal(streamCalls, 1);
-    assert.equal(completeCalls, 1);
+    assert.equal(completeCalls, 0);
     assert.match(logs, /Authentication\n-+/);
     assert.match(logs, /Authentication uses auth\.ts\./);
   } finally {
@@ -202,7 +199,7 @@ test("ask command answers low-confidence questions locally without calling AI", 
   }
 });
 
-test("ask command falls back safely when query expansion returns invalid JSON", async () => {
+test("ask command falls back safely when weak query expansion returns invalid JSON", async () => {
   const projectRoot = await createAskProject();
   const requests: AiCompletionRequest[] = [];
   const client: AiClient = {
@@ -224,7 +221,7 @@ test("ask command falls back safely when query expansion returns invalid JSON", 
 
   try {
     const logs = stripAnsi(await captureOutput(() => askCommand(
-      ["where", "is", "auth"],
+      ["where", "is", "revenue"],
       {
         projectRoot,
         loadConfig: async () => ({
@@ -236,9 +233,10 @@ test("ask command falls back safely when query expansion returns invalid JSON", 
       }
     )));
 
-    assert.equal(requests.length, 2);
-    assert.match(requests[1]?.messages[1]?.content ?? "", /EXPANDED_TERMS: none/);
-    assert.match(logs, /Authentication uses auth\.ts\./);
+    assert.equal(requests.length, 1);
+    assert.match(requests[0]?.messages[0]?.content ?? "", /Return a JSON array only/);
+    assert.match(logs, /No strong file matches found/i);
+    assert.doesNotMatch(logs, /Asking Groq/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

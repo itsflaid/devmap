@@ -96,6 +96,20 @@ const ENTRY_POINT_QUERY_TERMS = new Set([
   "startup"
 ]);
 
+const RUNTIME_DATA_QUERY_TERMS = new Set([
+  "access",
+  "client",
+  "connect",
+  "connection",
+  "init",
+  "initialization",
+  "initialize",
+  "initialized",
+  "initializes",
+  "koneksi",
+  "module"
+]);
+
 const SCOPE_QUERY_TERMS = {
   cli: new Set(["cli", "command", "commands", "terminal"]),
   docs: new Set(["documentation", "docs", "readme"]),
@@ -324,6 +338,7 @@ function rankContextFiles(
     const symbols = metadata.exportedSymbols.join(" ").toLowerCase();
     const symbolTerms = splitSearchTerms(metadata.exportedSymbols.join(" "));
     const imports = metadata.imports.join(" ").toLowerCase();
+    const purpose = metadata.purpose?.toLowerCase() ?? "";
     let score = 0;
 
     const directScore = scoreSearchTerms({
@@ -344,6 +359,10 @@ function rankContextFiles(
     });
     score += directScore.score;
     reasons.push(...directScore.reasons);
+
+    const fileIndexScore = scoreFileIndexEvidence(metadata, keywords, purpose);
+    score += fileIndexScore.score;
+    reasons.push(...fileIndexScore.reasons);
 
     const expandedScore = scoreSearchTerms({
       terms: expandedTerms,
@@ -381,10 +400,23 @@ function rankContextFiles(
     score += scopeScore.score;
     reasons.push(...scopeScore.reasons);
 
+    const metadataScopeScore = scoreMetadataScopeEvidence(metadata.scope, profile.scopes);
+    score += metadataScopeScore.score;
+    reasons.push(...metadataScopeScore.reasons);
+
+    const runtimeDataScore = scoreRuntimeDataEvidence(path, metadata, keywords);
+    score += runtimeDataScore.score;
+    reasons.push(...runtimeDataScore.reasons);
+
     const criticalFile = snapshot.criticalFiles.find((file) => file.path === path);
     if (criticalFile && score > 0) {
       score += Math.min(criticalFile.score, 5);
       reasons.push("critical project file");
+    }
+
+    if (score > 0 && metadata.importance > 0) {
+      score += Math.min(Math.ceil(metadata.importance / 20), 5);
+      reasons.push("important snapshot file");
     }
 
     if (score > 0) {
@@ -456,13 +488,46 @@ function scoreFeatureEvidence(
   const reasons: string[] = [];
 
   for (const feature of snapshot.features) {
-    const featureTerms = extractContextKeywords(feature.name);
+    const featureTerms = [
+      ...extractContextKeywords(feature.name),
+      ...(feature.searchTerms ?? [])
+    ];
     if (
-      feature.evidence.includes(path)
+      (feature.evidence.includes(path) || feature.files.includes(path))
       && featureTerms.some((term) => keywords.includes(term))
     ) {
-      score += 10;
+      score += feature.searchTerms?.some((term) => keywords.includes(term)) ? 30 : 10;
       reasons.push(`evidence for ${feature.name}`);
+    }
+  }
+
+  return { score, reasons };
+}
+
+function scoreFileIndexEvidence(
+  metadata: ProjectMap["fileIndex"][string],
+  keywords: string[],
+  purpose: string
+): Pick<RankedFile, "score" | "reasons"> {
+  let score = 0;
+  const reasons: string[] = [];
+  const searchTerms = metadata.searchTerms ?? [];
+  const featureRefs = metadata.featureRefs ?? [];
+
+  for (const keyword of keywords) {
+    if (searchTerms.includes(keyword)) {
+      score += 30;
+      reasons.push(`snapshot search term matches "${keyword}"`);
+    }
+
+    if (featureRefs.some((feature) => splitSearchTerms(feature).has(keyword))) {
+      score += 14;
+      reasons.push(`feature reference matches "${keyword}"`);
+    }
+
+    if (purpose.includes(keyword)) {
+      score += 6;
+      reasons.push(`purpose mentions "${keyword}"`);
     }
   }
 
@@ -629,6 +694,55 @@ function scoreScopeEvidence(
   return { score, reasons };
 }
 
+function scoreMetadataScopeEvidence(
+  scope: ProjectMap["fileIndex"][string]["scope"],
+  scopes: Set<keyof typeof SCOPE_QUERY_TERMS>
+): Pick<RankedFile, "score" | "reasons"> {
+  if (scopes.has("cli") && scope === "cli") {
+    return { score: 10, reasons: ["matches CLI scope"] };
+  }
+
+  if (scopes.has("web") && scope === "ui") {
+    return { score: 10, reasons: ["matches web scope"] };
+  }
+
+  if (scopes.has("docs") && scope === "docs") {
+    return { score: 10, reasons: ["matches documentation scope"] };
+  }
+
+  return { score: 0, reasons: [] };
+}
+
+function scoreRuntimeDataEvidence(
+  path: string,
+  metadata: ProjectMap["fileIndex"][string],
+  keywords: string[]
+): Pick<RankedFile, "score" | "reasons"> {
+  const asksForRuntimeData = keywords.some((keyword) =>
+    RUNTIME_DATA_QUERY_TERMS.has(keyword)
+  );
+
+  if (!asksForRuntimeData || metadata.scope !== "database") {
+    return { score: 0, reasons: [] };
+  }
+
+  if (/(^|\/)(schema|migrations?)\b|\.prisma$/.test(path.toLowerCase())) {
+    return {
+      score: -35,
+      reasons: ["database schema is less relevant to runtime data access"]
+    };
+  }
+
+  if (metadata.exportedSymbols.length > 0 || metadata.imports.length > 0) {
+    return {
+      score: 20,
+      reasons: ["matches runtime data access"]
+    };
+  }
+
+  return { score: 0, reasons: [] };
+}
+
 function isTestPath(path: string): boolean {
   const normalizedPath = path.toLowerCase().replaceAll("\\", "/");
   return (
@@ -691,6 +805,7 @@ async function readContextFile(
     ...rankedFile,
     exports: snapshot.fileIndex[rankedFile.path]?.exportedSymbols ?? [],
     topFunctions: [],
+    purpose: snapshot.fileIndex[rankedFile.path]?.purpose,
     startLine: window.start + 1,
     endLine: window.end,
     truncated: lines.length > maxLines,

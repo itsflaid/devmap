@@ -82,9 +82,9 @@ test("ask --json emits answer, relevant files, model, and usage", async () => {
     assert.equal(payload.answer, "The entry point is index.ts.");
     assert.equal(payload.model, "llama-3.1-8b-instant");
     assert.equal(payload.usage.totalTokens, 28);
-    assert.deepEqual(payload.expandedTerms, ["startup"]);
+    assert.deepEqual(payload.expandedTerms, []);
     assert.ok(Array.isArray(payload.relevantFiles));
-    assert.equal(completeCalls, 2);
+    assert.equal(completeCalls, 1);
     assert.equal(streamCalls, 0);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

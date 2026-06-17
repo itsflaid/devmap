@@ -265,7 +265,11 @@ test("context builder enforces file limits and rejects paths outside the project
       hash: "unsafe",
       imports: [],
       exportedSymbols: ["secret"],
-      lines: 1
+      lines: 1,
+      scope: "unknown",
+      featureRefs: [],
+      searchTerms: ["secret"],
+      importance: 0
     };
 
     const context = await buildQuestionContext(
@@ -355,6 +359,75 @@ test("context builder exposes expanded terms and uses them for ranking", async (
     assert.ok(context.files[0]?.reasons.some((reason) =>
       reason.includes("expanded term")
     ));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder uses fileIndex searchTerms for retrieval", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-file-terms-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-file-terms" }),
+      "src/billing.ts": "export function openBillingPortal() { return true; }\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    snapshot.fileIndex["src/billing.ts"].searchTerms.push("invoice");
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is invoice setup?"
+    );
+
+    assert.equal(context.files[0]?.path, "src/billing.ts");
+    assert.ok(context.files[0]?.reasons.includes("snapshot search term matches \"invoice\""));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder uses feature searchTerms and featureRefs for retrieval", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-feature-terms-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-feature-terms" }),
+      "src/member.ts": "export function inviteMember() { return true; }\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    snapshot.features = [{
+      name: "Workspace Management",
+      purpose: "Identifies workspace membership behavior.",
+      files: ["src/member.ts"],
+      entryPoints: [],
+      searchTerms: ["invitation"],
+      confidence: "high",
+      evidence: ["src/member.ts"]
+    }];
+    snapshot.fileIndex["src/member.ts"].featureRefs = ["Workspace Management"];
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is invitation handled?"
+    );
+
+    assert.equal(context.files[0]?.path, "src/member.ts");
+    assert.ok(context.files[0]?.reasons.includes("evidence for Workspace Management"));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

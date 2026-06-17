@@ -1,18 +1,19 @@
-<script setup lang="ts">
-import AiAgentsSection from "@/components/landing/AiAgentsSection.vue";
-import ComparisonSection from "@/components/landing/ComparisonSection.vue";
-import FeaturesSection from "@/components/landing/FeaturesSection.vue";
-import FooterCtaSection from "@/components/landing/FooterCtaSection.vue";
-import HeroSection from "@/components/landing/HeroSection.vue";
-import HowItWorksSection from "@/components/landing/HowItWorksSection.vue";
-import OnboardingSection from "@/components/landing/OnboardingSection.vue";
-import OpenSourceSection from "@/components/landing/OpenSourceSection.vue";
-import ProblemSection from "@/components/landing/ProblemSection.vue";
-import SiteFooter from "@/components/landing/SiteFooter.vue";
-import SiteHeader from "@/components/landing/SiteHeader.vue";
-</script>
+---
+import AiAgentsSection from "../components/landing/AiAgentsSection.astro";
+import ComparisonSection from "../components/landing/ComparisonSection.astro";
+import FeaturesSection from "../components/landing/FeaturesSection.astro";
+import FooterCtaSection from "../components/landing/FooterCtaSection.astro";
+import HeroSection from "../components/landing/HeroSection.astro";
+import HowItWorksSection from "../components/landing/HowItWorksSection.astro";
+import OnboardingSection from "../components/landing/OnboardingSection.astro";
+import OpenSourceSection from "../components/landing/OpenSourceSection.astro";
+import ProblemSection from "../components/landing/ProblemSection.astro";
+import SiteFooter from "../components/landing/SiteFooter.astro";
+import SiteHeader from "../components/landing/SiteHeader.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
 
-<template>
+<BaseLayout>
   <div class="landing-page">
     <!--
       PAGE STRUCTURE
@@ -45,8 +46,4 @@ import SiteHeader from "@/components/landing/SiteHeader.vue";
 
     <SiteFooter />
   </div>
-</template>
-
-<style scoped>
-/* Landing page composition styles. */
-</style>
+</BaseLayout>

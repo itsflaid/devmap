@@ -1,6 +1,25 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-17
+Terakhir diperbarui: 2026-06-18
+
+## Update 2026-06-18
+
+### Landing Page Astro Migration
+
+- Landing page `apps/web` dimigrasikan dari Vue 3 + Vite ke Astro + Tailwind.
+- Entry point sekarang memakai `src/pages/index.astro` dan layout dasar
+  `src/layouts/BaseLayout.astro`.
+- Section landing tetap dipisah per komponen di
+  `src/components/landing/*.astro`, dengan komentar konten lama dipertahankan
+  sebagai panduan implementasi UI berikutnya.
+- Struktur placeholder ditambahkan untuk `src/assets`, `src/data`, `src/lib`,
+  `src/scripts`, dan `src/components/ui`, masing-masing dengan README singkat
+  tentang isi folder nantinya.
+- Tailwind tetap dipakai melalui `src/styles/global.css`, `postcss.config.js`,
+  dan `tailwind.config.js`.
+- Astro dipin ke `5.7.14` karena `astro@latest` saat ini membutuhkan Node
+  `>=22.12.0`, sementara DevMap masih menargetkan Node.js 18+.
+- Build web berhasil dengan `astro check && astro build`.
 
 ## Update 2026-06-17
 

@@ -1,6 +1,6 @@
 # Catatan Debugging DevMap
 
-Terakhir diperbarui: 2026-06-14
+Terakhir diperbarui: 2026-06-18
 
 Dokumen ini menyimpan masalah teknis yang pernah ditemukan selama development
 DevMap. Tujuannya supaya penyebab, solusi, dan cara verifikasinya tidak perlu
@@ -879,3 +879,52 @@ dengan AI per file, analyze akan lambat dan boros.
 Snapshot kuat bukan berarti menyimpan source lebih banyak. Yang paling berguna
 adalah metadata kecil yang menjelaskan tujuan file dan hubungan antar bagian,
 supaya AI agent dapat bergerak lebih cepat tanpa eksplorasi ulang.
+
+## 17. Astro Latest Tidak Kompatibel Dengan Target Node 18
+
+**Tanggal:** 2026-06-18
+**Status:** Selesai
+
+### Gejala
+
+Saat migrasi landing page dari Vue ke Astro, `pnpm install` dengan dependency
+`astro@latest` mengambil `astro@6.4.8`. Lockfile menunjukkan engine:
+
+```text
+node >=22.12.0
+```
+
+Ini bertentangan dengan requirement DevMap yang masih mendukung Node.js 18+.
+
+### Akar Masalah
+
+Specifier `latest` mengikuti rilis Astro terbaru, bukan versi mayor yang cocok
+dengan target runtime repository. Framework frontend dapat menaikkan requirement
+Node pada major release baru.
+
+### Solusi
+
+- Pin Astro ke `5.7.14`.
+- Verifikasi lockfile menunjukkan engine:
+
+```text
+node ^18.17.1 || ^20.3.0 || >=22.0.0
+```
+
+- Pertahankan `@astrojs/check` untuk menjalankan `astro check` sebelum build.
+
+### Verifikasi
+
+```powershell
+pnpm install
+pnpm build:web
+```
+
+`astro check` menghasilkan 0 diagnostics dan `astro build` berhasil membuat
+static route `/index.html`.
+
+### Pelajaran
+
+Jangan memakai `latest` untuk dependency framework pada repo yang memiliki
+target Node eksplisit. Cek engine package yang ter-resolve di lockfile sebelum
+menganggap build lokal cukup aman untuk CI.

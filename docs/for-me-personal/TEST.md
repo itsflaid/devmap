@@ -924,6 +924,15 @@ Production build:
 pnpm build:web
 ```
 
+Expected:
+
+- `astro check` menghasilkan 0 error, 0 warning, dan 0 hint;
+- `astro build` membuat static route `/index.html`;
+- Astro dependency tetap berada di versi yang kompatibel dengan Node 18
+  (`astro@5.7.14` saat ini);
+- folder placeholder di `apps/web/src/` tetap berisi README supaya struktur
+  kosong landing page terdokumentasi.
+
 Preview:
 
 ```powershell

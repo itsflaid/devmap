@@ -109,6 +109,11 @@ Human `analyze` and `ask` responses stream progressively while preserving
 readable terminal Markdown. Agent-facing `--json` output stays buffered as one
 complete JSON document.
 
+`devmap ask` behaves like a repository navigator: it extracts intent, ranks
+snapshot files with a relevance threshold, uses optional retrieval-term
+expansion for better recall, and reports low-confidence questions honestly
+instead of inventing files.
+
 ---
 
 ## Quick Start

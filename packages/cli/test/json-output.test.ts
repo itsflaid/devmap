@@ -39,6 +39,13 @@ test("ask --json emits answer, relevant files, model, and usage", async () => {
   const client: AiClient = {
     async complete(request) {
       completeCalls += 1;
+      if (request.messages[0]?.content.includes("Return a JSON array only")) {
+        return {
+          content: "[\"startup\"]",
+          model: request.model
+        };
+      }
+
       return {
         content: "The entry point is index.ts.",
         model: request.model,
@@ -75,8 +82,9 @@ test("ask --json emits answer, relevant files, model, and usage", async () => {
     assert.equal(payload.answer, "The entry point is index.ts.");
     assert.equal(payload.model, "llama-3.1-8b-instant");
     assert.equal(payload.usage.totalTokens, 28);
+    assert.deepEqual(payload.expandedTerms, ["startup"]);
     assert.ok(Array.isArray(payload.relevantFiles));
-    assert.equal(completeCalls, 1);
+    assert.equal(completeCalls, 2);
     assert.equal(streamCalls, 0);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

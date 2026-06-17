@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   buildQuestionContext,
-  extractContextKeywords
+  extractContextKeywords,
+  normalizeExpandedTerms
 } from "../src/ai/contextBuilder.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 
@@ -324,6 +325,111 @@ test("context builder returns low confidence with no files when nothing matches"
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
+});
+
+test("context builder exposes expanded terms and uses them for ranking", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-expanded-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-expanded" }),
+      "src/billing.ts": "export function BillingPortal() { return true; }\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is revenue setup?",
+      { expandedTerms: ["billing"] }
+    );
+
+    assert.deepEqual(context.expandedTerms, ["billing"]);
+    assert.equal(context.files[0]?.path, "src/billing.ts");
+    assert.ok(context.files[0]?.reasons.some((reason) =>
+      reason.includes("expanded term")
+    ));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder keeps direct keyword matches above expanded matches", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-direct-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-direct" }),
+      "src/session.ts": "export function getSession() { return true; }\n",
+      "src/oauth.ts": "export function OAuthClient() { return true; }\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is session setup?",
+      { expandedTerms: ["oauth"] }
+    );
+
+    assert.equal(context.files[0]?.path, "src/session.ts");
+    assert.ok(context.files.some((file) => file.path === "src/oauth.ts"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("context builder excludes files that only score below the relevance threshold", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-context-threshold-"));
+
+  try {
+    const files = {
+      "package.json": JSON.stringify({ name: "context-threshold" }),
+      "src/readme-helper.ts": "import './tiny-theme';\nexport const helper = true;\n"
+    };
+
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const snapshot = await createProjectMap(projectRoot);
+    const context = await buildQuestionContext(
+      projectRoot,
+      snapshot,
+      "Where is the color system?",
+      { expandedTerms: ["tiny-theme"] }
+    );
+
+    assert.equal(context.confidence, "low");
+    assert.equal(context.topScore < 25, true);
+    assert.deepEqual(context.files, []);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("expanded term normalization keeps safe JSON-array output only", () => {
+  assert.deepEqual(
+    normalizeExpandedTerms(
+      [" OAuth ", "auth.ts", "very long generated project term", "logic", "oauth"],
+      ["auth"]
+    ),
+    ["oauth", "auth ts"]
+  );
 });
 
 test("context builder does not treat analyzer internals as a product feature match", async () => {

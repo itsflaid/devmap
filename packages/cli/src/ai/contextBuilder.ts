@@ -10,7 +10,8 @@ const FOCUSED_MAX_FILES = 2;
 const FOCUSED_MAX_LINES_PER_FILE = 60;
 const MIN_RELEVANCE_SCORE = 25;
 const HIGH_CONFIDENCE_SCORE = 70;
-const MEDIUM_CONFIDENCE_SCORE = MIN_RELEVANCE_SCORE;
+const MEDIUM_CONFIDENCE_SCORE = 40;
+const MAX_EXPANDED_TERMS = 10;
 
 const STOP_WORDS = new Set([
   "about",
@@ -66,6 +67,16 @@ const ACTION_WORDS = new Set(
   Object.values(INTENT_TERMS).flatMap((terms) => [...terms])
 );
 
+const VAGUE_EXPANSION_TERMS = new Set([
+  "app",
+  "data",
+  "feature",
+  "handler",
+  "logic",
+  "page",
+  "service"
+]);
+
 const TEST_QUERY_TERMS = new Set([
   "coverage",
   "fixture",
@@ -114,6 +125,7 @@ const CONCEPT_ALIASES: Record<string, string[]> = {
 export type ContextBuilderOptions = {
   maxFiles?: number;
   maxLinesPerFile?: number;
+  expandedTerms?: string[];
 };
 
 export type ContextFile = {
@@ -133,6 +145,7 @@ export type QuestionContext = {
   question: string;
   intent: QueryIntent;
   keywords: string[];
+  expandedTerms: string[];
   confidence: RelevanceConfidence;
   topScore: number;
   relevantFiles: ContextFile[];
@@ -157,6 +170,23 @@ type QueryProfile = {
   scopes: Set<keyof typeof SCOPE_QUERY_TERMS>;
 };
 
+type SearchTermScoreInput = {
+  terms: string[];
+  termKind: "keyword" | "expanded term";
+  normalizedPath: string;
+  pathTerms: Set<string>;
+  symbols: string;
+  symbolTerms: Set<string>;
+  imports: string;
+  weights: {
+    pathTerm: number;
+    pathContains: number;
+    exportTerm: number;
+    exportContains: number;
+    dependency: number;
+  };
+};
+
 export async function buildQuestionContext(
   projectRoot: string,
   snapshot: ProjectMap,
@@ -164,6 +194,7 @@ export async function buildQuestionContext(
   options: ContextBuilderOptions = {}
 ): Promise<QuestionContext> {
   const keywords = extractContextKeywords(question);
+  const expandedTerms = normalizeExpandedTerms(options.expandedTerms ?? [], keywords);
   const profile = classifyQuery(question);
   const defaultMaxFiles = usesFocusedContext(profile.intent)
     ? FOCUSED_MAX_FILES
@@ -180,7 +211,7 @@ export async function buildQuestionContext(
     options.maxLinesPerFile,
     defaultMaxLines
   );
-  const rankedFiles = rankContextFiles(snapshot, keywords, profile);
+  const rankedFiles = rankContextFiles(snapshot, keywords, expandedTerms, profile);
   const topScore = rankedFiles[0]?.score ?? 0;
   const confidence = getRelevanceConfidence(topScore);
   const files: ContextFile[] = [];
@@ -211,6 +242,7 @@ export async function buildQuestionContext(
     question,
     intent: profile.intent,
     keywords,
+    expandedTerms,
     confidence: files.length === 0 ? "low" : confidence,
     topScore,
     relevantFiles: files,
@@ -236,9 +268,47 @@ export function extractContextKeywords(question: string): string[] {
   return [...keywords];
 }
 
+export function normalizeExpandedTerms(
+  terms: string[],
+  keywords: string[] = []
+): string[] {
+  const normalized = new Set<string>();
+  const keywordSet = new Set(keywords);
+
+  for (const term of terms) {
+    const value = term
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!value || value.length < 2 || keywordSet.has(value)) {
+      continue;
+    }
+
+    const wordCount = value.split(/\s+/).length;
+    if (
+      wordCount > 3
+      || STOP_WORDS.has(value)
+      || ACTION_WORDS.has(value)
+      || VAGUE_EXPANSION_TERMS.has(value)
+    ) {
+      continue;
+    }
+
+    normalized.add(value);
+    if (normalized.size >= MAX_EXPANDED_TERMS) {
+      break;
+    }
+  }
+
+  return [...normalized];
+}
+
 function rankContextFiles(
   snapshot: ProjectMap,
   keywords: string[],
+  expandedTerms: string[],
   profile: QueryProfile
 ): RankedFile[] {
   const ranked = new Map<string, RankedFile>();
@@ -256,38 +326,54 @@ function rankContextFiles(
     const imports = metadata.imports.join(" ").toLowerCase();
     let score = 0;
 
-    for (const keyword of keywords) {
-      if (pathTerms.has(keyword)) {
-        score += 30;
-        reasons.push(`path term matches "${keyword}"`);
-      } else if (normalizedPath.includes(keyword)) {
-        score += 6;
-        reasons.push(`path contains "${keyword}"`);
+    const directScore = scoreSearchTerms({
+      terms: keywords,
+      termKind: "keyword",
+      normalizedPath,
+      pathTerms,
+      symbols,
+      symbolTerms,
+      imports,
+      weights: {
+        pathTerm: 30,
+        pathContains: 6,
+        exportTerm: 26,
+        exportContains: 8,
+        dependency: 3
       }
+    });
+    score += directScore.score;
+    reasons.push(...directScore.reasons);
 
-      if (symbolTerms.has(keyword)) {
-        score += 26;
-        reasons.push(`export term matches "${keyword}"`);
-      } else if (symbols.includes(keyword)) {
-        score += 8;
-        reasons.push(`export contains "${keyword}"`);
+    const expandedScore = scoreSearchTerms({
+      terms: expandedTerms,
+      termKind: "expanded term",
+      normalizedPath,
+      pathTerms,
+      symbols,
+      symbolTerms,
+      imports,
+      weights: {
+        pathTerm: 14,
+        pathContains: 4,
+        exportTerm: 12,
+        exportContains: 4,
+        dependency: 2
       }
+    });
+    score += expandedScore.score;
+    reasons.push(...expandedScore.reasons);
 
-      if (imports.includes(keyword)) {
-        score += 3;
-        reasons.push(`dependency matches "${keyword}"`);
-      }
-    }
-
-    const featureScore = scoreFeatureEvidence(snapshot, path, keywords);
+    const allTerms = [...keywords, ...expandedTerms];
+    const featureScore = scoreFeatureEvidence(snapshot, path, allTerms);
     score += featureScore.score;
     reasons.push(...featureScore.reasons);
 
-    const routeScore = scoreRouteEvidence(snapshot, path, keywords);
+    const routeScore = scoreRouteEvidence(snapshot, path, allTerms);
     score += routeScore.score;
     reasons.push(...routeScore.reasons);
 
-    const entryPointScore = scoreEntryPointEvidence(snapshot, path, keywords);
+    const entryPointScore = scoreEntryPointEvidence(snapshot, path, allTerms);
     score += entryPointScore.score;
     reasons.push(...entryPointScore.reasons);
 
@@ -321,6 +407,44 @@ function rankContextFiles(
       || Number(right.direct) - Number(left.direct)
       || left.path.localeCompare(right.path)
     );
+}
+
+function scoreSearchTerms(
+  input: SearchTermScoreInput
+): Pick<RankedFile, "score" | "reasons"> {
+  let score = 0;
+  const reasons: string[] = [];
+
+  for (const term of input.terms) {
+    const termWords = tokenizeQuestion(term);
+    const hasPathTerm = termWords.length > 0
+      && termWords.every((word) => input.pathTerms.has(word));
+    const hasExportTerm = termWords.length > 0
+      && termWords.every((word) => input.symbolTerms.has(word));
+
+    if (hasPathTerm) {
+      score += input.weights.pathTerm;
+      reasons.push(`${input.termKind} path term matches "${term}"`);
+    } else if (input.normalizedPath.includes(term)) {
+      score += input.weights.pathContains;
+      reasons.push(`${input.termKind} path contains "${term}"`);
+    }
+
+    if (hasExportTerm) {
+      score += input.weights.exportTerm;
+      reasons.push(`${input.termKind} export term matches "${term}"`);
+    } else if (input.symbols.includes(term)) {
+      score += input.weights.exportContains;
+      reasons.push(`${input.termKind} export contains "${term}"`);
+    }
+
+    if (input.imports.includes(term)) {
+      score += input.weights.dependency;
+      reasons.push(`${input.termKind} dependency matches "${term}"`);
+    }
+  }
+
+  return { score, reasons };
 }
 
 function scoreFeatureEvidence(
@@ -374,7 +498,7 @@ function scoreEntryPointEvidence(
     && keywords.some((keyword) => ENTRY_POINT_QUERY_TERMS.has(keyword))
   ) {
     return {
-      score: 30,
+      score: 40,
       reasons: ["project entry point"]
     };
   }

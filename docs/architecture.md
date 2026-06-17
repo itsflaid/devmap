@@ -400,6 +400,7 @@ Use pragmatic heuristics first:
 
 * File path matching
 * Keyword matching
+* Retrieval-only AI query expansion when provider config is available
 * Import/export matching
 * Dependency matching
 * Known framework conventions
@@ -431,6 +432,45 @@ lib/auth.ts
 lib/session.ts
 app/api/auth/*
 ```
+
+### Relevance Confidence And Query Expansion
+
+The Context Builder records retrieval quality in `QuestionContext`:
+
+```ts
+{
+  intent,
+  keywords,
+  expandedTerms,
+  confidence,
+  relevantFiles,
+  topScore
+}
+```
+
+Confidence is derived from the best ranked file:
+
+| Confidence | Score |
+| ---------- | ----- |
+| `high`     | 70+   |
+| `medium`   | 40+   |
+| `low`      | < 40  |
+
+Files below score 25 are excluded before context is read. This prevents Ask
+from selecting unrelated files only because they scored slightly above other
+unrelated files.
+
+Before scoring, `devmap ask` can make a small Groq request that returns generic
+retrieval terms as a JSON array. This call is not allowed to choose files or
+invent project-specific paths. It only improves recall for deterministic
+ranking.
+
+Direct keyword matches score higher than expanded-term matches. If expansion
+fails, returns invalid JSON, or no AI config exists, Context Builder falls back
+to keyword-only behavior.
+
+Low-confidence contexts are not sent to the answer model. Human output explains
+that no strong match was found and suggests investigation paths instead.
 
 ---
 

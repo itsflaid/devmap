@@ -144,6 +144,9 @@ devmap analyze --deep
 * Detect database usage
 * Detect entry points
 * Detect critical files
+* Build a compact file index with purpose, scope, search terms, feature
+  references, and importance
+* Generate minimal high-confidence feature flows
 * Generate architecture overview
 * Save snapshot to `.devmap/snapshot.json`
 
@@ -234,6 +237,8 @@ Shared utilities, database access, authentication logic, and helpers.
 * Do not send the entire project source to AI
 * Snapshot must be regenerated after analyze
 * Snapshot must remain compact and deterministic
+* AI metadata enrichment must be batched and optional
+* Analyze must continue if purpose or search-term enrichment fails
 * Raw provider errors must not be shown directly to users
 * New AI interpretation streams progressively in human-readable mode
 * Cached interpretation is rendered immediately without a provider request

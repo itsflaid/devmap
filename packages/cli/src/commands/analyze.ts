@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
 import { DEFAULT_AI_MODELS, GroqClient } from "../ai/groq.js";
 import { buildAnalyzeMessages } from "../ai/prompts.js";
+import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
 import { createProjectMap } from "../analyzers/projectMap.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
@@ -46,7 +47,7 @@ async function runAnalyze(
   output.section("DevMap Analyze");
   output.step(`Scanning ${projectRoot}`);
 
-  const snapshot = await createProjectMap(projectRoot);
+  let snapshot = await createProjectMap(projectRoot);
   const previous = options.fresh ? { status: "missing" as const } : await inspectSnapshot(projectRoot);
 
   if (previous.status === "valid" && previous.snapshot.fingerprint === snapshot.fingerprint) {
@@ -60,6 +61,7 @@ async function runAnalyze(
     );
   }
 
+  snapshot = await enrichSnapshot(snapshot, options, dependencies);
   await saveSnapshot(projectRoot, snapshot);
   printSnapshot(snapshot, options.deep);
 
@@ -69,6 +71,39 @@ async function runAnalyze(
   }
 
   return printOrGenerateInterpretation(projectRoot, snapshot, options, dependencies);
+}
+
+async function enrichSnapshot(
+  snapshot: Awaited<ReturnType<typeof createProjectMap>>,
+  options: AnalyzeOptions,
+  dependencies: AnalyzeDependencies
+): Promise<Awaited<ReturnType<typeof createProjectMap>>> {
+  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const config = await loadConfig();
+  if (!config?.apiKey) {
+    return snapshot;
+  }
+
+  const createAiClient = dependencies.createAiClient
+    ?? ((currentConfig: DevmapConfig) => new GroqClient(currentConfig.apiKey ?? ""));
+  const client = createAiClient(config);
+  const defaultModel = options.deep
+    ? DEFAULT_AI_MODELS.deepAnalyze
+    : DEFAULT_AI_MODELS.analyze;
+  const model = config.model === "auto" ? defaultModel : config.model;
+
+  const enriched = await enrichSnapshotWithAi(
+    snapshot,
+    client,
+    model,
+    DEFAULT_AI_MODELS.fallback
+  );
+
+  if (enriched !== snapshot) {
+    output.note("Snapshot file index enriched with AI metadata.");
+  }
+
+  return enriched;
 }
 
 function printSnapshot(

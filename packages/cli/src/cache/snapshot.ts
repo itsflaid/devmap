@@ -99,6 +99,8 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
       return { status: "corrupt", error: "fileIndex contains invalid entries." };
     }
 
+    normalizeSnapshotDefaults(parsed);
+
     return { status: "valid", snapshot: parsed as ProjectMap };
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
@@ -109,6 +111,38 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
       status: "corrupt",
       error: error instanceof Error ? error.message : "Unknown snapshot error."
     };
+  }
+}
+
+function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
+  if (!Array.isArray(snapshot.flows)) {
+    snapshot.flows = [];
+  }
+
+  const fileIndex = snapshot.fileIndex as Record<string, Record<string, unknown>>;
+  for (const entry of Object.values(fileIndex)) {
+    if (typeof entry.scope !== "string") entry.scope = "unknown";
+    if (!Array.isArray(entry.featureRefs)) entry.featureRefs = [];
+    if (!Array.isArray(entry.searchTerms)) entry.searchTerms = [];
+    if (typeof entry.importance !== "number") entry.importance = 0;
+  }
+
+  for (const feature of snapshot.features as unknown[]) {
+    if (!isRecord(feature)) {
+      continue;
+    }
+
+    if (typeof feature.purpose !== "string") {
+      feature.purpose = typeof feature.name === "string"
+        ? `Identifies ${feature.name.toLowerCase()} capability in the project.`
+        : "Identifies a project capability.";
+    }
+    if (!Array.isArray(feature.files)) feature.files = Array.isArray(feature.evidence) ? feature.evidence : [];
+    if (!Array.isArray(feature.entryPoints)) feature.entryPoints = [];
+    if (!Array.isArray(feature.searchTerms)) feature.searchTerms = [];
+    if (!["high", "medium", "low"].includes(String(feature.confidence))) {
+      feature.confidence = "medium";
+    }
   }
 }
 

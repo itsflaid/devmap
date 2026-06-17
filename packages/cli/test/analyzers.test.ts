@@ -113,10 +113,27 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.features.some((feature) => feature.name === "API Routes"));
   assert.deepEqual(projectMap.fileIndex["app/page.tsx"].imports, ["lib/auth.ts"]);
   assert.ok(projectMap.fileIndex["lib/auth.ts"].exportedSymbols.includes("getSession"));
+  assert.equal(projectMap.fileIndex["app/api/session/route.ts"].scope, "api");
+  assert.equal(projectMap.fileIndex["prisma/schema.prisma"].scope, "database");
+  assert.equal(projectMap.fileIndex["lib/auth.ts"].scope, "service");
+  assert.ok(projectMap.fileIndex["lib/auth.ts"].purpose?.includes("lib/auth.ts"));
+  assert.ok(projectMap.fileIndex["lib/auth.ts"].searchTerms.includes("auth"));
+  assert.ok(projectMap.fileIndex["lib/auth.ts"].featureRefs.includes("Authentication"));
+  assert.ok(projectMap.fileIndex["lib/auth.ts"].importance > 0);
   assert.ok(projectMap.criticalFiles.some((file) =>
     file.path === "lib/auth.ts"
     && file.score > file.referencedBy
     && file.reasons.includes("core project concern")
+  ));
+  const authentication = projectMap.features.find((feature) => feature.name === "Authentication");
+  assert.ok(authentication);
+  assert.equal(authentication.confidence, "high");
+  assert.ok(authentication.purpose.includes("authentication"));
+  assert.ok(authentication.searchTerms.includes("auth"));
+  assert.ok(projectMap.flows.some((flow) =>
+    flow.name === "Authentication flow"
+    && flow.confidence === "high"
+    && flow.steps.length > 0
   ));
   assert.ok(projectMap.stats.relevantFiles >= 5);
 });
@@ -127,6 +144,8 @@ test("project map summarizes an Express fixture", async () => {
   assert.equal(projectMap.framework, "express");
   assert.ok(projectMap.entryPoints.includes("src/server.ts"));
   assert.deepEqual(projectMap.externalServices, ["Stripe"]);
+  assert.equal(projectMap.fileIndex["src/server.ts"].scope, "api");
+  assert.ok(projectMap.fileIndex["src/server.ts"].searchTerms.includes("server"));
   assert.deepEqual(projectMap.fileIndex["src/server.ts"].imports, ["src/routes/payments.ts"]);
   assert.deepEqual(projectMap.apiRoutes, [
     {
@@ -220,7 +239,11 @@ test("snapshot inspection rejects invalid fileIndex entries", async () => {
       hash: "fixture",
       imports: undefined as unknown as string[],
       exportedSymbols: [],
-      lines: 1
+      lines: 1,
+      scope: "ui",
+      featureRefs: [],
+      searchTerms: [],
+      importance: 0
     };
     await saveSnapshot(projectRoot, snapshot);
 

@@ -9,6 +9,8 @@ import { DevmapError } from "../utils/errors.js";
 import { analyzeCommand } from "./analyze.js";
 import { output, withJsonOutput } from "../utils/output.js";
 
+const MEDIUM_RELEVANCE_SCORE = 40;
+
 export type AskDependencies = {
   json?: boolean;
   projectRoot?: string;
@@ -72,15 +74,22 @@ async function runAsk(
     ? DEFAULT_AI_MODELS.ask
     : config.model;
   const client = config?.apiKey ? createAiClient(config) : null;
-  const expandedTerms = client
-    ? await expandQuestionTerms(client, question, model)
-    : [];
-  const context = await buildQuestionContext(
+  let context = await buildQuestionContext(
     projectRoot,
     snapshot,
-    question,
-    { expandedTerms }
+    question
   );
+  if (client && context.topScore < MEDIUM_RELEVANCE_SCORE) {
+    const expandedTerms = await expandQuestionTerms(client, question, model);
+    if (expandedTerms.length > 0) {
+      context = await buildQuestionContext(
+        projectRoot,
+        snapshot,
+        question,
+        { expandedTerms }
+      );
+    }
+  }
 
   output.section("Relevant Files");
   if (context.confidence === "low") {

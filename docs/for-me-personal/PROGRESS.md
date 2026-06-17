@@ -4,6 +4,24 @@ Terakhir diperbarui: 2026-06-17
 
 ## Update 2026-06-17
 
+### Snapshot Tier 1 Enrichment
+
+- `fileIndex` sekarang menyimpan metadata navigasi Tier 1: `purpose`, `scope`,
+  `featureRefs`, `searchTerms`, dan `importance`.
+- Scope file diklasifikasikan berdasarkan responsibility (`api`, `ui`,
+  `database`, `config`, `service`, `cli`, `test`, `docs`, `unknown`) tanpa
+  mensyaratkan framework tertentu.
+- Feature metadata diperkaya dengan `purpose`, `files`, `entryPoints`,
+  `searchTerms`, dan `confidence`.
+- Snapshot sekarang memiliki `flows` minimal untuk high-confidence features.
+  Flow masih sederhana dan belum memakai call graph.
+- Analyze dapat menjalankan AI enrichment batched untuk purpose/searchTerms:
+  maksimal 20 file per call, fallback aman jika gagal.
+- Context Builder memakai `fileIndex.searchTerms`, `feature.searchTerms`,
+  `featureRefs`, `scope`, `importance`, dan `purpose` sebagai sinyal retrieval.
+- Snapshot reader memberi default aman untuk snapshot lama agar `ask` tetap
+  berjalan sambil user bisa regenerate snapshot.
+
 ### Ask Retrieval Strengthening
 
 - `QuestionContext` sekarang menyimpan `expandedTerms` selain `intent`,

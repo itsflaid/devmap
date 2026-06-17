@@ -44,6 +44,10 @@ Expected result:
 - Query expansion menyimpan `expandedTerms`, ikut ranking dengan bobot lebih
   rendah dari keyword langsung, dan fallback aman jika respons JSON invalid.
 - Direct keyword match harus tetap mengalahkan expanded-term match.
+- `fileIndex.searchTerms` dan `feature.searchTerms` ikut ranking sebagai sinyal
+  snapshot yang kuat.
+- `featureRefs`, `scope`, `importance`, dan `purpose` ikut membantu retrieval
+  tanpa menggantikan direct keyword match.
 - Query tanpa match kuat mengembalikan `confidence: "low"`, `topScore: 0`,
   dan `relevantFiles: []`, bukan fallback ke critical file acak.
 - Query low-confidence tidak memanggil model jawaban Groq. Jika config AI ada,
@@ -52,6 +56,25 @@ Expected result:
 - Human-readable `Relevant Files` hanya menampilkan path; alasan scoring tetap
   dicek melalui output `--json`.
 - Evaluation tetap top-1 accuracy 20/20 dan top-3 recall 20/20.
+
+## Snapshot Tier 1 Enrichment
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/analyzers.test.ts test/analyze-ai.test.ts test/context-builder.test.ts
+```
+
+Expected result:
+
+- `fileIndex` memiliki `scope`, `purpose`, `featureRefs`, `searchTerms`, dan
+  `importance`.
+- Feature memiliki `purpose`, `files`, `entryPoints`, `searchTerms`, dan
+  `confidence`.
+- `flows` hanya dibuat untuk high-confidence features.
+- AI enrichment memakai batch maksimal 20 file per call, bukan satu call per
+  file.
+- Jika AI enrichment gagal, `analyze` tetap menyimpan snapshot valid.
 
 Manual source-mode check:
 

@@ -358,6 +358,7 @@ interface DevMapSnapshot {
   externalServices: ExternalServiceInfo[];
   database?: DatabaseInfo;
   features: FeatureInfo[];
+  flows: FlowInfo[];
   fileIndex: Record<string, FileInfo>;
 }
 ```
@@ -367,6 +368,32 @@ returned by the filtered scanner. DevMap does not currently walk the ignored
 filesystem paths to calculate a separate pre-filter total. Both fields remain
 in the schema for compatibility and for a future analyzer that may collect
 those counts separately.
+
+### Tier 1 File Index
+
+Each `fileIndex` entry stores compact navigation metadata:
+
+| Field | Purpose |
+| ----- | ------- |
+| `purpose` | One-sentence description of what the file does when available |
+| `scope` | Responsibility classification: API, UI, database, config, service, CLI, test, docs, or unknown |
+| `featureRefs` | Feature names that reference this file |
+| `searchTerms` | Retrieval-focused terms used by `devmap ask` |
+| `importance` | Static importance score from references, entry point status, critical-file score, and feature ownership |
+
+The scope classifier is responsibility-based. Framework conventions may provide
+supporting evidence, but no framework is required for classification.
+
+AI enrichment may improve `purpose` and `searchTerms`, but it is batched in
+chunks of at most 20 files and skipped if the provider fails. Static analysis
+and snapshot generation must still complete.
+
+### Minimal Flows
+
+Snapshot schema includes `flows` as a foundation for future `FLOW.md`
+generation. Phase 1 only creates small feature flows for high-confidence
+features, using the feature file order as steps. It does not build a full call
+graph or separate flow analyzer.
 
 ---
 

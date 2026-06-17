@@ -55,7 +55,9 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
       }
     ));
 
-    assert.equal(requests.length, 1);
+    assert.equal(requests.length, 2);
+    assert.match(requests[0]?.messages[0]?.content ?? "", /compact DevMap snapshot/);
+    assert.match(requests[1]?.messages[0]?.content ?? "", /codebase architecture interpreter/);
     assert.match(firstLogs, /Cached: no/);
 
     const saved = await inspectSnapshot(projectRoot);
@@ -81,7 +83,7 @@ test("analyze stores and reuses AI architecture interpretation", async () => {
       }
     ));
 
-    assert.equal(requests.length, 1);
+    assert.equal(requests.length, 2);
     assert.match(secondLogs, /Reused existing snapshot/);
     assert.match(secondLogs, /Cached: yes/);
     assert.match(stripAnsi(secondLogs), /Overview\n-+/);
@@ -223,9 +225,125 @@ test("analyze auto routing uses 20B normally and 120B for deep analysis", async 
     ));
 
     assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.analyze);
-    assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.deepAnalyze);
+    assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.analyze);
+    assert.equal(requests[2]?.model, DEFAULT_AI_MODELS.deepAnalyze);
+    assert.equal(requests[3]?.model, DEFAULT_AI_MODELS.deepAnalyze);
     assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
-    assert.equal(requests[1]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
+    assert.equal(requests[2]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("analyze batches snapshot enrichment and never calls once per file", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-enrichment-batch-"));
+  const requests: AiCompletionRequest[] = [];
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      requests.push(request);
+      if (request.messages[0]?.content.includes("compact DevMap snapshot")) {
+        const files = JSON.parse(request.messages[1]?.content ?? "[]") as Array<{ path: string }>;
+        return {
+          content: JSON.stringify(files.map((file) => ({
+            path: file.path,
+            purpose: `${file.path} purpose.`,
+            searchTerms: ["snapshot", "purpose"]
+          }))),
+          model: request.model
+        };
+      }
+
+      return {
+        content: "Architecture result.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "enrichment-batch" }),
+      "utf8"
+    );
+    await writeFile(
+      join(projectRoot, "index.ts"),
+      Array.from({ length: 25 }, (_, index) => `import { module${index} } from "./module-${index}.js";`).join("\n"),
+      "utf8"
+    );
+    for (let index = 0; index < 25; index += 1) {
+      await writeFile(
+        join(projectRoot, `module-${index}.ts`),
+        `export function module${index}() { return ${index}; }\n`,
+        "utf8"
+      );
+    }
+
+    await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { fresh: true },
+      {
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    ));
+
+    const enrichmentRequests = requests.filter((request) =>
+      request.messages[0]?.content.includes("compact DevMap snapshot")
+    );
+    assert.ok(enrichmentRequests.length > 0);
+    assert.ok(enrichmentRequests.length < 25);
+    for (const request of enrichmentRequests) {
+      const files = JSON.parse(request.messages[1]?.content ?? "[]") as unknown[];
+      assert.ok(files.length <= 20);
+    }
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("analyze continues when snapshot enrichment AI fails", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-enrichment-failure-"));
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      if (request.messages[0]?.content.includes("compact DevMap snapshot")) {
+        throw new Error("enrichment unavailable");
+      }
+
+      return {
+        content: "Architecture result.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "enrichment-failure" }),
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "index.ts"), "export function start() { return true; }\n", "utf8");
+
+    await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { fresh: true },
+      {
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    ));
+
+    const saved = await inspectSnapshot(projectRoot);
+    assert.equal(saved.status, "valid");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

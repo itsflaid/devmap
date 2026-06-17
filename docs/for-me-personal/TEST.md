@@ -41,10 +41,14 @@ Expected result:
   intent, bukan keyword ranking.
 - Query perubahan fitur yang berbeda topik tetap memilih file existing yang
   relevan berdasarkan path/export/import, bukan special-case satu framework.
+- Query expansion menyimpan `expandedTerms`, ikut ranking dengan bobot lebih
+  rendah dari keyword langsung, dan fallback aman jika respons JSON invalid.
+- Direct keyword match harus tetap mengalahkan expanded-term match.
 - Query tanpa match kuat mengembalikan `confidence: "low"`, `topScore: 0`,
   dan `relevantFiles: []`, bukan fallback ke critical file acak.
-- Query low-confidence tidak memanggil Groq. Command memberi template lokal
-  agar hemat token dan tidak mengarang file.
+- Query low-confidence tidak memanggil model jawaban Groq. Jika config AI ada,
+  query expansion kecil masih boleh berjalan sebelum confidence dihitung.
+  Command memberi template lokal agar hemat token dan tidak mengarang file.
 - Human-readable `Relevant Files` hanya menampilkan path; alasan scoring tetap
   dicek melalui output `--json`.
 - Evaluation tetap top-1 accuracy 20/20 dan top-3 recall 20/20.

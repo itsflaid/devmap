@@ -792,3 +792,50 @@ Informasi ranking bagus untuk agent dan debugging, tetapi terlalu bising untuk
 terminal manusia. Human mode harus ringkas; machine detail harus berada di JSON.
 Untuk MVP, `ask` adalah navigation helper berbasis snapshot, bukan coding
 agent. Low-confidence harus hemat token dan jujur, bukan meminta AI menebak.
+
+## 15. Ask Retrieval Butuh Recall Tanpa Mengorbankan Precision
+
+**Tanggal:** 2026-06-17
+**Status:** Selesai
+
+### Gejala
+
+Keyword-only retrieval terlalu kaku untuk istilah developer yang berbeda-beda,
+tetapi menambah alias hardcoded per teknologi berisiko membuat DevMap menjadi
+kumpulan special-case React/Auth/OAuth.
+
+### Akar Masalah
+
+Context Builder perlu membedakan kata asli user, inferred retrieval hint, dan
+confidence ranking. Tanpa pemisahan itu, expanded concept dapat mengalahkan
+direct match atau membuat file lemah terlihat seolah relevan.
+
+### Solusi
+
+- Tambahkan query expansion Groq ringan yang hanya menghasilkan JSON array
+  retrieval terms.
+- Simpan `expandedTerms` di `QuestionContext`.
+- Beri bobot expanded terms lebih rendah dari keyword langsung.
+- Gunakan confidence 70/40 dan threshold 25 sebelum membaca context file.
+- Jika confidence `low`, hentikan sebelum answer model dan tampilkan jawaban
+  lokal yang transparan.
+- Jika expansion gagal atau JSON invalid, fallback ke keyword-only behavior.
+
+### Verifikasi
+
+- Expanded terms ikut ranking.
+- Direct keyword match mengalahkan expanded-term match.
+- File di bawah threshold dikeluarkan.
+- Invalid expansion JSON fallback aman.
+- Focused suite:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ask-command.test.ts test/ai-client.test.ts
+```
+
+### Pelajaran
+
+LLM boleh membantu recall, tetapi deterministic scorer tetap harus memegang
+kendali ranking. Untuk MVP, Ask harus menjadi navigator yang jujur: kalau bukti
+lemah, lebih baik mengaku tidak menemukan strong match daripada menyusun
+jawaban yang terdengar yakin.

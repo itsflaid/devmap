@@ -4,6 +4,36 @@ import type { AiMessage } from "./types.js";
 
 export type AskProjectSummary = Pick<ProjectMap["project"], "name" | "framework">;
 
+export function buildQueryExpansionMessages(query: string): AiMessage[] {
+  return [
+    {
+      role: "system",
+      content: [
+        "You expand developer questions into retrieval terms for a codebase navigator.",
+        "Return a JSON array only.",
+        "Max 10 terms.",
+        "Each term must be 1-3 words.",
+        "Prefer concrete code concepts, file name fragments, function name fragments, and implementation patterns.",
+        "Avoid vague terms such as data, logic, handler, service, feature, app, or page unless directly relevant.",
+        "Do not include framework-specific guesses unless the query explicitly mentions that framework.",
+        "Do not invent project-specific files.",
+        "Keep terms generic enough to work across repositories.",
+        "Include original important query terms when useful."
+      ].join(" ")
+    },
+    {
+      role: "user",
+      content: [
+        "Given this developer query:",
+        "",
+        JSON.stringify(query),
+        "",
+        "List technical terms, patterns, file name fragments, function name fragments, or code concepts that a developer would likely use to implement or locate this in a codebase."
+      ].join("\n")
+    }
+  ];
+}
+
 export function buildAnalyzeMessages(
   snapshot: ProjectMap,
   deep = false
@@ -73,6 +103,8 @@ export function buildAskMessages(
         "If you infer a path that is not listed in SELECTED CONTEXT, label it as a suggested new or possible file, not an existing file.",
         "If the context is insufficient, say what is missing.",
         "Use RETRIEVAL_CONFIDENCE and TOP_SCORE to judge how strongly the selected files match the question.",
+        "Use EXPANDED_TERMS as inferred retrieval hints, not as confirmed project facts.",
+        "If matches came primarily through expanded terms, say these files appear related based on inferred concepts although the exact term was not found.",
         "If RETRIEVAL_CONFIDENCE is low, do not claim the selected files are correct.",
         "For low confidence, explicitly say no strong matches were found, explain that the requested concept may not exist in the current snapshot, and offer investigation paths or likely architectural entry points.",
         "If RETRIEVAL_CONFIDENCE is high, be direct and mention exact files and exported functions when available.",
@@ -97,6 +129,7 @@ export function buildAskMessages(
         `FRAMEWORK: ${project.framework}`,
         `INTENT: ${context.intent}`,
         `KEYWORDS: ${context.keywords.length > 0 ? context.keywords.join(", ") : "none"}`,
+        `EXPANDED_TERMS: ${context.expandedTerms.length > 0 ? context.expandedTerms.join(", ") : "none"}`,
         `RETRIEVAL_CONFIDENCE: ${context.confidence}`,
         `TOP_SCORE: ${context.topScore}`,
         `QUESTION: ${context.question}`,

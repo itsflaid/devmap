@@ -1,6 +1,28 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-16
+Terakhir diperbarui: 2026-06-17
+
+## Update 2026-06-17
+
+### Ask Retrieval Strengthening
+
+- `QuestionContext` sekarang menyimpan `expandedTerms` selain `intent`,
+  `keywords`, `confidence`, `relevantFiles`, dan `topScore`.
+- `devmap ask` dapat menjalankan query-expansion Groq ringan sebelum scoring.
+  Respons harus berupa JSON array dan hanya dipakai sebagai retrieval terms.
+- Expanded terms ikut ranking dengan bobot lebih rendah dari keyword langsung,
+  sehingga direct match tetap mengalahkan inferred match.
+- Confidence mengikuti batas eksplisit: `high` untuk skor 70+, `medium` untuk
+  40+, dan `low` di bawah 40. File di bawah skor 25 tetap dikeluarkan.
+- Low-confidence context tidak dikirim ke model jawaban. Command memberi
+  jawaban lokal yang menjelaskan bahwa tidak ada strong match dan menyarankan
+  langkah investigasi.
+- Prompt `ask` sekarang mengirim `EXPANDED_TERMS` dan memperingatkan model agar
+  memperlakukan expanded terms sebagai hint retrieval, bukan fakta project.
+- Dokumentasi publik diperbarui untuk menjelaskan confidence, threshold,
+  query expansion, dan low-confidence behavior.
+- Focused tests hijau untuk context builder, ask command, dan AI prompt
+  contract.
 
 ## Update 2026-06-16
 

@@ -20,6 +20,13 @@ test("ask command uses configured AI client and prints token usage", async () =>
   const client: AiClient = {
     async complete(request): Promise<AiCompletionResult> {
       requests.push(request);
+      if (request.messages[0]?.content.includes("Return a JSON array only")) {
+        return {
+          content: "[\"auth\", \"session\"]",
+          model: request.model
+        };
+      }
+
       return {
         content: "## Authentication\n\nAuthentication is handled in **`auth.ts`**.",
         model: request.model,
@@ -46,10 +53,14 @@ test("ask command uses configured AI client and prints token usage", async () =>
       }
     ));
 
-    assert.equal(requests.length, 1);
+    assert.equal(requests.length, 2);
     assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.ask);
     assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
-    assert.match(requests[0]?.messages[1]?.content ?? "", /auth\.ts/);
+    assert.equal(requests[0]?.maxCompletionTokens, 180);
+    assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.ask);
+    assert.equal(requests[1]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
+    assert.match(requests[1]?.messages[1]?.content ?? "", /EXPANDED_TERMS: none/);
+    assert.match(requests[1]?.messages[1]?.content ?? "", /auth\.ts/);
     const plainLogs = stripAnsi(logs);
     assert.equal(countMatches(plainLogs, /Relevant Files/g), 1);
     assert.equal(countMatches(plainLogs, /Asking Groq/g), 1);
@@ -70,9 +81,16 @@ test("ask command streams AI paragraphs when the client supports streaming", asy
   let completeCalls = 0;
   let streamCalls = 0;
   const client: AiClient = {
-    async complete(): Promise<AiCompletionResult> {
+    async complete(request): Promise<AiCompletionResult> {
       completeCalls += 1;
-      throw new Error("complete should not be used for human output");
+      if (request.messages[0]?.content.includes("Return a JSON array only")) {
+        return {
+          content: "[\"auth\"]",
+          model: request.model
+        };
+      }
+
+      throw new Error("complete should only be used for query expansion");
     },
     async stream(request, onDelta): Promise<AiCompletionResult> {
       streamCalls += 1;
@@ -100,7 +118,7 @@ test("ask command streams AI paragraphs when the client supports streaming", asy
     )));
 
     assert.equal(streamCalls, 1);
-    assert.equal(completeCalls, 0);
+    assert.equal(completeCalls, 1);
     assert.match(logs, /Authentication\n-+/);
     assert.match(logs, /Authentication uses auth\.ts\./);
   } finally {
@@ -152,7 +170,10 @@ test("ask command answers low-confidence questions locally without calling AI", 
   const client: AiClient = {
     async complete(request): Promise<AiCompletionResult> {
       requests.push(request);
-      throw new Error("low-confidence ask should not call AI");
+      return {
+        content: "[\"payments\"]",
+        model: request.model
+      };
     }
   };
 
@@ -170,11 +191,54 @@ test("ask command answers low-confidence questions locally without calling AI", 
       }
     )));
 
-    assert.equal(requests.length, 0);
+    assert.equal(requests.length, 1);
+    assert.match(requests[0]?.messages[0]?.content ?? "", /Return a JSON array only/);
     assert.match(logs, /No strong file matches found/i);
     assert.match(logs, /No strong matching files found for ".*payments/i);
     assert.doesNotMatch(logs, /auth\.ts/);
     assert.doesNotMatch(logs, /Asking Groq/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("ask command falls back safely when query expansion returns invalid JSON", async () => {
+  const projectRoot = await createAskProject();
+  const requests: AiCompletionRequest[] = [];
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      requests.push(request);
+      if (request.messages[0]?.content.includes("Return a JSON array only")) {
+        return {
+          content: "auth, session",
+          model: request.model
+        };
+      }
+
+      return {
+        content: "Authentication uses `auth.ts`.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    const logs = stripAnsi(await captureOutput(() => askCommand(
+      ["where", "is", "auth"],
+      {
+        projectRoot,
+        loadConfig: async () => ({
+          provider: "groq",
+          apiKey: "gsk_fixture",
+          model: "auto"
+        }),
+        createAiClient: () => client
+      }
+    )));
+
+    assert.equal(requests.length, 2);
+    assert.match(requests[1]?.messages[1]?.content ?? "", /EXPANDED_TERMS: none/);
+    assert.match(logs, /Authentication uses auth\.ts\./);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

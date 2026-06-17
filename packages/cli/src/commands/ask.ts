@@ -1,7 +1,7 @@
 import { buildQuestionContext } from "../ai/contextBuilder.js";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
 import { DEFAULT_AI_MODELS, GroqClient } from "../ai/groq.js";
-import { buildAskMessages } from "../ai/prompts.js";
+import { buildAskMessages, buildQueryExpansionMessages } from "../ai/prompts.js";
 import type { AiClient } from "../ai/types.js";
 import { inspectSnapshot, isSnapshotStale } from "../cache/snapshot.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
@@ -64,20 +64,40 @@ async function runAsk(
     output.note("Run devmap analyze --fresh, then repeat devmap ask for the latest result.");
   }
 
-  const context = await buildQuestionContext(projectRoot, snapshot, question);
+  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const config = await loadConfig();
+  const createAiClient = dependencies.createAiClient
+    ?? ((currentConfig: DevmapConfig) => new GroqClient(currentConfig.apiKey ?? ""));
+  const model = config?.model === "auto" || !config?.model
+    ? DEFAULT_AI_MODELS.ask
+    : config.model;
+  const client = config?.apiKey ? createAiClient(config) : null;
+  const expandedTerms = client
+    ? await expandQuestionTerms(client, question, model)
+    : [];
+  const context = await buildQuestionContext(
+    projectRoot,
+    snapshot,
+    question,
+    { expandedTerms }
+  );
 
   output.section("Relevant Files");
-  if (context.files.length === 0) {
+  if (context.confidence === "low") {
     output.warning("No strong file matches found in the current snapshot.");
+    for (const file of context.files) {
+      output.item(`${file.path} (weak match)`);
+    }
     printLowConfidenceAnswer(context);
     return {
-      status: "no_context",
+      status: "low_confidence",
       question,
       intent: context.intent,
       keywords: context.keywords,
+      expandedTerms: context.expandedTerms,
       confidence: context.confidence,
       topScore: context.topScore,
-      relevantFiles: [],
+      relevantFiles: serializeContextFiles(context.files),
       answer: buildLowConfidenceAnswer(context),
       model: null,
       usage: null
@@ -88,10 +108,7 @@ async function runAsk(
     }
   }
 
-  const loadConfig = dependencies.loadConfig ?? readConfig;
-  const config = await loadConfig();
-
-  if (!config?.apiKey) {
+  if (!config?.apiKey || !client) {
     output.warning("AI answering is not configured yet.");
     output.note("Run devmap init to configure a Groq API key.");
     printStaticContext(context.files);
@@ -100,6 +117,7 @@ async function runAsk(
       question,
       intent: context.intent,
       keywords: context.keywords,
+      expandedTerms: context.expandedTerms,
       confidence: context.confidence,
       topScore: context.topScore,
       relevantFiles: serializeContextFiles(context.files),
@@ -108,11 +126,6 @@ async function runAsk(
       usage: null
     };
   }
-
-  const createAiClient = dependencies.createAiClient
-    ?? ((currentConfig: DevmapConfig) => new GroqClient(currentConfig.apiKey ?? ""));
-  const client = createAiClient(config);
-  const model = config.model === "auto" ? DEFAULT_AI_MODELS.ask : config.model;
 
   output.step(`Asking Groq with ${model}`);
 
@@ -136,6 +149,7 @@ async function runAsk(
       question,
       intent: context.intent,
       keywords: context.keywords,
+      expandedTerms: context.expandedTerms,
       confidence: context.confidence,
       topScore: context.topScore,
       relevantFiles: serializeContextFiles(context.files),
@@ -159,6 +173,7 @@ async function runAsk(
       question,
       intent: context.intent,
       keywords: context.keywords,
+      expandedTerms: context.expandedTerms,
       confidence: context.confidence,
       topScore: context.topScore,
       relevantFiles: serializeContextFiles(context.files),
@@ -169,6 +184,44 @@ async function runAsk(
       hint: error.hint ?? null
     };
   }
+}
+
+async function expandQuestionTerms(
+  client: AiClient,
+  question: string,
+  model: string
+): Promise<string[]> {
+  try {
+    const result = await client.complete({
+      messages: buildQueryExpansionMessages(question),
+      model,
+      fallbackModel: DEFAULT_AI_MODELS.fallback,
+      maxCompletionTokens: 180,
+      temperature: 0
+    });
+
+    return parseExpandedTerms(result.content);
+  } catch {
+    return [];
+  }
+}
+
+function parseExpandedTerms(content: string): string[] {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return [];
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed
+    .filter((item): item is string => typeof item === "string")
+    .slice(0, 10);
 }
 
 function printLowConfidenceAnswer(
@@ -188,8 +241,12 @@ function buildLowConfidenceAnswer(
   return [
     `No strong matching files found for "${target}".`,
     "",
-    "This may be new behavior that is not represented in the current snapshot yet.",
-    "Try a more specific term or run `devmap analyze --fresh` if the project changed."
+    "The current snapshot does not contain strong evidence for that concept, so DevMap will not guess an existing implementation.",
+    "The behavior may not exist yet, or the snapshot may be stale.",
+    "Next investigation paths:",
+    "- Run `devmap analyze --fresh` if the project changed.",
+    "- Try a more specific code term, route name, package name, or folder name.",
+    "- If this is a new feature, start from the closest existing entry point, route, command, or UI area after confirming it exists in the project."
   ].join("\n");
 }
 

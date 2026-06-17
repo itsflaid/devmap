@@ -214,6 +214,7 @@ test("ask prompt grounds the answer in snapshot context and preserves language",
     question: "Bagaimana autentikasi bekerja?",
     intent: "explain",
     keywords: ["auth", "session"],
+    expandedTerms: ["middleware"],
     confidence: "high",
     topScore: 72,
     relevantFiles: [],
@@ -243,10 +244,12 @@ test("ask prompt grounds the answer in snapshot context and preserves language",
   assert.match(messages[0]?.content ?? "", /Do not repeat/i);
   assert.match(messages[0]?.content ?? "", /Only mention files as existing files/i);
   assert.match(messages[0]?.content ?? "", /suggested new or possible file/i);
+  assert.match(messages[0]?.content ?? "", /EXPANDED_TERMS/i);
   assert.match(messages[0]?.content ?? "", /Key Files/);
   assert.match(messages[0]?.content ?? "", /Limits/);
   assert.match(messages[0]?.content ?? "", /existing supplied files/i);
   assert.match(messages[1]?.content ?? "", /INTENT: explain/);
+  assert.match(messages[1]?.content ?? "", /EXPANDED_TERMS: middleware/);
   assert.match(messages[1]?.content ?? "", /RETRIEVAL_CONFIDENCE: high/);
   assert.match(messages[1]?.content ?? "", /EXPORTS: getSession/);
   assert.match(messages[1]?.content ?? "", /Bagaimana autentikasi bekerja/);

@@ -785,6 +785,21 @@ Not selected:
 entire project
 ```
 
+### Relevance Confidence And Query Expansion
+
+`devmap ask` treats retrieval quality as part of the answer contract.
+
+- Direct query keywords are extracted separately from generic intent words such
+  as add, change, explain, or find.
+- When AI configuration is available, Ask may run a lightweight retrieval-only
+  model call that returns up to 10 generic technical terms for better recall.
+- Expanded terms improve ranking, but direct keyword matches remain stronger
+  than inferred matches.
+- Files below the minimum relevance score of 25 are excluded.
+- Confidence is `high` at 70+, `medium` at 40+, and `low` below 40.
+- Low-confidence questions should produce an honest local response instead of
+  asking AI to guess from unrelated context.
+
 ### Goals
 
 - Reduce repeated exploration

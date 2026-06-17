@@ -263,10 +263,12 @@ devmap ask "where is a new user created?"
 * Read `.devmap/snapshot.json`
 * Run quick analysis if no snapshot exists
 * Detect question language
-* Extract relevant keywords
+* Extract generic intent and relevant keywords
+* Optionally expand retrieval terms with a lightweight AI call
 * Select relevant files
+* Calculate retrieval confidence
 * Build compact context
-* Send only relevant context to AI
+* Send only relevant context to AI when confidence is sufficient
 * Return answer in the same language as the question
 
 ### Internal Flow
@@ -293,6 +295,7 @@ DevMap should select relevant files using:
 
 * File path matching
 * Keyword matching
+* Expanded retrieval-term matching
 * Import/export matching
 * Dependency matching
 * Known framework conventions
@@ -316,6 +319,10 @@ app/api/auth/*
 
 * Never send the entire project to AI
 * Prefer 3–5 most relevant files
+* Exclude files below the minimum relevance score of 25
+* Report retrieval confidence as `high`, `medium`, or `low`
+* Use low-confidence local answers instead of asking AI to guess from weak or
+  missing evidence
 * Include related files in output
 * Keep answer readable
 * Respond in the same language as the question
@@ -343,6 +350,31 @@ Key Files
 → lib/auth.ts
 → app/api/auth/*
 ```
+
+### Low-Confidence Behavior
+
+If no strong matches are found, Ask does not pretend unrelated files are
+relevant. It returns an honest local answer:
+
+```txt
+No strong file matches found in the current snapshot.
+
+No strong matching files found for "login".
+
+The current snapshot does not contain strong evidence for that concept, so
+DevMap will not guess an existing implementation.
+```
+
+This protects users from hallucinated navigation and avoids spending answer
+tokens on weak context.
+
+### Query Expansion
+
+When Groq is configured, Ask may first request up to 10 generic retrieval terms
+as JSON. These expanded terms improve recall but do not choose files directly.
+Deterministic scoring still ranks files, and direct keyword matches outweigh
+expanded-term matches. If expansion fails, Ask falls back to keyword-only
+retrieval.
 
 ### Missing Snapshot Behavior
 

@@ -272,7 +272,12 @@ Ini adalah cara tercepat untuk melihat perubahan terbaru di source DevMap.
 Tidak perlu menjalankan `pnpm build:cli`. Command menggunakan `tsx` dan membaca
 file dalam `packages/cli/src/` secara langsung.
 
-### Menjalankan DevMap Pada Repository DevMap
+### Menjalankan Package CLI Langsung
+
+`pnpm dev:cli` menjalankan package `devmap` melalui `pnpm --filter devmap`.
+Karena itu current working directory command menjadi `packages/cli`, bukan root
+repository. Mode ini bagus untuk mengetes CLI package, tetapi snapshot akan
+dibuat di `packages/cli/.devmap/snapshot.json`.
 
 ```powershell
 pnpm dev:cli
@@ -282,6 +287,27 @@ pnpm dev:cli -- analyze
 pnpm dev:cli -- analyze --fresh
 pnpm dev:cli -- ask "bagaimana analyzer bekerja?"
 ```
+
+### Menjalankan DevMap Pada Root Repository DevMap
+
+Gunakan mode ini saat ingin DevMap menganalisis repository DevMap dari root dan
+membuat snapshot di `.devmap/snapshot.json`.
+
+Jangan gunakan `pnpm exec tsx ...` dari root workspace, karena `tsx` adalah
+dependency package CLI dan tidak selalu tersedia sebagai binary root workspace.
+Pakai binary `tsx.cmd` milik `packages/cli` secara langsung:
+
+```powershell
+.\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts analyze --fresh
+.\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts ask "where do I start to add framework detection?"
+.\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts doctor
+```
+
+Expected:
+
+- `.devmap/snapshot.json` muncul di root repository DevMap;
+- bukan di `packages/cli/.devmap/snapshot.json`;
+- Ask membaca snapshot root yang baru dibuat.
 
 Gunakan mode ini setelah mengubah:
 

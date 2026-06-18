@@ -903,3 +903,17 @@ node packages\cli\dist\index.js doctor
 4. Tambahkan abstraction AI client dan model routing.
 5. Tambahkan Context Builder dengan batas 3–5 file.
 6. Tambahkan prompt template untuk `analyze` dan `ask`.
+
+## Snapshot Scanner Ignore: Agent Development Metadata
+
+**Tanggal:** 2026-06-18
+
+DevMap sekarang mengabaikan folder `.agent/` dan `.agents/` saat scan project.
+Folder tersebut dipakai untuk metadata/skill AI agent saat development dan
+tidak boleh muncul sebagai fitur produk di snapshot.
+
+Verifikasi:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/analyzers.test.ts
+```

@@ -387,6 +387,12 @@ Analyzer dan snapshot:
 pnpm --filter devmap exec tsx --test test/analyzers.test.ts
 ```
 
+Expected tambahan:
+
+- `.agent/` dan `.agents/` tidak masuk hasil scan;
+- `.agents/skills/*/SKILL.md` tidak terdeteksi sebagai fitur AI project;
+- snapshot tetap hanya merepresentasikan source project yang dianalisis.
+
 AI client:
 
 ```powershell

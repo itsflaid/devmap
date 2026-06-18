@@ -37,7 +37,7 @@ The snapshot contains:
 * Architecture overview
 * Entry points
 * Critical files
-* File purpose, scope, search terms, and importance
+* File purpose, scope, top functions, search terms, and importance
 * Routes and APIs
 * External services
 * Database information

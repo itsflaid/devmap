@@ -124,6 +124,7 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
     if (typeof entry.scope !== "string") entry.scope = "unknown";
     if (!Array.isArray(entry.featureRefs)) entry.featureRefs = [];
     if (!Array.isArray(entry.searchTerms)) entry.searchTerms = [];
+    if (!Array.isArray(entry.topFunctions)) entry.topFunctions = [];
     if (typeof entry.importance !== "number") entry.importance = 0;
   }
 

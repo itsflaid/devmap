@@ -135,6 +135,16 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.features.some((feature) => feature.name === "API Routes"));
   assert.deepEqual(projectMap.fileIndex["app/page.tsx"].imports, ["lib/auth.ts"]);
   assert.ok(projectMap.fileIndex["lib/auth.ts"].exportedSymbols.includes("getSession"));
+  assert.deepEqual(
+    projectMap.fileIndex["lib/auth.ts"].topFunctions.find((item) => item.name === "getSession"),
+    {
+      name: "getSession",
+      kind: "function",
+      line: 6,
+      exported: true,
+      async: true
+    }
+  );
   assert.equal(projectMap.fileIndex["app/api/session/route.ts"].scope, "api");
   assert.equal(projectMap.fileIndex["prisma/schema.prisma"].scope, "database");
   assert.equal(projectMap.fileIndex["lib/auth.ts"].scope, "service");
@@ -169,6 +179,16 @@ test("project map summarizes an Express fixture", async () => {
   assert.equal(projectMap.fileIndex["src/server.ts"].scope, "api");
   assert.ok(projectMap.fileIndex["src/server.ts"].searchTerms.includes("server"));
   assert.deepEqual(projectMap.fileIndex["src/server.ts"].imports, ["src/routes/payments.ts"]);
+  assert.deepEqual(
+    projectMap.fileIndex["src/routes/payments.ts"].topFunctions.find((item) => item.name === "paymentsRouter"),
+    {
+      name: "paymentsRouter",
+      kind: "const",
+      line: 4,
+      exported: true,
+      async: false
+    }
+  );
   assert.deepEqual(projectMap.apiRoutes, [
     {
       path: "/payments",

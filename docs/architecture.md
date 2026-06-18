@@ -377,6 +377,7 @@ Each `fileIndex` entry stores compact navigation metadata:
 | ----- | ------- |
 | `purpose` | One-sentence description of what the file does when available |
 | `scope` | Responsibility classification: API, UI, database, config, service, CLI, test, docs, or unknown |
+| `topFunctions` | Compact list of important functions or exported code symbols with line numbers |
 | `featureRefs` | Feature names that reference this file |
 | `searchTerms` | Retrieval-focused terms used by `devmap ask` |
 | `importance` | Static importance score from references, entry point status, critical-file score, and feature ownership |
@@ -392,8 +393,8 @@ and snapshot generation must still complete.
 
 Snapshot schema includes `flows` as a foundation for future `FLOW.md`
 generation. Phase 1 only creates small feature flows for high-confidence
-features, using the feature file order as steps. It does not build a full call
-graph or separate flow analyzer.
+features, using feature files and their important exported symbols as steps. It
+does not build a full call graph or separate flow analyzer.
 
 ---
 

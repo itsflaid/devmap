@@ -804,7 +804,7 @@ async function readContextFile(
   return {
     ...rankedFile,
     exports: snapshot.fileIndex[rankedFile.path]?.exportedSymbols ?? [],
-    topFunctions: [],
+    topFunctions: snapshot.fileIndex[rankedFile.path]?.topFunctions ?? [],
     purpose: snapshot.fileIndex[rankedFile.path]?.purpose,
     startLine: window.start + 1,
     endLine: window.end,

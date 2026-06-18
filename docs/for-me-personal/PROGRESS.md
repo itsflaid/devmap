@@ -917,3 +917,21 @@ Verifikasi:
 ```powershell
 pnpm --filter devmap exec tsx --test test/analyzers.test.ts
 ```
+
+## Snapshot Function Metadata
+
+**Tanggal:** 2026-06-18
+
+Snapshot `fileIndex` sekarang menyimpan `topFunctions`, yaitu daftar ringkas
+fungsi atau symbol kode penting beserta line number, tipe symbol, status export,
+dan status async. Metadata ini menjadi fondasi untuk jawaban `ask`, onboarding,
+dan flow document tanpa harus membaca raw source terlalu banyak.
+
+Flow minimal juga mulai memakai symbol penting pada label step, sehingga flow
+lebih informatif daripada sekadar daftar file.
+
+Verifikasi:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/analyzers.test.ts test/context-builder.test.ts
+```

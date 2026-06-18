@@ -42,6 +42,13 @@ export type FileIndexEntry = {
   hash: string;
   imports: string[];
   exportedSymbols: string[];
+  topFunctions: Array<{
+    name: string;
+    kind: "function" | "const" | "class" | "method";
+    line: number;
+    exported: boolean;
+    async: boolean;
+  }>;
   lines: number;
   purpose?: string;
   scope: FileScope;
@@ -218,6 +225,7 @@ function createFileIndexEntry(
   criticalFiles: ProjectMap["criticalFiles"],
   features: FeatureInfo[]
 ): FileIndexEntry {
+  const topFunctions = findTopFunctions(file.content);
   const exportedSymbols = findExportedSymbols(file.content);
   const scope = classifyFileScope(file, exportedSymbols, imports);
   const featureRefs = features
@@ -232,13 +240,14 @@ function createFileIndexEntry(
     criticalFile?.score ?? 0,
     featureRefs.length
   );
-  const searchTerms = buildFileSearchTerms(file.path, scope, exportedSymbols, featureRefs);
-  const purpose = inferFilePurpose(file.path, scope, exportedSymbols, featureRefs);
+  const searchTerms = buildFileSearchTerms(file.path, scope, exportedSymbols, topFunctions, featureRefs);
+  const purpose = inferFilePurpose(file.path, scope, exportedSymbols, topFunctions, featureRefs);
 
   return {
     hash: hashContent(file.content),
     imports,
     exportedSymbols,
+    topFunctions,
     lines: file.lines,
     ...(purpose ? { purpose } : {}),
     scope,
@@ -294,6 +303,7 @@ function buildFileSearchTerms(
   path: string,
   scope: FileScope,
   exportedSymbols: string[],
+  topFunctions: FileIndexEntry["topFunctions"],
   featureRefs: string[]
 ): string[] {
   const terms = new Set<string>();
@@ -308,6 +318,12 @@ function buildFileSearchTerms(
 
   for (const symbol of exportedSymbols) {
     for (const part of splitSearchTerms(symbol)) {
+      terms.add(part);
+    }
+  }
+
+  for (const item of topFunctions) {
+    for (const part of splitSearchTerms(item.name)) {
       terms.add(part);
     }
   }
@@ -327,10 +343,14 @@ function inferFilePurpose(
   path: string,
   scope: FileScope,
   exportedSymbols: string[],
+  topFunctions: FileIndexEntry["topFunctions"],
   featureRefs: string[]
 ): string | undefined {
-  const subject = exportedSymbols[0]
-    ? `exports ${exportedSymbols.slice(0, 3).join(", ")}`
+  const primarySymbols = exportedSymbols.length > 0
+    ? exportedSymbols
+    : topFunctions.map((item) => item.name);
+  const subject = primarySymbols[0]
+    ? `exposes ${primarySymbols.slice(0, 3).join(", ")}`
     : `contains ${scope === "unknown" ? "project" : scope} code`;
   const featureText = featureRefs.length > 0
     ? ` for ${featureRefs.slice(0, 2).join(" and ")}`
@@ -340,11 +360,76 @@ function inferFilePurpose(
     return undefined;
   }
 
-  if (scope === "unknown" && exportedSymbols.length === 0 && featureRefs.length === 0) {
+  if (scope === "unknown" && primarySymbols.length === 0 && featureRefs.length === 0) {
     return undefined;
   }
 
   return `${path} ${subject}${featureText}.`;
+}
+
+function findTopFunctions(content: string): FileIndexEntry["topFunctions"] {
+  const functions = new Map<string, FileIndexEntry["topFunctions"][number]>();
+  const patterns: Array<{
+    kind: FileIndexEntry["topFunctions"][number]["kind"];
+    pattern: RegExp;
+    nameIndex: number;
+    exportedIndex?: number;
+    asyncIndex?: number;
+  }> = [
+    {
+      kind: "function",
+      pattern: /(export\s+)?(async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
+      nameIndex: 3,
+      exportedIndex: 1,
+      asyncIndex: 2
+    },
+    {
+      kind: "const",
+      pattern: /(export\s+)?const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(async\s*)?/g,
+      nameIndex: 2,
+      exportedIndex: 1,
+      asyncIndex: 3
+    },
+    {
+      kind: "class",
+      pattern: /(export\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
+      nameIndex: 2,
+      exportedIndex: 1
+    }
+  ];
+
+  for (const { kind, pattern, nameIndex, exportedIndex, asyncIndex } of patterns) {
+    let match = pattern.exec(content);
+    while (match) {
+      const name = match[nameIndex];
+      const existing = functions.get(name);
+      const candidate = {
+        name,
+        kind,
+        line: getLineNumber(content, match.index),
+        exported: exportedIndex !== undefined && Boolean(match[exportedIndex]),
+        async: asyncIndex !== undefined && Boolean(match[asyncIndex])
+      };
+
+      if (!existing || Number(candidate.exported) > Number(existing.exported)) {
+        functions.set(name, candidate);
+      }
+
+      match = pattern.exec(content);
+    }
+  }
+
+  return [...functions.values()]
+    .sort((left, right) =>
+      Number(right.exported) - Number(left.exported)
+      || left.line - right.line
+      || left.name.localeCompare(right.name)
+    )
+    .slice(0, 8);
+}
+
+function getLineNumber(content: string, index: number): number {
+  return content.slice(0, index).split(/\r?\n/).length;
 }
 
 function attachFeatureEntryPoints(
@@ -380,7 +465,7 @@ function generateMinimalFlows(
     .slice(0, 3)
     .map((feature) => {
       const steps = feature.files.slice(0, 5).map((file, index) => ({
-        label: index === 0 ? `Start with ${file}` : `Review related file ${file}`,
+        label: renderFlowStepLabel(file, fileIndex[file], index === 0),
         file,
         purpose: fileIndex[file]?.purpose
       }));
@@ -395,6 +480,21 @@ function generateMinimalFlows(
         confidence: "high" as const
       };
     });
+}
+
+function renderFlowStepLabel(
+  file: string,
+  metadata: FileIndexEntry | undefined,
+  isFirstStep: boolean
+): string {
+  const prefix = isFirstStep ? "Start with" : "Review";
+  const symbols = metadata?.topFunctions
+    .filter((item) => item.exported)
+    .map((item) => item.name)
+    .slice(0, 2) ?? [];
+  const symbolText = symbols.length > 0 ? ` (${symbols.join(", ")})` : "";
+
+  return `${prefix} ${file}${symbolText}`;
 }
 
 function renderMermaidFlow(steps: FlowInfo["steps"]): string {

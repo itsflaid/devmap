@@ -391,7 +391,9 @@ Expected tambahan:
 
 - `.agent/` dan `.agents/` tidak masuk hasil scan;
 - `.agents/skills/*/SKILL.md` tidak terdeteksi sebagai fitur AI project;
-- snapshot tetap hanya merepresentasikan source project yang dianalisis.
+- snapshot tetap hanya merepresentasikan source project yang dianalisis;
+- `fileIndex[*].topFunctions` berisi fungsi atau symbol kode penting dengan
+  line number, status export, dan status async.
 
 AI client:
 

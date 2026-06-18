@@ -723,6 +723,13 @@ interface DevMapSnapshot {
     hash: string;
     imports: string[];
     exportedSymbols: string[];
+    topFunctions: Array<{
+      name: string;
+      kind: "function" | "const" | "class" | "method";
+      line: number;
+      exported: boolean;
+      async: boolean;
+    }>;
     lines: number;
     purpose?: string;
     scope: "api" | "ui" | "database" | "config" | "service" | "cli" | "test" | "docs" | "unknown";
@@ -741,9 +748,10 @@ interface DevMapSnapshot {
 - Snapshot must include a schema version
 - Future schema changes must be versioned
 - File index entries should include compact navigation metadata such as
-  purpose, responsibility scope, feature references, search terms, and
-  importance. These fields help `devmap ask`, future onboarding output, and
-  future flow generation without storing full raw source.
+  purpose, responsibility scope, exported symbols, top functions/code symbols,
+  feature references, search terms, and importance. These fields help
+  `devmap ask`, future onboarding output, and future flow generation without
+  storing full raw source.
 - AI-generated file purpose and search terms must be batched and optional.
   Analyze must continue if enrichment fails.
 

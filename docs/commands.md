@@ -147,6 +147,8 @@ devmap analyze --deep
 * Build a compact file index with purpose, scope, top functions/code symbols,
   search terms, feature references, and importance
 * Generate minimal high-confidence feature and request/API flows
+* Infer feature entry points and short business flows where possible
+* Build a lightweight onboarding path and file-level change impact map
 * Generate architecture overview
 * Save snapshot to `.devmap/snapshot.json`
 

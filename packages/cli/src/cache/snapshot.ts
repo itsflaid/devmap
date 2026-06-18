@@ -118,6 +118,12 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
   if (!Array.isArray(snapshot.flows)) {
     snapshot.flows = [];
   }
+  if (!isRecord(snapshot.onboarding)) {
+    snapshot.onboarding = { recommendedPath: [] };
+  }
+  if (!isRecord(snapshot.changeImpact)) {
+    snapshot.changeImpact = {};
+  }
 
   const fileIndex = snapshot.fileIndex as Record<string, Record<string, unknown>>;
   for (const entry of Object.values(fileIndex)) {
@@ -140,6 +146,8 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
     }
     if (!Array.isArray(feature.files)) feature.files = Array.isArray(feature.evidence) ? feature.evidence : [];
     if (!Array.isArray(feature.entryPoints)) feature.entryPoints = [];
+    if (typeof feature.entryPoint !== "string") delete feature.entryPoint;
+    if (!Array.isArray(feature.businessFlow)) feature.businessFlow = [];
     if (!Array.isArray(feature.searchTerms)) feature.searchTerms = [];
     if (!["high", "medium", "low"].includes(String(feature.confidence))) {
       feature.confidence = "medium";

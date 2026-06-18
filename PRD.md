@@ -719,6 +719,13 @@ interface DevMapSnapshot {
   database?: DatabaseInfo;
   features: FeatureInfo[];
   flows: FlowInfo[];
+  onboarding: {
+    recommendedPath: string[];
+  };
+  changeImpact: Record<string, {
+    impacts: string[];
+    dependents: string[];
+  }>;
   fileIndex: Record<string, {
     hash: string;
     imports: string[];
@@ -754,6 +761,10 @@ interface DevMapSnapshot {
   storing full raw source.
 - Flow metadata should include compact high-confidence feature flows and
   request/API flows derived from routes and local dependency edges.
+- Feature metadata should expose a primary entry point and a short business
+  flow when DevMap can infer one from routes or dependency edges.
+- Snapshot should include a lightweight onboarding path and file-level change
+  impact map for future generated docs and safer AI-assisted edits.
 - AI-generated file purpose and search terms must be batched and optional.
   Analyze must continue if enrichment fails.
 

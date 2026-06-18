@@ -43,6 +43,8 @@ The snapshot contains:
 * Database information
 * Detected features
 * Minimal high-confidence feature and request flows
+* Feature entry points and lightweight business flows
+* Onboarding path and file-level change impact
 * Project relationships
 
 One analysis. Reusable context. Any codebase.

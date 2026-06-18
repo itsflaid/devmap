@@ -934,6 +934,10 @@ Tahap lanjutannya menambahkan request/API flows dari route yang terdeteksi ke
 dependency lokalnya. Contoh: route API dapat menghasilkan flow
 `route.ts -> auth.ts -> db.ts`, yang nanti bisa menjadi bahan awal `FLOW.md`.
 
+Tahap berikutnya menambahkan primary feature entry point, business flow ringkas,
+`onboarding.recommendedPath`, dan `changeImpact` file-level. Ini sengaja masih
+shallow agar snapshot lebih memahami project tanpa masuk ke symbol graph penuh.
+
 Verifikasi:
 
 ```powershell

@@ -160,8 +160,11 @@ test("project map summarizes a Next.js fixture", async () => {
   const authentication = projectMap.features.find((feature) => feature.name === "Authentication");
   assert.ok(authentication);
   assert.equal(authentication.confidence, "high");
-  assert.ok(authentication.purpose.includes("authentication"));
+  assert.equal(authentication.entryPoint, "app/api/session/route.ts");
+  assert.ok(authentication.purpose.toLowerCase().includes("authentication"));
   assert.ok(authentication.searchTerms.includes("auth"));
+  assert.ok(authentication.businessFlow.length >= 3);
+  assert.equal(authentication.businessFlow[0], "Start at app/api/session/route.ts.");
   assert.ok(projectMap.flows.some((flow) =>
     flow.name === "Authentication flow"
     && flow.confidence === "high"
@@ -175,6 +178,14 @@ test("project map summarizes a Next.js fixture", async () => {
     sessionFlow.steps.map((step) => step.file),
     ["app/api/session/route.ts", "lib/auth.ts", "lib/db.ts"]
   );
+  assert.deepEqual(projectMap.changeImpact["lib/auth.ts"].impacts.sort(), [
+    "Authentication",
+    "Authentication flow",
+    "Request /api/session"
+  ]);
+  assert.ok(projectMap.onboarding.recommendedPath.includes("package.json"));
+  assert.ok(projectMap.onboarding.recommendedPath.includes("app/page.tsx"));
+  assert.ok(projectMap.onboarding.recommendedPath.includes("lib/auth.ts"));
   assert.ok(projectMap.stats.relevantFiles >= 5);
 });
 
@@ -212,6 +223,12 @@ test("project map summarizes an Express fixture", async () => {
     paymentsFlow.steps.map((step) => step.file),
     ["src/server.ts", "src/routes/payments.ts"]
   );
+  assert.deepEqual(projectMap.changeImpact["src/routes/payments.ts"].impacts.sort(), [
+    "Payments",
+    "Payments flow",
+    "Request /payments"
+  ]);
+  assert.ok(projectMap.onboarding.recommendedPath.includes("src/server.ts"));
   assert.ok(projectMap.features.some((feature) => feature.name === "Payments"));
 });
 

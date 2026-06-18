@@ -395,7 +395,11 @@ Expected tambahan:
 - `fileIndex[*].topFunctions` berisi fungsi atau symbol kode penting dengan
   line number, status export, dan status async;
 - `flows` mencakup feature flow dan request/API flow dari route ke dependency
-  lokalnya.
+  lokalnya;
+- `features[*].entryPoint` dan `features[*].businessFlow` terisi ketika bisa
+  diinfer dari route/dependency;
+- `onboarding.recommendedPath` dan `changeImpact` tersedia sebagai metadata
+  navigasi lanjutan.
 
 AI client:
 

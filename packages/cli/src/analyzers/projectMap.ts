@@ -83,6 +83,13 @@ export type ProjectMap = {
   database?: DatabaseInfo;
   features: FeatureInfo[];
   flows: FlowInfo[];
+  onboarding: {
+    recommendedPath: string[];
+  };
+  changeImpact: Record<string, {
+    impacts: string[];
+    dependents: string[];
+  }>;
   warnings?: string[];
   dependencies: Record<string, string[]>;
   ai?: {
@@ -109,13 +116,16 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   const features = attachFeatureEntryPoints(
     detectFeatures(files, routes, database),
     routes,
-    entryPoints
+    entryPoints,
+    graph
   );
   const criticalFiles = rankCriticalFiles(files, references, entryPoints);
   const fileIndex = Object.fromEntries(files.map((file) => [
     file.path,
     createFileIndexEntry(file, graph[file.path] ?? [], references, entryPoints, criticalFiles, features)
   ]));
+
+  const flows = generateMinimalFlows(features, fileIndex, routes, graph);
 
   return {
     version: SNAPSHOT_SCHEMA_VERSION,
@@ -137,7 +147,11 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     externalServices: detectExternalServices(files),
     ...(database ? { database } : {}),
     features,
-    flows: generateMinimalFlows(features, fileIndex, routes, graph),
+    flows,
+    onboarding: {
+      recommendedPath: buildOnboardingPath(files, entryPoints, criticalFiles, fileIndex)
+    },
+    changeImpact: buildChangeImpact(fileIndex, features, flows, graph),
     warnings: detectAnalysisWarnings(files),
     dependencies: readPackageDependencies(files),
     fileIndex
@@ -435,7 +449,8 @@ function getLineNumber(content: string, index: number): number {
 function attachFeatureEntryPoints(
   features: FeatureInfo[],
   routes: RouteInfo[],
-  entryPoints: string[]
+  entryPoints: string[],
+  graph: Record<string, string[]>
 ): FeatureInfo[] {
   return features.map((feature) => {
     const relatedRouteEntries = routes
@@ -445,15 +460,61 @@ function attachFeatureEntryPoints(
       ...feature.files.filter((file) => entryPoints.includes(file)),
       ...relatedRouteEntries
     ])].sort();
+    const entryPoint = chooseFeatureEntryPoint(feature.files, relatedEntries, routes, graph);
+    const businessFlow = buildFeatureBusinessFlow(feature.name, entryPoint, graph);
 
     return {
       ...feature,
+      ...(entryPoint ? { entryPoint } : {}),
       entryPoints: relatedEntries,
+      businessFlow,
       confidence: feature.files.length >= 2 || relatedEntries.length > 0
         ? "high"
         : feature.confidence
     };
   });
+}
+
+function chooseFeatureEntryPoint(
+  files: string[],
+  relatedEntries: string[],
+  routes: RouteInfo[],
+  graph: Record<string, string[]>
+): string | undefined {
+  if (relatedEntries.length > 0) {
+    return relatedEntries[0];
+  }
+
+  const route = routes.find((candidate) =>
+    files.includes(candidate.file)
+    || (graph[candidate.file] ?? []).some((dependency) => files.includes(dependency))
+  );
+
+  if (route) {
+    return route.file;
+  }
+
+  return files[0];
+}
+
+function buildFeatureBusinessFlow(
+  featureName: string,
+  entryPoint: string | undefined,
+  graph: Record<string, string[]>
+): string[] {
+  if (!entryPoint) {
+    return [`Identify files related to ${featureName}.`];
+  }
+
+  const chain = collectFlowFiles(entryPoint, graph);
+  const steps = [`Start at ${entryPoint}.`];
+
+  for (const file of chain.slice(1, 4)) {
+    steps.push(`Follow dependency ${file}.`);
+  }
+
+  steps.push(`Review related files for ${featureName}.`);
+  return steps;
 }
 
 function generateMinimalFlows(
@@ -525,7 +586,7 @@ function generateRequestFlows(
 function collectFlowFiles(
   entryFile: string,
   graph: Record<string, string[]>,
-  fileIndex: Record<string, FileIndexEntry>
+  fileIndex?: Record<string, FileIndexEntry>
 ): string[] {
   const files: string[] = [];
   const visited = new Set<string>();
@@ -533,7 +594,7 @@ function collectFlowFiles(
 
   while (queue.length > 0 && files.length < 5) {
     const file = queue.shift();
-    if (!file || visited.has(file) || !fileIndex[file]) {
+    if (!file || visited.has(file) || (fileIndex && !fileIndex[file])) {
       continue;
     }
 
@@ -541,13 +602,93 @@ function collectFlowFiles(
     files.push(file);
 
     for (const next of graph[file] ?? []) {
-      if (!visited.has(next) && fileIndex[next]) {
+      if (!visited.has(next) && (!fileIndex || fileIndex[next])) {
         queue.push(next);
       }
     }
   }
 
   return files;
+}
+
+function buildOnboardingPath(
+  files: ScannedFile[],
+  entryPoints: string[],
+  criticalFiles: ProjectMap["criticalFiles"],
+  fileIndex: Record<string, FileIndexEntry>
+): string[] {
+  const availableFiles = new Set(files.map((file) => file.path));
+  const path = new Set<string>();
+
+  for (const candidate of ["README.md", "readme.md", "AGENTS.md", "DEVMAP.md", "package.json"]) {
+    if (availableFiles.has(candidate)) {
+      path.add(candidate);
+    }
+  }
+
+  for (const entryPoint of entryPoints) {
+    path.add(entryPoint);
+  }
+
+  for (const file of criticalFiles.map((item) => item.path)) {
+    path.add(file);
+  }
+
+  for (const [file, metadata] of Object.entries(fileIndex)
+    .sort(([, left], [, right]) => right.importance - left.importance)) {
+    if (metadata.scope !== "test" && metadata.scope !== "docs") {
+      path.add(file);
+    }
+  }
+
+  return [...path].slice(0, 12);
+}
+
+function buildChangeImpact(
+  fileIndex: Record<string, FileIndexEntry>,
+  features: FeatureInfo[],
+  flows: FlowInfo[],
+  graph: Record<string, string[]>
+): ProjectMap["changeImpact"] {
+  const reverseDependencies = buildReverseDependencies(graph);
+  const impacts: ProjectMap["changeImpact"] = {};
+
+  for (const file of Object.keys(fileIndex)) {
+    const impactedFeatures = features
+      .filter((feature) => feature.files.includes(file) || feature.entryPoint === file)
+      .map((feature) => feature.name);
+    const impactedFlows = flows
+      .filter((flow) => flow.steps.some((step) => step.file === file))
+      .map((flow) => flow.name);
+    const dependents = reverseDependencies[file] ?? [];
+    const impactNames = [...new Set([...impactedFeatures, ...impactedFlows])].sort();
+
+    if (impactNames.length > 0 || dependents.length > 0) {
+      impacts[file] = {
+        impacts: impactNames,
+        dependents
+      };
+    }
+  }
+
+  return impacts;
+}
+
+function buildReverseDependencies(graph: Record<string, string[]>): Record<string, string[]> {
+  const reverse: Record<string, string[]> = {};
+
+  for (const [file, dependencies] of Object.entries(graph)) {
+    for (const dependency of dependencies) {
+      reverse[dependency] ??= [];
+      reverse[dependency].push(file);
+    }
+  }
+
+  for (const dependents of Object.values(reverse)) {
+    dependents.sort();
+  }
+
+  return reverse;
 }
 
 function renderFlowStepLabel(

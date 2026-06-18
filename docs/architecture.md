@@ -397,6 +397,24 @@ and request/API flows from detected routes plus local dependency edges. Flow
 steps may include important exported symbols, but DevMap still does not build a
 full call graph or separate flow analyzer.
 
+Feature metadata also stores a primary `entryPoint` and a short
+`businessFlow` when DevMap can infer them from routes or dependencies. This
+gives future generated docs a human-oriented path through the feature, not only
+a list of files.
+
+### Onboarding and Change Impact
+
+Snapshot schema includes two lightweight navigation aids:
+
+| Field | Purpose |
+| ----- | ------- |
+| `onboarding.recommendedPath` | Ordered files a new developer or AI agent should read first |
+| `changeImpact` | File-level impacted features, flows, and direct dependents |
+
+These fields are static-first and intentionally shallow. They are meant to guide
+future `ONBOARDING.md`, `FLOW.md`, and safer edit planning without building a
+full symbol graph.
+
 ---
 
 ## Context Builder

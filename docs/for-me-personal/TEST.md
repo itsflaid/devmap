@@ -393,7 +393,9 @@ Expected tambahan:
 - `.agents/skills/*/SKILL.md` tidak terdeteksi sebagai fitur AI project;
 - snapshot tetap hanya merepresentasikan source project yang dianalisis;
 - `fileIndex[*].topFunctions` berisi fungsi atau symbol kode penting dengan
-  line number, status export, dan status async.
+  line number, status export, dan status async;
+- `flows` mencakup feature flow dan request/API flow dari route ke dependency
+  lokalnya.
 
 AI client:
 

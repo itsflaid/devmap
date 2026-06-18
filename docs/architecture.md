@@ -392,9 +392,10 @@ and snapshot generation must still complete.
 ### Minimal Flows
 
 Snapshot schema includes `flows` as a foundation for future `FLOW.md`
-generation. Phase 1 only creates small feature flows for high-confidence
-features, using feature files and their important exported symbols as steps. It
-does not build a full call graph or separate flow analyzer.
+generation. Phase 1 creates small feature flows for high-confidence features
+and request/API flows from detected routes plus local dependency edges. Flow
+steps may include important exported symbols, but DevMap still does not build a
+full call graph or separate flow analyzer.
 
 ---
 

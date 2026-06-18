@@ -42,7 +42,7 @@ The snapshot contains:
 * External services
 * Database information
 * Detected features
-* Minimal high-confidence feature flows
+* Minimal high-confidence feature and request flows
 * Project relationships
 
 One analysis. Reusable context. Any codebase.

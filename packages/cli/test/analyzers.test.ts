@@ -167,6 +167,14 @@ test("project map summarizes a Next.js fixture", async () => {
     && flow.confidence === "high"
     && flow.steps.length > 0
   ));
+  const sessionFlow = projectMap.flows.find((flow) => flow.name === "Request /api/session");
+  assert.ok(sessionFlow);
+  assert.equal(sessionFlow.type, "request");
+  assert.equal(sessionFlow.entryPoint, "app/api/session/route.ts");
+  assert.deepEqual(
+    sessionFlow.steps.map((step) => step.file),
+    ["app/api/session/route.ts", "lib/auth.ts", "lib/db.ts"]
+  );
   assert.ok(projectMap.stats.relevantFiles >= 5);
 });
 
@@ -197,6 +205,13 @@ test("project map summarizes an Express fixture", async () => {
       methods: ["USE"]
     }
   ]);
+  const paymentsFlow = projectMap.flows.find((flow) => flow.name === "Request /payments");
+  assert.ok(paymentsFlow);
+  assert.equal(paymentsFlow.type, "request");
+  assert.deepEqual(
+    paymentsFlow.steps.map((step) => step.file),
+    ["src/server.ts", "src/routes/payments.ts"]
+  );
   assert.ok(projectMap.features.some((feature) => feature.name === "Payments"));
 });
 

@@ -930,6 +930,10 @@ dan flow document tanpa harus membaca raw source terlalu banyak.
 Flow minimal juga mulai memakai symbol penting pada label step, sehingga flow
 lebih informatif daripada sekadar daftar file.
 
+Tahap lanjutannya menambahkan request/API flows dari route yang terdeteksi ke
+dependency lokalnya. Contoh: route API dapat menghasilkan flow
+`route.ts -> auth.ts -> db.ts`, yang nanti bisa menjadi bahan awal `FLOW.md`.
+
 Verifikasi:
 
 ```powershell

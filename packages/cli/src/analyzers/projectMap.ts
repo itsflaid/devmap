@@ -137,7 +137,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     externalServices: detectExternalServices(files),
     ...(database ? { database } : {}),
     features,
-    flows: generateMinimalFlows(features, fileIndex),
+    flows: generateMinimalFlows(features, fileIndex, routes, graph),
     warnings: detectAnalysisWarnings(files),
     dependencies: readPackageDependencies(files),
     fileIndex
@@ -458,6 +458,18 @@ function attachFeatureEntryPoints(
 
 function generateMinimalFlows(
   features: FeatureInfo[],
+  fileIndex: Record<string, FileIndexEntry>,
+  routes: RouteInfo[],
+  graph: Record<string, string[]>
+): FlowInfo[] {
+  return [
+    ...generateFeatureFlows(features, fileIndex),
+    ...generateRequestFlows(routes, fileIndex, graph)
+  ];
+}
+
+function generateFeatureFlows(
+  features: FeatureInfo[],
   fileIndex: Record<string, FileIndexEntry>
 ): FlowInfo[] {
   return features
@@ -480,6 +492,62 @@ function generateMinimalFlows(
         confidence: "high" as const
       };
     });
+}
+
+function generateRequestFlows(
+  routes: RouteInfo[],
+  fileIndex: Record<string, FileIndexEntry>,
+  graph: Record<string, string[]>
+): FlowInfo[] {
+  return routes
+    .filter((route) => route.kind === "api")
+    .slice(0, 5)
+    .map((route) => {
+      const files = collectFlowFiles(route.file, graph, fileIndex);
+      const steps = files.map((file, index) => ({
+        label: renderFlowStepLabel(file, fileIndex[file], index === 0),
+        file,
+        purpose: fileIndex[file]?.purpose
+      }));
+
+      return {
+        name: `Request ${route.path}`,
+        purpose: `Shows the main files involved in the ${route.path} request path.`,
+        type: "request" as const,
+        entryPoint: route.file,
+        steps,
+        ...(steps.length > 2 ? { mermaid: renderMermaidFlow(steps) } : {}),
+        confidence: steps.length > 1 ? "high" as const : "medium" as const
+      };
+    });
+}
+
+function collectFlowFiles(
+  entryFile: string,
+  graph: Record<string, string[]>,
+  fileIndex: Record<string, FileIndexEntry>
+): string[] {
+  const files: string[] = [];
+  const visited = new Set<string>();
+  const queue = [entryFile];
+
+  while (queue.length > 0 && files.length < 5) {
+    const file = queue.shift();
+    if (!file || visited.has(file) || !fileIndex[file]) {
+      continue;
+    }
+
+    visited.add(file);
+    files.push(file);
+
+    for (const next of graph[file] ?? []) {
+      if (!visited.has(next) && fileIndex[next]) {
+        queue.push(next);
+      }
+    }
+  }
+
+  return files;
 }
 
 function renderFlowStepLabel(

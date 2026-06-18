@@ -752,6 +752,8 @@ interface DevMapSnapshot {
   feature references, search terms, and importance. These fields help
   `devmap ask`, future onboarding output, and future flow generation without
   storing full raw source.
+- Flow metadata should include compact high-confidence feature flows and
+  request/API flows derived from routes and local dependency edges.
 - AI-generated file purpose and search terms must be batched and optional.
   Analyze must continue if enrichment fails.
 

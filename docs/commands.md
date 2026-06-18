@@ -146,7 +146,7 @@ devmap analyze --deep
 * Detect critical files
 * Build a compact file index with purpose, scope, top functions/code symbols,
   search terms, feature references, and importance
-* Generate minimal high-confidence feature flows
+* Generate minimal high-confidence feature and request/API flows
 * Generate architecture overview
 * Save snapshot to `.devmap/snapshot.json`
 

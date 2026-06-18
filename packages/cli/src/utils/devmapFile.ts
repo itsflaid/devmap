@@ -46,15 +46,59 @@ devmap doctor
 devmap doctor --json
 \`\`\`
 
-## Guidance For AI Agents
+## Agent Navigation Contract
 
-- Read this file before exploring the repository.
-- Prefer the DevMap snapshot to blind repository-wide exploration.
-- Use \`--json\` when calling DevMap programmatically so stdout remains one
-  parseable JSON document without ANSI or terminal decoration.
-- Start from entry points and critical files reported by DevMap.
-- Do not edit generated files inside \`.devmap/\`.
-- Re-run analysis when the snapshot may be stale.
+This repository uses DevMap as the primary navigation source. Use snapshot-first,
+not repository-scan-first.
+
+Before exploring files, read \`.devmap/snapshot.json\` and prefer these sections:
+
+1. \`features\`
+2. \`features.entryPoint\`
+3. \`features.businessFlow\`
+4. \`flows\`
+5. \`onboarding.recommendedPath\`
+6. \`changeImpact\`
+7. \`criticalFiles\`
+8. \`fileIndex\`
+
+Do not scan the whole repository first.
+
+Open source files only when:
+
+- the snapshot is missing;
+- the snapshot is stale;
+- the snapshot does not contain enough detail;
+- exact implementation is required;
+- the task is edit, debug, or refactor;
+- the user explicitly asks for code changes.
+
+When source inspection is needed, inspect the smallest relevant set first.
+Prefer feature entry points and flow steps over broad folder exploration.
+
+## Required Agent Workflow
+
+1. Read \`DEVMAP.md\`.
+2. Read \`.devmap/snapshot.json\`.
+3. Identify the matching feature, flow, entry point, onboarding path, or change
+   impact entry.
+4. Inspect at most the smallest relevant source-file set first.
+5. Explain which snapshot section guided the decision when giving navigation
+   advice.
+6. Avoid unrelated files unless the snapshot is incomplete or exact code
+   verification is required.
+
+If \`.devmap/snapshot.json\` is missing, run \`devmap analyze\` when DevMap is
+available and configured. If analyze fails because DevMap is not initialized,
+ask the user to run \`devmap init\` and then \`devmap analyze\`.
+
+If the snapshot may be stale, run \`devmap analyze --fresh\` before relying on
+it.
+
+Use \`--json\` when calling DevMap programmatically so stdout remains one
+parseable JSON document without ANSI or terminal decoration.
+
+Do not edit generated files inside \`.devmap/\`.
 
 ## Repository Safety
 

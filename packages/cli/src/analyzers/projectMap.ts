@@ -60,6 +60,14 @@ export type FileIndexEntry = {
 export type ProjectMap = {
   version: string;
   generatedAt: string;
+  agentInstructions: {
+    navigationPolicy: "snapshot-first";
+    defaultMode: "minimal-exploration";
+    maxInitialFiles: number;
+    missingSnapshotAction: "run-devmap-analyze";
+    staleSnapshotAction: "run-devmap-analyze-fresh";
+    fallbackRule: string;
+  };
   fingerprint: string;
   projectRoot: string;
   framework: Framework;
@@ -130,6 +138,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   return {
     version: SNAPSHOT_SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
+    agentInstructions: createAgentInstructions(),
     fingerprint: createProjectFingerprint(files),
     projectRoot,
     framework,
@@ -155,6 +164,17 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     warnings: detectAnalysisWarnings(files),
     dependencies: readPackageDependencies(files),
     fileIndex
+  };
+}
+
+function createAgentInstructions(): ProjectMap["agentInstructions"] {
+  return {
+    navigationPolicy: "snapshot-first",
+    defaultMode: "minimal-exploration",
+    maxInitialFiles: 3,
+    missingSnapshotAction: "run-devmap-analyze",
+    staleSnapshotAction: "run-devmap-analyze-fresh",
+    fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
   };
 }
 

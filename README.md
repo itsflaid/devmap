@@ -45,6 +45,7 @@ The snapshot contains:
 * Minimal high-confidence feature and request flows
 * Feature entry points and lightweight business flows
 * Onboarding path and file-level change impact
+* Snapshot-first agent navigation policy
 * Project relationships
 
 One analysis. Reusable context. Any codebase.

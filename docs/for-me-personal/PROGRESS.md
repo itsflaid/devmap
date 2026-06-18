@@ -938,6 +938,11 @@ Tahap berikutnya menambahkan primary feature entry point, business flow ringkas,
 `onboarding.recommendedPath`, dan `changeImpact` file-level. Ini sengaja masih
 shallow agar snapshot lebih memahami project tanpa masuk ke symbol graph penuh.
 
+Generated `DEVMAP.md` sekarang memiliki Agent Navigation Contract yang meminta
+agent memakai snapshot-first, menjalankan `devmap analyze` saat snapshot hilang,
+dan meminta user menjalankan `devmap init` jika DevMap belum terkonfigurasi.
+Snapshot juga menyimpan `agentInstructions` kecil untuk machine reader.
+
 Verifikasi:
 
 ```powershell

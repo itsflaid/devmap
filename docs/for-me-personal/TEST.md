@@ -399,7 +399,9 @@ Expected tambahan:
 - `features[*].entryPoint` dan `features[*].businessFlow` terisi ketika bisa
   diinfer dari route/dependency;
 - `onboarding.recommendedPath` dan `changeImpact` tersedia sebagai metadata
-  navigasi lanjutan.
+  navigasi lanjutan;
+- `agentInstructions` tersedia di snapshot sebagai policy machine-readable
+  ringkas.
 
 AI client:
 

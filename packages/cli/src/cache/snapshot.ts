@@ -115,6 +115,17 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
 }
 
 function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
+  if (!isRecord(snapshot.agentInstructions)) {
+    snapshot.agentInstructions = {
+      navigationPolicy: "snapshot-first",
+      defaultMode: "minimal-exploration",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+    };
+  }
+
   if (!Array.isArray(snapshot.flows)) {
     snapshot.flows = [];
   }

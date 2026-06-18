@@ -99,6 +99,14 @@ test("project map summarizes a Next.js fixture", async () => {
   const projectMap = await createProjectMap(nextFixture);
 
   assert.equal(projectMap.version, "1");
+  assert.deepEqual(projectMap.agentInstructions, {
+    navigationPolicy: "snapshot-first",
+    defaultMode: "minimal-exploration",
+    maxInitialFiles: 3,
+    missingSnapshotAction: "run-devmap-analyze",
+    staleSnapshotAction: "run-devmap-analyze-fresh",
+    fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+  });
   assert.match(projectMap.fingerprint, /^[a-f0-9]{32}$/);
   assert.equal(projectMap.framework, "nextjs");
   assert.deepEqual(projectMap.project, {

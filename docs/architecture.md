@@ -415,6 +415,17 @@ These fields are static-first and intentionally shallow. They are meant to guide
 future `ONBOARDING.md`, `FLOW.md`, and safer edit planning without building a
 full symbol graph.
 
+### Agent Contract
+
+Generated `DEVMAP.md` contains the complete agent navigation contract. It tells
+agents to use `.devmap/snapshot.json` before broad repository exploration, to
+prefer feature entry points and flows, and to run `devmap analyze` when the
+snapshot is missing.
+
+The snapshot also stores a compact `agentInstructions` object for machine
+readers. This is intentionally small: policy fields live in JSON, while the
+human-readable workflow lives in `DEVMAP.md`.
+
 ---
 
 ## Context Builder

@@ -703,6 +703,14 @@ Recommended MVP schema:
 interface DevMapSnapshot {
   version: string;
   generatedAt: string;
+  agentInstructions: {
+    navigationPolicy: "snapshot-first";
+    defaultMode: "minimal-exploration";
+    maxInitialFiles: number;
+    missingSnapshotAction: "run-devmap-analyze";
+    staleSnapshotAction: "run-devmap-analyze-fresh";
+    fallbackRule: string;
+  };
   project: {
     name?: string;
     root: string;
@@ -765,6 +773,8 @@ interface DevMapSnapshot {
   flow when DevMap can infer one from routes or dependency edges.
 - Snapshot should include a lightweight onboarding path and file-level change
   impact map for future generated docs and safer AI-assisted edits.
+- Snapshot should include compact machine-readable agent instructions. The
+  complete agent navigation contract belongs in generated `DEVMAP.md`.
 - AI-generated file purpose and search terms must be batched and optional.
   Analyze must continue if enrichment fails.
 

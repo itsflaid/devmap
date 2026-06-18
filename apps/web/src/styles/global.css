@@ -23,7 +23,7 @@
   --color-aqua-glow: rgba(34, 228, 214, 0.22);
 
   /* Typography */
-  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Geist", "Inter", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 
   /* Layout */
@@ -34,8 +34,7 @@
   /* Shape and effects */
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
-  --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.42);
-  --shadow-aqua: 0 0 34px var(--color-aqua-glow);
+  --shadow-panel: 0 18px 42px rgba(0, 0, 0, 0.36);
 
   background: var(--color-background);
   font-family: var(--font-sans);

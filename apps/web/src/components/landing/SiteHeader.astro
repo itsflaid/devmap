@@ -1,28 +1,100 @@
 ---
-// Header state and navigation data.
+const navigationItems = [
+  { href: "#problem", label: "Problem" },
+  { href: "#how-it-works", label: "How It Works" },
+  { href: "#features", label: "Features" },
+  { href: "#ai-agents", label: "AI Agents" },
+  { href: "#comparison", label: "Comparison" }
+];
 ---
 
 <header class="site-header">
-  <!--
-    LANDING PAGE HEADER
+  <nav class="site-header__nav" aria-label="Primary navigation">
+    <a class="site-header__brand" href="#hero" aria-label="DevMap home">
+      DevMap
+    </a>
 
-    Brand:
-    devmap
+    <div class="site-header__links">
+      {navigationItems.map((item) => (
+        <a href={item.href}>{item.label}</a>
+      ))}
+    </div>
 
-    Suggested navigation:
-    - How It Works
-    - Features
-    - For AI Agents
-    - Onboarding
-    - Comparison
-    - Open Source
-
-    Actions:
-    - View on GitHub
-    - Get Started Free
-  -->
+    <div class="site-header__meta" aria-hidden="true">
+      CLI Context Layer
+    </div>
+  </nav>
 </header>
 
 <style>
-  /* Header styles. */
+  .site-header {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 50;
+    border-block-end: 1px solid var(--color-border);
+    background: rgba(2, 8, 15, 0.82);
+    backdrop-filter: blur(18px);
+  }
+
+  .site-header__nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    width: min(100% - (var(--page-padding) * 2), var(--page-max-width));
+    min-height: 4rem;
+    margin-inline: auto;
+    gap: 1rem;
+  }
+
+  .site-header__brand {
+    color: var(--color-aqua);
+    font-family: var(--font-sans);
+    font-size: 1.18rem;
+    font-weight: 800;
+  }
+
+  .site-header__links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+  }
+
+  .site-header__links a,
+  .site-header__meta {
+    color: var(--color-text-muted);
+    font-family: var(--font-sans);
+    font-size: 0.74rem;
+    font-weight: 750;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    transition: color 180ms ease;
+  }
+
+  .site-header__links a:hover {
+    color: var(--color-aqua-bright);
+  }
+
+  .site-header__meta {
+    justify-self: end;
+    color: var(--color-text-subtle);
+  }
+
+  @media (max-width: 760px) {
+    .site-header__nav {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      padding-block: 0.85rem;
+    }
+
+    .site-header__links {
+      flex-wrap: wrap;
+      row-gap: 0.5rem;
+    }
+
+    .site-header__meta {
+      display: none;
+    }
+  }
 </style>

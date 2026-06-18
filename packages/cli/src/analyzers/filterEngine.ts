@@ -1,6 +1,8 @@
 const IGNORED_DIRECTORIES = new Set([
   ".git",
   ".devmap",
+  ".agent",
+  ".agents",
   ".next",
   ".turbo",
   ".vercel",

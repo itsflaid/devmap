@@ -928,3 +928,37 @@ static route `/index.html`.
 Jangan memakai `latest` untuk dependency framework pada repo yang memiliki
 target Node eksplisit. Cek engine package yang ter-resolve di lockfile sebelum
 menganggap build lokal cukup aman untuk CI.
+
+## 18. Agent Skills Terdeteksi Sebagai Fitur AI Project
+
+**Tanggal:** 2026-06-18
+**Status:** Selesai
+
+### Gejala
+
+Snapshot DevMap mendeteksi `.agents/skills` sebagai bagian project dan
+menganggap skill development agent sebagai sistem AI terintegrasi. Padahal
+folder tersebut hanya dipakai untuk instruksi agent saat mengembangkan DevMap.
+
+### Akar Masalah
+
+Scanner belum mengabaikan folder metadata agent development. Akibatnya file
+seperti `.agents/skills/*/SKILL.md` ikut terbaca oleh analyzer fitur dan service.
+
+### Solusi
+
+- Tambahkan `.agent` dan `.agents` ke ignore directory scanner.
+- Tambahkan test scanner untuk memastikan `.agents/skills` tidak masuk hasil
+  scan.
+
+### Verifikasi
+
+```powershell
+pnpm --filter devmap exec tsx --test test/analyzers.test.ts
+```
+
+### Pelajaran
+
+Folder dotfile yang dipakai alat development dapat berisi kata kunci AI, auth,
+atau service. Scanner harus membedakan metadata development dari source project
+agar snapshot tetap merepresentasikan aplikasi yang dianalisis.

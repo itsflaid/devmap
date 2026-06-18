@@ -33,6 +33,28 @@ test("scanner ignores generated and secret paths", async () => {
   assert.ok(!paths.some((path) => path.startsWith(".env")));
 });
 
+test("scanner ignores agent development metadata", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agent-metadata-test-"));
+
+  try {
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "agent-metadata-test" }));
+    await mkdir(join(projectRoot, "src"), { recursive: true });
+    await writeFile(join(projectRoot, "src", "index.ts"), "export const app = true;\n");
+    await mkdir(join(projectRoot, ".agents", "skills", "ai-helper"), { recursive: true });
+    await writeFile(
+      join(projectRoot, ".agents", "skills", "ai-helper", "SKILL.md"),
+      "# AI Helper\n\nThis development-only skill mentions OpenAI, Groq, and agents.\n"
+    );
+
+    const paths = (await scanFiles(projectRoot)).map((file) => file.path);
+
+    assert.ok(paths.includes("src/index.ts"));
+    assert.ok(!paths.some((path) => path.startsWith(".agents/")));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("scanner ignores package manager lockfiles", () => {
   for (const lockfile of [
     "package-lock.json",

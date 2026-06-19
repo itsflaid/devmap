@@ -33,7 +33,7 @@ export function printWelcome(projectRoot: string): void {
   printCommand("devmap explain", "explain architecture");
   printCommand('devmap ask "..."', "ask your codebase");
   printCommand("devmap docs", "generate documentation");
-  printCommand("devmap onboard", "generate onboarding guide");
+  printCommand("devmap onboarding", "generate onboarding guide");
   console.log("");
 }
 

@@ -35,6 +35,7 @@ Run these commands from the root of the project you want to understand:
 devmap init
 devmap analyze
 devmap ask "How does authentication work?"
+devmap onboarding
 devmap doctor
 ```
 
@@ -74,6 +75,7 @@ devmap analyze
 devmap analyze --deep
 devmap analyze --fresh
 devmap ask "Where is payment logic handled?"
+devmap onboarding --write
 devmap doctor
 devmap config model auto
 ```
@@ -104,6 +106,7 @@ Use `--json` for scripts, editors, CI, or AI agents:
 ```bash
 devmap analyze --json
 devmap ask "Where is authentication handled?" --json
+devmap onboarding --json
 devmap doctor --json
 ```
 

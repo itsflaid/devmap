@@ -1,6 +1,22 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-18
+Terakhir diperbarui: 2026-06-19
+
+## Update 2026-06-19
+
+### Onboarding Command
+
+- `devmap onboarding` ditambahkan sebagai kandidat MVP 0.1.0, dengan alias
+  `devmap onboard`.
+- Command membaca `.devmap/snapshot.json` dan menghasilkan guide berbasis
+  snapshot tanpa membutuhkan AI call.
+- Output human berisi Project Overview, Recommended Reading Path, Feature Map,
+  Important Flows, Change Impact Notes, dan Agent Workflow.
+- `devmap onboarding --write` menulis `ONBOARDING.md`.
+- `devmap onboarding --json` menghasilkan satu dokumen JSON untuk agent,
+  editor, atau script.
+- README, PRD, command docs, roadmap, design docs, dan CLI README diperbarui
+  supaya onboarding tidak lagi tercatat sebagai future-only command.
 
 ## Update 2026-06-18
 

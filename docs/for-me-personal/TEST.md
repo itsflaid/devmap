@@ -15,6 +15,37 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Onboarding Command
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/onboarding-command.test.ts test/json-output.test.ts
+```
+
+Manual source-mode check dari root DevMap:
+
+```powershell
+$root = (Get-Location).Path
+pnpm dev:cli analyze "$root"
+pnpm dev:cli onboarding "$root"
+pnpm dev:cli onboarding "$root" --json
+pnpm dev:cli onboarding "$root" --write
+```
+
+Catatan: `pnpm dev:cli` memakai `pnpm --filter devmap`, sehingga command
+source-mode berjalan dari `packages/cli`. Untuk mengetes root workspace DevMap,
+selalu kirim path target eksplisit seperti contoh di atas.
+
+Expected result:
+
+- `devmap onboarding` membaca `.devmap/snapshot.json` yang sudah ada.
+- Jika snapshot belum ada atau stale, jalankan `pnpm dev:cli analyze` dulu.
+- Human output menampilkan reading path, feature map, flows, change impact, dan
+  workflow agent tanpa menyebut file yang tidak ada di snapshot.
+- `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.
+- `--write` membuat atau memperbarui `ONBOARDING.md` di root project target.
+
 ## Context Builder Ranking
 
 Jalankan focused test ranking dan evaluation:

@@ -6,15 +6,17 @@
 
 ## Overview
 
-DevMap MVP provides four core project commands and one configuration command:
+DevMap MVP provides five core project commands and one configuration command:
 
 * `devmap init`
 * `devmap analyze`
 * `devmap ask`
+* `devmap onboarding`
 * `devmap doctor`
 * `devmap config model`
 
-No additional product commands should be added until the MVP is shipped.
+Additional product commands should wait until the MVP is shipped unless the PRD
+explicitly promotes them into the `0.1.0` scope.
 
 Future commands are documented in:
 
@@ -410,6 +412,54 @@ Use existing snapshot or re-analyze first?
 
 ---
 
+## `devmap onboarding`
+
+Generate a project onboarding guide from the current snapshot.
+
+Alias: `devmap onboard`
+
+### Purpose
+
+`devmap onboarding` turns `.devmap/snapshot.json` into a practical reading
+guide for humans and AI agents. It should help answer:
+
+> Where should I start reading this project?
+
+### Usage
+
+```bash
+devmap onboarding
+devmap onboarding --write
+devmap onboarding --json
+```
+
+### Responsibilities
+
+* Read `.devmap/snapshot.json`
+* Use `project`, `onboarding.recommendedPath`, `features`, `flows`,
+  `criticalFiles`, and `changeImpact`
+* Print a readable terminal guide by default
+* Write `ONBOARDING.md` when `--write` is passed
+* Emit one structured JSON document when `--json` is passed
+
+### Output Sections
+
+1. Project Overview
+2. Recommended Reading Path
+3. Feature Map
+4. Important Flows
+5. Change Impact Notes
+6. Agent Workflow
+
+### Rules
+
+* Do not invent files that are not present in the snapshot
+* Prefer snapshot-derived paths over generic advice
+* Keep the guide useful without requiring an AI call
+* Treat `devmap flow` and full docs generation as future commands
+
+---
+
 ## `devmap doctor`
 
 Run diagnostics for DevMap setup.
@@ -542,6 +592,7 @@ devmap init --json
 devmap analyze --json
 devmap analyze --deep --json
 devmap ask "where is authentication handled?" --json
+devmap onboarding --json
 devmap doctor --json
 devmap config model auto --json
 ```
@@ -559,8 +610,9 @@ Contract:
   DevMap JSON document
 
 `analyze --json` returns the project snapshot. `ask --json` returns the answer,
-selected files, model, and token usage. `doctor --json` returns diagnostics and
-issues as structured fields.
+selected files, model, and token usage. `onboarding --json` returns guide
+metadata and Markdown. `doctor --json` returns diagnostics and issues as
+structured fields.
 
 ---
 
@@ -576,7 +628,6 @@ They are not part of the current MVP command scope.
 | `devmap explain`  | Explain folders, modules, and architecture  |
 | `devmap flow`     | Explain system flows as narrative steps     |
 | `devmap docs`     | Generate project documentation              |
-| `devmap onboard`  | Generate onboarding guide                   |
 | `devmap deadcode` | Detect unused files, exports, and functions |
 | `devmap report`   | Generate project health report              |
 | `devmap watch`    | Auto-update snapshot on file changes        |

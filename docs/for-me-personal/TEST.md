@@ -391,7 +391,17 @@ Expected tambahan:
 
 - `.agent/` dan `.agents/` tidak masuk hasil scan;
 - `.agents/skills/*/SKILL.md` tidak terdeteksi sebagai fitur AI project;
-- snapshot tetap hanya merepresentasikan source project yang dianalisis.
+- snapshot tetap hanya merepresentasikan source project yang dianalisis;
+- `fileIndex[*].topFunctions` berisi fungsi atau symbol kode penting dengan
+  line number, status export, dan status async;
+- `flows` mencakup feature flow dan request/API flow dari route ke dependency
+  lokalnya;
+- `features[*].entryPoint` dan `features[*].businessFlow` terisi ketika bisa
+  diinfer dari route/dependency;
+- `onboarding.recommendedPath` dan `changeImpact` tersedia sebagai metadata
+  navigasi lanjutan;
+- `agentInstructions` tersedia di snapshot sebagai policy machine-readable
+  ringkas.
 
 AI client:
 

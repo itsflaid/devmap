@@ -37,12 +37,15 @@ The snapshot contains:
 * Architecture overview
 * Entry points
 * Critical files
-* File purpose, scope, search terms, and importance
+* File purpose, scope, top functions, search terms, and importance
 * Routes and APIs
 * External services
 * Database information
 * Detected features
-* Minimal high-confidence feature flows
+* Minimal high-confidence feature and request flows
+* Feature entry points and lightweight business flows
+* Onboarding path and file-level change impact
+* Snapshot-first agent navigation policy
 * Project relationships
 
 One analysis. Reusable context. Any codebase.

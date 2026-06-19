@@ -377,6 +377,7 @@ Each `fileIndex` entry stores compact navigation metadata:
 | ----- | ------- |
 | `purpose` | One-sentence description of what the file does when available |
 | `scope` | Responsibility classification: API, UI, database, config, service, CLI, test, docs, or unknown |
+| `topFunctions` | Compact list of important functions or exported code symbols with line numbers |
 | `featureRefs` | Feature names that reference this file |
 | `searchTerms` | Retrieval-focused terms used by `devmap ask` |
 | `importance` | Static importance score from references, entry point status, critical-file score, and feature ownership |
@@ -391,9 +392,39 @@ and snapshot generation must still complete.
 ### Minimal Flows
 
 Snapshot schema includes `flows` as a foundation for future `FLOW.md`
-generation. Phase 1 only creates small feature flows for high-confidence
-features, using the feature file order as steps. It does not build a full call
-graph or separate flow analyzer.
+generation. Phase 1 creates small feature flows for high-confidence features
+and request/API flows from detected routes plus local dependency edges. Flow
+steps may include important exported symbols, but DevMap still does not build a
+full call graph or separate flow analyzer.
+
+Feature metadata also stores a primary `entryPoint` and a short
+`businessFlow` when DevMap can infer them from routes or dependencies. This
+gives future generated docs a human-oriented path through the feature, not only
+a list of files.
+
+### Onboarding and Change Impact
+
+Snapshot schema includes two lightweight navigation aids:
+
+| Field | Purpose |
+| ----- | ------- |
+| `onboarding.recommendedPath` | Ordered files a new developer or AI agent should read first |
+| `changeImpact` | File-level impacted features, flows, and direct dependents |
+
+These fields are static-first and intentionally shallow. They are meant to guide
+future `ONBOARDING.md`, `FLOW.md`, and safer edit planning without building a
+full symbol graph.
+
+### Agent Contract
+
+Generated `DEVMAP.md` contains the complete agent navigation contract. It tells
+agents to use `.devmap/snapshot.json` before broad repository exploration, to
+prefer feature entry points and flows, and to run `devmap analyze` when the
+snapshot is missing.
+
+The snapshot also stores a compact `agentInstructions` object for machine
+readers. This is intentionally small: policy fields live in JSON, while the
+human-readable workflow lives in `DEVMAP.md`.
 
 ---
 

@@ -95,10 +95,48 @@ test("service detector only reports dependencies that are actually present", asy
   assert.deepEqual(expressServices, ["Stripe"]);
 });
 
+test("service detector detects HTTP API providers without package dependencies", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-service-signal-test-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "service-signal-test", dependencies: { commander: "^12.0.0" } })
+    );
+    await mkdir(join(projectRoot, "src", "ai"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "src", "ai", "groq.ts"),
+      [
+        "const GROQ_MODELS_URL = 'https://api.groq.com/openai/v1/models';",
+        "export class GroqClient {}"
+      ].join("\n")
+    );
+    await mkdir(join(projectRoot, "src", "analyzers"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "src", "analyzers", "serviceDetector.ts"),
+      "const SOURCE_SERVICE_SIGNALS = ['https://api.openai.com/v1/chat/completions'];\n"
+    );
+    await mkdir(join(projectRoot, "docs"), { recursive: true });
+    await writeFile(join(projectRoot, "docs", "notes.md"), "Groq mentioned in docs only.\n");
+
+    assert.deepEqual(detectExternalServices(await scanFiles(projectRoot)), ["Groq"]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("project map summarizes a Next.js fixture", async () => {
   const projectMap = await createProjectMap(nextFixture);
 
   assert.equal(projectMap.version, "1");
+  assert.deepEqual(projectMap.agentInstructions, {
+    navigationPolicy: "snapshot-first",
+    defaultMode: "minimal-exploration",
+    maxInitialFiles: 3,
+    missingSnapshotAction: "run-devmap-analyze",
+    staleSnapshotAction: "run-devmap-analyze-fresh",
+    fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+  });
   assert.match(projectMap.fingerprint, /^[a-f0-9]{32}$/);
   assert.equal(projectMap.framework, "nextjs");
   assert.deepEqual(projectMap.project, {
@@ -135,6 +173,16 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.features.some((feature) => feature.name === "API Routes"));
   assert.deepEqual(projectMap.fileIndex["app/page.tsx"].imports, ["lib/auth.ts"]);
   assert.ok(projectMap.fileIndex["lib/auth.ts"].exportedSymbols.includes("getSession"));
+  assert.deepEqual(
+    projectMap.fileIndex["lib/auth.ts"].topFunctions.find((item) => item.name === "getSession"),
+    {
+      name: "getSession",
+      kind: "function",
+      line: 6,
+      exported: true,
+      async: true
+    }
+  );
   assert.equal(projectMap.fileIndex["app/api/session/route.ts"].scope, "api");
   assert.equal(projectMap.fileIndex["prisma/schema.prisma"].scope, "database");
   assert.equal(projectMap.fileIndex["lib/auth.ts"].scope, "service");
@@ -150,13 +198,32 @@ test("project map summarizes a Next.js fixture", async () => {
   const authentication = projectMap.features.find((feature) => feature.name === "Authentication");
   assert.ok(authentication);
   assert.equal(authentication.confidence, "high");
-  assert.ok(authentication.purpose.includes("authentication"));
+  assert.equal(authentication.entryPoint, "app/api/session/route.ts");
+  assert.ok(authentication.purpose.toLowerCase().includes("authentication"));
   assert.ok(authentication.searchTerms.includes("auth"));
+  assert.ok(authentication.businessFlow.length >= 3);
+  assert.equal(authentication.businessFlow[0], "Start at app/api/session/route.ts.");
   assert.ok(projectMap.flows.some((flow) =>
     flow.name === "Authentication flow"
     && flow.confidence === "high"
     && flow.steps.length > 0
   ));
+  const sessionFlow = projectMap.flows.find((flow) => flow.name === "Request /api/session");
+  assert.ok(sessionFlow);
+  assert.equal(sessionFlow.type, "request");
+  assert.equal(sessionFlow.entryPoint, "app/api/session/route.ts");
+  assert.deepEqual(
+    sessionFlow.steps.map((step) => step.file),
+    ["app/api/session/route.ts", "lib/auth.ts", "lib/db.ts"]
+  );
+  assert.deepEqual(projectMap.changeImpact["lib/auth.ts"].impacts.sort(), [
+    "Authentication",
+    "Authentication flow",
+    "Request /api/session"
+  ]);
+  assert.ok(projectMap.onboarding.recommendedPath.includes("package.json"));
+  assert.ok(projectMap.onboarding.recommendedPath.includes("app/page.tsx"));
+  assert.ok(projectMap.onboarding.recommendedPath.includes("lib/auth.ts"));
   assert.ok(projectMap.stats.relevantFiles >= 5);
 });
 
@@ -169,6 +236,16 @@ test("project map summarizes an Express fixture", async () => {
   assert.equal(projectMap.fileIndex["src/server.ts"].scope, "api");
   assert.ok(projectMap.fileIndex["src/server.ts"].searchTerms.includes("server"));
   assert.deepEqual(projectMap.fileIndex["src/server.ts"].imports, ["src/routes/payments.ts"]);
+  assert.deepEqual(
+    projectMap.fileIndex["src/routes/payments.ts"].topFunctions.find((item) => item.name === "paymentsRouter"),
+    {
+      name: "paymentsRouter",
+      kind: "const",
+      line: 4,
+      exported: true,
+      async: false
+    }
+  );
   assert.deepEqual(projectMap.apiRoutes, [
     {
       path: "/payments",
@@ -177,6 +254,19 @@ test("project map summarizes an Express fixture", async () => {
       methods: ["USE"]
     }
   ]);
+  const paymentsFlow = projectMap.flows.find((flow) => flow.name === "Request /payments");
+  assert.ok(paymentsFlow);
+  assert.equal(paymentsFlow.type, "request");
+  assert.deepEqual(
+    paymentsFlow.steps.map((step) => step.file),
+    ["src/server.ts", "src/routes/payments.ts"]
+  );
+  assert.deepEqual(projectMap.changeImpact["src/routes/payments.ts"].impacts.sort(), [
+    "Payments",
+    "Payments flow",
+    "Request /payments"
+  ]);
+  assert.ok(projectMap.onboarding.recommendedPath.includes("src/server.ts"));
   assert.ok(projectMap.features.some((feature) => feature.name === "Payments"));
 });
 

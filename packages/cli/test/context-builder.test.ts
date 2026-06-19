@@ -24,6 +24,11 @@ test("context builder ranks feature evidence and expands local dependencies", as
   );
 
   assert.equal(context.files[0]?.path, "lib/auth.ts");
+  assert.ok(context.files[0]?.topFunctions.some((item) =>
+    item.name === "getSession"
+    && item.exported === true
+    && item.async === true
+  ));
   assert.equal(context.confidence, "high");
   assert.ok(context.topScore >= 70);
   assert.ok(context.files.some((file) => file.path === "lib/db.ts"));

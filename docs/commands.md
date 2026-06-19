@@ -144,9 +144,11 @@ devmap analyze --deep
 * Detect database usage
 * Detect entry points
 * Detect critical files
-* Build a compact file index with purpose, scope, search terms, feature
-  references, and importance
-* Generate minimal high-confidence feature flows
+* Build a compact file index with purpose, scope, top functions/code symbols,
+  search terms, feature references, and importance
+* Generate minimal high-confidence feature and request/API flows
+* Infer feature entry points and short business flows where possible
+* Build a lightweight onboarding path and file-level change impact map
 * Generate architecture overview
 * Save snapshot to `.devmap/snapshot.json`
 

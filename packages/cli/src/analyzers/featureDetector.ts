@@ -7,7 +7,9 @@ export type FeatureInfo = {
   name: string;
   purpose: string;
   files: string[];
+  entryPoint?: string;
   entryPoints: string[];
+  businessFlow: string[];
   searchTerms: string[];
   confidence: "high" | "medium" | "low";
   evidence: string[];
@@ -80,6 +82,7 @@ function createFeatureInfo(
     name,
     purpose: `Identifies ${name.toLowerCase()} capability in the project.`,
     files,
+    businessFlow: [],
     entryPoints: [],
     searchTerms: [...new Set(terms.map((term) => term.toLowerCase()))].slice(0, 8),
     confidence: evidence.length >= 2 ? "high" : "medium",

@@ -23,7 +23,14 @@ test("DEVMAP.md contains workflow and AI-agent guidance", () => {
 
   assert.match(content, /Detected framework: nextjs/);
   assert.match(content, /devmap analyze/);
-  assert.match(content, /Guidance For AI Agents/);
+  assert.match(content, /Agent Navigation Contract/);
+  assert.match(content, /Required Agent Workflow/);
+  assert.match(content, /snapshot-first/);
+  assert.match(content, /features\.entryPoint/);
+  assert.match(content, /onboarding\.recommendedPath/);
+  assert.match(content, /changeImpact/);
+  assert.match(content, /Do not scan the whole repository first/);
+  assert.match(content, /devmap init/);
   assert.match(content, /--json/);
   assert.match(content, /\.devmap\/snapshot\.json/);
   assert.match(content, /Never commit API keys/);

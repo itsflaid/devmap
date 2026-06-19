@@ -115,8 +115,25 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
 }
 
 function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
+  if (!isRecord(snapshot.agentInstructions)) {
+    snapshot.agentInstructions = {
+      navigationPolicy: "snapshot-first",
+      defaultMode: "minimal-exploration",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+    };
+  }
+
   if (!Array.isArray(snapshot.flows)) {
     snapshot.flows = [];
+  }
+  if (!isRecord(snapshot.onboarding)) {
+    snapshot.onboarding = { recommendedPath: [] };
+  }
+  if (!isRecord(snapshot.changeImpact)) {
+    snapshot.changeImpact = {};
   }
 
   const fileIndex = snapshot.fileIndex as Record<string, Record<string, unknown>>;
@@ -124,6 +141,7 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
     if (typeof entry.scope !== "string") entry.scope = "unknown";
     if (!Array.isArray(entry.featureRefs)) entry.featureRefs = [];
     if (!Array.isArray(entry.searchTerms)) entry.searchTerms = [];
+    if (!Array.isArray(entry.topFunctions)) entry.topFunctions = [];
     if (typeof entry.importance !== "number") entry.importance = 0;
   }
 
@@ -139,6 +157,8 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
     }
     if (!Array.isArray(feature.files)) feature.files = Array.isArray(feature.evidence) ? feature.evidence : [];
     if (!Array.isArray(feature.entryPoints)) feature.entryPoints = [];
+    if (typeof feature.entryPoint !== "string") delete feature.entryPoint;
+    if (!Array.isArray(feature.businessFlow)) feature.businessFlow = [];
     if (!Array.isArray(feature.searchTerms)) feature.searchTerms = [];
     if (!["high", "medium", "low"].includes(String(feature.confidence))) {
       feature.confidence = "medium";

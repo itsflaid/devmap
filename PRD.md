@@ -703,6 +703,14 @@ Recommended MVP schema:
 interface DevMapSnapshot {
   version: string;
   generatedAt: string;
+  agentInstructions: {
+    navigationPolicy: "snapshot-first";
+    defaultMode: "minimal-exploration";
+    maxInitialFiles: number;
+    missingSnapshotAction: "run-devmap-analyze";
+    staleSnapshotAction: "run-devmap-analyze-fresh";
+    fallbackRule: string;
+  };
   project: {
     name?: string;
     root: string;
@@ -719,10 +727,24 @@ interface DevMapSnapshot {
   database?: DatabaseInfo;
   features: FeatureInfo[];
   flows: FlowInfo[];
+  onboarding: {
+    recommendedPath: string[];
+  };
+  changeImpact: Record<string, {
+    impacts: string[];
+    dependents: string[];
+  }>;
   fileIndex: Record<string, {
     hash: string;
     imports: string[];
     exportedSymbols: string[];
+    topFunctions: Array<{
+      name: string;
+      kind: "function" | "const" | "class" | "method";
+      line: number;
+      exported: boolean;
+      async: boolean;
+    }>;
     lines: number;
     purpose?: string;
     scope: "api" | "ui" | "database" | "config" | "service" | "cli" | "test" | "docs" | "unknown";
@@ -741,9 +763,18 @@ interface DevMapSnapshot {
 - Snapshot must include a schema version
 - Future schema changes must be versioned
 - File index entries should include compact navigation metadata such as
-  purpose, responsibility scope, feature references, search terms, and
-  importance. These fields help `devmap ask`, future onboarding output, and
-  future flow generation without storing full raw source.
+  purpose, responsibility scope, exported symbols, top functions/code symbols,
+  feature references, search terms, and importance. These fields help
+  `devmap ask`, future onboarding output, and future flow generation without
+  storing full raw source.
+- Flow metadata should include compact high-confidence feature flows and
+  request/API flows derived from routes and local dependency edges.
+- Feature metadata should expose a primary entry point and a short business
+  flow when DevMap can infer one from routes or dependency edges.
+- Snapshot should include a lightweight onboarding path and file-level change
+  impact map for future generated docs and safer AI-assisted edits.
+- Snapshot should include compact machine-readable agent instructions. The
+  complete agent navigation contract belongs in generated `DEVMAP.md`.
 - AI-generated file purpose and search terms must be batched and optional.
   Analyze must continue if enrichment fails.
 

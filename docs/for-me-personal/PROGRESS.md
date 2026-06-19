@@ -917,3 +917,34 @@ Verifikasi:
 ```powershell
 pnpm --filter devmap exec tsx --test test/analyzers.test.ts
 ```
+
+## Snapshot Function Metadata
+
+**Tanggal:** 2026-06-18
+
+Snapshot `fileIndex` sekarang menyimpan `topFunctions`, yaitu daftar ringkas
+fungsi atau symbol kode penting beserta line number, tipe symbol, status export,
+dan status async. Metadata ini menjadi fondasi untuk jawaban `ask`, onboarding,
+dan flow document tanpa harus membaca raw source terlalu banyak.
+
+Flow minimal juga mulai memakai symbol penting pada label step, sehingga flow
+lebih informatif daripada sekadar daftar file.
+
+Tahap lanjutannya menambahkan request/API flows dari route yang terdeteksi ke
+dependency lokalnya. Contoh: route API dapat menghasilkan flow
+`route.ts -> auth.ts -> db.ts`, yang nanti bisa menjadi bahan awal `FLOW.md`.
+
+Tahap berikutnya menambahkan primary feature entry point, business flow ringkas,
+`onboarding.recommendedPath`, dan `changeImpact` file-level. Ini sengaja masih
+shallow agar snapshot lebih memahami project tanpa masuk ke symbol graph penuh.
+
+Generated `DEVMAP.md` sekarang memiliki Agent Navigation Contract yang meminta
+agent memakai snapshot-first, menjalankan `devmap analyze` saat snapshot hilang,
+dan meminta user menjalankan `devmap init` jika DevMap belum terkonfigurasi.
+Snapshot juga menyimpan `agentInstructions` kecil untuk machine reader.
+
+Verifikasi:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/analyzers.test.ts test/context-builder.test.ts
+```

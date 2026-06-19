@@ -14,6 +14,11 @@ const SERVICES: Array<[string[], string]> = [
   [["groq"], "Groq"]
 ];
 
+const SOURCE_SERVICE_SIGNALS: Array<[string[], string]> = [
+  [["api.groq.com", "console.groq.com", "groq api key", "groqclient"], "Groq"],
+  [["api.openai.com", "openai api key", "openaiclient"], "OpenAI"]
+];
+
 export function detectExternalServices(files: ScannedFile[]): string[] {
   const services = new Set<string>();
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
@@ -25,6 +30,10 @@ export function detectExternalServices(files: ScannedFile[]): string[] {
     if (needles.some((needle) => candidates.has(needle))) {
       services.add(name);
     }
+  }
+
+  for (const service of readSourceServiceNames(scopedFiles)) {
+    services.add(service);
   }
 
   return [...services].sort();
@@ -60,7 +69,10 @@ function readImportedPackageNames(files: ScannedFile[]): string[] {
   const names = new Set<string>();
   const importPattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
 
-  for (const file of files.filter((item) => [".ts", ".tsx", ".js", ".jsx"].includes(item.extension))) {
+  for (const file of files.filter((item) =>
+    [".ts", ".tsx", ".js", ".jsx"].includes(item.extension)
+    && !isServiceSignalDefinitionFile(item.path)
+  )) {
     let match = importPattern.exec(file.content);
     while (match) {
       const specifier = match[1].toLowerCase();
@@ -72,4 +84,35 @@ function readImportedPackageNames(files: ScannedFile[]): string[] {
   }
 
   return [...names];
+}
+
+function readSourceServiceNames(files: ScannedFile[]): string[] {
+  const services = new Set<string>();
+
+  for (const file of files.filter((item) =>
+    [".ts", ".tsx", ".js", ".jsx"].includes(item.extension)
+    && !isServiceSignalDefinitionFile(item.path)
+  )) {
+    const content = file.content.toLowerCase();
+
+    for (const [signals, service] of SOURCE_SERVICE_SIGNALS) {
+      if (signals.some((signal) => content.includes(signal))) {
+        services.add(service);
+      }
+    }
+  }
+
+  return [...services];
+}
+
+function isServiceSignalDefinitionFile(path: string): boolean {
+  const fileName = path.toLowerCase().split("/").at(-1) ?? "";
+  return fileName === "servicedetector.ts"
+    || fileName === "servicedetector.tsx"
+    || fileName === "servicedetector.js"
+    || fileName === "servicedetector.jsx"
+    || fileName === "featuredetector.ts"
+    || fileName === "featuredetector.tsx"
+    || fileName === "featuredetector.js"
+    || fileName === "featuredetector.jsx";
 }

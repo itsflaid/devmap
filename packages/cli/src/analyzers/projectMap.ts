@@ -2,7 +2,13 @@ import { hashContent } from "../cache/fileHash.js";
 import { detectDatabase, type DatabaseInfo } from "./databaseDetector.js";
 import { buildDependencyGraph, countReferences } from "./dependencyGraph.js";
 import { detectEntryPoints } from "./entryPoints.js";
-import { detectFeatures, type FeatureInfo } from "./featureDetector.js";
+import {
+  authenticationFilePriority,
+  detectAuthenticationSemanticRole,
+  detectFeatures,
+  orderAuthenticationFiles,
+  type FeatureInfo
+} from "./featureDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import { scanFiles } from "./fileScanner.js";
 import { detectFramework, type Framework } from "./frameworkDetector.js";
@@ -122,7 +128,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   const routes = detectRoutes(files, framework);
   const database = detectDatabase(files);
   const features = attachFeatureEntryPoints(
-    enrichFeatureFiles(detectFeatures(files, routes, database), files),
+    detectFeatures(files, routes, database),
     routes,
     entryPoints,
     graph
@@ -354,7 +360,11 @@ function calculateSemanticImportanceBonus(
   topFunctions: FileIndexEntry["topFunctions"],
   featureRefs: string[]
 ): number {
-  const role = detectAuthSemanticRole(path, exportedSymbols, topFunctions, []);
+  const role = detectAuthenticationSemanticRole(
+    path,
+    [...exportedSymbols, ...topFunctions.map((item) => item.name)],
+    []
+  );
   if (role === "auth-config") return 70;
   if (role === "guard") return 60;
   if (role === "provider") return 45;
@@ -367,7 +377,12 @@ function calculateCriticalSemanticBonus(file: ScannedFile): number {
   const exportedSymbols = findExportedSymbols(file.content);
   const topFunctions = findTopFunctions(file.content);
   const imports = readImportSpecifiers(file.content);
-  const role = detectAuthSemanticRole(file.path, exportedSymbols, topFunctions, imports);
+  const role = detectAuthenticationSemanticRole(
+    file.path,
+    [...exportedSymbols, ...topFunctions.map((item) => item.name)],
+    imports,
+    file.content
+  );
 
   if (role === "auth-config") return 50;
   if (role === "guard") return 40;
@@ -507,123 +522,6 @@ function findTopFunctions(content: string): FileIndexEntry["topFunctions"] {
 
 function getLineNumber(content: string, index: number): number {
   return content.slice(0, index).split(/\r?\n/).length;
-}
-
-type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
-
-function enrichFeatureFiles(features: FeatureInfo[], files: ScannedFile[]): FeatureInfo[] {
-  const authFiles = collectAuthenticationFeatureFiles(files);
-  if (authFiles.length === 0) {
-    return features;
-  }
-
-  const existingAuth = features.find((feature) => feature.name === "Authentication");
-  if (existingAuth) {
-    return features.map((feature) =>
-      feature.name === "Authentication"
-        ? {
-          ...feature,
-          files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
-          evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
-          confidence: "high"
-        }
-        : feature
-    );
-  }
-
-  return [
-    ...features,
-    {
-      name: "Authentication",
-      purpose: "Identifies authentication capability in the project.",
-      files: orderAuthenticationFiles(authFiles),
-      businessFlow: [],
-      entryPoints: [],
-      searchTerms: ["auth", "authentication", "login", "session", "jwt", "next-auth"],
-      confidence: "high",
-      evidence: orderAuthenticationFiles(authFiles)
-    }
-  ];
-}
-
-function collectAuthenticationFeatureFiles(files: ScannedFile[]): string[] {
-  return orderAuthenticationFiles(files
-    .filter((file) => isArchitectureSource(file.path) && !isTestFile(file.path))
-    .filter((file) => {
-      const exportedSymbols = findExportedSymbols(file.content);
-      const topFunctions = findTopFunctions(file.content);
-      const imports = readImportSpecifiers(file.content);
-      return detectAuthSemanticRole(file.path, exportedSymbols, topFunctions, imports) !== null;
-    })
-    .map((file) => file.path));
-}
-
-function detectAuthSemanticRole(
-  path: string,
-  exportedSymbols: string[],
-  topFunctions: FileIndexEntry["topFunctions"],
-  imports: string[]
-): AuthSemanticRole | null {
-  const normalizedPath = path.toLowerCase();
-  const symbols = [...exportedSymbols, ...topFunctions.map((item) => item.name)];
-  const text = `${normalizedPath} ${symbols.join(" ")} ${imports.join(" ")}`.toLowerCase();
-
-  if (/(^|\/)src\/auth\.[cm]?[jt]sx?$/.test(normalizedPath)
-    || /(^|\/)auth\.[cm]?[jt]sx?$/.test(normalizedPath)
-    || (hasSymbol(symbols, "auth") && hasSymbol(symbols, "handlers"))
-    || /\b(nextauth|getserversession|getsession|credentials)\b/.test(text)
-  ) {
-    return "auth-config";
-  }
-
-  if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalizedPath)
-    || /\b(auth|session|token|jwt|redirect|unauthorized|authenticated)\b/.test(text)
-      && /\b(middleware|guard|proxy)\b/.test(text)
-  ) {
-    return "guard";
-  }
-
-  if (/providers?\.[cm]?[jt]sx?$/.test(normalizedPath)
-    && (imports.some((specifier) => specifier.includes("next-auth"))
-      || /\b(sessionprovider|usesession)\b/.test(text))
-  ) {
-    return "provider";
-  }
-
-  if (/(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalizedPath)
-    && /\b(signout|handlesignout|usesession|sessionprovider)\b/.test(text)
-  ) {
-    return "consumer";
-  }
-
-  if (/\b(auth|nextauth|getserversession|getsession|signin|signout|usesession|sessionprovider|handlelogin|handleregister|handlesignout)\b/.test(text)) {
-    return "consumer";
-  }
-
-  return null;
-}
-
-function orderAuthenticationFiles(files: string[]): string[] {
-  return [...new Set(files)].sort((left, right) =>
-    authenticationFilePriority(left) - authenticationFilePriority(right)
-    || left.localeCompare(right)
-  );
-}
-
-function authenticationFilePriority(path: string): number {
-  const normalized = path.toLowerCase();
-  if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalized)) return 10;
-  if (/(^|\/)(src\/)?auth\.[cm]?[jt]sx?$/.test(normalized)) return 20;
-  if (/\/api\/.*register|register.*\/route\.[cm]?[jt]s$/.test(normalized)) return 30;
-  if (/login.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) return 40;
-  if (/register.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) return 45;
-  if (/providers?\.[cm]?[jt]sx?$/.test(normalized)) return 50;
-  if (/(dashboard|app-shell|layout)\.[cm]?[jt]sx?$/.test(normalized)) return 60;
-  return 80;
-}
-
-function hasSymbol(symbols: string[], name: string): boolean {
-  return symbols.some((symbol) => symbol.toLowerCase() === name);
 }
 
 function isFeatureConfigFile(path: string, featureRefs: string[]): boolean {

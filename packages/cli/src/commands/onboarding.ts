@@ -64,6 +64,8 @@ export async function onboardingCommand(options: OnboardingOptions = {}): Promis
 
   if (guide.writtenPath) {
     output.success(`Wrote ${guide.writtenPath}`);
+  } else {
+    output.note("To write this guide to ONBOARDING.md, run devmap onboarding --write.");
   }
 }
 

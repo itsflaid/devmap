@@ -444,6 +444,7 @@ devmap onboarding --json
 * Surface entry points, external services, and critical files before the
   reading path
 * Print a readable terminal guide by default
+* Show a follow-up hint explaining that `--write` creates `ONBOARDING.md`
 * Write `ONBOARDING.md` when `--write` is passed
 * Ask for Indonesian or English when writing from an interactive terminal and
   no language is provided

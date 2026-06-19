@@ -34,6 +34,7 @@ test("onboarding command renders a snapshot-based guide", async () => {
     assert.match(plainLogs, /app\/page\.tsx/);
     assert.match(plainLogs, /Authentication/);
     assert.match(plainLogs, /Request \/api\/session/);
+    assert.match(plainLogs, /devmap onboarding --write/);
     assert.doesNotMatch(plainLogs, /not inferred yet/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

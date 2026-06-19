@@ -122,7 +122,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   const routes = detectRoutes(files, framework);
   const database = detectDatabase(files);
   const features = attachFeatureEntryPoints(
-    detectFeatures(files, routes, database),
+    enrichFeatureFiles(detectFeatures(files, routes, database), files),
     routes,
     entryPoints,
     graph
@@ -218,6 +218,12 @@ function rankCriticalFiles(
         reasons.push("core project concern");
       }
 
+      const semanticBonus = calculateCriticalSemanticBonus(file);
+      if (semanticBonus > 0) {
+        score += semanticBonus;
+        reasons.push("semantic feature anchor");
+      }
+
       if (/(^|\/)(page|layout|route|server|app|main|index)\.[cm]?[jt]sx?$/.test(file.path)) {
         score += 2;
         reasons.push("framework convention");
@@ -272,7 +278,10 @@ function createFileIndexEntry(
     references[file.path] ?? 0,
     entryPoints.includes(file.path),
     criticalFile?.score ?? 0,
-    featureRefs.length
+    featureRefs,
+    scope,
+    exportedSymbols,
+    topFunctions
   );
   const searchTerms = buildFileSearchTerms(file.path, scope, exportedSymbols, topFunctions, featureRefs);
   const purpose = inferFilePurpose(file.path, scope, exportedSymbols, topFunctions, featureRefs);
@@ -323,14 +332,48 @@ function calculateImportance(
   referencedBy: number,
   isEntryPoint: boolean,
   criticalScore: number,
-  featureCount: number
+  featureRefs: string[],
+  scope: FileScope,
+  exportedSymbols: string[],
+  topFunctions: FileIndexEntry["topFunctions"]
 ): number {
-  let importance = referencedBy * 10 + criticalScore * 5 + featureCount * 8;
+  let importance = referencedBy * 10 + criticalScore * 5 + featureRefs.length * 8;
 
   if (isEntryPoint) importance += 20;
   if (/(^|\/)(index|main|app|server|layout|page|route)\./.test(path)) importance += 5;
+  if (scope !== "test" && scope !== "docs") {
+    importance += calculateSemanticImportanceBonus(path, exportedSymbols, topFunctions, featureRefs);
+  }
 
   return Math.min(100, importance);
+}
+
+function calculateSemanticImportanceBonus(
+  path: string,
+  exportedSymbols: string[],
+  topFunctions: FileIndexEntry["topFunctions"],
+  featureRefs: string[]
+): number {
+  const role = detectAuthSemanticRole(path, exportedSymbols, topFunctions, []);
+  if (role === "auth-config") return 70;
+  if (role === "guard") return 60;
+  if (role === "provider") return 45;
+  if (role === "consumer") return 35;
+  if (isFeatureConfigFile(path, featureRefs)) return 30;
+  return featureRefs.length > 0 ? 20 : 0;
+}
+
+function calculateCriticalSemanticBonus(file: ScannedFile): number {
+  const exportedSymbols = findExportedSymbols(file.content);
+  const topFunctions = findTopFunctions(file.content);
+  const imports = readImportSpecifiers(file.content);
+  const role = detectAuthSemanticRole(file.path, exportedSymbols, topFunctions, imports);
+
+  if (role === "auth-config") return 50;
+  if (role === "guard") return 40;
+  if (role === "provider") return 35;
+  if (role === "consumer") return 25;
+  return 0;
 }
 
 function buildFileSearchTerms(
@@ -466,6 +509,141 @@ function getLineNumber(content: string, index: number): number {
   return content.slice(0, index).split(/\r?\n/).length;
 }
 
+type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
+
+function enrichFeatureFiles(features: FeatureInfo[], files: ScannedFile[]): FeatureInfo[] {
+  const authFiles = collectAuthenticationFeatureFiles(files);
+  if (authFiles.length === 0) {
+    return features;
+  }
+
+  const existingAuth = features.find((feature) => feature.name === "Authentication");
+  if (existingAuth) {
+    return features.map((feature) =>
+      feature.name === "Authentication"
+        ? {
+          ...feature,
+          files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
+          evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
+          confidence: "high"
+        }
+        : feature
+    );
+  }
+
+  return [
+    ...features,
+    {
+      name: "Authentication",
+      purpose: "Identifies authentication capability in the project.",
+      files: orderAuthenticationFiles(authFiles),
+      businessFlow: [],
+      entryPoints: [],
+      searchTerms: ["auth", "authentication", "login", "session", "jwt", "next-auth"],
+      confidence: "high",
+      evidence: orderAuthenticationFiles(authFiles)
+    }
+  ];
+}
+
+function collectAuthenticationFeatureFiles(files: ScannedFile[]): string[] {
+  return orderAuthenticationFiles(files
+    .filter((file) => isArchitectureSource(file.path) && !isTestFile(file.path))
+    .filter((file) => {
+      const exportedSymbols = findExportedSymbols(file.content);
+      const topFunctions = findTopFunctions(file.content);
+      const imports = readImportSpecifiers(file.content);
+      return detectAuthSemanticRole(file.path, exportedSymbols, topFunctions, imports) !== null;
+    })
+    .map((file) => file.path));
+}
+
+function detectAuthSemanticRole(
+  path: string,
+  exportedSymbols: string[],
+  topFunctions: FileIndexEntry["topFunctions"],
+  imports: string[]
+): AuthSemanticRole | null {
+  const normalizedPath = path.toLowerCase();
+  const symbols = [...exportedSymbols, ...topFunctions.map((item) => item.name)];
+  const text = `${normalizedPath} ${symbols.join(" ")} ${imports.join(" ")}`.toLowerCase();
+
+  if (/(^|\/)src\/auth\.[cm]?[jt]sx?$/.test(normalizedPath)
+    || /(^|\/)auth\.[cm]?[jt]sx?$/.test(normalizedPath)
+    || (hasSymbol(symbols, "auth") && hasSymbol(symbols, "handlers"))
+    || /\b(nextauth|getserversession|getsession|credentials)\b/.test(text)
+  ) {
+    return "auth-config";
+  }
+
+  if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalizedPath)
+    || /\b(auth|session|token|jwt|redirect|unauthorized|authenticated)\b/.test(text)
+      && /\b(middleware|guard|proxy)\b/.test(text)
+  ) {
+    return "guard";
+  }
+
+  if (/providers?\.[cm]?[jt]sx?$/.test(normalizedPath)
+    && (imports.some((specifier) => specifier.includes("next-auth"))
+      || /\b(sessionprovider|usesession)\b/.test(text))
+  ) {
+    return "provider";
+  }
+
+  if (/(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalizedPath)
+    && /\b(signout|handlesignout|usesession|sessionprovider)\b/.test(text)
+  ) {
+    return "consumer";
+  }
+
+  if (/\b(auth|nextauth|getserversession|getsession|signin|signout|usesession|sessionprovider|handlelogin|handleregister|handlesignout)\b/.test(text)) {
+    return "consumer";
+  }
+
+  return null;
+}
+
+function orderAuthenticationFiles(files: string[]): string[] {
+  return [...new Set(files)].sort((left, right) =>
+    authenticationFilePriority(left) - authenticationFilePriority(right)
+    || left.localeCompare(right)
+  );
+}
+
+function authenticationFilePriority(path: string): number {
+  const normalized = path.toLowerCase();
+  if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalized)) return 10;
+  if (/(^|\/)(src\/)?auth\.[cm]?[jt]sx?$/.test(normalized)) return 20;
+  if (/\/api\/.*register|register.*\/route\.[cm]?[jt]s$/.test(normalized)) return 30;
+  if (/login.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) return 40;
+  if (/register.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) return 45;
+  if (/providers?\.[cm]?[jt]sx?$/.test(normalized)) return 50;
+  if (/(dashboard|app-shell|layout)\.[cm]?[jt]sx?$/.test(normalized)) return 60;
+  return 80;
+}
+
+function hasSymbol(symbols: string[], name: string): boolean {
+  return symbols.some((symbol) => symbol.toLowerCase() === name);
+}
+
+function isFeatureConfigFile(path: string, featureRefs: string[]): boolean {
+  return featureRefs.length > 0
+    && /(^|\/)src\/(lib|utils)\/(config|constants)\.[cm]?[jt]sx?$/.test(path.toLowerCase());
+}
+
+function readImportSpecifiers(content: string): string[] {
+  const imports: string[] = [];
+  const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
+  let match = pattern.exec(content);
+
+  while (match) {
+    imports.push(match[1].toLowerCase());
+    match = pattern.exec(content);
+  }
+
+  return imports;
+}
+
 function attachFeatureEntryPoints(
   features: FeatureInfo[],
   routes: RouteInfo[],
@@ -480,11 +658,15 @@ function attachFeatureEntryPoints(
       ...feature.files.filter((file) => entryPoints.includes(file)),
       ...relatedRouteEntries
     ])].sort();
-    const entryPoint = chooseFeatureEntryPoint(feature.files, relatedEntries, routes, graph);
-    const businessFlow = buildFeatureBusinessFlow(feature.name, entryPoint, graph);
+    const orderedFiles = feature.name === "Authentication"
+      ? orderAuthenticationFiles(feature.files)
+      : feature.files;
+    const entryPoint = chooseFeatureEntryPoint(feature.name, orderedFiles, relatedEntries, routes, graph);
+    const businessFlow = buildFeatureBusinessFlow(feature.name, entryPoint, graph, orderedFiles);
 
     return {
       ...feature,
+      files: orderedFiles,
       ...(entryPoint ? { entryPoint } : {}),
       entryPoints: relatedEntries,
       businessFlow,
@@ -496,11 +678,24 @@ function attachFeatureEntryPoints(
 }
 
 function chooseFeatureEntryPoint(
+  featureName: string,
   files: string[],
   relatedEntries: string[],
   routes: RouteInfo[],
   graph: Record<string, string[]>
 ): string | undefined {
+  if (featureName === "Authentication") {
+    const apiEntry = relatedEntries.find((file) => /(^|\/)api\//.test(file));
+    if (apiEntry) {
+      return apiEntry;
+    }
+
+    const authConfig = files.find((file) => authenticationFilePriority(file) === 20);
+    if (authConfig) {
+      return authConfig;
+    }
+  }
+
   if (relatedEntries.length > 0) {
     return relatedEntries[0];
   }
@@ -520,8 +715,21 @@ function chooseFeatureEntryPoint(
 function buildFeatureBusinessFlow(
   featureName: string,
   entryPoint: string | undefined,
-  graph: Record<string, string[]>
+  graph: Record<string, string[]>,
+  featureFiles: string[]
 ): string[] {
+  if (featureName === "Authentication" && featureFiles.length > 0) {
+    const orderedFiles = entryPoint
+      ? [entryPoint, ...featureFiles.filter((file) => file !== entryPoint)]
+      : featureFiles;
+
+    return orderedFiles.slice(0, 8).map((file) =>
+      file === entryPoint && /(^|\/)api\//.test(file)
+        ? `Start at ${file}.`
+        : describeAuthenticationFlowStep(file, graph[file] ?? [])
+    );
+  }
+
   if (!entryPoint) {
     return [`Identify files related to ${featureName}.`];
   }
@@ -533,8 +741,38 @@ function buildFeatureBusinessFlow(
     steps.push(`Follow dependency ${file}.`);
   }
 
-  steps.push(`Review related files for ${featureName}.`);
   return steps;
+}
+
+function describeAuthenticationFlowStep(file: string, dependencies: string[]): string {
+  const normalized = file.toLowerCase();
+  const dependencyText = dependencies.length > 0
+    ? ` and connects to ${dependencies.slice(0, 2).join(", ")}`
+    : "";
+
+  if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalized)) {
+    return `Guard requests in ${file} by checking authentication state before protected routes${dependencyText}.`;
+  }
+  if (/(^|\/)(src\/)?auth\.[cm]?[jt]sx?$/.test(normalized)) {
+    return `Configure authentication in ${file}, including providers, session/JWT callbacks, and shared auth helpers${dependencyText}.`;
+  }
+  if (/register.*\/route\.[cm]?[jt]s$|\/api\/.*register/.test(normalized)) {
+    return `Handle registration in ${file}, validating new users before creating credentials${dependencyText}.`;
+  }
+  if (/login.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) {
+    return `Render login UI in ${file} and submit credentials to the auth provider${dependencyText}.`;
+  }
+  if (/register.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) {
+    return `Render registration UI in ${file} and collect account creation details${dependencyText}.`;
+  }
+  if (/providers?\.[cm]?[jt]sx?$/.test(normalized)) {
+    return `Expose session context in ${file} so client components can read authentication state${dependencyText}.`;
+  }
+  if (/(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalized)) {
+    return `Consume session state in ${file} for authenticated layouts, user navigation, or sign-out behavior${dependencyText}.`;
+  }
+
+  return `Review authentication-related behavior in ${file}${dependencyText}.`;
 }
 
 function generateMinimalFlows(

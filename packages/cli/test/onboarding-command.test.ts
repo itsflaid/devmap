@@ -20,10 +20,13 @@ test("onboarding command renders a snapshot-based guide", async () => {
 
     assert.match(plainLogs, /DevMap Onboarding/);
     assert.match(plainLogs, /Project Overview/);
+    assert.match(plainLogs, /Snapshot is stale/);
+    assert.match(plainLogs, /Snapshot status: stale - run devmap analyze --fresh/);
     assert.match(plainLogs, /Recommended Reading Path/);
     assert.match(plainLogs, /Feature Map/);
     assert.match(plainLogs, /Important Flows/);
     assert.match(plainLogs, /Agent Workflow/);
+    assert.match(plainLogs, /Navigation policy: snapshot-first/);
     assert.match(plainLogs, /app\/page\.tsx/);
     assert.match(plainLogs, /Authentication/);
     assert.match(plainLogs, /Request \/api\/session/);

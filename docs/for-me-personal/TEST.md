@@ -41,6 +41,10 @@ Expected result:
 
 - `devmap onboarding` membaca `.devmap/snapshot.json` yang sudah ada.
 - Jika snapshot belum ada atau stale, jalankan `pnpm dev:cli analyze` dulu.
+- Jika snapshot stale, human output memberi warning dan JSON berisi
+  `snapshot.stale: true`.
+- JSON output menyertakan `agentInstructions` agar agent mengikuti policy
+  snapshot-first.
 - Human output menampilkan reading path, feature map, flows, change impact, dan
   workflow agent tanpa menyebut file yang tidak ada di snapshot.
 - `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.

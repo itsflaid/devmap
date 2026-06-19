@@ -441,6 +441,7 @@ devmap onboarding --json
 * Print a readable terminal guide by default
 * Write `ONBOARDING.md` when `--write` is passed
 * Emit one structured JSON document when `--json` is passed
+* Warn when the snapshot is stale
 
 ### Output Sections
 
@@ -457,6 +458,7 @@ devmap onboarding --json
 * Prefer snapshot-derived paths over generic advice
 * Keep the guide useful without requiring an AI call
 * Treat `devmap flow` and full docs generation as future commands
+* Include snapshot freshness and agent navigation policy in JSON output
 
 ---
 

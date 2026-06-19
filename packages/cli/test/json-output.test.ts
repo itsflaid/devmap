@@ -146,7 +146,8 @@ test("onboarding --json emits guide metadata and markdown", async () => {
     assert.ok(Array.isArray(payload.criticalFiles));
     assert.ok(Array.isArray(payload.externalServices));
     assert.ok(Array.isArray(payload.recommendedPath));
-    assert.match(payload.markdown, /# Project Onboarding/);
+    assert.match(payload.markdown, /# Onboarding Project/);
+    assert.match(payload.markdown, /## What This Project Does/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

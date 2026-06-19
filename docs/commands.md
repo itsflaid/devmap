@@ -454,28 +454,27 @@ devmap onboarding --json
 
 ### Output Sections
 
-1. Project Overview
-2. Entry Points
-3. External Services
-4. Critical Files
-5. Recommended Reading Path
-6. Step-by-Step Learning Path
-7. Feature Map
-8. Important Flows
-9. Change Impact Notes
-10. Agent Workflow
+1. What This Project Does
+2. Mental Model
+3. Main Concepts
+4. Important Areas to Understand
+5. Key Flows
+6. Where to Start
 
 ### Rules
 
 * Do not invent files that are not present in the snapshot
 * Prefer snapshot-derived paths over generic advice
 * Avoid placeholder wording such as `not inferred yet`; omit unavailable fields
-* Explain why each recommended learning step matters, what to focus on, and
-  which file to read next
+* Explain what each important file is responsible for and why it should be read
+* Avoid raw metadata dumps such as scores, import counts, and exported symbol
+  lists in human onboarding output
 * Keep the guide useful without requiring an AI call
 * Treat `devmap flow` and full docs generation as future commands
 * Include snapshot freshness and agent navigation policy in JSON output
 * Keep `--json` non-interactive; never prompt in machine-readable mode
+* Default generated onboarding language is English; use `--language id` for
+  Bahasa Indonesia
 
 ---
 

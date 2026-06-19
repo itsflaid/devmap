@@ -20,20 +20,17 @@ test("onboarding command renders a snapshot-based guide", async () => {
     const plainLogs = stripAnsi(logs);
 
     assert.match(plainLogs, /DevMap Onboarding/);
-    assert.match(plainLogs, /Project Overview/);
+    assert.match(plainLogs, /What This Project Does/);
     assert.match(plainLogs, /Snapshot is stale/);
-    assert.match(plainLogs, /Snapshot status: stale - run devmap analyze --fresh/);
-    assert.match(plainLogs, /Entry Points/);
-    assert.match(plainLogs, /External Services/);
-    assert.match(plainLogs, /Critical Files/);
-    assert.match(plainLogs, /Recommended Reading Path/);
-    assert.match(plainLogs, /Step-by-Step Learning Path/);
-    assert.match(plainLogs, /Why learn this/);
-    assert.match(plainLogs, /What to focus on/);
-    assert.match(plainLogs, /Feature Map/);
-    assert.match(plainLogs, /Important Flows/);
-    assert.match(plainLogs, /Agent Workflow/);
-    assert.match(plainLogs, /Navigation policy: snapshot-first/);
+    assert.match(plainLogs, /This snapshot is stale/);
+    assert.match(plainLogs, /Mental Model/);
+    assert.match(plainLogs, /Main Concepts/);
+    assert.match(plainLogs, /Important Areas to Understand/);
+    assert.match(plainLogs, /Priority 1 - Core architecture/);
+    assert.match(plainLogs, /Purpose:/);
+    assert.match(plainLogs, /Why read this:/);
+    assert.match(plainLogs, /Key Flows/);
+    assert.match(plainLogs, /Where to Start/);
     assert.match(plainLogs, /app\/page\.tsx/);
     assert.match(plainLogs, /Authentication/);
     assert.match(plainLogs, /Request \/api\/session/);
@@ -54,11 +51,14 @@ test("onboarding command writes ONBOARDING.md when requested", async () => {
     const content = await readFile(outputPath, "utf8");
 
     assert.match(stripAnsi(logs), /Wrote ONBOARDING\.md/);
-    assert.match(content, /^# Project Onboarding/m);
-    assert.match(content, /## Recommended Reading Path/);
-    assert.match(content, /## Step-by-Step Learning Path/);
+    assert.match(content, /^# Onboarding Project/m);
+    assert.match(content, /## What This Project Does/);
+    assert.match(content, /## Mental Model/);
+    assert.match(content, /## Important Areas to Understand/);
     assert.match(content, /app\/page\.tsx/);
-    assert.match(content, /## Agent Workflow/);
+    assert.match(content, /## Where to Start/);
+    assert.doesNotMatch(content, /score \d+/);
+    assert.doesNotMatch(content, /exports:/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -75,10 +75,10 @@ test("onboarding write can generate Indonesian markdown after language prompt", 
     assert.equal(prompt.closed, true);
     assert.match(prompt.questions.join("\n"), /Onboarding language/);
     assert.match(content, /^# Onboarding Project/m);
-    assert.match(content, /## Gambaran Project/);
-    assert.match(content, /## Urutan Baca yang Disarankan/);
-    assert.match(content, /## Jalur Belajar Step-by-Step/);
-    assert.match(content, /Kenapa dipelajari/);
+    assert.match(content, /## Apa yang Dilakukan Project Ini/);
+    assert.match(content, /## Konsep Utama/);
+    assert.match(content, /## Area Penting untuk Dipahami/);
+    assert.match(content, /Why read this/);
     assert.match(content, /Dibuat oleh DevMap/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

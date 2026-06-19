@@ -46,17 +46,17 @@ Expected result:
   `snapshot.stale: true`.
 - JSON output menyertakan `agentInstructions` agar agent mengikuti policy
   snapshot-first.
-- Human output menampilkan architecture narrative jika ada, entry points,
-  external services, critical files, reading path, feature map, flows, change
-  impact, dan workflow agent tanpa menyebut file yang tidak ada di snapshot.
-- Human output menyertakan jalur belajar step-by-step berisi alasan membaca
-  file, fokus saat membaca, dan langkah berikutnya.
+- Human output berfokus sebagai guide pemahaman, bukan file index: What This
+  Project Does, Mental Model, Main Concepts, Important Areas to Understand, Key
+  Flows, dan Where to Start.
+- Setiap file penting dalam reading area menyertakan `Purpose` dan
+  `Why read this`, bukan score/import count/export list mentah.
 - Entry point kosong di feature/flow tidak boleh ditampilkan sebagai
   `not inferred yet`; field tersebut cukup dihilangkan.
 - `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.
 - `--write` membuat atau memperbarui `ONBOARDING.md` di root project target.
 - Di terminal interaktif, `--write` menanyakan bahasa onboarding jika
-  `--language` belum diberikan.
+  `--language` belum diberikan. Default bahasa tetap English.
 - `--language en` dan `--language id` melewati prompt, cocok untuk automation
   dan agent.
 

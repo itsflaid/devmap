@@ -17,6 +17,11 @@ Terakhir diperbarui: 2026-06-19
   editor, atau script.
 - README, PRD, command docs, roadmap, design docs, dan CLI README diperbarui
   supaya onboarding tidak lagi tercatat sebagai future-only command.
+- Renderer onboarding direfaktor menjadi guide pemahaman untuk developer dan
+  AI agent: pembuka menjelaskan tujuan project, mental model, konsep utama,
+  area penting untuk dibaca, flow penting, dan rekomendasi mulai membaca.
+- Default bahasa onboarding tetap English, sementara `--language id` dan prompt
+  interaktif `--write` tetap dapat menghasilkan Bahasa Indonesia.
 
 ## Update 2026-06-18
 

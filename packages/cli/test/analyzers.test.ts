@@ -95,6 +95,36 @@ test("service detector only reports dependencies that are actually present", asy
   assert.deepEqual(expressServices, ["Stripe"]);
 });
 
+test("service detector detects HTTP API providers without package dependencies", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-service-signal-test-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "service-signal-test", dependencies: { commander: "^12.0.0" } })
+    );
+    await mkdir(join(projectRoot, "src", "ai"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "src", "ai", "groq.ts"),
+      [
+        "const GROQ_MODELS_URL = 'https://api.groq.com/openai/v1/models';",
+        "export class GroqClient {}"
+      ].join("\n")
+    );
+    await mkdir(join(projectRoot, "src", "analyzers"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "src", "analyzers", "serviceDetector.ts"),
+      "const SOURCE_SERVICE_SIGNALS = ['https://api.openai.com/v1/chat/completions'];\n"
+    );
+    await mkdir(join(projectRoot, "docs"), { recursive: true });
+    await writeFile(join(projectRoot, "docs", "notes.md"), "Groq mentioned in docs only.\n");
+
+    assert.deepEqual(detectExternalServices(await scanFiles(projectRoot)), ["Groq"]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("project map summarizes a Next.js fixture", async () => {
   const projectMap = await createProjectMap(nextFixture);
 

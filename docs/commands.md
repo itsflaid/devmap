@@ -438,6 +438,10 @@ devmap onboarding --json
 * Read `.devmap/snapshot.json`
 * Use `project`, `onboarding.recommendedPath`, `features`, `flows`,
   `criticalFiles`, and `changeImpact`
+* Include a concise project narrative from snapshot facts, with a trimmed
+  architecture note when useful
+* Surface entry points, external services, and critical files before the
+  reading path
 * Print a readable terminal guide by default
 * Write `ONBOARDING.md` when `--write` is passed
 * Emit one structured JSON document when `--json` is passed
@@ -446,16 +450,20 @@ devmap onboarding --json
 ### Output Sections
 
 1. Project Overview
-2. Recommended Reading Path
-3. Feature Map
-4. Important Flows
-5. Change Impact Notes
-6. Agent Workflow
+2. Entry Points
+3. External Services
+4. Critical Files
+5. Recommended Reading Path
+6. Feature Map
+7. Important Flows
+8. Change Impact Notes
+9. Agent Workflow
 
 ### Rules
 
 * Do not invent files that are not present in the snapshot
 * Prefer snapshot-derived paths over generic advice
+* Avoid placeholder wording such as `not inferred yet`; omit unavailable fields
 * Keep the guide useful without requiring an AI call
 * Treat `devmap flow` and full docs generation as future commands
 * Include snapshot freshness and agent navigation policy in JSON output

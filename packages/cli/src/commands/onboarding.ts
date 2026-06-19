@@ -14,11 +14,15 @@ export type OnboardingOptions = {
 export type OnboardingGuide = {
   status: "ok";
   project: ProjectMap["project"];
+  overview: string | null;
   snapshot: {
     generatedAt: string;
     stale: boolean;
   };
   agentInstructions: ProjectMap["agentInstructions"];
+  entryPoints: string[];
+  criticalFiles: ProjectMap["criticalFiles"];
+  externalServices: string[];
   recommendedPath: string[];
   features: Array<{
     name: string;
@@ -71,11 +75,15 @@ async function runOnboarding(options: OnboardingOptions): Promise<OnboardingGuid
   return {
     status: "ok",
     project: snapshot.project,
+    overview: snapshot.ai?.architecture ?? null,
     snapshot: {
       generatedAt: snapshot.generatedAt,
       stale
     },
     agentInstructions: snapshot.agentInstructions,
+    entryPoints: snapshot.entryPoints,
+    criticalFiles: snapshot.criticalFiles,
+    externalServices: snapshot.externalServices,
     recommendedPath: snapshot.onboarding.recommendedPath,
     features: snapshot.features.map((feature) => ({
       name: feature.name,
@@ -110,6 +118,20 @@ export function buildOnboardingMarkdown(
     `- Files indexed: ${snapshot.stats.relevantFiles}`,
     `- Snapshot generated: ${snapshot.generatedAt}`,
     `- Snapshot status: ${options.stale ? "stale - run devmap analyze --fresh" : "fresh"}`,
+    "",
+    ...renderProjectNarrative(snapshot),
+    "",
+    "## Entry Points",
+    "",
+    ...renderList(snapshot.entryPoints),
+    "",
+    "## External Services",
+    "",
+    ...renderExternalServices(snapshot),
+    "",
+    "## Critical Files",
+    "",
+    ...renderCriticalFiles(snapshot),
     "",
     "## Recommended Reading Path",
     "",
@@ -165,7 +187,7 @@ function renderFeatureMap(snapshot: ProjectMap): string[] {
     `### ${feature.name}`,
     "",
     `- Purpose: ${feature.purpose}`,
-    `- Entry point: ${feature.entryPoint ?? "not inferred yet"}`,
+    ...renderOptionalPath("Entry point", feature.entryPoint),
     `- Confidence: ${feature.confidence}`,
     "",
     ...renderBusinessFlow(feature.businessFlow),
@@ -194,13 +216,94 @@ function renderFlows(snapshot: ProjectMap): string[] {
     `### ${flow.name}`,
     "",
     `- Type: ${flow.type}`,
-    `- Entry point: ${flow.entryPoint ?? "not inferred yet"}`,
+    ...renderOptionalPath("Entry point", flow.entryPoint),
     "",
     ...flow.steps.map((step, index) =>
       `${index + 1}. ${step.file ?? step.label}${step.purpose ? ` - ${step.purpose}` : ""}`
     ),
     ""
   ]);
+}
+
+function renderProjectNarrative(snapshot: ProjectMap): string[] {
+  const featureNames = snapshot.features.map((feature) => feature.name);
+  const services = snapshot.externalServices;
+  const entryPoints = snapshot.entryPoints;
+  const summary = [
+    `${snapshot.project.name} is a ${snapshot.project.language} project`,
+    `using ${snapshot.project.packageManager}`,
+    snapshot.project.framework !== "unknown" ? `with ${snapshot.project.framework}` : null,
+    entryPoints.length > 0 ? `starting from ${entryPoints[0]}` : null,
+    featureNames.length > 0 ? `with detected feature areas such as ${formatInlineList(featureNames)}` : null,
+    services.length > 0 ? `and external services such as ${formatInlineList(services)}` : null
+  ].filter(Boolean).join(" ");
+
+  const lines = [`${summary}.`];
+  const architectureExcerpt = extractArchitectureExcerpt(snapshot.ai?.architecture);
+  if (architectureExcerpt) {
+    lines.push("", `Architecture note: ${architectureExcerpt}`);
+  }
+
+  return lines;
+}
+
+function renderExternalServices(snapshot: ProjectMap): string[] {
+  if (snapshot.externalServices.length === 0) {
+    return ["No external services detected yet."];
+  }
+
+  return snapshot.externalServices.map((service) => `- ${service}`);
+}
+
+function renderCriticalFiles(snapshot: ProjectMap): string[] {
+  const files = snapshot.criticalFiles.slice(0, 10);
+  if (files.length === 0) {
+    return ["No critical files detected yet."];
+  }
+
+  return files.map((file, index) =>
+    `${index + 1}. ${file.path} - score ${file.score}; ${file.reasons.join(", ")}`
+  );
+}
+
+function renderOptionalPath(label: string, value: string | undefined): string[] {
+  return value ? [`- ${label}: ${value}`] : [];
+}
+
+function extractArchitectureExcerpt(architecture: string | undefined): string | null {
+  if (!architecture) {
+    return null;
+  }
+
+  const text = architecture
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) =>
+      line
+      && !line.startsWith("#")
+      && !line.startsWith("|")
+      && !line.startsWith("---")
+      && !/^[-*]\s/.test(line)
+    )
+    .join(" ")
+    .replace(/[`*_]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (text.length < 80) {
+    return null;
+  }
+
+  return text.length > 500 ? `${text.slice(0, 497).trim()}...` : text;
+}
+
+function formatInlineList(values: string[]): string {
+  const uniqueValues = [...new Set(values)].slice(0, 4);
+  if (uniqueValues.length <= 1) {
+    return uniqueValues[0] ?? "none";
+  }
+
+  return `${uniqueValues.slice(0, -1).join(", ")} and ${uniqueValues.at(-1)}`;
 }
 
 function renderChangeImpact(snapshot: ProjectMap): string[] {

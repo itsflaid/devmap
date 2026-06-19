@@ -45,8 +45,11 @@ Expected result:
   `snapshot.stale: true`.
 - JSON output menyertakan `agentInstructions` agar agent mengikuti policy
   snapshot-first.
-- Human output menampilkan reading path, feature map, flows, change impact, dan
-  workflow agent tanpa menyebut file yang tidak ada di snapshot.
+- Human output menampilkan architecture narrative jika ada, entry points,
+  external services, critical files, reading path, feature map, flows, change
+  impact, dan workflow agent tanpa menyebut file yang tidak ada di snapshot.
+- Entry point kosong di feature/flow tidak boleh ditampilkan sebagai
+  `not inferred yet`; field tersebut cukup dihilangkan.
 - `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.
 - `--write` membuat atau memperbarui `ONBOARDING.md` di root project target.
 

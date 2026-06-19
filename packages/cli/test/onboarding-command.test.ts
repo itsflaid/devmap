@@ -22,6 +22,9 @@ test("onboarding command renders a snapshot-based guide", async () => {
     assert.match(plainLogs, /Project Overview/);
     assert.match(plainLogs, /Snapshot is stale/);
     assert.match(plainLogs, /Snapshot status: stale - run devmap analyze --fresh/);
+    assert.match(plainLogs, /Entry Points/);
+    assert.match(plainLogs, /External Services/);
+    assert.match(plainLogs, /Critical Files/);
     assert.match(plainLogs, /Recommended Reading Path/);
     assert.match(plainLogs, /Feature Map/);
     assert.match(plainLogs, /Important Flows/);
@@ -30,6 +33,7 @@ test("onboarding command renders a snapshot-based guide", async () => {
     assert.match(plainLogs, /app\/page\.tsx/);
     assert.match(plainLogs, /Authentication/);
     assert.match(plainLogs, /Request \/api\/session/);
+    assert.doesNotMatch(plainLogs, /not inferred yet/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

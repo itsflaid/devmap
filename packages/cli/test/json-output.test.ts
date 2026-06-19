@@ -138,8 +138,12 @@ test("onboarding --json emits guide metadata and markdown", async () => {
 
     assert.equal(payload.status, "ok");
     assert.equal(payload.project.name, "json-onboarding");
+    assert.equal(payload.overview, null);
     assert.equal(payload.snapshot.stale, false);
     assert.equal(payload.agentInstructions.navigationPolicy, "snapshot-first");
+    assert.ok(Array.isArray(payload.entryPoints));
+    assert.ok(Array.isArray(payload.criticalFiles));
+    assert.ok(Array.isArray(payload.externalServices));
     assert.ok(Array.isArray(payload.recommendedPath));
     assert.match(payload.markdown, /# Project Onboarding/);
   } finally {

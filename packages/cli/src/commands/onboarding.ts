@@ -148,6 +148,10 @@ export function buildOnboardingMarkdown(
     "",
     ...renderList(snapshot.onboarding.recommendedPath, labels.noRecommendedPath),
     "",
+    `## ${labels.learningPath}`,
+    "",
+    ...renderLearningPath(snapshot, labels),
+    "",
     `## ${labels.featureMap}`,
     "",
     ...renderFeatureMap(snapshot, labels),
@@ -221,6 +225,85 @@ function renderAgentWorkflow(snapshot: ProjectMap, labels: OnboardingLabels): st
     labels.recommendedSequence,
     ...labels.agentSteps.map((step, index) => `${index + 1}. ${step}`)
   ];
+}
+
+function renderLearningPath(snapshot: ProjectMap, labels: OnboardingLabels): string[] {
+  const path = snapshot.onboarding.recommendedPath.slice(0, 8);
+  if (path.length === 0) {
+    return [labels.noLearningPath];
+  }
+
+  return path.flatMap((file, index) => [
+    `### ${index + 1}. ${file}`,
+    "",
+    `- ${labels.learnWhy}: ${describeLearningPurpose(file, snapshot, labels)}`,
+    `- ${labels.focusOn}: ${describeLearningFocus(file, snapshot, labels)}`,
+    `- ${labels.nextStep}: ${describeLearningNextStep(file, path[index + 1], labels)}`,
+    ""
+  ]);
+}
+
+function describeLearningPurpose(
+  file: string,
+  snapshot: ProjectMap,
+  labels: OnboardingLabels
+): string {
+  const entry = snapshot.fileIndex[file];
+  const critical = snapshot.criticalFiles.find((item) => item.path === file);
+
+  if (file.toLowerCase().includes("readme")) {
+    return labels.learnReadme;
+  }
+  if (file.toLowerCase().includes("agents")) {
+    return labels.learnAgents;
+  }
+  if (file.endsWith("package.json")) {
+    return labels.learnPackageJson;
+  }
+  if (snapshot.entryPoints.includes(file)) {
+    return labels.learnEntryPoint;
+  }
+  if (entry?.purpose) {
+    return entry.purpose;
+  }
+  if (critical) {
+    return `${labels.learnCriticalPrefix} ${critical.reasons.join(", ")}.`;
+  }
+
+  return labels.learnGeneric;
+}
+
+function describeLearningFocus(
+  file: string,
+  snapshot: ProjectMap,
+  labels: OnboardingLabels
+): string {
+  const entry = snapshot.fileIndex[file];
+  const exports = entry?.exportedSymbols.slice(0, 4) ?? [];
+  const functions = entry?.topFunctions.slice(0, 4).map((item) => item.name) ?? [];
+  const featureRefs = entry?.featureRefs.slice(0, 3) ?? [];
+  const focusItems = [
+    exports.length > 0 ? `${labels.exports}: ${exports.join(", ")}` : null,
+    functions.length > 0 ? `${labels.functions}: ${functions.join(", ")}` : null,
+    featureRefs.length > 0 ? `${labels.relatedFeatures}: ${featureRefs.join(", ")}` : null,
+    entry?.scope ? `${labels.scope}: ${entry.scope}` : null
+  ].filter(Boolean);
+
+  return focusItems.length > 0 ? focusItems.join("; ") : labels.focusGeneric;
+}
+
+function describeLearningNextStep(
+  file: string,
+  nextFile: string | undefined,
+  labels: OnboardingLabels
+): string {
+  if (!nextFile) {
+    return labels.nextStepFinal;
+  }
+
+  return labels.nextStepTemplate
+    .replace("{current}", file)
+    .replace("{next}", nextFile);
 }
 
 function renderFeatureMap(snapshot: ProjectMap, labels: OnboardingLabels): string[] {
@@ -405,11 +488,13 @@ function getLabels(language: OnboardingLanguage) {
       externalServices: "External Services",
       criticalFiles: "Critical Files",
       recommendedReadingPath: "Urutan Baca yang Disarankan",
+      learningPath: "Jalur Belajar Step-by-Step",
       featureMap: "Peta Fitur",
       importantFlows: "Flow Penting",
       changeImpactNotes: "Catatan Dampak Perubahan",
       agentWorkflow: "Workflow Agent",
       noRecommendedPath: "Belum ada urutan baca yang terdeteksi.",
+      noLearningPath: "Belum ada jalur belajar yang bisa dibuat dari snapshot.",
       noExternalServices: "Belum ada external service yang terdeteksi.",
       noCriticalFiles: "Belum ada critical file yang terdeteksi.",
       noFeatures: "Belum ada fitur yang terdeteksi.",
@@ -422,6 +507,22 @@ function getLabels(language: OnboardingLanguage) {
       type: "Tipe",
       score: "score",
       notAvailable: "belum tersedia",
+      learnWhy: "Kenapa dipelajari",
+      focusOn: "Fokus saat membaca",
+      nextStep: "Lanjut ke",
+      exports: "exports",
+      functions: "fungsi",
+      relatedFeatures: "fitur terkait",
+      scope: "scope",
+      learnReadme: "Mulai dari README untuk memahami tujuan project, cara instalasi, dan perintah utama sebelum masuk ke source code.",
+      learnAgents: "Baca AGENTS.md untuk memahami aturan kerja AI agent, workflow kontribusi, dan kebiasaan repository ini.",
+      learnPackageJson: "Pelajari package.json untuk melihat package manager, script, dependency, entry CLI, dan metadata release.",
+      learnEntryPoint: "Ini adalah entry point runtime; baca untuk memahami command yang tersedia dan alur eksekusi awal.",
+      learnCriticalPrefix: "File ini penting karena",
+      learnGeneric: "File ini masuk recommended path dari snapshot dan membantu membangun konteks project.",
+      focusGeneric: "Perhatikan responsibility file, import, export, dan hubungannya dengan file setelahnya.",
+      nextStepTemplate: "Setelah {current}, lanjut baca {next} untuk memperluas konteks.",
+      nextStepFinal: "Setelah tahap ini, lanjut eksplor feature map atau flow sesuai task yang sedang dikerjakan.",
       navigationPolicy: "Navigation policy",
       defaultMode: "Default mode",
       maxInitialFiles: "Maksimal file awal",
@@ -454,14 +555,16 @@ function getLabels(language: OnboardingLanguage) {
     freshSnapshot: "fresh",
     entryPoints: "Entry Points",
     externalServices: "External Services",
-    criticalFiles: "Critical Files",
-    recommendedReadingPath: "Recommended Reading Path",
-    featureMap: "Feature Map",
+      criticalFiles: "Critical Files",
+      recommendedReadingPath: "Recommended Reading Path",
+      learningPath: "Step-by-Step Learning Path",
+      featureMap: "Feature Map",
     importantFlows: "Important Flows",
     changeImpactNotes: "Change Impact Notes",
     agentWorkflow: "Agent Workflow",
-    noRecommendedPath: "No recommended path detected yet.",
-    noExternalServices: "No external services detected yet.",
+      noRecommendedPath: "No recommended path detected yet.",
+      noLearningPath: "No learning path can be built from the snapshot yet.",
+      noExternalServices: "No external services detected yet.",
     noCriticalFiles: "No critical files detected yet.",
     noFeatures: "No features detected yet.",
     noFlows: "No flows detected yet.",
@@ -471,9 +574,25 @@ function getLabels(language: OnboardingLanguage) {
     confidence: "Confidence",
     businessFlow: "Business flow",
     type: "Type",
-    score: "score",
-    notAvailable: "not available yet",
-    navigationPolicy: "Navigation policy",
+      score: "score",
+      notAvailable: "not available yet",
+      learnWhy: "Why learn this",
+      focusOn: "What to focus on",
+      nextStep: "Next step",
+      exports: "exports",
+      functions: "functions",
+      relatedFeatures: "related features",
+      scope: "scope",
+      learnReadme: "Start with the README to understand the project purpose, installation path, and main commands before reading source code.",
+      learnAgents: "Read AGENTS.md to understand AI-agent rules, contribution workflow, and repository-specific working habits.",
+      learnPackageJson: "Study package.json to understand the package manager, scripts, dependencies, CLI entry, and release metadata.",
+      learnEntryPoint: "This is a runtime entry point; read it to understand available commands and the initial execution flow.",
+      learnCriticalPrefix: "This file is important because",
+      learnGeneric: "This file is part of the snapshot-recommended path and helps build project context.",
+      focusGeneric: "Pay attention to file responsibility, imports, exports, and how it connects to the next file.",
+      nextStepTemplate: "After {current}, read {next} to expand the context.",
+      nextStepFinal: "After this step, continue through the feature map or flow that matches your task.",
+      navigationPolicy: "Navigation policy",
     defaultMode: "Default mode",
     maxInitialFiles: "Max initial files",
     missingSnapshotAction: "Missing snapshot action",

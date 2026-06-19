@@ -459,16 +459,19 @@ devmap onboarding --json
 3. External Services
 4. Critical Files
 5. Recommended Reading Path
-6. Feature Map
-7. Important Flows
-8. Change Impact Notes
-9. Agent Workflow
+6. Step-by-Step Learning Path
+7. Feature Map
+8. Important Flows
+9. Change Impact Notes
+10. Agent Workflow
 
 ### Rules
 
 * Do not invent files that are not present in the snapshot
 * Prefer snapshot-derived paths over generic advice
 * Avoid placeholder wording such as `not inferred yet`; omit unavailable fields
+* Explain why each recommended learning step matters, what to focus on, and
+  which file to read next
 * Keep the guide useful without requiring an AI call
 * Treat `devmap flow` and full docs generation as future commands
 * Include snapshot freshness and agent navigation policy in JSON output

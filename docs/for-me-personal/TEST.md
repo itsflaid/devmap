@@ -49,6 +49,8 @@ Expected result:
 - Human output menampilkan architecture narrative jika ada, entry points,
   external services, critical files, reading path, feature map, flows, change
   impact, dan workflow agent tanpa menyebut file yang tidak ada di snapshot.
+- Human output menyertakan jalur belajar step-by-step berisi alasan membaca
+  file, fokus saat membaca, dan langkah berikutnya.
 - Entry point kosong di feature/flow tidak boleh ditampilkan sebagai
   `not inferred yet`; field tersebut cukup dihilangkan.
 - `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.

@@ -27,6 +27,9 @@ test("onboarding command renders a snapshot-based guide", async () => {
     assert.match(plainLogs, /External Services/);
     assert.match(plainLogs, /Critical Files/);
     assert.match(plainLogs, /Recommended Reading Path/);
+    assert.match(plainLogs, /Step-by-Step Learning Path/);
+    assert.match(plainLogs, /Why learn this/);
+    assert.match(plainLogs, /What to focus on/);
     assert.match(plainLogs, /Feature Map/);
     assert.match(plainLogs, /Important Flows/);
     assert.match(plainLogs, /Agent Workflow/);
@@ -53,6 +56,7 @@ test("onboarding command writes ONBOARDING.md when requested", async () => {
     assert.match(stripAnsi(logs), /Wrote ONBOARDING\.md/);
     assert.match(content, /^# Project Onboarding/m);
     assert.match(content, /## Recommended Reading Path/);
+    assert.match(content, /## Step-by-Step Learning Path/);
     assert.match(content, /app\/page\.tsx/);
     assert.match(content, /## Agent Workflow/);
   } finally {
@@ -73,6 +77,8 @@ test("onboarding write can generate Indonesian markdown after language prompt", 
     assert.match(content, /^# Onboarding Project/m);
     assert.match(content, /## Gambaran Project/);
     assert.match(content, /## Urutan Baca yang Disarankan/);
+    assert.match(content, /## Jalur Belajar Step-by-Step/);
+    assert.match(content, /Kenapa dipelajari/);
     assert.match(content, /Dibuat oleh DevMap/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

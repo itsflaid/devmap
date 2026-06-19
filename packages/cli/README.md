@@ -76,6 +76,7 @@ devmap analyze --deep
 devmap analyze --fresh
 devmap ask "Where is payment logic handled?"
 devmap onboarding --write
+devmap onboarding --write --language id
 devmap doctor
 devmap config model auto
 ```

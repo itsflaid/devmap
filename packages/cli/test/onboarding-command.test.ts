@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { onboardingCommand } from "../src/commands/onboarding.js";
+import type { Prompt } from "../src/utils/prompt.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const nextFixture = join(testDirectory, "fixtures", "nextjs-project");
@@ -58,6 +59,25 @@ test("onboarding command writes ONBOARDING.md when requested", async () => {
   }
 });
 
+test("onboarding write can generate Indonesian markdown after language prompt", async () => {
+  const projectRoot = await createOnboardingProject();
+  const prompt = createFakePrompt(["id"]);
+
+  try {
+    await captureOutput(() => onboardingCommand({ projectRoot, write: true, prompt }));
+    const content = await readFile(join(projectRoot, "ONBOARDING.md"), "utf8");
+
+    assert.equal(prompt.closed, true);
+    assert.match(prompt.questions.join("\n"), /Onboarding language/);
+    assert.match(content, /^# Onboarding Project/m);
+    assert.match(content, /## Gambaran Project/);
+    assert.match(content, /## Urutan Baca yang Disarankan/);
+    assert.match(content, /Dibuat oleh DevMap/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 async function createOnboardingProject(): Promise<string> {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-onboarding-test-"));
   const snapshot = await createProjectMap(nextFixture);
@@ -91,4 +111,18 @@ async function captureOutput(action: () => Promise<void>): Promise<string> {
 
 function stripAnsi(value: string): string {
   return value.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function createFakePrompt(answers: string[]): Prompt & { closed: boolean; questions: string[] } {
+  return {
+    closed: false,
+    questions: [],
+    async ask(question: string): Promise<string> {
+      this.questions.push(question);
+      return answers.shift() ?? "";
+    },
+    close(): void {
+      this.closed = true;
+    }
+  };
 }

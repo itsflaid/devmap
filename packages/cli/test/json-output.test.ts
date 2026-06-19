@@ -137,6 +137,7 @@ test("onboarding --json emits guide metadata and markdown", async () => {
     const payload = parseSingleJson(output);
 
     assert.equal(payload.status, "ok");
+    assert.equal(payload.language, "en");
     assert.equal(payload.project.name, "json-onboarding");
     assert.equal(payload.overview, null);
     assert.equal(payload.snapshot.stale, false);

@@ -140,6 +140,7 @@ devmap doctor
 # Generate a reading guide from the snapshot
 devmap onboarding
 devmap onboarding --write
+devmap onboarding --write --language id
 
 # Ask questions about your codebase
 devmap ask "explain the main architecture"

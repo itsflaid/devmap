@@ -430,6 +430,7 @@ guide for humans and AI agents. It should help answer:
 ```bash
 devmap onboarding
 devmap onboarding --write
+devmap onboarding --write --language id
 devmap onboarding --json
 ```
 
@@ -444,6 +445,9 @@ devmap onboarding --json
   reading path
 * Print a readable terminal guide by default
 * Write `ONBOARDING.md` when `--write` is passed
+* Ask for Indonesian or English when writing from an interactive terminal and
+  no language is provided
+* Use `--language en` or `--language id` to skip the prompt
 * Emit one structured JSON document when `--json` is passed
 * Warn when the snapshot is stale
 
@@ -467,6 +471,7 @@ devmap onboarding --json
 * Keep the guide useful without requiring an AI call
 * Treat `devmap flow` and full docs generation as future commands
 * Include snapshot freshness and agent navigation policy in JSON output
+* Keep `--json` non-interactive; never prompt in machine-readable mode
 
 ---
 

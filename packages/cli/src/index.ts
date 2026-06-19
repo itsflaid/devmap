@@ -46,9 +46,11 @@ program
   .description("Generate a project onboarding guide from the DevMap snapshot")
   .argument("[target]", "folder with a DevMap snapshot", ".")
   .option("--write", "write ONBOARDING.md")
+  .option("--language <language>", "language for generated onboarding markdown (en or id)")
   .option("--json", "output machine-readable JSON")
   .action((target, options) => onboardingCommand({
     target,
+    language: options.language,
     write: options.write,
     json: options.json
   }));

@@ -31,6 +31,7 @@ pnpm dev:cli analyze "$root"
 pnpm dev:cli onboarding "$root"
 pnpm dev:cli onboarding "$root" --json
 pnpm dev:cli onboarding "$root" --write
+pnpm dev:cli onboarding "$root" --write --language id
 ```
 
 Catatan: `pnpm dev:cli` memakai `pnpm --filter devmap`, sehingga command
@@ -52,6 +53,10 @@ Expected result:
   `not inferred yet`; field tersebut cukup dihilangkan.
 - `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.
 - `--write` membuat atau memperbarui `ONBOARDING.md` di root project target.
+- Di terminal interaktif, `--write` menanyakan bahasa onboarding jika
+  `--language` belum diberikan.
+- `--language en` dan `--language id` melewati prompt, cocok untuk automation
+  dan agent.
 
 ## Context Builder Ranking
 

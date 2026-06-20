@@ -131,6 +131,22 @@ The analyzer extracts useful structure from scanned files.
 * Detect critical files
 * Detect common features
 
+### Analyzer Registry
+
+Scanned files pass through a normalized analyzer registry before `ProjectMap`
+is built:
+
+```txt
+Scanner -> TsMorphAnalyzer | HeuristicAnalyzer | FallbackAnalyzer -> FileAnalysis
+```
+
+- `.ts`, `.tsx`, `.js`, and `.jsx` use `ts-morph` with high confidence.
+- Other recognized source files keep regex/heuristic extraction with medium
+  confidence.
+- Unknown file types receive a low-confidence fallback result.
+- Existing snapshot fields remain available; AST metadata enriches imports,
+  exports, symbols, and top functions for JavaScript and TypeScript.
+
 ---
 
 ## Framework Detection
@@ -402,6 +418,10 @@ Feature metadata also stores a primary `entryPoint` and a short
 gives future generated docs a human-oriented path through the feature, not only
 a list of files.
 
+Structural feature flows describe behavior such as scanning, analyzer
+selection, project-map construction, snapshot persistence, and navigation-file
+generation. They must not duplicate the feature file list as a second list.
+
 ### Onboarding and Change Impact
 
 Snapshot schema includes two lightweight navigation aids:
@@ -418,9 +438,9 @@ full symbol graph.
 ### Agent Contract
 
 Generated `DEVMAP.md` contains the complete agent navigation contract. It tells
-agents to use `.devmap/snapshot.json` before broad repository exploration, to
-prefer feature entry points and flows, and to run `devmap analyze` when the
-snapshot is missing.
+agents to read `.devmap/index.json`, open the relevant feature map, and inspect
+its `sourcePriority` files before broad repository exploration. The full
+`.devmap/snapshot.json` is used only when the lightweight maps are insufficient.
 
 The snapshot also stores a compact `agentInstructions` object for machine
 readers. This is intentionally small: policy fields live in JSON, while the
@@ -712,6 +732,8 @@ Stores:
 Stores:
 
 * latest project snapshot
+* lightweight agent index in `.devmap/index.json`
+* focused maps in `.devmap/features/*.json`
 
 Future:
 
@@ -730,6 +752,8 @@ DevMap may generate or update:
 ```txt
 DEVMAP.md
 AGENTS.md
+.devmap/index.json
+.devmap/features/*.json
 .devmap/snapshot.json
 ```
 

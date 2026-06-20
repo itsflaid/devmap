@@ -117,13 +117,17 @@ export async function inspectSnapshot(projectRoot: string): Promise<SnapshotStat
 function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
   if (!isRecord(snapshot.agentInstructions)) {
     snapshot.agentInstructions = {
-      navigationPolicy: "snapshot-first",
-      defaultMode: "minimal-exploration",
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
       maxInitialFiles: 3,
       missingSnapshotAction: "run-devmap-analyze",
       staleSnapshotAction: "run-devmap-analyze-fresh",
-      fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+      fallbackRule: "Read snapshot.json only when index.json and feature maps are insufficient; inspect extra source only when exact implementation is required."
     };
+  } else if (snapshot.agentInstructions.navigationPolicy === "snapshot-first") {
+    snapshot.agentInstructions.navigationPolicy = "index-first";
+    snapshot.agentInstructions.defaultMode = "feature-map-first";
+    snapshot.agentInstructions.fallbackRule = "Read snapshot.json only when index.json and feature maps are insufficient; inspect extra source only when exact implementation is required.";
   }
 
   if (!Array.isArray(snapshot.flows)) {
@@ -138,6 +142,11 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
 
   const fileIndex = snapshot.fileIndex as Record<string, Record<string, unknown>>;
   for (const entry of Object.values(fileIndex)) {
+    if (typeof entry.analyzer !== "string") entry.analyzer = "heuristic";
+    if (!["high", "medium", "low"].includes(String(entry.analysisConfidence))) {
+      entry.analysisConfidence = "medium";
+    }
+    if (!Array.isArray(entry.symbols)) entry.symbols = [];
     if (typeof entry.scope !== "string") entry.scope = "unknown";
     if (!Array.isArray(entry.featureRefs)) entry.featureRefs = [];
     if (!Array.isArray(entry.searchTerms)) entry.searchTerms = [];

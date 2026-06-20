@@ -93,6 +93,17 @@ try {
     const snapshotPath = join(projectRoot, ".devmap", "snapshot.json");
     const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
     assert.equal(snapshot.project.framework, expectedFramework);
+    const agentIndex = JSON.parse(await readFile(
+      join(projectRoot, ".devmap", "index.json"),
+      "utf8"
+    ));
+    assert.equal(agentIndex.snapshot.path, ".devmap/snapshot.json");
+    assert.ok(Array.isArray(agentIndex.features));
+    for (const feature of agentIndex.features) {
+      const featureMap = JSON.parse(await readFile(join(projectRoot, feature.map), "utf8"));
+      assert.equal(featureMap.id, feature.id);
+      assert.ok(Array.isArray(featureMap.sourcePriority));
+    }
 
     const analyzeJson = parseJsonOutput(await runDevmap(projectRoot, [
       "analyze",

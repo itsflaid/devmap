@@ -1,4 +1,5 @@
 import { hashContent } from "../cache/fileHash.js";
+import { analyzeFiles } from "./analyzerRegistry.js";
 import { detectDatabase, type DatabaseInfo } from "./databaseDetector.js";
 import { buildDependencyGraph, countReferences } from "./dependencyGraph.js";
 import { detectEntryPoints } from "./entryPoints.js";
@@ -16,6 +17,7 @@ import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.j
 import { detectRoutes, type RouteInfo } from "./routeDetector.js";
 import { detectExternalServices } from "./serviceDetector.js";
 import { isArchitectureSource } from "./sourceScope.js";
+import type { FileAnalysis, SymbolInfo } from "./fileAnalysis.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 
@@ -45,9 +47,12 @@ export type FlowInfo = {
 };
 
 export type FileIndexEntry = {
+  analyzer: string;
+  analysisConfidence: "high" | "medium" | "low";
   hash: string;
   imports: string[];
   exportedSymbols: string[];
+  symbols: SymbolInfo[];
   topFunctions: Array<{
     name: string;
     kind: "function" | "const" | "class" | "method";
@@ -67,8 +72,8 @@ export type ProjectMap = {
   version: string;
   generatedAt: string;
   agentInstructions: {
-    navigationPolicy: "snapshot-first";
-    defaultMode: "minimal-exploration";
+    navigationPolicy: "index-first";
+    defaultMode: "feature-map-first";
     maxInitialFiles: number;
     missingSnapshotAction: "run-devmap-analyze";
     staleSnapshotAction: "run-devmap-analyze-fresh";
@@ -121,7 +126,8 @@ export type ProjectMap = {
 
 export async function createProjectMap(projectRoot: string): Promise<ProjectMap> {
   const files = await scanFiles(projectRoot);
-  const graph = buildDependencyGraph(files);
+  const analyses = await analyzeFiles(files);
+  const graph = buildDependencyGraph(files, analyses);
   const references = countReferences(graph);
   const framework = detectFramework(files);
   const entryPoints = detectEntryPoints(graph);
@@ -133,10 +139,18 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     entryPoints,
     graph
   );
-  const criticalFiles = rankCriticalFiles(files, references, entryPoints);
+  const criticalFiles = rankCriticalFiles(files, analyses, references, entryPoints);
   const fileIndex = Object.fromEntries(files.map((file) => [
     file.path,
-    createFileIndexEntry(file, graph[file.path] ?? [], references, entryPoints, criticalFiles, features)
+    createFileIndexEntry(
+      file,
+      analyses[file.path],
+      graph[file.path] ?? [],
+      references,
+      entryPoints,
+      criticalFiles,
+      features
+    )
   ]));
 
   const flows = generateMinimalFlows(features, fileIndex, routes, graph);
@@ -175,12 +189,12 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
 
 function createAgentInstructions(): ProjectMap["agentInstructions"] {
   return {
-    navigationPolicy: "snapshot-first",
-    defaultMode: "minimal-exploration",
+    navigationPolicy: "index-first",
+    defaultMode: "feature-map-first",
     maxInitialFiles: 3,
     missingSnapshotAction: "run-devmap-analyze",
     staleSnapshotAction: "run-devmap-analyze-fresh",
-    fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+    fallbackRule: "Read snapshot.json only when index.json and feature maps are insufficient; inspect extra source only when exact implementation is required."
   };
 }
 
@@ -196,6 +210,7 @@ export function createProjectFingerprint(files: ScannedFile[]): string {
 
 function rankCriticalFiles(
   files: ScannedFile[],
+  analyses: Record<string, FileAnalysis>,
   references: Record<string, number>,
   entryPoints: string[]
 ): ProjectMap["criticalFiles"] {
@@ -224,7 +239,7 @@ function rankCriticalFiles(
         reasons.push("core project concern");
       }
 
-      const semanticBonus = calculateCriticalSemanticBonus(file);
+      const semanticBonus = calculateCriticalSemanticBonus(file, analyses[file.path]);
       if (semanticBonus > 0) {
         score += semanticBonus;
         reasons.push("semantic feature anchor");
@@ -265,14 +280,15 @@ function readPackageDependencies(files: ScannedFile[]): Record<string, string[]>
 
 function createFileIndexEntry(
   file: ScannedFile,
+  analysis: FileAnalysis,
   imports: string[],
   references: Record<string, number>,
   entryPoints: string[],
   criticalFiles: ProjectMap["criticalFiles"],
   features: FeatureInfo[]
 ): FileIndexEntry {
-  const topFunctions = findTopFunctions(file.content);
-  const exportedSymbols = findExportedSymbols(file.content);
+  const topFunctions = analysis.topFunctions;
+  const exportedSymbols = analysis.exports;
   const scope = classifyFileScope(file, exportedSymbols, imports);
   const featureRefs = features
     .filter((feature) => feature.files.includes(file.path) || feature.evidence.includes(file.path))
@@ -293,9 +309,12 @@ function createFileIndexEntry(
   const purpose = inferFilePurpose(file.path, scope, exportedSymbols, topFunctions, featureRefs);
 
   return {
+    analyzer: analysis.analyzer,
+    analysisConfidence: analysis.confidence,
     hash: hashContent(file.content),
     imports,
     exportedSymbols,
+    symbols: analysis.symbols,
     topFunctions,
     lines: file.lines,
     ...(purpose ? { purpose } : {}),
@@ -373,14 +392,11 @@ function calculateSemanticImportanceBonus(
   return featureRefs.length > 0 ? 20 : 0;
 }
 
-function calculateCriticalSemanticBonus(file: ScannedFile): number {
-  const exportedSymbols = findExportedSymbols(file.content);
-  const topFunctions = findTopFunctions(file.content);
-  const imports = readImportSpecifiers(file.content);
+function calculateCriticalSemanticBonus(file: ScannedFile, analysis: FileAnalysis): number {
   const role = detectAuthenticationSemanticRole(
     file.path,
-    [...exportedSymbols, ...topFunctions.map((item) => item.name)],
-    imports,
+    [...analysis.exports, ...analysis.symbols.map((item) => item.name)],
+    analysis.imports,
     file.content
   );
 
@@ -459,87 +475,9 @@ function inferFilePurpose(
   return `${path} ${subject}${featureText}.`;
 }
 
-function findTopFunctions(content: string): FileIndexEntry["topFunctions"] {
-  const functions = new Map<string, FileIndexEntry["topFunctions"][number]>();
-  const patterns: Array<{
-    kind: FileIndexEntry["topFunctions"][number]["kind"];
-    pattern: RegExp;
-    nameIndex: number;
-    exportedIndex?: number;
-    asyncIndex?: number;
-  }> = [
-    {
-      kind: "function",
-      pattern: /(export\s+)?(async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
-      nameIndex: 3,
-      exportedIndex: 1,
-      asyncIndex: 2
-    },
-    {
-      kind: "const",
-      pattern: /(export\s+)?const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(async\s*)?/g,
-      nameIndex: 2,
-      exportedIndex: 1,
-      asyncIndex: 3
-    },
-    {
-      kind: "class",
-      pattern: /(export\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
-      nameIndex: 2,
-      exportedIndex: 1
-    }
-  ];
-
-  for (const { kind, pattern, nameIndex, exportedIndex, asyncIndex } of patterns) {
-    let match = pattern.exec(content);
-    while (match) {
-      const name = match[nameIndex];
-      const existing = functions.get(name);
-      const candidate = {
-        name,
-        kind,
-        line: getLineNumber(content, match.index),
-        exported: exportedIndex !== undefined && Boolean(match[exportedIndex]),
-        async: asyncIndex !== undefined && Boolean(match[asyncIndex])
-      };
-
-      if (!existing || Number(candidate.exported) > Number(existing.exported)) {
-        functions.set(name, candidate);
-      }
-
-      match = pattern.exec(content);
-    }
-  }
-
-  return [...functions.values()]
-    .sort((left, right) =>
-      Number(right.exported) - Number(left.exported)
-      || left.line - right.line
-      || left.name.localeCompare(right.name)
-    )
-    .slice(0, 8);
-}
-
-function getLineNumber(content: string, index: number): number {
-  return content.slice(0, index).split(/\r?\n/).length;
-}
-
 function isFeatureConfigFile(path: string, featureRefs: string[]): boolean {
   return featureRefs.length > 0
     && /(^|\/)src\/(lib|utils)\/(config|constants)\.[cm]?[jt]sx?$/.test(path.toLowerCase());
-}
-
-function readImportSpecifiers(content: string): string[] {
-  const imports: string[] = [];
-  const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
-  let match = pattern.exec(content);
-
-  while (match) {
-    imports.push(match[1].toLowerCase());
-    match = pattern.exec(content);
-  }
-
-  return imports;
 }
 
 function attachFeatureEntryPoints(
@@ -616,6 +554,11 @@ function buildFeatureBusinessFlow(
   graph: Record<string, string[]>,
   featureFiles: string[]
 ): string[] {
+  const structuralFlow = buildStructuralFeatureFlow(featureName, Object.keys(graph));
+  if (structuralFlow.length > 0) {
+    return structuralFlow;
+  }
+
   if (featureName === "Authentication" && featureFiles.length > 0) {
     const orderedFiles = entryPoint
       ? [entryPoint, ...featureFiles.filter((file) => file !== entryPoint)]
@@ -640,6 +583,43 @@ function buildFeatureBusinessFlow(
   }
 
   return steps;
+}
+
+function buildStructuralFeatureFlow(featureName: string, files: string[]): string[] {
+  const find = (...patterns: RegExp[]) => files.find((file) =>
+    patterns.some((pattern) => pattern.test(file.toLowerCase()))
+  );
+  const steps: Array<[string, string | undefined]> = featureName === "Analysis Engine"
+    ? [
+      ["Scan project files", find(/\/analyzers\/filescanner\.[cm]?[jt]s$/)],
+      ["Choose a compatible file analyzer", find(/\/analyzers\/analyzerregistry\.[cm]?[jt]s$/)],
+      ["Extract normalized AST or heuristic metadata", find(/\/analyzers\/tsmorphanalyzer\.[cm]?[jt]s$/)],
+      ["Build the normalized project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)]
+    ]
+    : featureName === "Snapshot Engine"
+    ? [
+      ["Build the full project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)],
+      ["Persist and validate the snapshot", find(/\/cache\/snapshot\.[cm]?[jt]s$/)],
+      ["Generate the lightweight index and feature maps", find(/\/cache\/agentnavigation\.[cm]?[jt]s$/)]
+    ]
+    : featureName === "CLI Commands"
+    ? [
+      ["Parse and dispatch the user command", find(/\/src\/index\.[cm]?[jt]s$/)],
+      ["Orchestrate project analysis", find(/\/commands\/analyze\.[cm]?[jt]s$/)],
+      ["Render human or machine-readable output", find(/\/utils\/output\.[cm]?[jt]s$/)]
+    ]
+    : featureName === "AI Integration"
+    ? [
+      ["Build focused project context", find(/\/ai\/contextbuilder\.[cm]?[jt]s$/)],
+      ["Construct grounded model prompts", find(/\/ai\/prompts\.[cm]?[jt]s$/)],
+      ["Call Groq with retry and model fallback", find(/\/ai\/groq\.[cm]?[jt]s$/)],
+      ["Stream or return the completed response", find(/\/ai\/completion\.[cm]?[jt]s$/)]
+    ]
+    : [];
+
+  return steps
+    .filter((step): step is [string, string] => Boolean(step[1]))
+    .map(([action, file]) => `${action} in ${file}.`);
 }
 
 function describeAuthenticationFlowStep(file: string, dependencies: string[]): string {
@@ -690,20 +670,31 @@ function generateFeatureFlows(
   fileIndex: Record<string, FileIndexEntry>
 ): FlowInfo[] {
   return features
-    .filter((feature) => feature.confidence === "high" && feature.files.length > 0)
+    .filter((feature) =>
+      feature.confidence === "high"
+      && feature.businessFlow.length > 1
+      && !feature.businessFlow.some((step) => /^Identify files related to /i.test(step))
+    )
     .slice(0, 3)
     .map((feature) => {
-      const steps = feature.files.slice(0, 5).map((file, index) => ({
-        label: renderFlowStepLabel(file, fileIndex[file], index === 0),
-        file,
-        purpose: fileIndex[file]?.purpose
-      }));
+      const candidateFiles = [...new Set([
+        ...(feature.entryPoint ? [feature.entryPoint] : []),
+        ...feature.entryPoints,
+        ...feature.files
+      ])];
+      const steps = feature.businessFlow.slice(0, 6).map((label) => {
+        const file = candidateFiles.find((candidate) => label.includes(candidate));
+        return {
+          label,
+          ...(file ? { file, purpose: fileIndex[file]?.purpose } : {})
+        };
+      });
 
       return {
         name: `${feature.name} flow`,
-        purpose: `Shows the main files related to ${feature.name.toLowerCase()}.`,
+        purpose: `Describes the inferred behavior for ${feature.name.toLowerCase()}.`,
         type: "feature" as const,
-        ...(feature.entryPoints[0] ? { entryPoint: feature.entryPoints[0] } : {}),
+        ...(feature.entryPoint ? { entryPoint: feature.entryPoint } : {}),
         steps,
         ...(steps.length > 3 ? { mermaid: renderMermaidFlow(steps) } : {}),
         confidence: "high" as const
@@ -924,26 +915,6 @@ function detectAnalysisWarnings(files: ScannedFile[]): string[] {
       "package.json could not be parsed. Dependency-based detection may be incomplete."
     ];
   }
-}
-
-function findExportedSymbols(content: string): string[] {
-  const symbols = new Set<string>();
-  const patterns = [
-    /export\s+(?:async\s+)?function\s+([A-Za-z0-9_]+)/g,
-    /export\s+const\s+([A-Za-z0-9_]+)/g,
-    /export\s+class\s+([A-Za-z0-9_]+)/g,
-    /export\s+type\s+([A-Za-z0-9_]+)/g
-  ];
-
-  for (const pattern of patterns) {
-    let match = pattern.exec(content);
-    while (match) {
-      symbols.add(match[1]);
-      match = pattern.exec(content);
-    }
-  }
-
-  return [...symbols].sort();
 }
 
 function splitSearchTerms(value: string): string[] {

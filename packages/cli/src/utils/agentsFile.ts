@@ -9,7 +9,11 @@ export const DEVMAP_AGENTS_BLOCK = `${DEVMAP_AGENTS_MARKER}
 ## DevMap Context
 
 Before working in this repository, read \`DEVMAP.md\` first.
-For current project structure, use \`.devmap/snapshot.json\` if available.
+Read \`.devmap/index.json\` first, then the relevant
+\`.devmap/features/*.json\` map. Inspect files from \`sourcePriority\` before
+exploring broadly. Use \`.devmap/snapshot.json\` only when those lightweight
+navigation files are insufficient. If the navigation files are missing, run
+\`devmap analyze\`.
 <!-- End DevMap Instruction Block -->`;
 
 export type AgentsFileStatus = "missing" | "existing" | "integrated";

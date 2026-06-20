@@ -146,12 +146,15 @@ devmap analyze --deep
 * Detect database usage
 * Detect entry points
 * Detect critical files
+* Analyze JS/TS imports, exports, symbols, and functions with `ts-morph`
+* Keep heuristic and fallback analysis for other file types
 * Build a compact file index with purpose, scope, top functions/code symbols,
   search terms, feature references, and importance
 * Generate minimal high-confidence feature and request/API flows
 * Infer feature entry points and short business flows where possible
 * Build a lightweight onboarding path and file-level change impact map
 * Generate architecture overview
+* Generate `.devmap/index.json` and `.devmap/features/*.json` for agents
 * Save snapshot to `.devmap/snapshot.json`
 
 ### Internal Flow
@@ -172,9 +175,11 @@ Snapshot
 Terminal Output
 ```
 
-### Generated File
+### Generated Files
 
 ```txt
+.devmap/index.json
+.devmap/features/*.json
 .devmap/snapshot.json
 ```
 
@@ -241,6 +246,8 @@ Shared utilities, database access, authentication logic, and helpers.
 * Do not send the entire project source to AI
 * Snapshot must be regenerated after analyze
 * Snapshot must remain compact and deterministic
+* Agent index must remain small and must not duplicate full change-impact or
+  dependency data
 * AI metadata enrichment must be batched and optional
 * Analyze must continue if purpose or search-term enrichment fails
 * Raw provider errors must not be shown directly to users

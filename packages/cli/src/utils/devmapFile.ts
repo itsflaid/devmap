@@ -24,7 +24,9 @@ This repository uses DevMap to create reusable project context for developers an
 ## Project Context
 
 - Detected framework: ${stack}
-- Generated analysis: \`.devmap/snapshot.json\`
+- Agent navigation index: \`.devmap/index.json\`
+- Feature maps: \`.devmap/features/*.json\`
+- Full analysis archive: \`.devmap/snapshot.json\`
 - DevMap config: \`~/.devmap/config.json\`
 
 ## Recommended Workflow
@@ -48,19 +50,17 @@ devmap doctor --json
 
 ## Agent Navigation Contract
 
-This repository uses DevMap as the primary navigation source. Use snapshot-first,
-not repository-scan-first.
+This repository uses DevMap as the primary navigation source. Use the lightweight
+navigation files before broad repository exploration.
 
-Before exploring files, read \`.devmap/snapshot.json\` and prefer these sections:
+Preferred reading order:
 
-1. \`features\`
-2. \`features.entryPoint\`
-3. \`features.businessFlow\`
-4. \`flows\`
-5. \`onboarding.recommendedPath\`
-6. \`changeImpact\`
-7. \`criticalFiles\`
-8. \`fileIndex\`
+1. Read \`.devmap/index.json\`.
+2. Pick the relevant feature using its name and keywords.
+3. Open the matching \`.devmap/features/*.json\` map.
+4. Inspect only the files listed in \`sourcePriority\` first.
+5. Read \`.devmap/snapshot.json\` only when the index and feature maps are
+   insufficient or full archive/debug context is required.
 
 Do not scan the whole repository first.
 
@@ -79,18 +79,17 @@ Prefer feature entry points and flow steps over broad folder exploration.
 ## Required Agent Workflow
 
 1. Read \`DEVMAP.md\`.
-2. Read \`.devmap/snapshot.json\`.
-3. Identify the matching feature, flow, entry point, onboarding path, or change
-   impact entry.
-4. Inspect at most the smallest relevant source-file set first.
-5. Explain which snapshot section guided the decision when giving navigation
-   advice.
-6. Avoid unrelated files unless the snapshot is incomplete or exact code
-   verification is required.
+2. Read \`.devmap/index.json\`.
+3. Open the relevant feature map.
+4. Inspect at most the smallest relevant source-file set from \`sourcePriority\`.
+5. Explain which navigation entry guided the decision when giving advice.
+6. Avoid unrelated files unless the navigation data is incomplete or exact
+   code verification is required.
 
-If \`.devmap/snapshot.json\` is missing, run \`devmap analyze\` when DevMap is
-available and configured. If analyze fails because DevMap is not initialized,
-ask the user to run \`devmap init\` and then \`devmap analyze\`.
+If \`.devmap/index.json\` or \`.devmap/snapshot.json\` is missing, run
+\`devmap analyze\` when DevMap is available and configured. If analyze fails
+because DevMap is not initialized, ask the user to run \`devmap init\` and then
+\`devmap analyze\`.
 
 If the snapshot may be stale, run \`devmap analyze --fresh\` before relying on
 it.

@@ -10,11 +10,13 @@
 
 **Tasks:**
 - File scanner with ignore list
+- Normalized analyzer registry with `ts-morph` for JS/TS and heuristic fallback
 - Framework detection (Next.js, Express)
 - Import/require parser → dependency graph
 - Entry point detection from graph topology
 - External service detection from imports
 - Project map JSON generation
+- Lightweight agent index and per-feature navigation maps
 - MD5 file hashing for cache
 - `devmap init` — setup wizard
 - `devmap doctor` — diagnostics

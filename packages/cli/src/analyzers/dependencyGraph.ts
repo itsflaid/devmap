@@ -1,17 +1,22 @@
+import type { FileAnalysis } from "./fileAnalysis.js";
 import type { ScannedFile } from "./fileScanner.js";
 
 export type FileGraph = Record<string, string[]>;
 
 const IMPORT_RE = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
 
-export function buildDependencyGraph(files: ScannedFile[]): FileGraph {
+export function buildDependencyGraph(
+  files: ScannedFile[],
+  analyses: Record<string, FileAnalysis> = {}
+): FileGraph {
   const graph: FileGraph = {};
   const localPaths = new Set(files.map((file) => file.path));
 
   for (const file of files) {
     graph[file.path] = [];
 
-    for (const specifier of findImportSpecifiers(file.content)) {
+    const importSpecifiers = analyses[file.path]?.imports ?? findImportSpecifiers(file.content);
+    for (const specifier of importSpecifiers) {
       if (!specifier.startsWith(".")) {
         continue;
       }

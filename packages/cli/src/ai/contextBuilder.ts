@@ -201,6 +201,14 @@ type SearchTermScoreInput = {
   };
 };
 
+const STRUCTURAL_NAVIGATION_FEATURES = new Set([
+  "Analysis Engine",
+  "CLI Commands",
+  "Documentation",
+  "Snapshot Engine",
+  "Web Landing"
+]);
+
 export async function buildQuestionContext(
   projectRoot: string,
   snapshot: ProjectMap,
@@ -488,8 +496,13 @@ function scoreFeatureEvidence(
   const reasons: string[] = [];
 
   for (const feature of snapshot.features) {
+    const featureNameTerms = extractContextKeywords(feature.name);
+    if (isStructuralNavigationFeature(feature.name)
+      && !featureNameTerms.some((term) => keywords.includes(term))) {
+      continue;
+    }
     const featureTerms = [
-      ...extractContextKeywords(feature.name),
+      ...featureNameTerms,
       ...(feature.searchTerms ?? [])
     ];
     if (
@@ -502,6 +515,10 @@ function scoreFeatureEvidence(
   }
 
   return { score, reasons };
+}
+
+function isStructuralNavigationFeature(name: string): boolean {
+  return STRUCTURAL_NAVIGATION_FEATURES.has(name);
 }
 
 function scoreFileIndexEvidence(

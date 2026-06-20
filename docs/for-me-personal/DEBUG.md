@@ -962,3 +962,40 @@ pnpm --filter devmap exec tsx --test test/analyzers.test.ts
 Folder dotfile yang dipakai alat development dapat berisi kata kunci AI, auth,
 atau service. Scanner harus membedakan metadata development dari source project
 agar snapshot tetap merepresentasikan aplikasi yang dianalisis.
+
+## 19. Authentication Palsu Dari Prompt Dan Dokumentasi Source
+
+**Tanggal:** 2026-06-20
+**Status:** Selesai
+
+### Gejala
+
+Setelah role filtering pertama, snapshot DevMap sendiri masih mendeteksi
+Authentication dari `contextBuilder.ts`, `snapshotEnrichment.ts`, onboarding,
+dan generated instructions. File tersebut hanya menyebut contoh auth di string.
+
+### Akar Masalah
+
+Fallback semantic auth role membaca seluruh content dan menganggap kombinasi
+kata `auth`, `session`, `middleware`, atau `guard` sebagai runtime behavior.
+Prompt dan dokumentasi embedded memenuhi pola itu tanpa implementasi auth.
+
+### Solusi
+
+- Technical features tidak memakai documentation, landing UI, atau test files.
+- Auth consumer membutuhkan bukti path, import, atau symbol.
+- Guard membutuhkan bukti auth dan guard pada path/symbol/import, bukan content
+  bebas.
+- Provider membutuhkan auth import atau symbol yang kuat.
+- Regression fixture memasukkan prompt-like strings agar bug tidak kembali.
+
+### Verifikasi
+
+Focused analyzer tests lulus dan fresh analysis pada root DevMap menghasilkan
+AI Integration, Analysis Engine, CLI Commands, Documentation, Snapshot Engine,
+serta Web Landing tanpa Authentication.
+
+### Pelajaran
+
+Kata teknis di prompt, docs, dan detector source bukan bukti capability runtime.
+Feature attribution harus bertumpu pada struktur kode dan ownership file.

@@ -4,6 +4,21 @@ Terakhir diperbarui: 2026-06-20
 
 ## Update 2026-06-20
 
+### OpenRouter MVP Provider
+
+- `devmap init` sekarang menampilkan selector panah untuk Groq dan OpenRouter.
+- Setup OpenRouter memvalidasi API key lalu meminta model dengan default
+  `openrouter/free` ketika user langsung menekan Enter.
+- Model OpenRouter yang diketik user, baik gratis maupun berbayar, disimpan dan
+  selalu diprioritaskan tanpa hidden fallback dari DevMap.
+- `devmap config model <model-id>` dapat mengganti pilihan; `auto` pada
+  OpenRouter kembali ke `openrouter/free`.
+- `ask`, `analyze`, dan `doctor` sekarang memakai provider factory berdasarkan
+  config, bukan membuat Groq client secara langsung.
+- OpenRouter completion, streaming SSE, usage normalization, validasi key, dan
+  native ordered `models` request sudah memiliki regression tests.
+- Focused tests dan full CLI unit suite lulus dengan 116 test.
+
 ### Standalone React Detection
 
 - Framework detector sekarang mengenali standalone React dari dependency

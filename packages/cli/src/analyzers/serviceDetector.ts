@@ -11,12 +11,14 @@ const SERVICES: Array<[string[], string]> = [
   [["cloudinary"], "Cloudinary"],
   [["firebase"], "Firebase"],
   [["openai"], "OpenAI"],
-  [["groq"], "Groq"]
+  [["groq"], "Groq"],
+  [["openrouter"], "OpenRouter"]
 ];
 
 const SOURCE_SERVICE_SIGNALS: Array<[string[], string]> = [
   [["api.groq.com", "console.groq.com", "groq api key", "groqclient"], "Groq"],
-  [["api.openai.com", "openai api key", "openaiclient"], "OpenAI"]
+  [["api.openai.com", "openai api key", "openaiclient"], "OpenAI"],
+  [["openrouter.ai", "openrouter api key", "openrouterclient"], "OpenRouter"]
 ];
 
 export function detectExternalServices(files: ScannedFile[]): string[] {

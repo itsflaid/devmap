@@ -214,6 +214,17 @@ test("readConfig returns null for invalid config schemas", async () => {
       model: "auto",
       apiKey: "gsk_fixture"
     });
+
+    await writeFile(configPath, JSON.stringify({
+      provider: "openrouter",
+      model: "anthropic/claude-3.5-haiku",
+      apiKey: "sk-or-fixture"
+    }), "utf8");
+    assert.deepEqual(await readConfig(), {
+      provider: "openrouter",
+      model: "anthropic/claude-3.5-haiku",
+      apiKey: "sk-or-fixture"
+    });
   } finally {
     restoreEnvironment("HOME", originalHome);
     restoreEnvironment("USERPROFILE", originalUserProfile);
@@ -221,9 +232,9 @@ test("readConfig returns null for invalid config schemas", async () => {
   }
 });
 
-test("interactive init uses Groq without prompting for a provider", async () => {
+test("interactive init selects Groq with the provider menu", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-provider-test-"));
-  const prompt = createFakePrompt(["gsk_fixture"]);
+  const prompt = createFakePrompt(["gsk_fixture"], ["groq"]);
   let savedConfig: DevmapConfig | null = null;
 
   try {
@@ -244,7 +255,70 @@ test("interactive init uses Groq without prompting for a provider", async () => 
       apiKey: "gsk_fixture",
       model: "auto"
     });
-    assert.ok(prompt.questions.every((question) => !/^Provider\b/.test(question)));
+    assert.deepEqual(prompt.selections, ["AI provider"]);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("interactive init stores the OpenRouter model selected by the user", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-openrouter-test-"));
+  const prompt = createFakePrompt(
+    ["sk-or-fixture", "anthropic/claude-3.5-haiku"],
+    ["openrouter"]
+  );
+  let savedConfig: DevmapConfig | null = null;
+  let validatedKey = "";
+
+  try {
+    await initCommand({
+      projectRoot,
+      prompt,
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async (config) => {
+        savedConfig = config;
+      },
+      validateApiKey: async (apiKey) => {
+        validatedKey = apiKey;
+      }
+    });
+
+    assert.equal(validatedKey, "sk-or-fixture");
+    assert.deepEqual(savedConfig, {
+      provider: "openrouter",
+      apiKey: "sk-or-fixture",
+      model: "anthropic/claude-3.5-haiku"
+    });
+    assert.deepEqual(prompt.selections, ["AI provider"]);
+    assert.ok(prompt.questions.some((question) => /OpenRouter model/i.test(question)));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("interactive OpenRouter init defaults to the free router on Enter", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-openrouter-free-test-"));
+  const prompt = createFakePrompt(["sk-or-fixture", ""], ["openrouter"]);
+  let savedConfig: DevmapConfig | null = null;
+
+  try {
+    await initCommand({
+      projectRoot,
+      prompt,
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async (config) => {
+        savedConfig = config;
+      },
+      validateApiKey: async () => undefined
+    });
+
+    assert.deepEqual(savedConfig, {
+      provider: "openrouter",
+      apiKey: "sk-or-fixture",
+      model: "openrouter/free"
+    });
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -341,19 +415,31 @@ test("global error handler emits parseable JSON for machine output", () => {
 type FakePrompt = Prompt & {
   closed: boolean;
   questions: string[];
+  selections: string[];
 };
 
-function createFakePrompt(answers: string[]): FakePrompt {
+function createFakePrompt(answers: string[], selectedValues: string[] = []): FakePrompt {
   let index = 0;
+  let selectionIndex = 0;
 
   return {
     closed: false,
     questions: [],
+    selections: [],
     async ask(question: string): Promise<string> {
       this.questions.push(question);
       const answer = answers[index] ?? "";
       index += 1;
       return answer;
+    },
+    async select<T extends string>(
+      question: string,
+      options: Array<{ label: string; value: T }>
+    ): Promise<T> {
+      this.selections.push(question);
+      const selected = selectedValues[selectionIndex] as T | undefined;
+      selectionIndex += 1;
+      return selected ?? options[0]!.value;
     },
     close(): void {
       this.closed = true;

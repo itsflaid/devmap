@@ -56,7 +56,9 @@ async function updateModel(
 
   output.success(
     selectedModel === "auto"
-      ? "Restored automatic command-based model routing."
+      ? config.provider === "openrouter"
+        ? "Restored OpenRouter free model routing (openrouter/free)."
+        : "Restored automatic command-based model routing."
       : `Default model override set to ${selectedModel}.`
   );
 
@@ -64,6 +66,9 @@ async function updateModel(
     status: "ok",
     provider: config.provider,
     model: selectedModel,
-    automaticRouting: selectedModel === "auto"
+    automaticRouting: selectedModel === "auto",
+    ...(selectedModel === "auto" && config.provider === "openrouter"
+      ? { resolvedModel: "openrouter/free" }
+      : {})
   };
 }

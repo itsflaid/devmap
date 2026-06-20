@@ -2,7 +2,7 @@
 
 Understand any codebase in minutes, not days.
 
-DevMap is a CLI that combines static analysis with optional Groq-powered
+DevMap is a CLI that combines static analysis with optional AI-powered
 interpretation. It maps project structure, generates reusable context, and
 answers focused questions without sending an entire repository to an AI model.
 
@@ -23,7 +23,7 @@ npx devmap --help
 ## Requirements
 
 - Node.js 18 or newer
-- A Groq API key for AI-powered analysis and answers
+- A Groq or OpenRouter API key for AI-powered analysis and answers
 
 Static analysis still works when AI is not configured.
 
@@ -39,18 +39,30 @@ devmap onboarding
 devmap doctor
 ```
 
-`devmap init` validates the Groq key, stores configuration locally, prepares
+`devmap init` selects a provider, validates its key, stores configuration locally, prepares
 `.devmap/`, generates `DEVMAP.md`, and integrates with `AGENTS.md` safely.
 
-## Groq Setup
+## AI Provider Setup
 
-Create a key at https://console.groq.com/keys, then either enter it during:
+Choose Groq or OpenRouter with the arrow keys during:
 
 ```bash
 devmap init
 ```
 
-Or provide it to the current shell before non-interactive setup:
+Groq keys are available at https://console.groq.com/keys. OpenRouter keys are
+available at https://openrouter.ai/keys.
+
+For OpenRouter, DevMap prompts:
+
+```txt
+OpenRouter model [openrouter/free]:
+```
+
+Press Enter to use the free router, or type any free or paid OpenRouter model
+ID. The selected model is saved and used as the primary choice.
+
+For non-interactive Groq setup:
 
 ```bash
 GROQ_API_KEY="your-key" devmap init
@@ -64,8 +76,15 @@ devmap init
 Remove-Item Env:GROQ_API_KEY
 ```
 
+For non-interactive OpenRouter setup:
+
+```bash
+OPENROUTER_API_KEY="your-key" devmap init
+```
+
 The key is stored locally in `~/.devmap/config.json`. Requests go directly from
-your machine to Groq. DevMap does not send the key to a DevMap-owned server.
+your machine to the selected provider. DevMap does not send the key to a
+DevMap-owned server.
 
 ## Commands
 
@@ -81,11 +100,12 @@ devmap doctor
 devmap config model auto
 ```
 
-Automatic model routing uses a fast model for focused questions and larger
-models for architecture analysis. Override it with:
+Groq automatic routing uses a fast model for focused questions and larger
+models for architecture analysis. OpenRouter uses the model selected during
+init. Change either provider's model with:
 
 ```bash
-devmap config model <groq-model-id>
+devmap config model <model-id>
 devmap config model auto
 ```
 
@@ -131,7 +151,7 @@ support promise.
 ## Privacy
 
 - Project analysis runs locally before AI interpretation.
-- Full repository source is not sent to Groq.
+- Full repository source is not sent to the selected provider.
 - `ask` selects a small set of relevant files.
 - `.env` files and common generated directories are ignored.
 - API keys are stored locally and should never be committed.

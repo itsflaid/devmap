@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 export type DevmapConfig = {
-  provider: "groq";
+  provider: "groq" | "openrouter";
   apiKey?: string;
   model: "auto" | string;
 };
@@ -34,7 +34,7 @@ function isDevmapConfig(value: unknown): value is DevmapConfig {
     && value !== null
     && !Array.isArray(value)
     && "provider" in value
-    && value.provider === "groq"
+    && (value.provider === "groq" || value.provider === "openrouter")
     && "model" in value
     && typeof value.model === "string"
   );

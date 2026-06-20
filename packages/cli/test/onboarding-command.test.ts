@@ -128,6 +128,12 @@ function createFakePrompt(answers: string[]): Prompt & { closed: boolean; questi
       this.questions.push(question);
       return answers.shift() ?? "";
     },
+    async select<T extends string>(
+      _question: string,
+      options: Array<{ label: string; value: T }>
+    ): Promise<T> {
+      return options[0]!.value;
+    },
     close(): void {
       this.closed = true;
     }

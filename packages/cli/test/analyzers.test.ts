@@ -182,6 +182,13 @@ test("service detector detects HTTP API providers without package dependencies",
         "export class GroqClient {}"
       ].join("\n")
     );
+    await writeFile(
+      join(projectRoot, "src", "ai", "openrouter.ts"),
+      [
+        "const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';",
+        "export class OpenRouterClient {}"
+      ].join("\n")
+    );
     await mkdir(join(projectRoot, "src", "analyzers"), { recursive: true });
     await writeFile(
       join(projectRoot, "src", "analyzers", "serviceDetector.ts"),
@@ -190,7 +197,10 @@ test("service detector detects HTTP API providers without package dependencies",
     await mkdir(join(projectRoot, "docs"), { recursive: true });
     await writeFile(join(projectRoot, "docs", "notes.md"), "Groq mentioned in docs only.\n");
 
-    assert.deepEqual(detectExternalServices(await scanFiles(projectRoot)), ["Groq"]);
+    assert.deepEqual(
+      detectExternalServices(await scanFiles(projectRoot)),
+      ["Groq", "OpenRouter"]
+    );
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -208,6 +218,10 @@ test("feature detection keeps documentation and landing UI out of technical feat
     createScannedFile(
       "packages/cli/src/ai/groq.ts",
       'import type { AiClient } from "./types.js"; export class GroqClient {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/ai/openrouter.ts",
+      'import type { AiClient } from "./types.js"; export class OpenRouterClient {}'
     ),
     createScannedFile(
       "packages/cli/src/ai/contextBuilder.ts",
@@ -250,6 +264,7 @@ test("feature detection keeps documentation and landing UI out of technical feat
 
   const aiFeature = features.find((feature) => feature.name === "AI Integration");
   assert.ok(aiFeature?.files.includes("packages/cli/src/ai/groq.ts"));
+  assert.ok(aiFeature?.files.includes("packages/cli/src/ai/openrouter.ts"));
   assert.ok(aiFeature?.files.every((path) => path.startsWith("packages/cli/src/ai/")));
 });
 

@@ -30,7 +30,8 @@
     "developer-tools",
     "static-analysis",
     "architecture",
-    "groq"
+    "groq",
+    "openrouter"
   ],
   "author": "Muhammad Fadil",
   "license": "MIT",

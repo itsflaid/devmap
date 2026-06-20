@@ -45,6 +45,7 @@ devmap init
 * Confirm AI provider
 * Input API key or read environment variable
 * Validate API key
+* Ask for an OpenRouter model; Enter defaults to `openrouter/free`
 * Save global configuration to `~/.devmap/config.json`
 * Detect current project framework
 * Create `.devmap/`
@@ -582,6 +583,16 @@ devmap config model auto
 * `analyze` uses `openai/gpt-oss-20b`
 * `analyze --deep` uses `openai/gpt-oss-120b`
 
+For OpenRouter, `devmap init` prompts with:
+
+```txt
+OpenRouter model [openrouter/free]:
+```
+
+Press Enter for the free router, or type any free or paid OpenRouter model ID.
+The typed model is stored as the primary choice and is not silently replaced.
+`devmap config model auto` restores `openrouter/free` for OpenRouter.
+
 Automatic routing also uses ordered fallback chains:
 
 * `ask`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `openai/gpt-oss-20b`
@@ -646,8 +657,8 @@ Contract:
 * progress sections and Markdown rendering are omitted
 * AI responses are buffered instead of streamed
 * runtime failures return a JSON object with `status`, `error`, and optional `hint`
-* `init --json` never prompts and therefore requires `GROQ_API_KEY` or an
-  existing API key
+* `init --json` never prompts and therefore requires `GROQ_API_KEY`,
+  `OPENROUTER_API_KEY`, or an existing API key
 * package-manager wrapper warnings may appear on stderr and are not part of the
   DevMap JSON document
 

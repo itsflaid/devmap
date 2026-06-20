@@ -1,10 +1,9 @@
 import { resolve } from "node:path";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
 import {
-  DEFAULT_AI_FALLBACKS,
-  DEFAULT_AI_MODELS,
-  GroqClient
-} from "../ai/groq.js";
+  createAiClient as createDefaultAiClient,
+  resolveAiRouting
+} from "../ai/provider.js";
 import { buildAnalyzeMessages } from "../ai/prompts.js";
 import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
@@ -93,21 +92,18 @@ async function enrichSnapshot(
   }
 
   const createAiClient = dependencies.createAiClient
-    ?? ((currentConfig: DevmapConfig) => new GroqClient(currentConfig.apiKey ?? ""));
+    ?? createDefaultAiClient;
   const client = createAiClient(config);
-  const defaultModel = options.deep
-    ? DEFAULT_AI_MODELS.deepAnalyze
-    : DEFAULT_AI_MODELS.analyze;
-  const model = config.model === "auto" ? defaultModel : config.model;
-  const fallbackModels = options.deep
-    ? DEFAULT_AI_FALLBACKS.deepAnalyze
-    : DEFAULT_AI_FALLBACKS.analyze;
+  const routing = resolveAiRouting(
+    config,
+    options.deep ? "deepAnalyze" : "analyze"
+  );
 
   const enriched = await enrichSnapshotWithAi(
     snapshot,
     client,
-    model,
-    fallbackModels
+    routing.model,
+    routing.fallbackModels
   );
 
   if (enriched !== snapshot) {
@@ -188,15 +184,13 @@ async function printOrGenerateInterpretation(
   }
 
   const createAiClient = dependencies.createAiClient
-    ?? ((currentConfig: DevmapConfig) => new GroqClient(currentConfig.apiKey ?? ""));
+    ?? createDefaultAiClient;
   const client = createAiClient(config);
-  const defaultModel = options.deep
-    ? DEFAULT_AI_MODELS.deepAnalyze
-    : DEFAULT_AI_MODELS.analyze;
-  const model = config.model === "auto" ? defaultModel : config.model;
-  const fallbackModels = options.deep
-    ? DEFAULT_AI_FALLBACKS.deepAnalyze
-    : DEFAULT_AI_FALLBACKS.analyze;
+  const routing = resolveAiRouting(
+    config,
+    options.deep ? "deepAnalyze" : "analyze"
+  );
+  const model = routing.model;
 
   output.step(`Interpreting architecture with ${model}`);
 
@@ -204,7 +198,7 @@ async function printOrGenerateInterpretation(
     const execution = await completeWithOptionalStreaming(client, {
       messages: buildAnalyzeMessages(snapshot, options.deep),
       model,
-      fallbackModels,
+      fallbackModels: routing.fallbackModels,
       maxCompletionTokens: options.deep ? 1800 : 1000,
       temperature: 0.2
     }, !options.json, () => output.section("Architecture"));

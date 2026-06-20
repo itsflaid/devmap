@@ -12,12 +12,16 @@ All notable changes to DevMap are documented in this file.
 
 ### Added
 
+- OpenRouter provider support with interactive provider selection, API-key
+  validation, streaming responses, and user-selected free or paid models
 - `ts-morph` analysis for JavaScript and TypeScript behind a normalized
   analyzer registry with heuristic and fallback analyzers
 - Lightweight `.devmap/index.json` and per-feature navigation maps for agents
 
 ### Changed
 
+- `devmap init` defaults OpenRouter to `openrouter/free` on Enter and explains
+  how to change the stored model with `devmap config model <model-id>`
 - Feature detection now separates documentation, landing UI, CLI commands,
   analysis, snapshot, and AI roles before assigning technical features
 - Generated agent guidance now uses index-first navigation and treats the full

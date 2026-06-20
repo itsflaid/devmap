@@ -612,7 +612,8 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     ? [
       ["Build focused project context", find(/\/ai\/contextbuilder\.[cm]?[jt]s$/)],
       ["Construct grounded model prompts", find(/\/ai\/prompts\.[cm]?[jt]s$/)],
-      ["Call Groq with retry and model fallback", find(/\/ai\/groq\.[cm]?[jt]s$/)],
+      ["Select the configured AI provider", find(/\/ai\/provider\.[cm]?[jt]s$/)],
+      ["Call the provider with its model policy", find(/\/ai\/(groq|openrouter)\.[cm]?[jt]s$/)],
       ["Stream or return the completed response", find(/\/ai\/completion\.[cm]?[jt]s$/)]
     ]
     : [];

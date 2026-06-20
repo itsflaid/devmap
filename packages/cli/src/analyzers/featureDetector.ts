@@ -45,7 +45,7 @@ const FEATURE_SIGNALS: Array<{
   },
   {
     name: "AI Integration",
-    terms: ["openai", "groq", "gemini", "generative-ai"],
+    terms: ["openai", "groq", "openrouter", "gemini", "generative-ai"],
     purpose: "Handles AI providers, prompts, and model-facing context."
   },
   {
@@ -95,13 +95,15 @@ const ROLE_FEATURES: Array<{
     role: "ai-integration",
     name: "AI Integration",
     purpose: "Handles AI providers, prompts, and model-facing context.",
-    terms: ["ai", "groq", "prompt", "context", "model"]
+    terms: ["ai", "groq", "openrouter", "prompt", "context", "model"]
   }
 ];
 
 const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
   "AI Integration": [
+    /\/ai\/provider\.[cm]?[jt]s$/,
     /\/ai\/groq\.[cm]?[jt]s$/,
+    /\/ai\/openrouter\.[cm]?[jt]s$/,
     /\/ai\/contextbuilder\.[cm]?[jt]s$/,
     /\/ai\/prompts\.[cm]?[jt]s$/,
     /\/ai\/completion\.[cm]?[jt]s$/

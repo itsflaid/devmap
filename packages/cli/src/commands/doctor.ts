@@ -1,10 +1,10 @@
 import { arch, platform } from "node:os";
 import { resolve } from "node:path";
 import {
-  DEFAULT_AI_MODELS,
-  inspectGroqProvider,
-  type GroqProviderInspection
-} from "../ai/groq.js";
+  inspectAiProvider,
+  resolveAiRouting,
+  type ProviderInspection
+} from "../ai/provider.js";
 import { scanFiles } from "../analyzers/fileScanner.js";
 import { detectFramework } from "../analyzers/frameworkDetector.js";
 import { detectProjectMetadata } from "../analyzers/projectMetadata.js";
@@ -22,8 +22,9 @@ export type DoctorDependencies = {
   loadConfig?: () => Promise<DevmapConfig | null>;
   inspectProvider?: (
     apiKey: string,
-    model: string
-  ) => Promise<GroqProviderInspection>;
+    model: string,
+    provider: DevmapConfig["provider"]
+  ) => Promise<ProviderInspection>;
 };
 
 export async function doctorCommand(
@@ -44,7 +45,10 @@ async function runDoctor(
 ): Promise<Record<string, unknown>> {
   const projectRoot = resolve(dependencies.projectRoot ?? process.cwd());
   const loadConfig = dependencies.loadConfig ?? readConfig;
-  const inspectProvider = dependencies.inspectProvider ?? inspectGroqProvider;
+  const inspectProvider = dependencies.inspectProvider
+    ?? ((apiKey: string, model: string, provider: DevmapConfig["provider"]) => (
+      inspectAiProvider(provider, apiKey, model)
+    ));
   const [config, snapshotResult, files] = await Promise.all([
     loadConfig(),
     inspectSnapshot(projectRoot),
@@ -52,9 +56,9 @@ async function runDoctor(
   ]);
   const framework = detectFramework(files);
   const project = detectProjectMetadata(projectRoot, framework, files);
-  const selectedModel = config?.model === "auto"
-    ? DEFAULT_AI_MODELS.ask
-    : config?.model;
+  const selectedModel = config
+    ? resolveAiRouting(config, "ask").model
+    : undefined;
   const issues: string[] = [];
   const nodeSupported = readNodeMajor(process.version) >= MINIMUM_NODE_MAJOR;
   let apiKeyStatus = "not configured";
@@ -76,13 +80,17 @@ async function runDoctor(
     output.keyValue("API key", "not configured");
     output.keyValue("Model", "not configured");
   } else if (!config.apiKey || !selectedModel) {
-    issues.push("Run devmap init again to configure Groq.");
+    issues.push("Run devmap init again to configure the selected provider.");
     output.keyValue("API key", "missing");
     output.keyValue("Model", selectedModel ?? "not configured");
     apiKeyStatus = "missing";
   } else {
     try {
-      const provider = await inspectProvider(config.apiKey, selectedModel);
+      const provider = await inspectProvider(
+        config.apiKey,
+        selectedModel,
+        config.provider
+      );
       apiKeyStatus = provider.reachable ? "valid" : "unreachable";
       modelStatus = provider.modelAvailable
         ? selectedModel
@@ -91,7 +99,7 @@ async function runDoctor(
       output.keyValue("Model", modelStatus);
 
       if (!provider.modelAvailable) {
-        issues.push("Run devmap init or choose an available Groq model.");
+        issues.push("Run devmap init or choose an available provider model.");
       }
     } catch (error) {
       const message = error instanceof DevmapError

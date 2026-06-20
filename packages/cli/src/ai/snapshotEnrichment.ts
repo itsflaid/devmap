@@ -8,16 +8,19 @@ export async function enrichSnapshotWithAi(
   snapshot: ProjectMap,
   client: AiClient,
   model: string,
-  fallbackModel: string
+  fallbackModels: readonly string[] | string
 ): Promise<ProjectMap> {
   let enriched = snapshot;
+  const modelFallbacks = typeof fallbackModels === "string"
+    ? [fallbackModels]
+    : fallbackModels;
 
   for (const batch of chunk(selectEligibleFiles(enriched), FILE_BATCH_SIZE)) {
     const updates = await completeJsonArray<FilePurposeResult>(
       client,
       buildFilePurposeMessages(batch),
       model,
-      fallbackModel
+      modelFallbacks
     );
 
     if (updates.length === 0) {
@@ -32,7 +35,7 @@ export async function enrichSnapshotWithAi(
       client,
       buildFeatureTermsMessages(enriched),
       model,
-      fallbackModel
+      modelFallbacks
     );
 
     if (featureUpdates.length > 0) {
@@ -152,13 +155,13 @@ async function completeJsonArray<T>(
   client: AiClient,
   messages: AiMessage[],
   model: string,
-  fallbackModel: string
+  fallbackModels: readonly string[]
 ): Promise<T[]> {
   try {
     const response = await client.complete({
       messages,
       model,
-      fallbackModel,
+      fallbackModels,
       maxCompletionTokens: 900,
       temperature: 0
     });

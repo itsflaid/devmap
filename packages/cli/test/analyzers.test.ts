@@ -240,7 +240,9 @@ test("project map summarizes a Next.js fixture", async () => {
     root: nextFixture,
     framework: "nextjs",
     language: "typescript",
-    packageManager: "unknown"
+    packageManager: "unknown",
+    projectType: "web-app",
+    workspaceType: "single-package"
   });
   assert.ok(projectMap.entryPoints.includes("app/page.tsx"));
   assert.ok(projectMap.entryPoints.includes("app/layout.tsx"));
@@ -386,6 +388,24 @@ test("snapshot can be saved and read back", async () => {
 
     const saved = await readSnapshot(temporaryRoot);
     assert.deepEqual(saved, projectMap);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test("snapshot reader supplies project classification defaults for schema v1 snapshots", async () => {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "devmap-project-defaults-"));
+
+  try {
+    const projectMap = await createProjectMap(nextFixture);
+    const legacyProject = projectMap.project as Partial<typeof projectMap.project>;
+    delete legacyProject.projectType;
+    delete legacyProject.workspaceType;
+    await saveSnapshot(temporaryRoot, projectMap);
+
+    const saved = await readSnapshot(temporaryRoot);
+    assert.equal(saved?.project.projectType, "web-app");
+    assert.equal(saved?.project.workspaceType, "single-package");
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

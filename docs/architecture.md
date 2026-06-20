@@ -442,6 +442,24 @@ agents to read `.devmap/index.json`, open the relevant feature map, and inspect
 its `sourcePriority` files before broad repository exploration. The full
 `.devmap/snapshot.json` is used only when the lightweight maps are insufficient.
 
+The index separates technical framework detection from repository shape:
+
+```txt
+framework     -> nextjs | express | unknown
+projectType   -> node-cli | web-app | api-service | library | unknown
+workspaceType -> monorepo | single-package
+```
+
+This avoids labeling a TypeScript CLI monorepo as a fake framework while still
+giving agents an immediate mental model. Project summaries are deterministic
+and combine this classification with the primary package description and
+detected capabilities.
+
+Index `criticalFiles` are ranked for reading order: executable entry points
+first, then command/flow owners, feature owners, and finally structural
+importance. Import count remains a supporting signal rather than the primary
+definition of where an agent should start.
+
 The snapshot also stores a compact `agentInstructions` object for machine
 readers. This is intentionally small: policy fields live in JSON, while the
 human-readable workflow lives in `DEVMAP.md`.
@@ -607,15 +625,20 @@ Commands should not call provider APIs directly.
 
 MVP default model routing:
 
-| Command          | Model                     |
-| ---------------- | ------------------------- |
-| `ask`            | `llama-3.1-8b-instant`    |
-| `analyze`        | `openai/gpt-oss-20b`      |
-| `analyze --deep` | `openai/gpt-oss-120b`     |
-| Fallback         | `openai/gpt-oss-20b`      |
+| Command          | Primary                    | Ordered fallbacks |
+| ---------------- | -------------------------- | ----------------- |
+| `ask`            | `llama-3.1-8b-instant`     | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `openai/gpt-oss-20b` |
+| `analyze`        | `openai/gpt-oss-20b`       | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `llama-3.1-8b-instant` |
+| `analyze --deep` | `openai/gpt-oss-120b`      | `llama-3.3-70b-versatile` -> `qwen/qwen3.6-27b` -> `openai/gpt-oss-20b` |
 
-If a model is unavailable, DevMap should fall back gracefully.
-Only Groq production models should be used as public defaults.
+Each model receives up to three exponential-backoff retries for HTTP 429.
+After those retries, or when a model is unavailable or returns HTTP 5xx,
+DevMap advances to the next unique model. Credentials and invalid requests do
+not trigger failover. The chain is resolved before streaming emits content, so
+a fallback cannot duplicate a partially rendered answer.
+
+Model IDs in this table were confirmed active through the Groq model-list API
+on 2026-06-20. Recheck provider lifecycle status before publishing a release.
 
 Users can override automatic routing with `devmap config model <model>`.
 Running `devmap config model auto` restores the defaults above.
@@ -639,7 +662,7 @@ Rules:
 * streaming is an optional `AiClient` capability
 * commands fall back to regular completion for clients without streaming
 * the final reconstructed text is used for snapshot persistence and metadata
-* rate-limit retry and model fallback happen before consuming response deltas
+* rate-limit retry and ordered model fallback happen before consuming response deltas
 * `--json` never streams because stdout must contain one complete JSON document
 
 ---

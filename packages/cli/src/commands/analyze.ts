@@ -1,6 +1,10 @@
 import { resolve } from "node:path";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
-import { DEFAULT_AI_MODELS, GroqClient } from "../ai/groq.js";
+import {
+  DEFAULT_AI_FALLBACKS,
+  DEFAULT_AI_MODELS,
+  GroqClient
+} from "../ai/groq.js";
 import { buildAnalyzeMessages } from "../ai/prompts.js";
 import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
@@ -95,12 +99,15 @@ async function enrichSnapshot(
     ? DEFAULT_AI_MODELS.deepAnalyze
     : DEFAULT_AI_MODELS.analyze;
   const model = config.model === "auto" ? defaultModel : config.model;
+  const fallbackModels = options.deep
+    ? DEFAULT_AI_FALLBACKS.deepAnalyze
+    : DEFAULT_AI_FALLBACKS.analyze;
 
   const enriched = await enrichSnapshotWithAi(
     snapshot,
     client,
     model,
-    DEFAULT_AI_MODELS.fallback
+    fallbackModels
   );
 
   if (enriched !== snapshot) {
@@ -187,6 +194,9 @@ async function printOrGenerateInterpretation(
     ? DEFAULT_AI_MODELS.deepAnalyze
     : DEFAULT_AI_MODELS.analyze;
   const model = config.model === "auto" ? defaultModel : config.model;
+  const fallbackModels = options.deep
+    ? DEFAULT_AI_FALLBACKS.deepAnalyze
+    : DEFAULT_AI_FALLBACKS.analyze;
 
   output.step(`Interpreting architecture with ${model}`);
 
@@ -194,7 +204,7 @@ async function printOrGenerateInterpretation(
     const execution = await completeWithOptionalStreaming(client, {
       messages: buildAnalyzeMessages(snapshot, options.deep),
       model,
-      fallbackModel: DEFAULT_AI_MODELS.fallback,
+      fallbackModels,
       maxCompletionTokens: options.deep ? 1800 : 1000,
       temperature: 0.2
     }, !options.json, () => output.section("Architecture"));

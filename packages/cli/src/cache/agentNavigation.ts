@@ -45,6 +45,8 @@ export async function writeAgentNavigationFiles(
       framework: snapshot.project.framework,
       language: snapshot.project.language,
       packageManager: snapshot.project.packageManager,
+      projectType: snapshot.project.projectType,
+      workspaceType: snapshot.project.workspaceType,
       summary: createProjectSummary(snapshot)
     },
     generatedAt: snapshot.generatedAt,
@@ -117,37 +119,61 @@ function createFeatureMap(id: string, feature: FeatureInfo, snapshot: ProjectMap
 }
 
 function selectIndexCriticalFiles(snapshot: ProjectMap): string[] {
-  const selected = new Set<string>();
+  const candidates = new Set<string>();
 
   for (const path of snapshot.entryPoints) {
-    selected.add(path);
+    candidates.add(path);
   }
 
   for (const feature of snapshot.features) {
     if (feature.name === "Documentation") continue;
-    if (feature.entryPoint) selected.add(feature.entryPoint);
+    if (feature.entryPoint) candidates.add(feature.entryPoint);
+    feature.entryPoints.forEach((path) => candidates.add(path));
+    feature.files.forEach((path) => candidates.add(path));
+  }
 
-    const supportingFile = feature.files.find((path) => {
-      if (path === feature.entryPoint) return false;
-      const metadata = snapshot.fileIndex[path];
-      return metadata
-        && metadata.scope !== "docs"
-        && metadata.scope !== "test"
-        && (metadata.topFunctions.length > 0 || ["api", "cli", "ui"].includes(metadata.scope));
+  for (const flow of snapshot.flows) {
+    if (flow.entryPoint) candidates.add(flow.entryPoint);
+    flow.steps.forEach((step) => {
+      if (step.file) candidates.add(step.file);
     });
-    if (supportingFile) selected.add(supportingFile);
   }
 
   for (const critical of snapshot.criticalFiles) {
-    const metadata = snapshot.fileIndex[critical.path];
-    if (!metadata || metadata.scope === "docs" || metadata.scope === "test") continue;
-    if (metadata.topFunctions.length === 0 && metadata.scope !== "api" && metadata.scope !== "cli") {
-      continue;
-    }
-    selected.add(critical.path);
+    candidates.add(critical.path);
   }
 
-  return [...selected].slice(0, 8);
+  return [...candidates]
+    .filter((path) => {
+      const metadata = snapshot.fileIndex[path];
+      return metadata && metadata.scope !== "docs" && metadata.scope !== "test";
+    })
+    .sort((left, right) =>
+      calculateStartHereScore(right, snapshot) - calculateStartHereScore(left, snapshot)
+      || left.localeCompare(right)
+    )
+    .slice(0, 8);
+}
+
+function calculateStartHereScore(path: string, snapshot: ProjectMap): number {
+  const metadata = snapshot.fileIndex[path];
+  const entryIndex = snapshot.entryPoints.indexOf(path);
+  const flowOwnership = snapshot.flows.filter((flow) =>
+    flow.entryPoint === path || flow.steps.some((step) => step.file === path)
+  ).length;
+  const featureOwnership = snapshot.features.filter((feature) =>
+    feature.entryPoint === path || feature.entryPoints.includes(path)
+  ).length;
+  const commandBonus = metadata?.scope === "cli" ? 500 : 0;
+  const commandPathBonus = /(^|\/)commands?\//.test(path) ? 300 : 0;
+
+  return (entryIndex >= 0 ? 1_000_000 - entryIndex * 10_000 : 0)
+    + commandBonus
+    + commandPathBonus
+    + flowOwnership * 120
+    + featureOwnership * 100
+    + (metadata?.featureRefs.length ?? 0) * 40
+    + (metadata?.importance ?? 0);
 }
 
 function selectCriticalFiles(feature: FeatureInfo, snapshot: ProjectMap): string[] {
@@ -171,18 +197,36 @@ function selectCriticalFiles(feature: FeatureInfo, snapshot: ProjectMap): string
 }
 
 function createProjectSummary(snapshot: ProjectMap): string {
-  const stack = snapshot.project.framework === "unknown"
-    ? snapshot.project.language
-    : `${snapshot.project.framework} ${snapshot.project.language}`;
+  const language = formatLabel(snapshot.project.language);
+  const projectKind = describeProjectKind(snapshot);
   const featureNames = snapshot.features
     .filter((feature) => feature.confidence !== "low")
     .map((feature) => feature.name)
     .slice(0, 4);
   const featureText = featureNames.length > 0
-    ? ` Main concerns: ${featureNames.join(", ")}.`
+    ? ` Main capabilities: ${featureNames.join(", ")}.`
+    : "";
+  const description = snapshot.project.description?.trim();
+  const descriptionText = description
+    ? ` ${description.replace(/[.!?]+$/, "")}.`
     : "";
 
-  return `${snapshot.project.name} is a ${stack} project with ${snapshot.stats.relevantFiles} analyzed files.${featureText}`;
+  return `${snapshot.project.name} is a ${language} ${projectKind}.${descriptionText}${featureText}`;
+}
+
+function describeProjectKind(snapshot: ProjectMap): string {
+  const workspace = snapshot.project.workspaceType === "monorepo" ? "monorepo" : "project";
+  if (snapshot.project.projectType === "node-cli") return `${workspace} centered on a Node.js CLI`;
+  if (snapshot.project.projectType === "web-app") return `${workspace} containing a web application`;
+  if (snapshot.project.projectType === "api-service") return `${workspace} containing an API service`;
+  if (snapshot.project.projectType === "library") return `${workspace} containing a reusable library`;
+  return workspace;
+}
+
+function formatLabel(value: string): string {
+  if (value === "typescript") return "TypeScript";
+  if (value === "javascript") return "JavaScript";
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function featureId(name: string): string {

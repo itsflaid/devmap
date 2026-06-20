@@ -140,6 +140,19 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
     snapshot.changeImpact = {};
   }
 
+  if (isRecord(snapshot.project)) {
+    if (typeof snapshot.project.projectType !== "string") {
+      snapshot.project.projectType = snapshot.project.framework === "nextjs"
+        ? "web-app"
+        : snapshot.project.framework === "express"
+        ? "api-service"
+        : "unknown";
+    }
+    if (typeof snapshot.project.workspaceType !== "string") {
+      snapshot.project.workspaceType = "single-package";
+    }
+  }
+
   const fileIndex = snapshot.fileIndex as Record<string, Record<string, unknown>>;
   for (const entry of Object.values(fileIndex)) {
     if (typeof entry.analyzer !== "string") entry.analyzer = "heuristic";

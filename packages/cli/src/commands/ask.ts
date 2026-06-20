@@ -1,6 +1,10 @@
 import { buildQuestionContext } from "../ai/contextBuilder.js";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
-import { DEFAULT_AI_MODELS, GroqClient } from "../ai/groq.js";
+import {
+  DEFAULT_AI_FALLBACKS,
+  DEFAULT_AI_MODELS,
+  GroqClient
+} from "../ai/groq.js";
 import { buildAskMessages, buildQueryExpansionMessages } from "../ai/prompts.js";
 import type { AiClient } from "../ai/types.js";
 import { inspectSnapshot, isSnapshotStale } from "../cache/snapshot.js";
@@ -142,7 +146,7 @@ async function runAsk(
     const execution = await completeWithOptionalStreaming(client, {
       messages: buildAskMessages(context, snapshot.project),
       model,
-      fallbackModel: DEFAULT_AI_MODELS.fallback,
+      fallbackModels: DEFAULT_AI_FALLBACKS.ask,
       maxCompletionTokens: 1200,
       temperature: 0.2
     }, !dependencies.json, () => output.section("Answer"));
@@ -204,7 +208,7 @@ async function expandQuestionTerms(
     const result = await client.complete({
       messages: buildQueryExpansionMessages(question),
       model,
-      fallbackModel: DEFAULT_AI_MODELS.fallback,
+      fallbackModels: DEFAULT_AI_FALLBACKS.ask,
       maxCompletionTokens: 180,
       temperature: 0
     });

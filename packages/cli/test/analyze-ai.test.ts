@@ -3,7 +3,10 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { DEFAULT_AI_MODELS } from "../src/ai/groq.js";
+import {
+  DEFAULT_AI_FALLBACKS,
+  DEFAULT_AI_MODELS
+} from "../src/ai/groq.js";
 import type {
   AiClient,
   AiCompletionRequest,
@@ -228,8 +231,8 @@ test("analyze auto routing uses 20B normally and 120B for deep analysis", async 
     assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.analyze);
     assert.equal(requests[2]?.model, DEFAULT_AI_MODELS.deepAnalyze);
     assert.equal(requests[3]?.model, DEFAULT_AI_MODELS.deepAnalyze);
-    assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
-    assert.equal(requests[2]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
+    assert.deepEqual(requests[0]?.fallbackModels, DEFAULT_AI_FALLBACKS.analyze);
+    assert.deepEqual(requests[2]?.fallbackModels, DEFAULT_AI_FALLBACKS.deepAnalyze);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

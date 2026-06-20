@@ -139,6 +139,7 @@ devmap analyze --deep
 * Detect framework
 * Detect package manager
 * Detect language
+* Classify project type and workspace shape separately from framework
 * Detect routes
 * Detect API routes
 * Detect dependencies
@@ -156,6 +157,11 @@ devmap analyze --deep
 * Generate architecture overview
 * Generate `.devmap/index.json` and `.devmap/features/*.json` for agents
 * Save snapshot to `.devmap/snapshot.json`
+
+The lightweight index gives agents a concise project summary and a
+start-here-oriented `criticalFiles` list. Each feature map provides
+`sourcePriority` for reading order and behavioral `flow` steps when enough
+static evidence exists.
 
 ### Internal Flow
 
@@ -575,6 +581,17 @@ devmap config model auto
 * `ask` uses `llama-3.1-8b-instant`
 * `analyze` uses `openai/gpt-oss-20b`
 * `analyze --deep` uses `openai/gpt-oss-120b`
+
+Automatic routing also uses ordered fallback chains:
+
+* `ask`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `openai/gpt-oss-20b`
+* `analyze`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `llama-3.1-8b-instant`
+* `analyze --deep`: `llama-3.3-70b-versatile`, `qwen/qwen3.6-27b`, then `openai/gpt-oss-20b`
+
+DevMap advances after model-unavailable and transient provider responses. For
+rate limits, it first retries the current model three times with exponential
+backoff. Invalid API keys stop immediately instead of wasting requests on the
+rest of the chain.
 
 The command preserves the configured provider and API key. DevMap must be
 initialized before changing the model.

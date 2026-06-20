@@ -6,6 +6,8 @@ export type AiMessage = {
 export type AiCompletionRequest = {
   messages: AiMessage[];
   model: string;
+  fallbackModels?: readonly string[];
+  /** @deprecated Use fallbackModels for ordered multi-model failover. */
   fallbackModel?: string;
   maxCompletionTokens?: number;
   temperature?: number;

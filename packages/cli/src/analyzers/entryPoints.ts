@@ -5,7 +5,7 @@ const ENTRY_PATTERNS = [
   /(^|\/)page\.[jt]sx?$/,
   /(^|\/)layout\.[jt]sx?$/,
   /(^|\/)middleware\.[jt]s$/,
-  /(^|\/)(server|app|index|main)\.[cm]?[jt]s$/,
+  /(^|\/)(server|app|index|main)\.[cm]?[jt]sx?$/,
   /(^|\/)route\.[jt]s$/
 ];
 

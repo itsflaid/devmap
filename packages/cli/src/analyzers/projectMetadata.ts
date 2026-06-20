@@ -85,7 +85,9 @@ function detectProjectType(
   manifests: PackageManifest[]
 ): ProjectType {
   if (manifests.some((manifest) => manifest.bin)) return "node-cli";
-  if (framework === "nextjs" || hasDependency(manifests, "astro")) return "web-app";
+  if (["nextjs", "react"].includes(framework) || hasDependency(manifests, "astro")) {
+    return "web-app";
+  }
   if (framework === "express") return "api-service";
   if (manifests.some((manifest) => manifest.exports || manifest.main)) return "library";
   return "unknown";

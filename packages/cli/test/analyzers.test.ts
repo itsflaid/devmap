@@ -77,6 +77,76 @@ test("framework detector recognizes Next.js and Express fixtures", async () => {
   assert.equal(detectFramework(expressFiles), "express");
 });
 
+test("framework detector recognizes standalone React without downgrading Next.js", () => {
+  const reactFiles = [
+    createScannedFile("package.json", JSON.stringify({
+      dependencies: {
+        react: "^19.0.0",
+        "react-dom": "^19.0.0"
+      },
+      devDependencies: {
+        "@vitejs/plugin-react": "^5.0.0",
+        vite: "^7.0.0"
+      }
+    })),
+    createScannedFile(
+      "src/main.tsx",
+      'import { createRoot } from "react-dom/client";\ncreateRoot(document.body).render(<App />);\n'
+    ),
+    createScannedFile(
+      "src/app/Shell.tsx",
+      "export function Shell() { return <main />; }\n"
+    )
+  ];
+  const reactLibraryFiles = [
+    createScannedFile("package.json", JSON.stringify({
+      peerDependencies: { react: "^19.0.0" }
+    })),
+    createScannedFile("src/index.ts", "export const version = '1';\n")
+  ];
+
+  assert.equal(detectFramework(reactFiles), "react");
+  assert.equal(detectFramework(reactLibraryFiles), "unknown");
+});
+
+test("project map classifies a standalone React app and finds its browser entry", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-react-project-"));
+
+  try {
+    await mkdir(join(projectRoot, "src"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({
+      name: "react-fixture",
+      description: "A standalone React dashboard.",
+      dependencies: {
+        react: "^19.0.0",
+        "react-dom": "^19.0.0"
+      },
+      devDependencies: {
+        "@vitejs/plugin-react": "^5.0.0",
+        vite: "^7.0.0",
+        typescript: "^6.0.0"
+      }
+    }), "utf8");
+    await writeFile(
+      join(projectRoot, "src", "main.tsx"),
+      'import { createRoot } from "react-dom/client";\nimport { App } from "./App.js";\ncreateRoot(document.body).render(<App />);\n',
+      "utf8"
+    );
+    await writeFile(
+      join(projectRoot, "src", "App.tsx"),
+      "export function App() { return <main>Dashboard</main>; }\n",
+      "utf8"
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    assert.equal(projectMap.framework, "react");
+    assert.equal(projectMap.project.projectType, "web-app");
+    assert.ok(projectMap.entryPoints.includes("src/main.tsx"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("dependency graph resolves TypeScript imports using .js specifiers", async () => {
   const files = await scanFiles(nextFixture);
   const graph = buildDependencyGraph(files);

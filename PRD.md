@@ -306,6 +306,7 @@ Run static analysis, generate project snapshot, and output a readable project ov
 
 - Next.js
 - Express
+- React
 
 **Responsibilities:**
 
@@ -1330,7 +1331,7 @@ Landing page/web can be added later under `apps/web`, but must not distract from
 
 | Risk | Mitigation |
 |---|---|
-| Static analysis inaccurate on unconventional projects | Limit MVP to Next.js + Express only |
+| Static analysis inaccurate on unconventional projects | Keep MVP detection scoped to tested Next.js, Express, and standalone React signals |
 | User frustrated by API key setup | `devmap init` wizard is fully guided |
 | AI output misleading | Frame output as overview, not absolute ground truth |
 | Windows / Mac / Linux inconsistency | Test with GitHub Actions matrix |

@@ -4,6 +4,18 @@ Terakhir diperbarui: 2026-06-20
 
 ## Update 2026-06-20
 
+### Standalone React Detection
+
+- Framework detector sekarang mengenali standalone React dari dependency
+  `react`, browser runtime/tooling, dan bukti JSX/TSX source.
+- Next.js tetap memiliki precedence karena Next juga memakai React.
+- Folder generik `src/app/` tidak lagi otomatis dianggap Next.js; fallback
+  source membutuhkan `app/page`, `app/layout`, `app/route`, atau Next config.
+- React peer dependency tanpa runtime app tidak diklasifikasikan sebagai
+  framework React, sehingga component library tidak menjadi false positive.
+- Entry detector sekarang mengenali `main.tsx` sebagai browser entry point.
+- Packed-package E2E mencakup fixture React selain Next.js dan Express.
+
 ### Project Classification Dan Start-Here Ranking
 
 - Agent index sekarang memisahkan `framework`, `projectType`, dan

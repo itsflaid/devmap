@@ -52,8 +52,9 @@ try {
   const tarballPath = join(artifactsDirectory, tarballName);
   await verifyProject("nextjs-project", "nextjs");
   await verifyProject("express-project", "express");
+  await verifyProject("react-project", "react");
 
-  console.log("Packed CLI E2E passed for Next.js and Express fixtures.");
+  console.log("Packed CLI E2E passed for Next.js, Express, and React fixtures.");
 
   async function verifyProject(fixtureName, expectedFramework) {
     const projectRoot = join(temporaryRoot, fixtureName);

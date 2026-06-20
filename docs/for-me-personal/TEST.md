@@ -436,6 +436,7 @@ Fixture aman digunakan karena tidak mengubah project pribadi:
 ```powershell
 pnpm dev:cli -- analyze packages/cli/test/fixtures/nextjs-project --fresh
 pnpm dev:cli -- analyze packages/cli/test/fixtures/express-project --fresh
+pnpm dev:cli -- analyze packages/cli/test/fixtures/react-project --fresh
 ```
 
 Hasil penting Next.js:
@@ -448,6 +449,14 @@ Hasil penting Next.js:
 Hasil penting Express:
 
 - framework `express`;
+
+Expected React fixture:
+
+- framework `react`;
+- project type `web-app`;
+- entry point `src/main.tsx`;
+- tidak menghasilkan route palsu hanya karena memakai React;
+- package dengan React peer dependency saja tetap `unknown`.
 - entry point `src/server.ts`;
 - route payment dan Stripe terdeteksi.
 

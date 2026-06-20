@@ -105,7 +105,7 @@ The snapshot contains:
 
 - `version` and `generatedAt`
 - `fingerprint` for stale snapshot detection
-- project name, root, framework, language, and package manager
+- project name, root, framework, project/workspace type, language, and package manager
 - file and line statistics
 - entry points and scored critical files with reasons
 - page routes and API routes

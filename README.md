@@ -229,6 +229,7 @@ Use your preferred AI tool to change it.
 * Next.js
 * Node.js
 * Express
+* React
 
 ### Planned
 
@@ -237,6 +238,9 @@ Use your preferred AI tool to change it.
 * Nuxt.js
 * Php - Laravel
 * All JS/TS ecosystem
+* NestJS
+* Laravel
+* Nuxt
 
 ---
 

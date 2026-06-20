@@ -2,7 +2,7 @@
   <img src="./logo-devmap.png" alt="DevMap Logo" width="180" />
 </p>
 
-<h1 align="center">devmap</h1>
+<h1 align="center">DevMap</h1>
 
 <p align="center">
   Understand Any Codebase — For Developers and AI Agents
@@ -13,16 +13,10 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
-  </a>
-  <a href="https://www.npmjs.com/package/devmap">
-    <img src="https://img.shields.io/npm/v/devmap" alt="npm version" />
-  </a>
-  <a href="https://www.npmjs.com/package/devmap">
-    <img src="https://img.shields.io/npm/dm/devmap" alt="downloads" />
-  </a>
-  <img src="https://img.shields.io/badge/node-%3E%3D18-green" alt="Node.js" />
+  <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
+  <img src="https://img.shields.io/github/license/itsflaid/devmap?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=flat-square" alt="Node.js" />
+  <img src="https://img.shields.io/badge/status-MVP-2EE6D6?style=flat-square" alt="Status" />
 </p>
 
 

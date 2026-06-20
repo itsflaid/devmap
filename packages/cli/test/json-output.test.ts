@@ -11,6 +11,7 @@ import { askCommand } from "../src/commands/ask.js";
 import { configModelCommand } from "../src/commands/config.js";
 import { doctorCommand } from "../src/commands/doctor.js";
 import { initCommand } from "../src/commands/init.js";
+import { onboardingCommand } from "../src/commands/onboarding.js";
 
 test("analyze --json emits one parseable snapshot document", async () => {
   const projectRoot = await createProject("json-analyze");
@@ -119,6 +120,34 @@ test("doctor and config JSON outputs contain no formatting noise", async () => {
     assert.equal(parseSingleJson(doctorOutput).status, "issues");
     assert.equal(parseSingleJson(configOutput).model, "openai/gpt-oss-120b");
     assert.equal(savedModel, "openai/gpt-oss-120b");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("onboarding --json emits guide metadata and markdown", async () => {
+  const projectRoot = await createProject("json-onboarding");
+  await saveSnapshot(projectRoot, await createProjectMap(projectRoot));
+
+  try {
+    const output = await captureStdout(() => onboardingCommand({
+      json: true,
+      projectRoot
+    }));
+    const payload = parseSingleJson(output);
+
+    assert.equal(payload.status, "ok");
+    assert.equal(payload.language, "en");
+    assert.equal(payload.project.name, "json-onboarding");
+    assert.equal(payload.overview, null);
+    assert.equal(payload.snapshot.stale, false);
+    assert.equal(payload.agentInstructions.navigationPolicy, "snapshot-first");
+    assert.ok(Array.isArray(payload.entryPoints));
+    assert.ok(Array.isArray(payload.criticalFiles));
+    assert.ok(Array.isArray(payload.externalServices));
+    assert.ok(Array.isArray(payload.recommendedPath));
+    assert.match(payload.markdown, /# Onboarding Project/);
+    assert.match(payload.markdown, /## What This Project Does/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

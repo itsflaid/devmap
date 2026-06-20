@@ -105,6 +105,7 @@ snapshot.json
 | `DEVMAP.md`             | DevMap instructions  |
 | `AGENTS.md`             | AI agent entry point |
 | `.devmap/snapshot.json` | Core project context |
+| `ONBOARDING.md`         | Optional onboarding guide |
 
 The snapshot is the primary output of DevMap.
 
@@ -136,6 +137,11 @@ devmap analyze
 # Verify your setup
 devmap doctor
 
+# Generate a reading guide from the snapshot
+devmap onboarding
+devmap onboarding --write
+devmap onboarding --write --language id
+
 # Ask questions about your codebase
 devmap ask "explain the main architecture"
 devmap ask "where is the auth logic?"
@@ -143,6 +149,7 @@ devmap ask "what external services does this use?"
 
 # Machine-readable output for AI agents and scripts
 devmap ask "where is the auth logic?" --json
+devmap onboarding --json
 ```
 
 ---
@@ -295,19 +302,19 @@ Node.js 18+
 * [x] `devmap init`
 * [x] `devmap analyze`
 * [x] `devmap ask`
+* [x] `devmap onboarding`
 * [x] `devmap doctor`
 
 ### Next
 
-* [ ] `devmap onboard`
 * [ ] `devmap features`
+* [ ] `devmap flow`
 * [ ] OpenAI provider
 * [ ] Gemini provider
 
 ### Later
 
 * [ ] `devmap explain`
-* [ ] `devmap flow`
 * [ ] `devmap docs`
 * [ ] Local AI mode
 * [ ] VS Code Extension

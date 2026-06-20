@@ -618,7 +618,7 @@ DevMap automatically detects the language used by the user.
 
 - `devmap ask`
 - `devmap explain` *(future)*
-- `devmap onboard` *(future)*
+- `devmap onboarding`
 - `devmap docs` *(future)*
 
 ### CLI Metadata
@@ -1072,7 +1072,7 @@ Future CI should test:
 
 | Command | Phase | Priority |
 |---|---|---|
-| `devmap onboard` | Phase 3 | High |
+| `devmap onboarding` | MVP 0.1.0 candidate | High |
 | `devmap docs` | Phase 3 | Medium |
 | `devmap flow` | Phase 4 | Medium |
 | `devmap trace` | Phase 4 | Medium |
@@ -1083,7 +1083,7 @@ Future CI should test:
 
 ---
 
-### `devmap onboard` *(Phase 3 — High Priority)*
+### `devmap onboarding` *(MVP 0.1.0 Candidate)*
 
 Purpose: developer productivity accelerator.
 
@@ -1120,7 +1120,8 @@ docs/
 ```
 
 `devmap docs` generates documentation artifacts.  
-`devmap onboard` generates a learning/productivity guide.
+`devmap onboarding` generates a learning/productivity guide from the current
+snapshot. `devmap onboard` remains a shorthand alias.
 
 These are related but not the same.
 

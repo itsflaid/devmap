@@ -7,6 +7,7 @@ Packaged-command verification should include machine-readable output:
 ```bash
 devmap analyze --json
 devmap ask "where is the main entry point?" --json
+devmap onboarding --json
 devmap doctor --json
 ```
 
@@ -29,6 +30,8 @@ With a live Groq key, run:
 devmap analyze --fresh
 devmap ask "explain the main architecture"
 devmap ask "explain the main architecture" --json
+devmap onboarding
+devmap onboarding --write
 ```
 
 Human output should appear progressively without raw Markdown markers. JSON

@@ -71,7 +71,12 @@ function selectEligibleFiles(snapshot: ProjectMap): FilePurposeInput[] {
     .filter(([path, file]) =>
       file.scope !== "test"
       && file.scope !== "docs"
-      && (criticalPaths.has(path) || file.importance >= 20)
+      && (
+        criticalPaths.has(path)
+        || file.importance >= 20
+        || file.featureRefs.length > 0
+        || isSemanticEnrichmentCandidate(path, file)
+      )
     )
     .map(([path, file]) => ({
       path,
@@ -91,7 +96,9 @@ function buildFilePurposeMessages(files: FilePurposeInput[]): AiMessage[] {
         "You summarize codebase files for a compact DevMap snapshot.",
         "Return a JSON array only.",
         "Each item must have path, purpose, and searchTerms.",
-        "purpose must be one sentence maximum and describe what the file does.",
+        "purpose must be one sentence maximum.",
+        "Use this purpose shape when possible: '[what this file exports] used by [what consumes it] to [accomplish what]'.",
+        "Prefer specific semantics such as auth provider config, middleware guard, session provider, route handler, or UI consumer.",
         "searchTerms must be max 8 concrete retrieval terms.",
         "Avoid vague terms: data, logic, handler, service, feature, app, page.",
         "Do not invent files, frameworks, or behavior not supported by the input."
@@ -102,6 +109,15 @@ function buildFilePurposeMessages(files: FilePurposeInput[]): AiMessage[] {
       content: JSON.stringify(files, null, 2)
     }
   ];
+}
+
+function isSemanticEnrichmentCandidate(path: string, file: ProjectMap["fileIndex"][string]): boolean {
+  const normalizedPath = path.toLowerCase();
+  const text = `${normalizedPath} ${file.exportedSymbols.join(" ")} ${file.imports.join(" ")}`.toLowerCase();
+
+  return /(^|\/)(src\/)?(auth|proxy|middleware)\.[cm]?[jt]sx?$/.test(normalizedPath)
+    || /providers?\.[cm]?[jt]sx?$/.test(normalizedPath) && text.includes("next-auth")
+    || /(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalizedPath) && /\b(signout|usesession|sessionprovider)\b/.test(text);
 }
 
 function buildFeatureTermsMessages(snapshot: ProjectMap): AiMessage[] {

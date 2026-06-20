@@ -15,6 +15,51 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Onboarding Command
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/onboarding-command.test.ts test/json-output.test.ts
+```
+
+Manual source-mode check dari root DevMap:
+
+```powershell
+$root = (Get-Location).Path
+pnpm dev:cli analyze "$root"
+pnpm dev:cli onboarding "$root"
+pnpm dev:cli onboarding "$root" --json
+pnpm dev:cli onboarding "$root" --write
+pnpm dev:cli onboarding "$root" --write --language id
+```
+
+Catatan: `pnpm dev:cli` memakai `pnpm --filter devmap`, sehingga command
+source-mode berjalan dari `packages/cli`. Untuk mengetes root workspace DevMap,
+selalu kirim path target eksplisit seperti contoh di atas.
+
+Expected result:
+
+- `devmap onboarding` membaca `.devmap/snapshot.json` yang sudah ada.
+- Jika snapshot belum ada atau stale, jalankan `pnpm dev:cli analyze` dulu.
+- Jika snapshot stale, human output memberi warning dan JSON berisi
+  `snapshot.stale: true`.
+- JSON output menyertakan `agentInstructions` agar agent mengikuti policy
+  snapshot-first.
+- Human output berfokus sebagai guide pemahaman, bukan file index: What This
+  Project Does, Mental Model, Main Concepts, Important Areas to Understand, Key
+  Flows, dan Where to Start.
+- Setiap file penting dalam reading area menyertakan `Purpose` dan
+  `Why read this`, bukan score/import count/export list mentah.
+- Entry point kosong di feature/flow tidak boleh ditampilkan sebagai
+  `not inferred yet`; field tersebut cukup dihilangkan.
+- `--json` menghasilkan satu dokumen JSON tanpa ANSI atau dekorasi terminal.
+- `--write` membuat atau memperbarui `ONBOARDING.md` di root project target.
+- Di terminal interaktif, `--write` menanyakan bahasa onboarding jika
+  `--language` belum diberikan. Default bahasa tetap English.
+- `--language en` dan `--language id` melewati prompt, cocok untuk automation
+  dan agent.
+
 ## Context Builder Ranking
 
 Jalankan focused test ranking dan evaluation:

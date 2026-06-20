@@ -41,8 +41,9 @@ adding AI on top. If the foundation is wrong, AI output will be wrong too.
 - Stale snapshot detection + user prompt
 - All error scenarios handled (no raw stack traces)
 
-**Deliverable:** `devmap analyze` with AI interpretation.
-`devmap ask` with context-aware answers.
+**Deliverable:** `devmap analyze` with AI interpretation,
+`devmap ask` with context-aware answers, and `devmap onboarding` for a
+snapshot-based reading guide when the output is stable enough for `0.1.0`.
 
 ---
 
@@ -51,7 +52,8 @@ adding AI on top. If the foundation is wrong, AI output will be wrong too.
 
 **Tasks:**
 - `devmap docs` — generate structured markdown docs folder
-- `devmap onboard` — generate onboarding guide with reading order
+- Expand `devmap onboarding` beyond the MVP guide when richer snapshot fields
+  are available
 
 **Deliverable:**
 ```
@@ -118,6 +120,6 @@ Not planned. Not scheduled. Revisit when Phase 5 ships.
 | 1.0.0 | 2 | Stable `devmap analyze` + `devmap ask` release |
 | 1.1.0 | 2 | Performance improvements, cache optimization |
 | 1.2.0 | 2 | Express support solidified |
-| 2.0.0 | 3 | `devmap docs` + `devmap onboard` |
+| 2.0.0 | 3 | `devmap docs` + expanded onboarding |
 | 3.0.0 | 4 | `devmap deadcode` + `devmap flow` + `devmap report` |
 | 4.0.0 | 5 | OpenAI + Gemini support |

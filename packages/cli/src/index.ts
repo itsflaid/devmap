@@ -5,6 +5,7 @@ import { askCommand } from "./commands/ask.js";
 import { configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
+import { onboardingCommand } from "./commands/onboarding.js";
 import { printHelp } from "./utils/help.js";
 import { printWelcome } from "./utils/welcome.js";
 import { runSafely } from "./utils/errors.js";
@@ -38,6 +39,21 @@ program
   .argument("<question...>", "question to ask")
   .option("--json", "output machine-readable JSON")
   .action((question, options) => askCommand(question, { json: options.json }));
+
+program
+  .command("onboarding")
+  .alias("onboard")
+  .description("Generate a project onboarding guide from the DevMap snapshot")
+  .argument("[target]", "folder with a DevMap snapshot", ".")
+  .option("--write", "write ONBOARDING.md")
+  .option("--language <language>", "language for generated onboarding markdown (en or id)")
+  .option("--json", "output machine-readable JSON")
+  .action((target, options) => onboardingCommand({
+    target,
+    language: options.language,
+    write: options.write,
+    json: options.json
+  }));
 
 const configCommand = program
   .command("config")

@@ -20,6 +20,24 @@ export const DEFAULT_AI_MODELS = {
   fallback: "openai/gpt-oss-20b"
 } as const;
 
+export const DEFAULT_AI_FALLBACKS = {
+  ask: [
+    "qwen/qwen3.6-27b",
+    "llama-3.3-70b-versatile",
+    "openai/gpt-oss-20b"
+  ],
+  analyze: [
+    "qwen/qwen3.6-27b",
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant"
+  ],
+  deepAnalyze: [
+    "llama-3.3-70b-versatile",
+    "qwen/qwen3.6-27b",
+    "openai/gpt-oss-20b"
+  ]
+} as const;
+
 export type GroqClientDependencies = {
   fetch?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
@@ -43,60 +61,42 @@ export class GroqClient implements AiClient {
   }
 
   async complete(request: AiCompletionRequest): Promise<AiCompletionResult> {
-    const primaryResult = await this.requestModel(request, request.model);
+    let lastError: DevmapError | undefined;
 
-    if (primaryResult.ok) {
-      return primaryResult.result;
-    }
-
-    if (
-      primaryResult.modelUnavailable
-      && request.fallbackModel
-      && request.fallbackModel !== request.model
-    ) {
-      const fallbackResult = await this.requestModel(request, request.fallbackModel);
-      if (fallbackResult.ok) {
-        return fallbackResult.result;
+    for (const model of resolveModelChain(request)) {
+      const result = await this.requestModel(request, model);
+      if (result.ok) {
+        return result.result;
       }
 
-      throw fallbackResult.error;
+      lastError = result.error;
+      if (!result.canFallback) {
+        throw result.error;
+      }
     }
 
-    throw primaryResult.error;
+    throw lastError ?? new DevmapError("No Groq model was configured.");
   }
 
   async stream(
     request: AiCompletionRequest,
     onDelta: AiDeltaHandler
   ): Promise<AiCompletionResult> {
-    const primaryResult = await this.requestModelStream(
-      request,
-      request.model,
-      onDelta
-    );
+    let lastError: DevmapError | undefined;
 
-    if (primaryResult.ok) {
-      return primaryResult.result;
-    }
-
-    if (
-      primaryResult.modelUnavailable
-      && request.fallbackModel
-      && request.fallbackModel !== request.model
-    ) {
-      const fallbackResult = await this.requestModelStream(
-        request,
-        request.fallbackModel,
-        onDelta
-      );
-      if (fallbackResult.ok) {
-        return fallbackResult.result;
+    for (const model of resolveModelChain(request)) {
+      const result = await this.requestModelStream(request, model, onDelta);
+      if (result.ok) {
+        return result.result;
       }
 
-      throw fallbackResult.error;
+      lastError = result.error;
+      if (!result.canFallback) {
+        throw result.error;
+      }
     }
 
-    throw primaryResult.error;
+    throw lastError ?? new DevmapError("No Groq model was configured.");
   }
 
   private async requestModel(
@@ -282,13 +282,13 @@ type GroqStreamPayload = {
 
 type GroqRequestResult =
   | { ok: true; result: AiCompletionResult }
-  | { ok: false; modelUnavailable: boolean; error: DevmapError };
+  | { ok: false; canFallback: boolean; error: DevmapError };
 
 async function readFailedRequest(response: Response): Promise<GroqRequestResult> {
   const providerMessage = await readProviderError(response);
   return {
     ok: false,
-    modelUnavailable: isModelUnavailable(response.status, providerMessage),
+    canFallback: shouldTryFallback(response.status, providerMessage),
     error: mapGroqError(response.status, providerMessage)
   };
 }
@@ -296,7 +296,7 @@ async function readFailedRequest(response: Response): Promise<GroqRequestResult>
 function emptyResponseResult(): GroqRequestResult {
   return {
     ok: false,
-    modelUnavailable: false,
+    canFallback: false,
     error: new DevmapError(
       "Groq returned an empty response.",
       "Try the question again or run devmap doctor."
@@ -459,14 +459,24 @@ function mapGroqError(status: number, providerMessage: string): DevmapError {
   );
 }
 
-function isModelUnavailable(status: number, message: string): boolean {
-  return (
-    status === 404
+function shouldTryFallback(status: number, message: string): boolean {
+  return status === 429
+    || status >= 500
     || (
-      status === 400
-      && /model|decommissioned|not available|not found|permission/i.test(message)
-    )
-  );
+      status === 404
+      || (
+        status === 400
+        && /model|decommissioned|not available|not found|permission/i.test(message)
+      )
+    );
+}
+
+function resolveModelChain(request: AiCompletionRequest): string[] {
+  return Array.from(new Set([
+    request.model,
+    ...(request.fallbackModels ?? []),
+    ...(request.fallbackModel ? [request.fallbackModel] : [])
+  ].filter((model) => model.trim().length > 0)));
 }
 
 function readRetryDelay(response: Response): number {

@@ -3,7 +3,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { DEFAULT_AI_MODELS } from "../src/ai/groq.js";
+import {
+  DEFAULT_AI_FALLBACKS,
+  DEFAULT_AI_MODELS
+} from "../src/ai/groq.js";
 import type {
   AiClient,
   AiCompletionRequest,
@@ -55,7 +58,7 @@ test("ask command uses configured AI client and prints token usage", async () =>
 
     assert.equal(requests.length, 1);
     assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.ask);
-    assert.equal(requests[0]?.fallbackModel, DEFAULT_AI_MODELS.fallback);
+    assert.deepEqual(requests[0]?.fallbackModels, DEFAULT_AI_FALLBACKS.ask);
     assert.match(requests[0]?.messages[1]?.content ?? "", /EXPANDED_TERMS: none/);
     assert.match(requests[0]?.messages[1]?.content ?? "", /auth\.ts/);
     const plainLogs = stripAnsi(logs);

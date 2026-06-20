@@ -4,6 +4,37 @@ Terakhir diperbarui: 2026-06-20
 
 ## Update 2026-06-20
 
+### Project Classification Dan Start-Here Ranking
+
+- Agent index sekarang memisahkan `framework`, `projectType`, dan
+  `workspaceType`; DevMap terdeteksi sebagai TypeScript `node-cli` monorepo
+  tanpa memalsukan framework baru.
+- Package manifest utama dipilih berdasarkan bentuk project, sehingga summary
+  CLI memakai description package CLI dan bukan statistik jumlah file.
+- Deteksi language memakai dominasi source agar sedikit file config JS tidak
+  mengubah TypeScript codebase menjadi `mixed`.
+- `criticalFiles` index memprioritaskan executable entry point, CLI
+  orchestrator, flow owner, dan feature owner sebelum importance/import count.
+- Fresh static validation menghasilkan urutan `index.ts`, `analyze.ts`, lalu
+  `projectMap.ts`; `groq.ts` tidak lagi mendahului analysis flow utama.
+- `sourcePriority` dan behavioral flow dipertahankan; keduanya sudah tersedia
+  sebelum perubahan ini dan kini memiliki regression coverage bersama.
+
+### Ordered Groq Model Fallback
+
+- Mengganti single fallback dengan chain berbeda untuk `ask`, `analyze`, dan
+  `analyze --deep`.
+- Chain memakai model Groq aktif dari Qwen, Llama Versatile, GPT-OSS, dan
+  Llama Instant sesuai kebutuhan command.
+- HTTP 429 tetap mendapat tiga exponential-backoff retry pada model aktif,
+  lalu berpindah ke model berikutnya jika limit belum pulih.
+- Model unavailable dan HTTP 5xx dapat berpindah model; error API key atau
+  request invalid berhenti langsung.
+- Resolver menghapus model duplikat dan tetap mendukung field legacy
+  `fallbackModel` untuk kompatibilitas client.
+- Model list diverifikasi melalui endpoint Groq akun development pada
+  2026-06-20 tanpa mencetak atau menyimpan API key.
+
 ### AST Analyzer Dan Agent Navigation
 
 - Menambahkan analyzer registry dengan output `FileAnalysis` yang konsisten.

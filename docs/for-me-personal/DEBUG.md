@@ -999,3 +999,43 @@ serta Web Landing tanpa Authentication.
 
 Kata teknis di prompt, docs, dan detector source bukan bukti capability runtime.
 Feature attribution harus bertumpu pada struktur kode dan ownership file.
+
+---
+
+## 15. Single Groq Fallback Gagal Saat Model Kedua Terbatas
+
+**Tanggal:** 2026-06-20
+
+**Status:** Selesai.
+
+### Gejala
+
+Semua command hanya memiliki satu fallback `openai/gpt-oss-20b`. Jika primary
+dan fallback sama-sama unavailable atau terkena rate limit, DevMap langsung
+jatuh ke static output walaupun model Groq lain masih aktif.
+
+### Akar Masalah
+
+`AiCompletionRequest` hanya membawa `fallbackModel` tunggal dan `GroqClient`
+hanya mencoba fallback untuk model-unavailable. HTTP 429 yang tetap gagal
+setelah tiga retry tidak dapat berpindah model.
+
+### Solusi
+
+- Tambahkan ordered `fallbackModels` sambil mempertahankan field tunggal lama.
+- Gunakan chain berbeda untuk kebutuhan ringan, standard, dan deep analysis.
+- Izinkan failover setelah 429 retries, model-unavailable, dan HTTP 5xx.
+- Hentikan chain untuk credential dan request errors.
+- Deduplikasi primary dan fallback sebelum request dikirim.
+
+### Verifikasi
+
+Endpoint model Groq akun development mengonfirmasi seluruh model pada chain
+aktif pada 2026-06-20. Unit test mencakup completion, streaming, rate-limit
+exhaustion, deduplication, dan credential failure tanpa mengekspos API key.
+
+### Pelajaran
+
+Fallback model harus berupa strategi berurutan per workload, bukan satu model
+global. Namun error yang tidak mungkin pulih lewat pergantian model tidak boleh
+memicu request tambahan.

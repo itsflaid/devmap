@@ -511,6 +511,19 @@ Preferred reading order:
 The index must remain short and must not duplicate full dependency or change
 impact data.
 
+The index project header includes separate `framework`, `projectType`, and
+`workspaceType` fields. Framework remains a detected framework such as Next.js
+or Express; project type describes the primary shape such as `node-cli`,
+`web-app`, `api-service`, or `library`; workspace type distinguishes a
+monorepo from a single package. Its deterministic summary uses package
+description and detected capabilities instead of file-count filler.
+
+`criticalFiles` is a start-here list, not an import-count leaderboard. It
+prioritizes executable entry points, CLI/feature orchestrators, and files that
+own detected flows before dependency popularity. Feature maps expose an
+ordered `sourcePriority`, while `flow` describes system actions rather than a
+second file list.
+
 ---
 
 ### `.devmap/snapshot.json`
@@ -602,13 +615,20 @@ ai/
 | `ask` | `llama-3.1-8b-instant` | Fast model for focused codebase questions |
 | `analyze` | `openai/gpt-oss-20b` | Balanced architecture interpretation |
 | `analyze --deep` | `openai/gpt-oss-120b` | Heavy cross-module reasoning |
-| Fallback | `openai/gpt-oss-20b` | Production fallback when a different primary model is unavailable |
+| `ask` fallbacks | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `openai/gpt-oss-20b` | Preserve responsiveness while increasing reasoning capacity only when needed |
+| `analyze` fallbacks | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `llama-3.1-8b-instant` | Keep snapshot enrichment available across model-specific limits |
+| `analyze --deep` fallbacks | `llama-3.3-70b-versatile` -> `qwen/qwen3.6-27b` -> `openai/gpt-oss-20b` | Degrade heavy reasoning gradually instead of failing immediately |
 
-If a model becomes unavailable, DevMap gracefully falls back. No raw provider errors shown to users.
+DevMap retries a rate-limited model up to three times, then advances through
+the command-specific chain. It also advances when a model is unavailable or
+returns a transient provider error. Authentication and malformed-request
+errors stop immediately. Duplicate model IDs are removed, including when a
+user-configured primary model also appears in the fallback chain. No raw
+provider errors are shown to users.
 
 Model availability changes over time. Before changing the default routing,
-verify the current Groq production model list. Preview models must not be used
-as the default for a public DevMap release.
+verify the current Groq model list and lifecycle status. Preview models must
+not be used as a primary default for a public DevMap release.
 
 ### User API Key Principle
 

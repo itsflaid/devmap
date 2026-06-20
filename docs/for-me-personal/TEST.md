@@ -52,6 +52,16 @@ Expected:
   `Follow dependency` atau salinan daftar feature files;
 - `index.json.criticalFiles` dimulai dari executable/feature entry points dan
   tidak mempromosikan type-only hub hanya karena import count;
+- project header DevMap berisi `projectType: node-cli`,
+  `workspaceType: monorepo`, dan language `typescript`, sementara framework
+  tetap `unknown` karena CLI bukan framework;
+- summary menjelaskan TypeScript monorepo, Node.js CLI, package description,
+  dan capabilities tanpa file-count filler;
+- tiga critical file pertama untuk DevMap adalah `packages/cli/src/index.ts`,
+  `packages/cli/src/commands/analyze.ts`, dan
+  `packages/cli/src/analyzers/projectMap.ts`;
+- feature map Analysis Engine memulai `sourcePriority` dari `projectMap.ts`
+  dan flow menjelaskan scan/analyze/build behavior tanpa `Follow dependency`;
 - DevMap sendiri tidak mendeteksi Authentication dari README, prompt example,
   onboarding text, atau landing page;
 - feature anchor DevMap mengarah ke `projectMap.ts`, `analyze.ts`, dan landing
@@ -194,7 +204,19 @@ Expected automatic routing:
 - `ask`: `llama-3.1-8b-instant`
 - `analyze`: `openai/gpt-oss-20b`
 - `analyze --deep`: `openai/gpt-oss-120b`
-- fallback: `openai/gpt-oss-20b`
+- `ask` fallback: Qwen 3.6 27B -> Llama 70B Versatile -> GPT-OSS 20B
+- `analyze` fallback: Qwen 3.6 27B -> Llama 70B Versatile -> Llama 8B Instant
+- deep fallback: Llama 70B Versatile -> Qwen 3.6 27B -> GPT-OSS 20B
+
+Automated expectations:
+
+- unavailable model immediately advances to the next unique model;
+- HTTP 429 performs three retries with delays `1000`, `2000`, and `4000` ms,
+  then advances to the next model;
+- HTTP 401/403 stops without trying fallback models;
+- regular completion and streaming use the same ordered chain;
+- a custom configured primary remains first and duplicate fallback IDs are
+  removed.
 
 Manual override:
 

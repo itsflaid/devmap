@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
+  DEFAULT_AI_FALLBACKS,
   DEFAULT_AI_MODELS,
   GroqClient,
   type GroqClientDependencies
@@ -188,6 +189,169 @@ test("Groq client falls back when the primary model is unavailable", async () =>
   ]);
   assert.equal(result.content, "Fallback answer.");
   assert.equal(result.model, DEFAULT_AI_MODELS.fallback);
+});
+
+test("Groq client follows an ordered fallback chain after unavailable and rate-limited models", async () => {
+  const requestedModels: string[] = [];
+  const delays: number[] = [];
+  const [qwenModel, versatileModel] = DEFAULT_AI_FALLBACKS.ask;
+  const client = new GroqClient("gsk_test", {
+    fetch: async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { model: string };
+      requestedModels.push(body.model);
+
+      if (body.model === DEFAULT_AI_MODELS.ask) {
+        return jsonResponse(
+          { error: { message: "The model is not available." } },
+          404
+        );
+      }
+
+      if (body.model === qwenModel) {
+        return jsonResponse(
+          { error: { message: "Rate limit reached." } },
+          429
+        );
+      }
+
+      return jsonResponse({
+        model: versatileModel,
+        choices: [{ message: { content: "Recovered on the next model." } }]
+      });
+    },
+    sleep: async (milliseconds) => {
+      delays.push(milliseconds);
+    }
+  });
+
+  const result = await client.complete({
+    messages: [{ role: "user", content: "Explain auth." }],
+    model: DEFAULT_AI_MODELS.ask,
+    fallbackModels: DEFAULT_AI_FALLBACKS.ask
+  });
+
+  assert.deepEqual(requestedModels, [
+    DEFAULT_AI_MODELS.ask,
+    qwenModel,
+    qwenModel,
+    qwenModel,
+    qwenModel,
+    versatileModel
+  ]);
+  assert.deepEqual(delays, [1000, 2000, 4000]);
+  assert.equal(result.content, "Recovered on the next model.");
+  assert.equal(result.model, versatileModel);
+});
+
+test("Groq client removes duplicate models from the fallback chain", async () => {
+  const requestedModels: string[] = [];
+  const client = new GroqClient("gsk_test", {
+    fetch: async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as { model: string };
+      requestedModels.push(body.model);
+
+      if (body.model === DEFAULT_AI_MODELS.ask) {
+        return jsonResponse(
+          { error: { message: "The model is not available." } },
+          404
+        );
+      }
+
+      return jsonResponse({
+        model: DEFAULT_AI_MODELS.fallback,
+        choices: [{ message: { content: "Fallback answer." } }]
+      });
+    }
+  });
+
+  await client.complete({
+    messages: [{ role: "user", content: "Explain auth." }],
+    model: DEFAULT_AI_MODELS.ask,
+    fallbackModels: [
+      DEFAULT_AI_MODELS.ask,
+      DEFAULT_AI_MODELS.fallback,
+      DEFAULT_AI_MODELS.fallback
+    ],
+    fallbackModel: DEFAULT_AI_MODELS.fallback
+  });
+
+  assert.deepEqual(requestedModels, [
+    DEFAULT_AI_MODELS.ask,
+    DEFAULT_AI_MODELS.fallback
+  ]);
+});
+
+test("Groq streaming follows the fallback chain before emitting deltas", async () => {
+  const requestedModels: string[] = [];
+  const deltas: string[] = [];
+  const fallbackModel = DEFAULT_AI_FALLBACKS.ask[0];
+  const encoder = new TextEncoder();
+  const client = new GroqClient("gsk_test", {
+    fetch: async (_url, init) => {
+      const body = JSON.parse(String(init?.body)) as {
+        model: string;
+        stream?: boolean;
+      };
+      requestedModels.push(body.model);
+      assert.equal(body.stream, true);
+
+      if (body.model === DEFAULT_AI_MODELS.ask) {
+        return jsonResponse(
+          { error: { message: "The model is not available." } },
+          404
+        );
+      }
+
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(
+            `data: {"model":"${fallbackModel}","choices":[{"delta":{"content":"Fallback stream."}}]}\n\n`
+          ));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        }
+      }), {
+        headers: { "content-type": "text/event-stream" }
+      });
+    }
+  });
+
+  const result = await client.stream({
+    messages: [{ role: "user", content: "Explain auth." }],
+    model: DEFAULT_AI_MODELS.ask,
+    fallbackModels: DEFAULT_AI_FALLBACKS.ask
+  }, (delta) => {
+    deltas.push(delta);
+  });
+
+  assert.deepEqual(requestedModels, [DEFAULT_AI_MODELS.ask, fallbackModel]);
+  assert.deepEqual(deltas, ["Fallback stream."]);
+  assert.equal(result.model, fallbackModel);
+});
+
+test("Groq client does not fall back after authentication errors", async () => {
+  let requestCount = 0;
+  const client = new GroqClient("invalid", {
+    fetch: async () => {
+      requestCount += 1;
+      return jsonResponse(
+        { error: { message: "Invalid API key." } },
+        401
+      );
+    }
+  });
+
+  await assert.rejects(
+    client.complete({
+      messages: [{ role: "user", content: "Explain auth." }],
+      model: DEFAULT_AI_MODELS.ask,
+      fallbackModels: DEFAULT_AI_FALLBACKS.ask
+    }),
+    (error: unknown) => error instanceof DevmapError
+      && /API key is invalid/i.test(error.message)
+  );
+
+  assert.equal(requestCount, 1);
 });
 
 test("Groq client maps invalid credentials to an actionable error", async () => {

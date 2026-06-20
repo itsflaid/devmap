@@ -246,10 +246,10 @@ Use AI coding assistants to modify it.
 
 * Next.js
 * Express
+* React
 
 ### Planned
 
-* React
 * NestJS
 * Laravel
 * Nuxt

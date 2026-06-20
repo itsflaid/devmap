@@ -63,6 +63,7 @@ DevMap MVP focuses on:
 
 * Next.js
 * Express
+* React
 
 Other stacks are future roadmap items.
 
@@ -162,10 +163,16 @@ Framework detection should use:
 | Signal                     | Detection                |
 | -------------------------- | ------------------------ |
 | `next` dependency          | Next.js                  |
-| `app/` directory           | Next.js App Router       |
-| `pages/` directory         | Next.js Pages Router     |
+| `app/page`, `app/layout`, or `app/route` | Next.js App Router |
+| `pages/_app`, `pages/_document`, or `pages/api` | Next.js Pages Router |
 | `express` dependency       | Express                  |
 | `server.ts` or `server.js` | Node/Express entry point |
+| `react` plus browser runtime/tooling and JSX/TSX source | Standalone React |
+
+Next.js detection runs before React because Next projects also depend on
+React. A generic `src/app/` folder is not enough to infer Next.js; source-only
+fallback requires Next conventions such as `app/page`, `app/layout`,
+`app/route`, or a Next config file.
 
 ---
 
@@ -445,7 +452,7 @@ its `sourcePriority` files before broad repository exploration. The full
 The index separates technical framework detection from repository shape:
 
 ```txt
-framework     -> nextjs | express | unknown
+framework     -> nextjs | react | express | unknown
 projectType   -> node-cli | web-app | api-service | library | unknown
 workspaceType -> monorepo | single-package
 ```

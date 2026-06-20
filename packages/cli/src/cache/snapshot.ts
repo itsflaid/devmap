@@ -142,7 +142,7 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
 
   if (isRecord(snapshot.project)) {
     if (typeof snapshot.project.projectType !== "string") {
-      snapshot.project.projectType = snapshot.project.framework === "nextjs"
+      snapshot.project.projectType = ["nextjs", "react"].includes(String(snapshot.project.framework))
         ? "web-app"
         : snapshot.project.framework === "express"
         ? "api-service"

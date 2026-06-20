@@ -1,65 +1,93 @@
-# devmap
+<p align="center">
+  <img src="./logo-devmap.png" alt="DevMap Logo" width="180" />
+</p>
+
+<h1 align="center">DevMap</h1>
+
+<p align="center">
+  Understand Any Codebase — For Developers and AI Agents
+</p>
+
+
+<p align="center">
+  <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
+  <img src="https://img.shields.io/github/license/itsflaid/devmap?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=flat-square" alt="Node.js" />
+  <img src="https://img.shields.io/badge/status-MVP-2EE6D6?style=flat-square" alt="Status" />
+</p>
+
 
 > The first command you run after git clone.
 
-AI should spend tokens solving problems, not rediscovering your codebase.
+  Analyze once. Reuse context everywhere.
 
-Built by [Fadil (@itsflaid)](https://github.com/itsflaid)
+Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
 
 ---
 
-[Demo GIF placeholder — record with VHS before publishing]
+[Demo GIF placeholder — record before publishing]
 
 ---
 
 ## The Problem
 
-You ask AI for help.
+Before doing real work, developers and AI agents need context.
 
-It starts exploring the repository. Again.
+They open files, trace dependencies, follow feature flows, and rebuild understanding of the project.
 
-You switch tools. It starts again.
+The process repeats every time you:
 
-New session. Again.
+* start a new session
+* switch AI tools
+* bring in a new agent
+* revisit a project weeks later
 
-You join a project halfway through — nobody has time to explain the architecture.
+The code stays the same.
 
-Every AI agent rebuilds context from scratch before real work begins.
+The context gets rebuilt again and again.
 
 ---
 
 ## The Solution
 
-DevMap analyzes your project using static analysis and AI to generate a reusable project snapshot.
+DevMap turns project knowledge into reusable context.
 
-The snapshot contains:
+It analyzes your codebase and generates structured project intelligence that can be reused across developers, sessions, and AI agents.
 
-* Architecture overview
+Instead of rediscovering the codebase every time, agents and developers start with:
+
+* Project overview
 * Entry points
+* Feature maps
 * Critical files
-* File purpose, scope, top functions, search terms, and importance
-* Routes and APIs
-* External services
-* Database information
-* Detected features
-* Minimal high-confidence feature and request flows
-* Feature entry points and lightweight business flows
-* Onboarding path and file-level change impact
-* Index-first agent navigation policy with focused feature maps
-* Project relationships
+* Architecture summaries
+* Navigation paths
+* Onboarding guidance
 
-One analysis. Reusable context. Any codebase.
+Analyze once.
+
+Reuse everywhere.
 
 Without DevMap:
 
 ```txt
 Repository
    ↓
-AI explores files
+Claude explores files
    ↓
-AI rebuilds context
+Context rebuilt
+
+Repository
    ↓
-Task begins
+Codex explores files
+   ↓
+Context rebuilt
+
+Repository
+   ↓
+New session
+   ↓
+Context rebuilt
 ```
 
 With DevMap:
@@ -69,11 +97,13 @@ Repository
    ↓
 devmap analyze
    ↓
-snapshot.json
-   ↓
-Reusable context
-   ↓
-Task begins immediately
+Shared Project Context
+   ├─ Claude Code
+   ├─ OpenAI Codex
+   ├─ Gemini CLI
+   ├─ Cursor
+   ├─ Windsurf
+   └─ Future Agents
 ```
 
 ---
@@ -87,140 +117,91 @@ devmap init
   → prepares project
 
 devmap analyze
-  → runs static analysis (80%)
-  → AI interprets structure (20%)
-  → generates snapshot.json
+  → runs static analysis
+  → builds project intelligence
+  → generates navigation files
+  → generates reusable context
 
-snapshot.json
-  → reusable project context
-  → used by developers
-  → used by AI agents
-  → used by DevMap commands
-```
-
-### Generated Files
-
-| File                    | Role                 |
-| ----------------------- | -------------------- |
-| `DEVMAP.md`             | DevMap instructions  |
-| `AGENTS.md`             | AI agent entry point |
-| `.devmap/index.json`    | Lightweight agent navigation |
-| `.devmap/features/*.json` | Focused feature maps |
-| `.devmap/snapshot.json` | Full project context archive |
-| `ONBOARDING.md`         | Optional onboarding guide |
-
-The snapshot is the primary output of DevMap.
-
-Everything else builds on top of it.
-
-Human `analyze` and `ask` responses stream progressively while preserving
-readable terminal Markdown. Agent-facing `--json` output stays buffered as one
-complete JSON document.
-
-`devmap ask` behaves like a repository navigator: it extracts intent, ranks
-snapshot files with a relevance threshold, uses optional retrieval-term
-expansion for better recall, and reports low-confidence questions honestly
-instead of inventing files.
-
----
-
-## Quick Start
-
-```bash
-# Install
-npm install -g devmap
-
-# Setup
-devmap init
-
-# Generate project context
-devmap analyze
-
-# Verify your setup
-devmap doctor
-
-# Generate a reading guide from the snapshot
-devmap onboarding
-devmap onboarding --write
-devmap onboarding --write --language id
-
-# Ask questions about your codebase
-devmap ask "explain the main architecture"
-devmap ask "where is the auth logic?"
-devmap ask "what external services does this use?"
-
-# Machine-readable output for AI agents and scripts
-devmap ask "where is the auth logic?" --json
-devmap onboarding --json
+Generated Context
+  → reusable across sessions
+  → reusable across agents
+  → reusable across developers
 ```
 
 ---
 
-## Example Output
+## Generated Files
+
+| File                      | Role                            |
+| ------------------------- | ------------------------------- |
+| `DEVMAP.md`               | Human-readable project guidance |
+| `AGENTS.md`               | Agent instructions              |
+| `.devmap/index.json`      | Agent entry point               |
+| `.devmap/features/*.json` | Feature-level navigation        |
+| `.devmap/snapshot.json`   | Complete project intelligence   |
+
+Recommended navigation order for agents:
 
 ```txt
-PROJECT      devnote
-FRAMEWORK    Next.js
-LANGUAGE     TypeScript
-
-Entry Points
-→ app/layout.tsx
-→ middleware.ts
-
-Critical Files
-→ lib/db.ts
-→ lib/auth.ts
-
-External Services
-→ Neon
-→ Google OAuth
-
-Architecture
-This is a full-stack Next.js application. Authentication is handled
-server-side. Database access is centralized through the data layer.
-
-Snapshot saved:
-.devmap/snapshot.json
+index.json
+   ↓
+feature map
+   ↓
+relevant source files
+   ↓
+snapshot.json (last resort)
 ```
+
+The snapshot remains the complete project context and can also be copied into web-based AI tools when needed.
 
 ---
 
 ## For AI Agents
 
-Agents should read `.devmap/index.json` first, open the relevant feature map,
-and inspect its `sourcePriority` files. `.devmap/snapshot.json` is the full
-archive for cases where the lightweight navigation layer is insufficient.
+DevMap provides reusable project context that works across tools.
 
-If you use Claude Code, OpenAI Codex, Gemini CLI, Cursor, Windsurf, Aider, GitHub Copilot, or Amazon Q — DevMap provides reusable project context that works across all of them.
+Instead of exploring a repository from scratch, agents start with generated project intelligence.
+
+Supported workflows include:
+
+* Claude Code
+* OpenAI Codex
+* Gemini CLI
+* Cursor
+* GitHub Copilot
+* etc.
 
 Without DevMap:
 
-* AI explores repositories from scratch every session
-* Tokens are spent on discovery before solving problems
-* Context is lost when you switch tools
+```txt
+Agent
+   ↓
+Explore repository
+   ↓
+Trace dependencies
+   ↓
+Guess architecture
+   ↓
+Start task
+```
 
 With DevMap:
 
 ```txt
-AI Agent
+Agent
    ↓
-AGENTS.md
+index.json
    ↓
-DEVMAP.md
+feature map
    ↓
-snapshot.json
+relevant files
    ↓
-work immediately
+Start task
 ```
 
-One snapshot. Every tool. No repeated explanations.
+One analysis.
 
-Use `--json` when an agent or script calls DevMap. Human terminal output streams
-AI explanations progressively, while JSON mode returns one complete parseable
-document without ANSI or terminal decoration.
-
-> Benchmark results coming — with and without DevMap, same task, measured token usage.
-> See [docs/benchmarking.md](./docs/benchmarking.md) for methodology.
+Reusable across sessions, tools, and agents.
 
 ---
 
@@ -228,15 +209,15 @@ document without ANSI or terminal decoration.
 
 DevMap is not an AI coding assistant.
 
-AI coding assistants help developers write code.
-DevMap helps developers understand code that already exists.
+AI coding assistants help write code.
 
-They are complementary, not competitors.
+DevMap helps developers and AI agents understand how codebases are organized, how features connect, and where work should begin.
 
-Use DevMap to understand the codebase.
-Use AI coding assistants to modify it.
+Use DevMap to understand the project.
 
-> DevMap is the context layer between developers, AI agents, and unfamiliar codebases.
+Use your preferred AI tool to change it.
+
+> DevMap is a shared project context layer for developers and AI agents.
 
 ---
 
@@ -244,12 +225,19 @@ Use AI coding assistants to modify it.
 
 ### MVP
 
+* React.js
 * Next.js
+* Node.js
 * Express
 * React
 
 ### Planned
 
+* Vue.js
+* Nest.js
+* Nuxt.js
+* Php - Laravel
+* All JS/TS ecosystem
 * NestJS
 * Laravel
 * Nuxt
@@ -262,11 +250,12 @@ DevMap is free and open source.
 
 AI features require a provider API key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
 
-| Provider | Status  |
-| -------- | ------- |
-| Groq     | MVP     |
-| OpenAI   | Planned |
-| Gemini   | Planned |
+| Provider   | Status    |
+| ---------- | --------- |
+| Groq       | MVP       |
+| OpenRouter | MVP       |
+| OpenAI     | Planned   |
+| Gemini     | Planned   |
 
 API keys are stored locally:
 
@@ -313,6 +302,7 @@ Node.js 18+
 
 ### Next
 
+* [ ] `devmap enhance onboarding`
 * [ ] `devmap features`
 * [ ] `devmap flow`
 * [ ] OpenAI provider
@@ -323,7 +313,6 @@ Node.js 18+
 * [ ] `devmap explain`
 * [ ] `devmap docs`
 * [ ] Local AI mode
-* [ ] VS Code Extension
 
 See [docs/roadmap.md](./docs/roadmap.md) for details.
 

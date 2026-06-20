@@ -8,9 +8,6 @@
   Understand Any Codebase — For Developers and AI Agents
 </p>
 
-<p align="center">
-  Analyze once. Reuse context everywhere.
-</p>
 
 <p align="center">
   <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
@@ -22,8 +19,9 @@
 
 > The first command you run after git clone.
 
+  Analyze once. Reuse context everywhere.
 
-Built by [Fadil (@itsflaid)](https://github.com/itsflaid)
+Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
 
 ---
 
@@ -141,7 +139,6 @@ Generated Context
 | `.devmap/index.json`      | Agent entry point               |
 | `.devmap/features/*.json` | Feature-level navigation        |
 | `.devmap/snapshot.json`   | Complete project intelligence   |
-| `ONBOARDING.md`           | Developer onboarding guide      |
 
 Recommended navigation order for agents:
 
@@ -171,10 +168,8 @@ Supported workflows include:
 * OpenAI Codex
 * Gemini CLI
 * Cursor
-* Windsurf
-* Aider
 * GitHub Copilot
-* Amazon Q
+* etc.
 
 Without DevMap:
 
@@ -230,15 +225,18 @@ Use your preferred AI tool to change it.
 
 ### MVP
 
+* React.js
 * Next.js
+* Node.js
 * Express
 
 ### Planned
 
-* React
-* NestJS
-* Laravel
-* Nuxt
+* Vue.js
+* Nest.js
+* Nuxt.js
+* Php - Laravel
+* All JS/TS ecosystem
 
 ---
 
@@ -248,11 +246,12 @@ DevMap is free and open source.
 
 AI features require a provider API key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
 
-| Provider | Status  |
-| -------- | ------- |
-| Groq     | MVP     |
-| OpenAI   | Planned |
-| Gemini   | Planned |
+| Provider   | Status    |
+| ---------- | --------- |
+| Groq       | MVP       |
+| OpenRouter | MVP       |
+| OpenAI     | Planned   |
+| Gemini     | Planned   |
 
 API keys are stored locally:
 
@@ -299,6 +298,7 @@ Node.js 18+
 
 ### Next
 
+* [ ] `devmap enhance onboarding`
 * [ ] `devmap features`
 * [ ] `devmap flow`
 * [ ] OpenAI provider
@@ -309,7 +309,6 @@ Node.js 18+
 * [ ] `devmap explain`
 * [ ] `devmap docs`
 * [ ] Local AI mode
-* [ ] VS Code Extension
 
 See [docs/roadmap.md](./docs/roadmap.md) for details.
 

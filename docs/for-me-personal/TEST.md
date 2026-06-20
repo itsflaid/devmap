@@ -15,6 +15,43 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## OpenRouter Provider
+
+Focused automated tests:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/init-and-errors.test.ts test/openrouter-client.test.ts test/doctor.test.ts
+```
+
+Manual source test sebaiknya dijalankan dari project fixture atau project luar,
+karena `init` menulis `.devmap/`, `DEVMAP.md`, dan kemungkinan `AGENTS.md`:
+
+```powershell
+pnpm dev:cli -- init
+```
+
+Expected interactive flow:
+
+1. Pilih `OpenRouter` dengan tombol panah lalu tekan Enter.
+2. Masukkan OpenRouter API key; key tidak boleh dicetak ulang.
+3. Pada `OpenRouter model [openrouter/free]:`, tekan Enter untuk free router
+   atau ketik model ID gratis/berbayar yang ingin diuji.
+4. Pastikan output menjelaskan command
+   `devmap config model <model-id>` untuk mengganti model nanti.
+5. Jalankan `devmap doctor`, `devmap analyze`, dan `devmap ask` lalu pastikan
+   provider serta model yang tampil sesuai config.
+
+Non-interactive setup dapat memakai:
+
+```powershell
+$env:OPENROUTER_API_KEY="your-key"
+pnpm dev:cli -- init --json
+Remove-Item Env:OPENROUTER_API_KEY
+```
+
+Jangan simpan atau menyalin API key nyata ke repository, snapshot, output test,
+atau dokumentasi debugging.
+
 ## Ts-Morph Dan Agent Navigation
 
 Focused tests:

@@ -59,6 +59,31 @@ test("config model requires an existing initialized config", async () => {
   assert.match(logs, /Run devmap init/i);
 });
 
+test("config model auto explains OpenRouter free routing", async () => {
+  let saved: DevmapConfig | null = null;
+  const logs: string[] = [];
+  const originalLog = console.log;
+  console.log = (...values: unknown[]) => logs.push(values.join(" "));
+
+  try {
+    await configModelCommand("auto", {
+      loadConfig: async () => ({
+        provider: "openrouter",
+        apiKey: "sk-or-fixture",
+        model: "qwen/qwen3-coder"
+      }),
+      persistConfig: async (config) => {
+        saved = config;
+      }
+    });
+
+    assert.equal(saved?.model, "auto");
+    assert.match(logs.join("\n"), /openrouter\/free/i);
+  } finally {
+    console.log = originalLog;
+  }
+});
+
 async function captureOutput(action: () => Promise<void>): Promise<string> {
   const logs: string[] = [];
   const originalLog = console.log;

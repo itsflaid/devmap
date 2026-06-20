@@ -608,9 +608,10 @@ All AI interactions go through a provider abstraction.
 
 Commands should not call provider APIs directly.
 
-### MVP Provider
+### MVP Providers
 
 * Groq
+* OpenRouter
 
 ### Future Providers
 
@@ -650,14 +651,20 @@ on 2026-06-20. Recheck provider lifecycle status before publishing a release.
 Users can override automatic routing with `devmap config model <model>`.
 Running `devmap config model auto` restores the defaults above.
 
+OpenRouter does not use the Groq command-routing table. During `devmap init`,
+Enter accepts `openrouter/free`, while a typed model ID is stored and used
+exactly as the user selected it. Explicit OpenRouter model choices receive no
+hidden DevMap fallback. The OpenRouter adapter supports the provider's native
+ordered `models` request when a caller explicitly supplies fallbacks.
+
 Raw provider errors should not be shown directly to users.
 
 ---
 
 ## Streaming AI Output
 
-Groq chat completions use server-sent events for human-readable `analyze` and
-`ask` output. The provider adapter reconstructs the complete response while
+Groq and OpenRouter chat completions use server-sent events for human-readable
+`analyze` and `ask` output. Each provider adapter reconstructs the response while
 emitting incremental deltas to the output layer.
 
 Terminal Markdown is buffered to paragraph boundaries before rendering. This

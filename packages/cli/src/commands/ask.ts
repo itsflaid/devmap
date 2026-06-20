@@ -1,10 +1,10 @@
 import { buildQuestionContext } from "../ai/contextBuilder.js";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
 import {
-  DEFAULT_AI_FALLBACKS,
-  DEFAULT_AI_MODELS,
-  GroqClient
-} from "../ai/groq.js";
+  createAiClient as createDefaultAiClient,
+  providerDisplayName,
+  resolveAiRouting
+} from "../ai/provider.js";
 import { buildAskMessages, buildQueryExpansionMessages } from "../ai/prompts.js";
 import type { AiClient } from "../ai/types.js";
 import { inspectSnapshot, isSnapshotStale } from "../cache/snapshot.js";
@@ -73,10 +73,12 @@ async function runAsk(
   const loadConfig = dependencies.loadConfig ?? readConfig;
   const config = await loadConfig();
   const createAiClient = dependencies.createAiClient
-    ?? ((currentConfig: DevmapConfig) => new GroqClient(currentConfig.apiKey ?? ""));
-  const model = config?.model === "auto" || !config?.model
-    ? DEFAULT_AI_MODELS.ask
-    : config.model;
+    ?? createDefaultAiClient;
+  const routing = resolveAiRouting(config ?? {
+    provider: "groq",
+    model: "auto"
+  }, "ask");
+  const model = routing.model;
   const client = config?.apiKey ? createAiClient(config) : null;
   let context = await buildQuestionContext(
     projectRoot,
@@ -84,7 +86,12 @@ async function runAsk(
     question
   );
   if (client && context.topScore < MEDIUM_RELEVANCE_SCORE) {
-    const expandedTerms = await expandQuestionTerms(client, question, model);
+    const expandedTerms = await expandQuestionTerms(
+      client,
+      question,
+      model,
+      routing.fallbackModels
+    );
     if (expandedTerms.length > 0) {
       context = await buildQuestionContext(
         projectRoot,
@@ -123,7 +130,7 @@ async function runAsk(
 
   if (!config?.apiKey || !client) {
     output.warning("AI answering is not configured yet.");
-    output.note("Run devmap init to configure a Groq API key.");
+    output.note("Run devmap init to configure an AI provider API key.");
     printStaticContext(context.files);
     return {
       status: "static",
@@ -140,13 +147,13 @@ async function runAsk(
     };
   }
 
-  output.step(`Asking Groq with ${model}`);
+  output.step(`Asking ${providerDisplayName(config.provider)} with ${model}`);
 
   try {
     const execution = await completeWithOptionalStreaming(client, {
       messages: buildAskMessages(context, snapshot.project),
       model,
-      fallbackModels: DEFAULT_AI_FALLBACKS.ask,
+      fallbackModels: routing.fallbackModels,
       maxCompletionTokens: 1200,
       temperature: 0.2
     }, !dependencies.json, () => output.section("Answer"));
@@ -202,13 +209,14 @@ async function runAsk(
 async function expandQuestionTerms(
   client: AiClient,
   question: string,
-  model: string
+  model: string,
+  fallbackModels: readonly string[]
 ): Promise<string[]> {
   try {
     const result = await client.complete({
       messages: buildQueryExpansionMessages(question),
       model,
-      fallbackModels: DEFAULT_AI_FALLBACKS.ask,
+      fallbackModels,
       maxCompletionTokens: 180,
       temperature: 0
     });

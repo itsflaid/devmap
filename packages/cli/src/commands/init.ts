@@ -3,6 +3,11 @@ import { resolve } from "node:path";
 import { scanFiles } from "../analyzers/fileScanner.js";
 import { detectFramework } from "../analyzers/frameworkDetector.js";
 import { validateGroqApiKey } from "../ai/groq.js";
+import {
+  OPENROUTER_FREE_MODEL,
+  validateOpenRouterApiKey
+} from "../ai/openrouter.js";
+import { providerDisplayName } from "../ai/provider.js";
 import { readConfig, writeConfig, type DevmapConfig } from "../utils/config.js";
 import {
   ensureAgentsFile,
@@ -20,9 +25,13 @@ export type InitDependencies = {
   json?: boolean;
   projectRoot?: string;
   prompt?: Prompt;
-  validateApiKey?: (apiKey: string) => Promise<void>;
+  validateApiKey?: (
+    apiKey: string,
+    provider: DevmapConfig["provider"]
+  ) => Promise<void>;
   isInteractive?: boolean;
   environmentApiKey?: string;
+  environmentOpenRouterApiKey?: string;
   loadConfig?: () => Promise<DevmapConfig | null>;
   persistConfig?: (config: DevmapConfig) => Promise<void>;
 };
@@ -48,8 +57,6 @@ async function runInit(
   const loadConfig = dependencies.loadConfig ?? readConfig;
   const persistConfig = dependencies.persistConfig ?? writeConfig;
   const existingConfig = await loadConfig();
-  const environmentApiKey = dependencies.environmentApiKey ?? process.env.GROQ_API_KEY;
-  const validateApiKey = dependencies.validateApiKey ?? validateGroqApiKey;
   const prompt = dependencies.prompt ?? (interactive ? createPrompt() : null);
 
   if (!dependencies.json) {
@@ -58,19 +65,42 @@ async function runInit(
   }
 
   output.section("DevMap Init");
-  output.keyValue("Provider", "Groq");
 
   try {
+    const provider = await resolveProvider(prompt, interactive, existingConfig);
+    const providerName = providerDisplayName(provider);
+    const environmentApiKey = dependencies.environmentApiKey
+      ?? (provider === "openrouter"
+        ? dependencies.environmentOpenRouterApiKey ?? process.env.OPENROUTER_API_KEY
+        : process.env.GROQ_API_KEY);
+    const validateApiKey = dependencies.validateApiKey
+      ?? ((key: string, selectedProvider: DevmapConfig["provider"]) => (
+        selectedProvider === "openrouter"
+          ? validateOpenRouterApiKey(key)
+          : validateGroqApiKey(key)
+      ));
+    output.keyValue("Provider", providerName);
+
     const apiKey = await resolveApiKey({
       prompt,
       interactive,
       environmentApiKey,
-      existingApiKey: existingConfig?.apiKey
+      existingApiKey: existingConfig?.provider === provider
+        ? existingConfig.apiKey
+        : undefined,
+      provider
     });
 
-    output.step("Validating Groq API key");
-    await validateApiKey(apiKey);
-    output.success("Groq API key is valid");
+    output.step(`Validating ${providerName} API key`);
+    await validateApiKey(apiKey, provider);
+    output.success(`${providerName} API key is valid`);
+
+    const model = await resolveInitialModel({
+      provider,
+      prompt,
+      interactive,
+      existingConfig
+    });
 
     const agentsStatus = await inspectAgentsFile(projectRoot);
     const appendToExistingAgents = agentsStatus === "existing"
@@ -86,9 +116,9 @@ async function runInit(
 
     await mkdir(resolve(projectRoot, ".devmap"), { recursive: true });
     await persistConfig({
-      provider: "groq",
+      provider,
       apiKey,
-      model: "auto"
+      model
     });
 
     const ignored = await ensureDevmapIgnored(projectRoot);
@@ -97,14 +127,18 @@ async function runInit(
 
     output.keyValue("Project", framework);
     output.success("Config saved to ~/.devmap/config.json");
+    if (provider === "openrouter") {
+      output.note(`OpenRouter model: ${model}`);
+      output.note("Change it later with: devmap config model <model-id>");
+    }
     output.success(ignored ? "Added .devmap/ to .gitignore" : ".devmap/ already ignored");
     output.success(devmapFileCreated ? "Created DEVMAP.md" : "DEVMAP.md already exists");
     printAgentsResult(agentsResult);
     output.step("Next: devmap analyze");
     return {
       status: "ok",
-      provider: "groq",
-      model: "auto",
+      provider,
+      model,
       framework,
       files: {
         gitignoreUpdated: ignored,
@@ -146,6 +180,7 @@ type ResolveApiKeyOptions = {
   interactive: boolean;
   environmentApiKey?: string;
   existingApiKey?: string;
+  provider: DevmapConfig["provider"];
 };
 
 async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
@@ -159,23 +194,74 @@ async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
     }
 
     throw new DevmapError(
-      "A Groq API key is required to initialize DevMap.",
-      "Run devmap init in an interactive terminal or set GROQ_API_KEY."
+      `An ${providerDisplayName(options.provider)} API key is required to initialize DevMap.`,
+      `Run devmap init in an interactive terminal or set ${readProviderEnvName(options.provider)}.`
     );
   }
 
+  const providerName = providerDisplayName(options.provider);
   const keyPrompt = options.existingApiKey
-    ? "Groq API key [press Enter to keep existing]: "
-    : "Groq API key: ";
+    ? `${providerName} API key [press Enter to keep existing]: `
+    : `${providerName} API key: `;
   const answer = (await options.prompt.ask(keyPrompt)).trim();
   const apiKey = answer || options.existingApiKey?.trim();
 
   if (!apiKey) {
     throw new DevmapError(
-      "A Groq API key is required.",
-      "Create one at https://console.groq.com/keys."
+      `An ${providerName} API key is required.`,
+      options.provider === "openrouter"
+        ? "Create one at https://openrouter.ai/keys."
+        : "Create one at https://console.groq.com/keys."
     );
   }
 
   return apiKey;
+}
+
+async function resolveProvider(
+  prompt: Prompt | null,
+  interactive: boolean,
+  existingConfig: DevmapConfig | null
+): Promise<DevmapConfig["provider"]> {
+  if (!interactive || !prompt) {
+    if (existingConfig) return existingConfig.provider;
+    return process.env.OPENROUTER_API_KEY && !process.env.GROQ_API_KEY
+      ? "openrouter"
+      : "groq";
+  }
+
+  return prompt.select("AI provider", [
+    { label: "Groq", value: "groq" },
+    { label: "OpenRouter", value: "openrouter" }
+  ], existingConfig?.provider ?? "groq");
+}
+
+type ResolveInitialModelOptions = {
+  provider: DevmapConfig["provider"];
+  prompt: Prompt | null;
+  interactive: boolean;
+  existingConfig: DevmapConfig | null;
+};
+
+async function resolveInitialModel(
+  options: ResolveInitialModelOptions
+): Promise<string> {
+  if (options.provider === "groq") return "auto";
+
+  const existingModel = options.existingConfig?.provider === "openrouter"
+    ? options.existingConfig.model
+    : undefined;
+  const defaultModel = existingModel && existingModel !== "auto"
+    ? existingModel
+    : OPENROUTER_FREE_MODEL;
+  if (!options.interactive || !options.prompt) return defaultModel;
+
+  const answer = await options.prompt.ask(
+    `OpenRouter model [${defaultModel}]: `
+  );
+  return answer.trim() || defaultModel;
+}
+
+function readProviderEnvName(provider: DevmapConfig["provider"]): string {
+  return provider === "openrouter" ? "OPENROUTER_API_KEY" : "GROQ_API_KEY";
 }

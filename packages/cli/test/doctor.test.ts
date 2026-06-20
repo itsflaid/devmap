@@ -104,6 +104,36 @@ test("doctor skips network diagnostics when config is missing", async () => {
   }
 });
 
+test("doctor inspects OpenRouter with the configured user model", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-openrouter-test-"));
+  let inspectedProvider = "";
+  let inspectedModel = "";
+
+  try {
+    const logs = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => ({
+        provider: "openrouter",
+        apiKey: "sk-or-fixture",
+        model: "qwen/qwen3-coder"
+      }),
+      inspectProvider: async (_apiKey, model, provider) => {
+        inspectedProvider = provider;
+        inspectedModel = model;
+        return { reachable: true, modelAvailable: true };
+      }
+    }));
+
+    assert.equal(inspectedProvider, "openrouter");
+    assert.equal(inspectedModel, "qwen/qwen3-coder");
+    assert.match(logs, /Provider\s+openrouter/);
+    assert.match(logs, /Model\s+qwen\/qwen3-coder/);
+    assert.doesNotMatch(logs, /sk-or-fixture/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 async function captureOutput(action: () => Promise<void>): Promise<string> {
   const logs: string[] = [];
   const originalLog = console.log;

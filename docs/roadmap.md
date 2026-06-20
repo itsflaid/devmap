@@ -33,7 +33,7 @@ adding AI on top. If the foundation is wrong, AI output will be wrong too.
 **Goal:** Users can understand projects faster with AI interpretation.
 
 **Tasks:**
-- Groq integration with provider abstraction layer
+- Groq and OpenRouter integration through the provider abstraction layer
 - Prompt templates for analyze and ask
 - Context Builder — keyword search + file ranking
 - [x] Streaming output for human `analyze` and `ask` responses
@@ -87,12 +87,12 @@ accuracy must be near 100% or developers won't trust it.
 ---
 
 ## Phase 5 — Multi-Provider
-**Goal:** Users can choose their preferred AI provider.
+**Goal:** Expand beyond the Groq and OpenRouter MVP providers.
 
 **Tasks:**
 - OpenAI adapter (GPT-4o mini as default)
 - Gemini adapter (1.5 Flash as default)
-- Provider selection in `devmap init`
+- [x] Provider selection in `devmap init` for Groq and OpenRouter
 - Per-project provider override in `.devmap/config.json`
 - Provider-specific model recommendations
 

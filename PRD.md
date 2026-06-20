@@ -265,6 +265,7 @@ Setup wizard. Runs once per machine/project.
 
 - Ask for AI provider
 - Ask for API key
+- Ask for an OpenRouter model, defaulting to `openrouter/free` on Enter
 - Validate API key
 - Save global config to `~/.devmap/config.json`
 - Create `.devmap/` project folder if needed
@@ -459,7 +460,8 @@ JSON mode rules:
 - stdout contains exactly one valid JSON document
 - no ANSI colors, Markdown rendering, box drawing, or progress text
 - runtime errors use a stable `{ "status": "error", "error": "...", "hint": "..." }` shape
-- `init --json` is non-interactive and requires `GROQ_API_KEY` or existing config
+- `init --json` is non-interactive and requires `GROQ_API_KEY`,
+  `OPENROUTER_API_KEY`, or existing config
 - AI responses are buffered instead of streamed
 - human-readable output remains the default
 - package-manager wrappers may still write their own warnings to stderr
@@ -579,9 +581,9 @@ For current project structure, use `.devmap/snapshot.json` if available.
 
 ## 11. AI Strategy
 
-### MVP Provider
+### MVP Providers
 
-**Groq only.**
+**Groq and OpenRouter.**
 
 Reasons:
 
@@ -589,6 +591,7 @@ Reasons:
 - Accessible globally
 - User provides their own API key
 - No DevMap backend required
+- OpenRouter users can choose any model their account can access
 
 ### Provider Abstraction
 
@@ -630,6 +633,13 @@ provider errors are shown to users.
 Model availability changes over time. Before changing the default routing,
 verify the current Groq model list and lifecycle status. Preview models must
 not be used as a primary default for a public DevMap release.
+
+OpenRouter setup asks for a model ID after validating the API key. Pressing
+Enter selects `openrouter/free`; entering another free or paid model stores
+that exact model as the user's preferred model. Explicit user selections take
+priority and are not replaced by DevMap's Groq routing chain. Users can change
+the selection later with `devmap config model <model-id>`; setting `auto` on
+OpenRouter restores the safe `openrouter/free` default.
 
 ### User API Key Principle
 

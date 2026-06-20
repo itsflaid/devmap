@@ -8,6 +8,7 @@ import { buildDependencyGraph, countReferences } from "../src/analyzers/dependen
 import { scanFiles } from "../src/analyzers/fileScanner.js";
 import { shouldIgnorePath } from "../src/analyzers/filterEngine.js";
 import { detectFramework } from "../src/analyzers/frameworkDetector.js";
+import { detectFeatures } from "../src/analyzers/featureDetector.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 import { detectExternalServices } from "../src/analyzers/serviceDetector.js";
 import {
@@ -125,17 +126,112 @@ test("service detector detects HTTP API providers without package dependencies",
   }
 });
 
+test("feature detection keeps documentation and landing UI out of technical features", () => {
+  const files = [
+    createScannedFile("README.md", "Authentication login session Groq Stripe upload email"),
+    createScannedFile("PRD.md", "Authentication roadmap and payment requirements"),
+    createScannedFile("docs/auth.md", "How login and sessions should work"),
+    createScannedFile(
+      "apps/web/src/components/landing/HeroSection.astro",
+      "<h1>AI authentication and payment project mapping</h1>"
+    ),
+    createScannedFile(
+      "packages/cli/src/ai/groq.ts",
+      'import type { AiClient } from "./types.js"; export class GroqClient {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/ai/contextBuilder.ts",
+      'const aliases = ["auth", "login", "session", "jwt"]; export function buildContext() {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/ai/snapshotEnrichment.ts",
+      'const prompt = "Prefer auth provider config, middleware guard, session provider, and nextauth examples"; export function enrich() {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/commands/onboarding.ts",
+      'const example = "Authentication flow"; export function onboardingCommand() {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/analyzers/projectMap.ts",
+      'import { scanFiles } from "./fileScanner.js"; export function createProjectMap() {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/cache/snapshot.ts",
+      'export async function saveSnapshot() {}'
+    ),
+    createScannedFile(
+      "packages/cli/src/commands/analyze.ts",
+      'export async function analyzeCommand() {}'
+    )
+  ];
+
+  const features = detectFeatures(files, []);
+  const names = features.map((feature) => feature.name);
+
+  assert.ok(names.includes("AI Integration"));
+  assert.ok(names.includes("Analysis Engine"));
+  assert.ok(names.includes("Snapshot Engine"));
+  assert.ok(names.includes("CLI Commands"));
+  assert.ok(names.includes("Documentation"));
+  assert.ok(names.includes("Web Landing"));
+  assert.ok(!names.includes("Authentication"));
+  assert.ok(!names.includes("Payments"));
+  assert.ok(!names.includes("File Upload"));
+
+  const aiFeature = features.find((feature) => feature.name === "AI Integration");
+  assert.ok(aiFeature?.files.includes("packages/cli/src/ai/groq.ts"));
+  assert.ok(aiFeature?.files.every((path) => path.startsWith("packages/cli/src/ai/")));
+});
+
+test("structural feature flows describe behavior instead of repeating file lists", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-structural-flow-test-"));
+  const files = {
+    "package.json": JSON.stringify({ name: "structural-flow-test" }),
+    "src/index.ts": 'export { analyzeCommand } from "./commands/analyze.js";\n',
+    "src/commands/analyze.ts": 'import { createProjectMap } from "../analyzers/projectMap.js"; export async function analyzeCommand() { return createProjectMap(); }\n',
+    "src/analyzers/fileScanner.ts": "export async function scanFiles() { return []; }\n",
+    "src/analyzers/analyzerRegistry.ts": "export async function analyzeFiles() { return {}; }\n",
+    "src/analyzers/tsMorphAnalyzer.ts": "export class TsMorphAnalyzer {}\n",
+    "src/analyzers/projectMap.ts": 'import { scanFiles } from "./fileScanner.js"; import { analyzeFiles } from "./analyzerRegistry.js"; export async function createProjectMap() { await scanFiles(); return analyzeFiles(); }\n',
+    "src/cache/snapshot.ts": "export async function saveSnapshot() {}\n",
+    "src/cache/agentNavigation.ts": "export async function writeAgentNavigationFiles() {}\n",
+    "src/utils/output.ts": "export const output = {};\n"
+  };
+
+  try {
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+
+    const projectMap = await createProjectMap(projectRoot);
+    const analysis = projectMap.features.find((feature) => feature.name === "Analysis Engine");
+    const snapshot = projectMap.features.find((feature) => feature.name === "Snapshot Engine");
+
+    assert.ok(analysis);
+    assert.match(analysis.businessFlow.join(" "), /Scan project files/);
+    assert.match(analysis.businessFlow.join(" "), /Choose a compatible file analyzer/);
+    assert.doesNotMatch(analysis.businessFlow.join(" "), /Follow dependency/);
+    assert.ok(snapshot);
+    assert.match(snapshot.businessFlow.join(" "), /Persist and validate the snapshot/);
+    assert.match(snapshot.businessFlow.join(" "), /lightweight index and feature maps/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("project map summarizes a Next.js fixture", async () => {
   const projectMap = await createProjectMap(nextFixture);
 
   assert.equal(projectMap.version, "1");
   assert.deepEqual(projectMap.agentInstructions, {
-    navigationPolicy: "snapshot-first",
-    defaultMode: "minimal-exploration",
+    navigationPolicy: "index-first",
+    defaultMode: "feature-map-first",
     maxInitialFiles: 3,
     missingSnapshotAction: "run-devmap-analyze",
     staleSnapshotAction: "run-devmap-analyze-fresh",
-    fallbackRule: "Inspect source files only when the snapshot is missing details, stale, or exact implementation is required."
+    fallbackRule: "Read snapshot.json only when index.json and feature maps are insufficient; inspect extra source only when exact implementation is required."
   });
   assert.match(projectMap.fingerprint, /^[a-f0-9]{32}$/);
   assert.equal(projectMap.framework, "nextjs");
@@ -226,6 +322,17 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.onboarding.recommendedPath.includes("lib/auth.ts"));
   assert.ok(projectMap.stats.relevantFiles >= 5);
 });
+
+function createScannedFile(path: string, content: string) {
+  return {
+    path,
+    absolutePath: `C:/fixture/${path}`,
+    extension: path.slice(path.lastIndexOf(".")),
+    size: Buffer.byteLength(content),
+    lines: content.split(/\r?\n/).length,
+    content
+  };
+}
 
 test("project map summarizes an Express fixture", async () => {
   const projectMap = await createProjectMap(expressFixture);

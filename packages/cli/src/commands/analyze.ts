@@ -6,6 +6,7 @@ import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
 import { createProjectMap } from "../analyzers/projectMap.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
+import { writeAgentNavigationFiles } from "../cache/agentNavigation.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { output, withJsonOutput } from "../utils/output.js";
@@ -51,6 +52,7 @@ async function runAnalyze(
   const previous = options.fresh ? { status: "missing" as const } : await inspectSnapshot(projectRoot);
 
   if (previous.status === "valid" && previous.snapshot.fingerprint === snapshot.fingerprint) {
+    await writeAgentNavigationFiles(projectRoot, previous.snapshot);
     printSnapshot(previous.snapshot, options.deep);
     output.success("Project is unchanged. Reused existing snapshot.");
     return printOrGenerateInterpretation(
@@ -63,9 +65,11 @@ async function runAnalyze(
 
   snapshot = await enrichSnapshot(snapshot, options, dependencies);
   await saveSnapshot(projectRoot, snapshot);
+  await writeAgentNavigationFiles(projectRoot, snapshot);
   printSnapshot(snapshot, options.deep);
 
   output.success("Snapshot saved to .devmap/snapshot.json");
+  output.success("Agent navigation saved to .devmap/index.json and .devmap/features/");
   if (options.fresh) {
     output.success("Fresh analysis completed");
   }

@@ -15,6 +15,48 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Ts-Morph Dan Agent Navigation
+
+Focused tests:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/file-analyzers.test.ts test/agent-navigation.test.ts test/analyzers.test.ts test/analyze-ai.test.ts
+```
+
+Tes source langsung pada root DevMap tanpa memakai Groq:
+
+```powershell
+$root = (Get-Location).Path
+$oldProfile = $env:USERPROFILE
+$env:USERPROFILE = Join-Path $env:TEMP "devmap-static-validation"
+pnpm dev:cli -- analyze "$root" --fresh --json
+$env:USERPROFILE = $oldProfile
+```
+
+Periksa hasil berikut:
+
+```powershell
+Get-Content .devmap\index.json -Raw | ConvertFrom-Json
+Get-ChildItem .devmap\features\*.json
+Get-Content .devmap\snapshot.json -Raw | ConvertFrom-Json
+```
+
+Expected:
+
+- file JS/TS memakai `ts-morph` dengan confidence `high`;
+- file Vue/Astro dan source non-JS yang dikenali memakai `heuristic`;
+- unknown file memakai `fallback`;
+- index tidak memiliki full `changeImpact` atau dependency map;
+- semua `features[].map` menunjuk file JSON yang ada;
+- structural `flow` menjelaskan urutan perilaku dan tidak hanya berisi
+  `Follow dependency` atau salinan daftar feature files;
+- `index.json.criticalFiles` dimulai dari executable/feature entry points dan
+  tidak mempromosikan type-only hub hanya karena import count;
+- DevMap sendiri tidak mendeteksi Authentication dari README, prompt example,
+  onboarding text, atau landing page;
+- feature anchor DevMap mengarah ke `projectMap.ts`, `analyze.ts`, dan landing
+  `index.astro`, bukan file dokumentasi acak.
+
 ## Onboarding Command
 
 Focused automated test:
@@ -45,7 +87,7 @@ Expected result:
 - Jika snapshot stale, human output memberi warning dan JSON berisi
   `snapshot.stale: true`.
 - JSON output menyertakan `agentInstructions` agar agent mengikuti policy
-  snapshot-first.
+  index-first dan feature-map-first.
 - Human output berfokus sebagai guide pemahaman, bukan file index: What This
   Project Does, Mental Model, Main Concepts, Important Areas to Understand, Key
   Flows, dan Where to Start.

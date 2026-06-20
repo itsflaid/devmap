@@ -1,6 +1,37 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-19
+Terakhir diperbarui: 2026-06-20
+
+## Update 2026-06-20
+
+### AST Analyzer Dan Agent Navigation
+
+- Menambahkan analyzer registry dengan output `FileAnalysis` yang konsisten.
+- `.ts`, `.tsx`, `.js`, dan `.jsx` sekarang dianalisis memakai `ts-morph`
+  untuk imports, exports, symbols, line number, exported state, dan async state.
+- File source lain tetap memakai heuristic analyzer; tipe yang tidak dikenal
+  memakai fallback low-confidence.
+- Snapshot v1 tetap mempertahankan field lama dan menambah analyzer id,
+  analysis confidence, serta symbol metadata.
+- `devmap analyze` sekarang menulis `.devmap/index.json` dan satu feature map
+  per fitur di `.devmap/features/`, termasuk saat snapshot cache dipakai ulang.
+- Generated `DEVMAP.md` dan block `AGENTS.md` memakai urutan index, feature map,
+  source priority, lalu full snapshot sebagai last resort.
+- Feature detector memisahkan documentation, web landing, CLI commands,
+  analysis engine, snapshot engine, dan AI integration sebelum technical
+  feature attribution.
+- False-positive Authentication pada source DevMap sendiri dihapus dengan
+  mensyaratkan bukti path, import, atau symbol, bukan sekadar kata di content.
+- Validasi manual pada root DevMap menghasilkan enam feature tanpa
+  Authentication palsu; index berukuran sekitar 4.5 KB.
+- Structural flows sekarang menjelaskan aksi nyata seperti scan, analyzer
+  selection, ProjectMap build, snapshot persistence, dan index generation,
+  bukan mengulang daftar dependency.
+- Critical files pada index memprioritaskan executable entry point, feature
+  entry point, dan behavioral support files; `ai/types.ts` tidak lagi masuk
+  hanya karena import count tinggi.
+- Full CLI suite lulus 96/96, TypeScript typecheck dan production build lulus,
+  serta packed tarball E2E lulus untuk fixture Next.js dan Express.
 
 ## Update 2026-06-19
 
@@ -960,9 +991,10 @@ Tahap berikutnya menambahkan primary feature entry point, business flow ringkas,
 shallow agar snapshot lebih memahami project tanpa masuk ke symbol graph penuh.
 
 Generated `DEVMAP.md` sekarang memiliki Agent Navigation Contract yang meminta
-agent memakai snapshot-first, menjalankan `devmap analyze` saat snapshot hilang,
-dan meminta user menjalankan `devmap init` jika DevMap belum terkonfigurasi.
-Snapshot juga menyimpan `agentInstructions` kecil untuk machine reader.
+agent memakai snapshot-first pada implementasi saat itu. Kontrak ini kemudian
+diganti pada 2026-06-20 menjadi index-first dan feature-map-first, dengan full
+snapshot sebagai fallback. Agent tetap menjalankan `devmap analyze` saat output
+hilang dan meminta user menjalankan `devmap init` jika belum terkonfigurasi.
 
 Verifikasi:
 

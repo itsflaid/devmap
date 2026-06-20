@@ -93,7 +93,9 @@ devmap config model auto
 
 DevMap generates:
 
-- `.devmap/snapshot.json` for structured project analysis
+- `.devmap/index.json` for lightweight AI-agent navigation
+- `.devmap/features/*.json` for focused feature maps and source priority
+- `.devmap/snapshot.json` for the full structured project analysis archive
 - `DEVMAP.md` for human and AI-agent usage guidance
 - a small DevMap block in `AGENTS.md` only after confirmation when the file
   already exists
@@ -101,6 +103,10 @@ DevMap generates:
 Existing `AGENTS.md` and `DEVMAP.md` files are never overwritten.
 
 ## For AI Agents
+
+Read `.devmap/index.json` first, open the relevant feature map, and inspect its
+`sourcePriority` files. Use `.devmap/snapshot.json` only when the lightweight
+navigation layer is insufficient.
 
 Use `--json` for scripts, editors, CI, or AI agents:
 

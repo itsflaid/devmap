@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -344,6 +344,44 @@ test("analyze continues when snapshot enrichment AI fails", async () => {
 
     const saved = await inspectSnapshot(projectRoot);
     assert.equal(saved.status, "valid");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("analyze writes lightweight agent navigation alongside the snapshot", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-navigation-output-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "navigation-output" }),
+      "utf8"
+    );
+    await writeFile(
+      join(projectRoot, "index.ts"),
+      "export async function start() { return true; }\n",
+      "utf8"
+    );
+
+    await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { fresh: true },
+      { loadConfig: async () => null }
+    ));
+
+    const index = JSON.parse(await readFile(
+      join(projectRoot, ".devmap", "index.json"),
+      "utf8"
+    )) as { snapshot: { path: string }; agentInstructions: string };
+    const snapshot = JSON.parse(await readFile(
+      join(projectRoot, ".devmap", "snapshot.json"),
+      "utf8"
+    )) as { fileIndex: Record<string, { analyzer: string }> };
+
+    assert.equal(index.snapshot.path, ".devmap/snapshot.json");
+    assert.match(index.agentInstructions, /feature map/);
+    assert.equal(snapshot.fileIndex["index.ts"]?.analyzer, "ts-morph");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

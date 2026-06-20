@@ -25,10 +25,10 @@ test("DEVMAP.md contains workflow and AI-agent guidance", () => {
   assert.match(content, /devmap analyze/);
   assert.match(content, /Agent Navigation Contract/);
   assert.match(content, /Required Agent Workflow/);
-  assert.match(content, /snapshot-first/);
-  assert.match(content, /features\.entryPoint/);
-  assert.match(content, /onboarding\.recommendedPath/);
-  assert.match(content, /changeImpact/);
+  assert.match(content, /\.devmap\/index\.json/);
+  assert.match(content, /\.devmap\/features\/\*\.json/);
+  assert.match(content, /sourcePriority/);
+  assert.match(content, /snapshot\.json.*only when/is);
   assert.match(content, /Do not scan the whole repository first/);
   assert.match(content, /devmap init/);
   assert.match(content, /--json/);

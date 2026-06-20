@@ -1,5 +1,23 @@
 # DevMap Development Testing
 
+## Analyzer Registry And Agent Navigation
+
+Focused verification:
+
+```bash
+pnpm --filter devmap exec tsx --test test/file-analyzers.test.ts test/agent-navigation.test.ts test/analyzers.test.ts test/analyze-ai.test.ts
+```
+
+After `devmap analyze --fresh`, verify:
+
+- JS/TS `fileIndex` entries use `analyzer: "ts-morph"` and high confidence;
+- non-JS source keeps heuristic analysis and unknown files use fallback;
+- `.devmap/index.json` is short and contains no full `changeImpact` map;
+- every index feature points to a readable `.devmap/features/*.json` file;
+- docs and landing UI do not become evidence for Authentication or other
+  technical backend features;
+- generated agent instructions use index-first navigation.
+
 ## Agent JSON Output
 
 Packaged-command verification should include machine-readable output:

@@ -10,6 +10,19 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.1.0` beta
 
+### Added
+
+- `ts-morph` analysis for JavaScript and TypeScript behind a normalized
+  analyzer registry with heuristic and fallback analyzers
+- Lightweight `.devmap/index.json` and per-feature navigation maps for agents
+
+### Changed
+
+- Feature detection now separates documentation, landing UI, CLI commands,
+  analysis, snapshot, and AI roles before assigning technical features
+- Generated agent guidance now uses index-first navigation and treats the full
+  snapshot as a last-resort archive
+
 ## [0.1.0] - 2026-06-15
 
 Initial early beta release.

@@ -45,7 +45,7 @@ The snapshot contains:
 * Minimal high-confidence feature and request flows
 * Feature entry points and lightweight business flows
 * Onboarding path and file-level change impact
-* Snapshot-first agent navigation policy
+* Index-first agent navigation policy with focused feature maps
 * Project relationships
 
 One analysis. Reusable context. Any codebase.
@@ -104,7 +104,9 @@ snapshot.json
 | ----------------------- | -------------------- |
 | `DEVMAP.md`             | DevMap instructions  |
 | `AGENTS.md`             | AI agent entry point |
-| `.devmap/snapshot.json` | Core project context |
+| `.devmap/index.json`    | Lightweight agent navigation |
+| `.devmap/features/*.json` | Focused feature maps |
+| `.devmap/snapshot.json` | Full project context archive |
 | `ONBOARDING.md`         | Optional onboarding guide |
 
 The snapshot is the primary output of DevMap.
@@ -184,6 +186,10 @@ Snapshot saved:
 ---
 
 ## For AI Agents
+
+Agents should read `.devmap/index.json` first, open the relevant feature map,
+and inspect its `sourcePriority` files. `.devmap/snapshot.json` is the full
+archive for cases where the lightweight navigation layer is insufficient.
 
 If you use Claude Code, OpenAI Codex, Gemini CLI, Cursor, Windsurf, Aider, GitHub Copilot, or Amazon Q — DevMap provides reusable project context that works across all of them.
 

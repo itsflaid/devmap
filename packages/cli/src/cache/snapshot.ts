@@ -151,6 +151,11 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
     if (typeof snapshot.project.workspaceType !== "string") {
       snapshot.project.workspaceType = "single-package";
     }
+    if (!Array.isArray(snapshot.project.frameworks)) {
+      snapshot.project.frameworks = snapshot.project.framework === "unknown"
+        ? []
+        : [snapshot.project.framework];
+    }
   }
 
   const fileIndex = snapshot.fileIndex as Record<string, Record<string, unknown>>;

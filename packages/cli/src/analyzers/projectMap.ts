@@ -12,7 +12,11 @@ import {
 } from "./featureDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import { scanFiles } from "./fileScanner.js";
-import { detectFramework, type Framework } from "./frameworkDetector.js";
+import {
+  detectFramework,
+  detectFrameworks,
+  type Framework
+} from "./frameworkDetector.js";
 import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
 import { detectRoutes, type RouteInfo } from "./routeDetector.js";
 import { detectExternalServices } from "./serviceDetector.js";
@@ -129,7 +133,15 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   const analyses = await analyzeFiles(files);
   const graph = buildDependencyGraph(files, analyses);
   const references = countReferences(graph);
-  const framework = detectFramework(files);
+  const detectedFramework = detectFramework(files);
+  const frameworks = detectFrameworks(files);
+  const project = detectProjectMetadata(
+    projectRoot,
+    detectedFramework,
+    files,
+    frameworks
+  );
+  const framework = project.framework;
   const entryPoints = detectEntryPoints(graph);
   const routes = detectRoutes(files, framework);
   const database = detectDatabase(files);
@@ -162,7 +174,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     fingerprint: createProjectFingerprint(files),
     projectRoot,
     framework,
-    project: detectProjectMetadata(projectRoot, framework, files),
+    project,
     stats: {
       // A pre-filter filesystem count is not collected in schema v1.
       totalFiles: files.length,
@@ -230,8 +242,18 @@ function rankCriticalFiles(
       }
 
       if (entryPointSet.has(file.path)) {
-        score += 4;
+        score += 12;
         reasons.push("application entry point");
+      }
+
+      const executionBonus = calculateExecutionResponsibilityBonus(file.path);
+      if (executionBonus > 0) {
+        score += executionBonus;
+        reasons.push("core execution responsibility");
+      }
+
+      if (/(^|\/)(types?|constants?)\.[cm]?[jt]sx?$/.test(file.path)) {
+        score = Math.max(0, score - 8);
       }
 
       if (/(^|\/)(auth|session|db|database|middleware|schema|config)([./-]|$)/i.test(file.path)) {
@@ -255,6 +277,13 @@ function rankCriticalFiles(
     .filter((file) => file.score > 0)
     .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path))
     .slice(0, 10);
+}
+
+function calculateExecutionResponsibilityBonus(path: string): number {
+  return /(^|\/)(projectmap|filescanner|analyzerregistry|router|controller|orchestrator|engine)\.[cm]?[jt]sx?$/i.test(path)
+    || /(^|\/)commands?\/[^/]+\.[cm]?[jt]sx?$/i.test(path)
+    ? 16
+    : 0;
 }
 
 function readPackageDependencies(files: ScannedFile[]): Record<string, string[]> {
@@ -306,7 +335,7 @@ function createFileIndexEntry(
     topFunctions
   );
   const searchTerms = buildFileSearchTerms(file.path, scope, exportedSymbols, topFunctions, featureRefs);
-  const purpose = inferFilePurpose(file.path, scope, exportedSymbols, topFunctions, featureRefs);
+  const purpose = inferFilePurpose(file.path, scope, featureRefs);
 
   return {
     analyzer: analysis.analyzer,
@@ -450,29 +479,60 @@ function buildFileSearchTerms(
 function inferFilePurpose(
   path: string,
   scope: FileScope,
-  exportedSymbols: string[],
-  topFunctions: FileIndexEntry["topFunctions"],
   featureRefs: string[]
 ): string | undefined {
-  const primarySymbols = exportedSymbols.length > 0
-    ? exportedSymbols
-    : topFunctions.map((item) => item.name);
-  const subject = primarySymbols[0]
-    ? `exposes ${primarySymbols.slice(0, 3).join(", ")}`
-    : `contains ${scope === "unknown" ? "project" : scope} code`;
-  const featureText = featureRefs.length > 0
-    ? ` for ${featureRefs.slice(0, 2).join(" and ")}`
-    : "";
-
   if (scope === "docs" || scope === "test") {
     return undefined;
   }
 
-  if (scope === "unknown" && primarySymbols.length === 0 && featureRefs.length === 0) {
+  const normalized = path.toLowerCase();
+  const knownPurpose = inferKnownFilePurpose(normalized);
+  if (knownPurpose) {
+    return `${path} ${knownPurpose}`;
+  }
+
+  if (scope === "unknown" && featureRefs.length === 0) {
     return undefined;
   }
 
-  return `${path} ${subject}${featureText}.`;
+  const fileName = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "file";
+  const responsibility = splitSearchTerms(fileName).join(" ") || fileName;
+  const featureText = featureRefs.length > 0
+    ? ` for ${featureRefs.slice(0, 2).join(" and ")}`
+    : "";
+  const scopeText = scope === "unknown" ? "project" : scope;
+  return `${path} implements ${responsibility} ${scopeText} responsibilities${featureText}.`;
+}
+
+function inferKnownFilePurpose(path: string): string | undefined {
+  if (/\/ai\/provider\.[cm]?[jt]s$/.test(path)) {
+    return "selects the configured AI provider and resolves model routing for AI-powered commands.";
+  }
+  if (/\/ai\/groq\.[cm]?[jt]s$/.test(path)) {
+    return "implements Groq requests, retries, streaming, and provider-specific errors.";
+  }
+  if (/\/ai\/openrouter\.[cm]?[jt]s$/.test(path)) {
+    return "implements OpenRouter requests, model selection, streaming, and provider-specific errors.";
+  }
+  if (/\/ai\/contextbuilder\.[cm]?[jt]s$/.test(path)) {
+    return "selects and bounds repository context before an AI request.";
+  }
+  if (/\/ai\/prompts\.[cm]?[jt]s$/.test(path)) {
+    return "constructs grounded prompts from snapshot and retrieval context.";
+  }
+  if (/\/ai\/completion\.[cm]?[jt]s$/.test(path)) {
+    return "coordinates streaming and non-streaming AI completion output.";
+  }
+  if (/\/analyzers\/projectmap\.[cm]?[jt]s$/.test(path)) {
+    return "orchestrates scanning, analysis, feature mapping, flows, and snapshot metadata.";
+  }
+  if (/\/analyzers\/filescanner\.[cm]?[jt]s$/.test(path)) {
+    return "scans eligible project files while applying ignore and safety rules.";
+  }
+  if (/(^|\/)types?\.[cm]?[jt]s$/.test(path)) {
+    return "defines shared type contracts used by neighboring modules.";
+  }
+  return undefined;
 }
 
 function isFeatureConfigFile(path: string, featureRefs: string[]): boolean {
@@ -613,7 +673,13 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
       ["Build focused project context", find(/\/ai\/contextbuilder\.[cm]?[jt]s$/)],
       ["Construct grounded model prompts", find(/\/ai\/prompts\.[cm]?[jt]s$/)],
       ["Select the configured AI provider", find(/\/ai\/provider\.[cm]?[jt]s$/)],
-      ["Call the provider with its model policy", find(/\/ai\/(groq|openrouter)\.[cm]?[jt]s$/)],
+      [
+        "Call the configured provider adapter",
+        [
+          find(/\/ai\/groq\.[cm]?[jt]s$/),
+          find(/\/ai\/openrouter\.[cm]?[jt]s$/)
+        ].filter((file): file is string => Boolean(file)).join(" or ") || undefined
+      ],
       ["Stream or return the completed response", find(/\/ai\/completion\.[cm]?[jt]s$/)]
     ]
     : [];

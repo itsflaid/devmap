@@ -43,6 +43,7 @@ export async function writeAgentNavigationFiles(
     project: {
       name: snapshot.project.name,
       framework: snapshot.project.framework,
+      frameworks: snapshot.project.frameworks,
       language: snapshot.project.language,
       packageManager: snapshot.project.packageManager,
       projectType: snapshot.project.projectType,

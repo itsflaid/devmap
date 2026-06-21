@@ -119,6 +119,10 @@ function printSnapshot(
 ): void {
   output.keyValue("Project", snapshot.project.name);
   output.keyValue("Framework", snapshot.project.framework);
+  output.keyValue(
+    "Workspace Frameworks",
+    snapshot.project.frameworks.join(", ") || "none detected"
+  );
   output.keyValue("Language", snapshot.project.language);
   output.keyValue("Package Manager", snapshot.project.packageManager);
   output.keyValue("Files", snapshot.stats.relevantFiles);

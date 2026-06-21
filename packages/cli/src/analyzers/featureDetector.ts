@@ -379,6 +379,16 @@ export function detectAuthenticationSemanticRole(
 
 function featureFilePriority(featureName: string, path: string): number {
   const normalized = path.toLowerCase();
+  if (featureName === "Documentation") {
+    if (normalized === "readme.md") return 0;
+    if (normalized === "agents.md") return 1;
+    if (normalized === "contributing.md") return 2;
+    if (normalized === "prd.md") return 3;
+    if (/^packages\/[^/]+\/readme\.md$/.test(normalized)) return 10;
+    if (/^docs\//.test(normalized)) return 20;
+    return 30 + normalized.split("/").length;
+  }
+
   const index = FEATURE_FILE_PRIORITIES[featureName]
     ?.findIndex((pattern) => pattern.test(normalized)) ?? -1;
   return index === -1 ? 100 : index;

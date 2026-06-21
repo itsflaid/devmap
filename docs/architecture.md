@@ -168,11 +168,17 @@ Framework detection should use:
 | `express` dependency       | Express                  |
 | `server.ts` or `server.js` | Node/Express entry point |
 | `react` plus browser runtime/tooling and JSX/TSX source | Standalone React |
+| `astro` dependency or `src/pages/*.astro` | Astro workspace framework |
 
 Next.js detection runs before React because Next projects also depend on
 React. A generic `src/app/` folder is not enough to infer Next.js; source-only
 fallback requires Next conventions such as `app/page`, `app/layout`,
 `app/route`, or a Next config file.
+
+Snapshots distinguish the primary `framework` from the additive `frameworks`
+list. A Node CLI monorepo with an Astro landing site has `framework: unknown`,
+`projectType: node-cli`, and `frameworks: [astro]`. Astro detection here is
+classification only; deep Astro route/component analysis is future work.
 
 ---
 

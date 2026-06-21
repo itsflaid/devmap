@@ -1,6 +1,25 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-20
+Terakhir diperbarui: 2026-06-21
+
+## Update 2026-06-21
+
+### Snapshot Accuracy For Mixed Workspaces
+
+- Project metadata sekarang memisahkan primary `framework` dari daftar
+  `frameworks` yang ditemukan pada package workspace.
+- DevMap sendiri diklasifikasikan sebagai `node-cli` monorepo dengan primary
+  framework `unknown` dan workspace framework `astro`, bukan Next.js.
+- Astro detection saat ini hanya memakai dependency dan pola page `.astro`;
+  belum ada deep Astro analyzer.
+- Documentation feature map memprioritaskan root README, AGENTS, CONTRIBUTING,
+  dan PRD sebelum README internal di assets/package.
+- Static file purpose menjelaskan tanggung jawab file dan tidak lagi memakai
+  template daftar export yang diawali `exposes`.
+- AI flow menyebut Groq dan OpenRouter sebagai adapter provider alternatif.
+- Critical scoring memberi bobot lebih besar pada execution owners seperti
+  project map dan file scanner, serta menurunkan shared types/constants.
+- Regression fixture mixed CLI/Astro dan full suite lulus dengan 118 test.
 
 ## Update 2026-06-20
 

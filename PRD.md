@@ -514,12 +514,14 @@ Preferred reading order:
 The index must remain short and must not duplicate full dependency or change
 impact data.
 
-The index project header includes separate `framework`, `projectType`, and
-`workspaceType` fields. Framework remains a detected framework such as Next.js
-or Express; project type describes the primary shape such as `node-cli`,
-`web-app`, `api-service`, or `library`; workspace type distinguishes a
-monorepo from a single package. Its deterministic summary uses package
-description and detected capabilities instead of file-count filler.
+The index project header includes `framework`, `frameworks`, `projectType`, and
+`workspaceType`. `framework` is the primary project framework and remains
+`unknown` for a CLI/library workspace without one primary web framework.
+`frameworks` lists frameworks detected in workspace packages, such as Astro in
+a landing app. Project type describes the primary shape such as `node-cli`,
+`web-app`, `api-service`, or `library`; workspace type distinguishes a monorepo
+from a single package. Its deterministic summary uses package description and
+detected capabilities instead of file-count filler.
 
 `criticalFiles` is a start-here list, not an import-count leaderboard. It
 prioritizes executable entry points, CLI/feature orchestrators, and files that

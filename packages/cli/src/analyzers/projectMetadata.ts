@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { ScannedFile } from "./fileScanner.js";
-import type { Framework } from "./frameworkDetector.js";
+import type { DetectedFramework, Framework } from "./frameworkDetector.js";
 
 export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
@@ -12,6 +12,7 @@ export type ProjectMetadata = {
   name: string;
   root: string;
   framework: Framework;
+  frameworks: DetectedFramework[];
   language: ProjectLanguage;
   packageManager: PackageManager;
   projectType: ProjectType;
@@ -22,20 +23,26 @@ export type ProjectMetadata = {
 export function detectProjectMetadata(
   projectRoot: string,
   framework: Framework,
-  files: ScannedFile[]
+  files: ScannedFile[],
+  frameworks: DetectedFramework[] = framework === "unknown" ? [] : [framework]
 ): ProjectMetadata {
   const manifests = readPackageManifests(files);
   const projectType = detectProjectType(framework, manifests);
   const primaryManifest = selectPrimaryManifest(manifests, projectType);
+  const workspaceType = detectWorkspaceType(projectRoot, manifests);
+  const primaryFramework = projectType === "node-cli" || projectType === "library"
+    ? "unknown"
+    : framework;
 
   return {
     name: readProjectName(manifests) ?? basename(projectRoot),
     root: projectRoot,
-    framework,
+    framework: primaryFramework,
+    frameworks,
     language: detectLanguage(files),
     packageManager: detectPackageManager(projectRoot),
     projectType,
-    workspaceType: detectWorkspaceType(projectRoot, manifests),
+    workspaceType,
     ...(primaryManifest?.description ? { description: primaryManifest.description } : {})
   };
 }
@@ -85,7 +92,7 @@ function detectProjectType(
   manifests: PackageManifest[]
 ): ProjectType {
   if (manifests.some((manifest) => manifest.bin)) return "node-cli";
-  if (["nextjs", "react"].includes(framework) || hasDependency(manifests, "astro")) {
+  if (["nextjs", "react", "astro"].includes(framework) || hasDependency(manifests, "astro")) {
     return "web-app";
   }
   if (framework === "express") return "api-service";

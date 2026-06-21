@@ -242,6 +242,9 @@ Use your preferred AI tool to change it.
 * Laravel
 * Nuxt
 
+Workspace classification can identify Astro packages, but deep Astro analysis
+is not part of the current MVP support promise.
+
 ---
 
 ## AI Provider Setup

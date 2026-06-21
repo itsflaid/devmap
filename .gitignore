@@ -6,7 +6,7 @@ dist/
 .env.*
 *.log
 
-
+.agents/config.local.md
 
 # Test fixtures intentionally verify ignored paths.
 !packages/cli/test/fixtures/nextjs-project/.env

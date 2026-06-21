@@ -39,23 +39,12 @@ one.
 ## Commits
 
 * Keep the user's Git identity as the primary author whenever possible.
-* For AI-assisted work, add the following trailer to every commit message:
-
-```text
-Co-authored-by: devmap-agent <238585242+devmap-agent@users.noreply.github.com>
-```
-
-* Example:
-
-```text
-feat: add analyzer cache
-
-Co-authored-by: devmap-agent <238585242+devmap-agent@users.noreply.github.com>
-```
-
-* Only use the `devmap-agent` identity as the primary commit author when the user explicitly requests agent-authored commits.
-
+* For AI-assisted commits, append the configured AI co-author trailer.
+* If `.agents/config.local.md` exists, use the configured AI commit identity.
+* If no configuration is found, skip the AI co-author trailer instead of guessing an identity.
+* Only use the configured AI identity as the primary commit author when explicitly requested.
 * Do not modify global Git configuration.
+
 
 
 read PRD and all documentation first before hands-on.

@@ -229,7 +229,6 @@ Use your preferred AI tool to change it.
 * Next.js
 * Node.js
 * Express
-* React
 
 ### Planned
 
@@ -238,9 +237,7 @@ Use your preferred AI tool to change it.
 * Nuxt.js
 * Php - Laravel
 * All JS/TS ecosystem
-* NestJS
-* Laravel
-* Nuxt
+
 
 Workspace classification can identify Astro packages, but deep Astro analysis
 is not part of the current MVP support promise.

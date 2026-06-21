@@ -66,6 +66,14 @@ contains project identity, entry points, a short critical-file list, and compact
 feature descriptors that link to focused feature maps. It intentionally omits
 full dependency and change-impact data.
 
+Project identity separates the primary `framework` from `frameworks` detected
+across workspace packages. This prevents an Astro or Next.js child app from
+being presented as the framework of a CLI-centered monorepo.
+
+Documentation feature maps prioritize root `README.md`, `AGENTS.md`, and
+contributor guidance before nested package or asset README files. File roles
+describe responsibilities rather than repeating export names.
+
 Its critical-file list prioritizes executable entry points, feature entry
 points, and one behavioral support file per feature before falling back to
 global importance scores. Type-only hubs are not promoted solely because many

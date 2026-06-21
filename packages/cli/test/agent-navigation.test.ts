@@ -138,6 +138,116 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
   }
 });
 
+test("agent navigation describes mixed CLI workspaces without misleading agents", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-mixed-navigation-"));
+  const outputRoot = await mkdtemp(join(tmpdir(), "devmap-mixed-navigation-output-"));
+
+  try {
+    await writeFixtureFile(projectRoot, "package.json", JSON.stringify({
+      name: "mixed-workspace",
+      private: true
+    }));
+    await writeFixtureFile(projectRoot, "pnpm-workspace.yaml", "packages:\n  - apps/*\n  - packages/*\n");
+    await writeFixtureFile(projectRoot, "README.md", "# Mixed workspace\n");
+    await writeFixtureFile(projectRoot, "AGENTS.md", "# Agent guidance\n");
+    await writeFixtureFile(projectRoot, "apps/web/package.json", JSON.stringify({
+      name: "web",
+      devDependencies: { astro: "^5.0.0" }
+    }));
+    await writeFixtureFile(projectRoot, "apps/web/src/pages/index.astro", "<h1>Landing</h1>\n");
+    await writeFixtureFile(projectRoot, "apps/web/src/assets/README.md", "# Asset notes\n");
+    await writeFixtureFile(projectRoot, "packages/cli/package.json", JSON.stringify({
+      name: "navigator",
+      bin: { navigator: "./dist/index.js" }
+    }));
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/index.ts",
+      'import { analyzeCommand } from "./commands/analyze.js"; analyzeCommand();\n'
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/commands/analyze.ts",
+      'import { createProjectMap } from "../analyzers/projectMap.js"; import type { Project } from "../ai/types.js"; export function analyzeCommand(): Project { return createProjectMap() as Project; }\n'
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/analyzers/projectMap.ts",
+      'import { scanFiles } from "./fileScanner.js"; import type { Project } from "../ai/types.js"; export function createProjectMap(): Project { return scanFiles() as Project; }\n'
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/analyzers/fileScanner.ts",
+      "export function scanFiles() { return []; }\n"
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/ai/types.ts",
+      "export type Project = { ready: boolean };\n"
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/ai/provider.ts",
+      'import type { Project } from "./types.js"; export function createAiClient() { return {} as Project; } export function resolveAiRouting() { return "auto"; }\n'
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/ai/groq.ts",
+      'import type { Project } from "./types.js"; export class GroqClient { project?: Project; }\n'
+    );
+    await writeFixtureFile(
+      projectRoot,
+      "packages/cli/src/ai/openrouter.ts",
+      'import type { Project } from "./types.js"; export class OpenRouterClient { project?: Project; }\n'
+    );
+    await writeFixtureFile(projectRoot, "packages/cli/src/ai/contextBuilder.ts", "export function buildQuestionContext() {}\n");
+    await writeFixtureFile(projectRoot, "packages/cli/src/ai/prompts.ts", "export function buildAskMessages() {}\n");
+    await writeFixtureFile(projectRoot, "packages/cli/src/ai/completion.ts", "export function completeWithOptionalStreaming() {}\n");
+
+    const snapshot = await createProjectMap(projectRoot);
+    const result = await writeAgentNavigationFiles(outputRoot, snapshot);
+    const index = JSON.parse(await readFile(result.indexPath, "utf8")) as {
+      project: { framework: string; frameworks: string[]; projectType: string };
+      features: Array<{ id: string; map: string }>;
+    };
+
+    assert.equal(index.project.projectType, "node-cli");
+    assert.equal(index.project.framework, "unknown");
+    assert.deepEqual(index.project.frameworks, ["astro"]);
+
+    const documentation = index.features.find((feature) => feature.id === "documentation");
+    assert.ok(documentation);
+    const documentationMap = JSON.parse(await readFile(
+      join(outputRoot, documentation.map),
+      "utf8"
+    )) as { entryPoints: string[]; sourcePriority: string[] };
+    assert.equal(documentationMap.entryPoints[0], "README.md");
+    assert.equal(documentationMap.sourcePriority[0], "README.md");
+
+    const providerPurpose = snapshot.fileIndex["packages/cli/src/ai/provider.ts"]?.purpose ?? "";
+    assert.match(providerPurpose, /selects the configured AI provider/i);
+    assert.doesNotMatch(providerPurpose, /\bexposes\b/i);
+
+    const aiIntegration = snapshot.features.find((feature) => feature.name === "AI Integration");
+    assert.ok(aiIntegration);
+    assert.match(aiIntegration.businessFlow.join(" "), /groq\.ts/i);
+    assert.match(aiIntegration.businessFlow.join(" "), /openrouter\.ts/i);
+
+    const scanner = snapshot.criticalFiles.find((file) =>
+      file.path.endsWith("analyzers/fileScanner.ts")
+    );
+    const sharedTypes = snapshot.criticalFiles.find((file) =>
+      file.path.endsWith("ai/types.ts")
+    );
+    assert.ok(scanner);
+    assert.ok(sharedTypes);
+    assert.ok(scanner.score > sharedTypes.score);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+    await rm(outputRoot, { recursive: true, force: true });
+  }
+});
+
 async function writeFixtureFile(
   projectRoot: string,
   path: string,

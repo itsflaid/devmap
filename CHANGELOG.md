@@ -20,6 +20,9 @@ All notable changes to DevMap are documented in this file.
 
 ### Changed
 
+- Snapshot metadata now separates the primary framework from frameworks found
+  in workspace packages, prioritizes root documentation, and emits semantic
+  file purposes and provider-neutral AI flows
 - `devmap init` defaults OpenRouter to `openrouter/free` on Enter and explains
   how to change the stored model with `devmap config model <model-id>`
 - Feature detection now separates documentation, landing UI, CLI commands,

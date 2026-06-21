@@ -203,9 +203,7 @@ type ReadingItem = {
 
 function renderProjectIntroduction(snapshot: ProjectMap, language: OnboardingLanguage): string[] {
   const name = snapshot.project.name || (language === "id" ? "Project ini" : "This project");
-  const framework = snapshot.project.framework !== "unknown"
-    ? language === "id" ? `berbasis ${snapshot.project.framework}` : `built with ${snapshot.project.framework}`
-    : null;
+  const framework = describeProjectFrameworks(snapshot, language);
   const projectLanguage = snapshot.project.language !== "unknown"
     ? language === "id" ? `menggunakan ${snapshot.project.language}` : snapshot.project.language
     : null;
@@ -246,6 +244,26 @@ function formatEnglishProjectDescriptor(language: string | null, framework: stri
     return `${language} ${framework}`;
   }
   return language ?? framework ?? "software";
+}
+
+function describeProjectFrameworks(
+  snapshot: ProjectMap,
+  language: OnboardingLanguage
+): string | null {
+  if (snapshot.project.framework !== "unknown") {
+    return language === "id"
+      ? `berbasis ${snapshot.project.framework}`
+      : `built with ${snapshot.project.framework}`;
+  }
+
+  if (snapshot.project.frameworks.length > 0) {
+    const frameworks = snapshot.project.frameworks.join(", ");
+    return language === "id"
+      ? `dengan framework workspace ${frameworks}`
+      : `with workspace frameworks ${frameworks}`;
+  }
+
+  return null;
 }
 
 function renderMentalModel(snapshot: ProjectMap, language: OnboardingLanguage): string[] {
@@ -848,7 +866,7 @@ function renderProjectNarrative(snapshot: ProjectMap, language: OnboardingLangua
     ? [
       `${snapshot.project.name} adalah project ${snapshot.project.language}`,
       `yang memakai ${snapshot.project.packageManager}`,
-      snapshot.project.framework !== "unknown" ? `dengan ${snapshot.project.framework}` : null,
+      describeProjectFrameworks(snapshot, "id"),
       entryPoints.length > 0 ? `dan mulai dari ${entryPoints[0]}` : null,
       featureNames.length > 0 ? `dengan area fitur terdeteksi seperti ${formatInlineList(featureNames, "id")}` : null,
       services.length > 0 ? `serta external service seperti ${formatInlineList(services, "id")}` : null
@@ -856,7 +874,7 @@ function renderProjectNarrative(snapshot: ProjectMap, language: OnboardingLangua
     : [
       `${snapshot.project.name} is a ${snapshot.project.language} project`,
       `using ${snapshot.project.packageManager}`,
-      snapshot.project.framework !== "unknown" ? `with ${snapshot.project.framework}` : null,
+      describeProjectFrameworks(snapshot, "en"),
       entryPoints.length > 0 ? `starting from ${entryPoints[0]}` : null,
       featureNames.length > 0 ? `with detected feature areas such as ${formatInlineList(featureNames, "en")}` : null,
       services.length > 0 ? `and external services such as ${formatInlineList(services, "en")}` : null

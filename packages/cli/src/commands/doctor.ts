@@ -6,7 +6,10 @@ import {
   type ProviderInspection
 } from "../ai/provider.js";
 import { scanFiles } from "../analyzers/fileScanner.js";
-import { detectFramework } from "../analyzers/frameworkDetector.js";
+import {
+  detectFramework,
+  detectFrameworks
+} from "../analyzers/frameworkDetector.js";
 import { detectProjectMetadata } from "../analyzers/projectMetadata.js";
 import { inspectSnapshot } from "../cache/snapshot.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
@@ -55,7 +58,8 @@ async function runDoctor(
     scanFiles(projectRoot)
   ]);
   const framework = detectFramework(files);
-  const project = detectProjectMetadata(projectRoot, framework, files);
+  const frameworks = detectFrameworks(files);
+  const project = detectProjectMetadata(projectRoot, framework, files, frameworks);
   const selectedModel = config
     ? resolveAiRouting(config, "ask").model
     : undefined;
@@ -69,7 +73,8 @@ async function runDoctor(
   output.keyValue("Node.js", `${process.version} (${nodeSupported ? "supported" : "unsupported"})`);
   output.keyValue("OS", `${platform()}/${arch()}`);
   output.keyValue("Project", project.name);
-  output.keyValue("Framework", framework);
+  output.keyValue("Framework", project.framework);
+  output.keyValue("Workspace Frameworks", project.frameworks.join(", ") || "none detected");
   output.keyValue("Package Manager", project.packageManager);
   output.keyValue("Provider", config?.provider ?? "not configured");
   output.keyValue("Config", config ? "exists" : "missing");

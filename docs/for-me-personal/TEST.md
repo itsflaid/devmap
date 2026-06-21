@@ -52,6 +52,28 @@ Remove-Item Env:OPENROUTER_API_KEY
 Jangan simpan atau menyalin API key nyata ke repository, snapshot, output test,
 atau dokumentasi debugging.
 
+## Mixed Workspace Snapshot Accuracy
+
+Jalankan static analyze pada root DevMap dengan config AI terisolasi:
+
+```powershell
+$oldProfile = $env:USERPROFILE
+$env:USERPROFILE = Join-Path $env:TEMP "devmap-mixed-workspace-test"
+pnpm dev:cli -- analyze . --fresh --json
+$env:USERPROFILE = $oldProfile
+```
+
+Periksa `.devmap/index.json` dan feature maps. Expected:
+
+- `projectType` adalah `node-cli`;
+- primary `framework` adalah `unknown`;
+- `frameworks` memuat `astro`;
+- Documentation dimulai dari root `README.md`, bukan README dalam assets;
+- purpose `ai/provider.ts` menjelaskan pemilihan provider/model routing dan
+  tidak memakai kata `exposes`;
+- AI flow menyebut `groq.ts` dan `openrouter.ts`;
+- main critical list tetap dimulai dari CLI entry/analyze/project map.
+
 ## Ts-Morph Dan Agent Navigation
 
 Focused tests:

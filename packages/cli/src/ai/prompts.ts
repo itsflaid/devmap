@@ -2,7 +2,8 @@ import type { ProjectMap } from "../analyzers/projectMap.js";
 import type { QuestionContext } from "./contextBuilder.js";
 import type { AiMessage } from "./types.js";
 
-export type AskProjectSummary = Pick<ProjectMap["project"], "name" | "framework">;
+export type AskProjectSummary = Pick<ProjectMap["project"], "name" | "framework">
+  & { frameworks?: ProjectMap["project"]["frameworks"] };
 
 export function buildQueryExpansionMessages(query: string): AiMessage[] {
   return [
@@ -127,6 +128,7 @@ export function buildAskMessages(
       content: [
         `PROJECT: ${project.name}`,
         `FRAMEWORK: ${project.framework}`,
+        `WORKSPACE_FRAMEWORKS: ${project.frameworks?.join(", ") || "none"}`,
         `INTENT: ${context.intent}`,
         `KEYWORDS: ${context.keywords.length > 0 ? context.keywords.join(", ") : "none"}`,
         `EXPANDED_TERMS: ${context.expandedTerms.length > 0 ? context.expandedTerms.join(", ") : "none"}`,

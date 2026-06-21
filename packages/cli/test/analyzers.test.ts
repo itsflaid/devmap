@@ -7,7 +7,10 @@ import test from "node:test";
 import { buildDependencyGraph, countReferences } from "../src/analyzers/dependencyGraph.js";
 import { scanFiles } from "../src/analyzers/fileScanner.js";
 import { shouldIgnorePath } from "../src/analyzers/filterEngine.js";
-import { detectFramework } from "../src/analyzers/frameworkDetector.js";
+import {
+  detectFramework,
+  detectFrameworks
+} from "../src/analyzers/frameworkDetector.js";
 import { detectFeatures } from "../src/analyzers/featureDetector.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 import { detectExternalServices } from "../src/analyzers/serviceDetector.js";
@@ -107,6 +110,25 @@ test("framework detector recognizes standalone React without downgrading Next.js
 
   assert.equal(detectFramework(reactFiles), "react");
   assert.equal(detectFramework(reactLibraryFiles), "unknown");
+});
+
+test("framework detector reports Astro in a mixed workspace", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({ name: "workspace" })),
+    createScannedFile("apps/web/package.json", JSON.stringify({
+      devDependencies: { astro: "^5.0.0" }
+    })),
+    createScannedFile("apps/web/src/pages/index.astro", "<h1>Home</h1>\n"),
+    createScannedFile("test/fixtures/next/package.json", JSON.stringify({
+      dependencies: { next: "^15.0.0", react: "^19.0.0", "react-dom": "^19.0.0" }
+    })),
+    createScannedFile("test/fixtures/express/package.json", JSON.stringify({
+      dependencies: { express: "^5.0.0" }
+    }))
+  ];
+
+  assert.equal(detectFramework(files), "astro");
+  assert.deepEqual(detectFrameworks(files), ["astro"]);
 });
 
 test("project map classifies a standalone React app and finds its browser entry", async () => {
@@ -324,6 +346,7 @@ test("project map summarizes a Next.js fixture", async () => {
     name: "nextjs-fixture",
     root: nextFixture,
     framework: "nextjs",
+    frameworks: ["nextjs"],
     language: "typescript",
     packageManager: "unknown",
     projectType: "web-app",
@@ -486,11 +509,13 @@ test("snapshot reader supplies project classification defaults for schema v1 sna
     const legacyProject = projectMap.project as Partial<typeof projectMap.project>;
     delete legacyProject.projectType;
     delete legacyProject.workspaceType;
+    delete legacyProject.frameworks;
     await saveSnapshot(temporaryRoot, projectMap);
 
     const saved = await readSnapshot(temporaryRoot);
     assert.equal(saved?.project.projectType, "web-app");
     assert.equal(saved?.project.workspaceType, "single-package");
+    assert.deepEqual(saved?.project.frameworks, ["nextjs"]);
   } finally {
     await rm(temporaryRoot, { recursive: true, force: true });
   }

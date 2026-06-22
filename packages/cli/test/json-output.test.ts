@@ -3,11 +3,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import type { AiClient } from "../src/ai/types.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { analyzeCommand } from "../src/commands/analyze.js";
-import { askCommand } from "../src/commands/ask.js";
 import { configModelCommand } from "../src/commands/config.js";
 import { doctorCommand } from "../src/commands/doctor.js";
 import { initCommand } from "../src/commands/init.js";
@@ -26,67 +24,6 @@ test("analyze --json emits one parseable snapshot document", async () => {
 
     assert.equal(payload.project.name, "json-analyze");
     assert.ok(payload.fileIndex["index.ts"]);
-  } finally {
-    await rm(projectRoot, { recursive: true, force: true });
-  }
-});
-
-test("ask --json emits answer, relevant files, model, and usage", async () => {
-  const projectRoot = await createProject("json-ask");
-  const snapshot = await createProjectMap(projectRoot);
-  await saveSnapshot(projectRoot, snapshot);
-  let completeCalls = 0;
-  let streamCalls = 0;
-  const client: AiClient = {
-    async complete(request) {
-      completeCalls += 1;
-      if (request.messages[0]?.content.includes("Return a JSON array only")) {
-        return {
-          content: "[\"startup\"]",
-          model: request.model
-        };
-      }
-
-      return {
-        content: "The entry point is index.ts.",
-        model: request.model,
-        usage: {
-          promptTokens: 20,
-          completionTokens: 8,
-          totalTokens: 28
-        }
-      };
-    },
-    async stream() {
-      streamCalls += 1;
-      throw new Error("JSON output must not use streaming");
-    }
-  };
-
-  try {
-    const output = await captureStdout(() => askCommand(
-      ["where", "is", "the", "entry", "point"],
-      {
-        json: true,
-        projectRoot,
-        loadConfig: async () => ({
-          provider: "groq",
-          apiKey: "gsk_fixture",
-          model: "auto"
-        }),
-        createAiClient: () => client
-      }
-    ));
-    const payload = parseSingleJson(output);
-
-    assert.equal(payload.status, "ok");
-    assert.equal(payload.answer, "The entry point is index.ts.");
-    assert.equal(payload.model, "llama-3.1-8b-instant");
-    assert.equal(payload.usage.totalTokens, 28);
-    assert.deepEqual(payload.expandedTerms, []);
-    assert.ok(Array.isArray(payload.relevantFiles));
-    assert.equal(completeCalls, 1);
-    assert.equal(streamCalls, 0);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

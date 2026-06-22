@@ -31,7 +31,7 @@ git diff --check
 
 Confirm:
 
-- live Groq `init`, `analyze`, `ask`, streaming, and `doctor` were tested;
+- live Groq `init`, `analyze`, streaming, and `doctor` were tested;
 - GitHub Actions is green on Windows, macOS, and Linux;
 - `packages/cli/package.json` and CLI `--version` both report `0.1.0`;
 - no API key, `.env`, `.devmap`, source test fixture, or local artifact is in

@@ -95,7 +95,7 @@ test("OpenRouter automatic routing defaults safely to the free router", () => {
     provider: "openrouter",
     apiKey: "sk-or-fixture",
     model: "auto"
-  }, "ask"), {
+  }, "analyze"), {
     model: OPENROUTER_FREE_MODEL,
     fallbackModels: []
   });

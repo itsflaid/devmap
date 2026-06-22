@@ -44,7 +44,7 @@ adding AI on top. If the foundation is wrong, AI output will be wrong too.
 - All error scenarios handled (no raw stack traces)
 
 **Deliverable:** `devmap analyze` with AI interpretation,
-`devmap ask` with context-aware answers, and `devmap onboarding` for a
+`devmap onboarding` for a
 snapshot-based reading guide when the output is stable enough for `0.1.0`.
 
 ---
@@ -119,7 +119,7 @@ Not planned. Not scheduled. Revisit when Phase 5 ships.
 |---|---|---|
 | 0.1.0 | 2 | Early beta with static analysis, Groq AI, JSON output, and streaming |
 | 0.2.0 | 2 | Feedback-driven reliability and analyzer improvements |
-| 1.0.0 | 2 | Stable `devmap analyze` + `devmap ask` release |
+| 1.0.0 | 2 | Stable `devmap analyze` release |
 | 1.1.0 | 2 | Performance improvements, cache optimization |
 | 1.2.0 | 2 | Express support solidified |
 | 2.0.0 | 3 | `devmap docs` + expanded onboarding |

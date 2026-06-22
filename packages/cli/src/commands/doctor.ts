@@ -61,7 +61,7 @@ async function runDoctor(
   const frameworks = detectFrameworks(files);
   const project = detectProjectMetadata(projectRoot, framework, files, frameworks);
   const selectedModel = config
-    ? resolveAiRouting(config, "ask").model
+    ? resolveAiRouting(config, "analyze").model
     : undefined;
   const issues: string[] = [];
   const nodeSupported = readNodeMajor(process.version) >= MINIMUM_NODE_MAJOR;

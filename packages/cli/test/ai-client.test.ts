@@ -8,8 +8,7 @@ import {
   GroqClient,
   type GroqClientDependencies
 } from "../src/ai/groq.js";
-import { buildAnalyzeMessages, buildAskMessages } from "../src/ai/prompts.js";
-import type { QuestionContext } from "../src/ai/contextBuilder.js";
+import { buildAnalyzeMessages } from "../src/ai/prompts.js";
 import { createProjectMap } from "../src/analyzers/projectMap.js";
 import { DevmapError } from "../src/utils/errors.js";
 
@@ -19,7 +18,7 @@ test("Groq client returns normalized content and token usage", async () => {
     fetch: async (url, init) => {
       requests.push({ url: String(url), init });
       return jsonResponse({
-        model: DEFAULT_AI_MODELS.ask,
+        model: DEFAULT_AI_MODELS.deepAnalyze,
         choices: [{ message: { content: "Authentication uses a session handler." } }],
         usage: {
           prompt_tokens: 120,
@@ -32,13 +31,13 @@ test("Groq client returns normalized content and token usage", async () => {
 
   const result = await client.complete({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask
+    model: DEFAULT_AI_MODELS.deepAnalyze
   });
 
   assert.equal(requests.length, 1);
   assert.equal(requests[0]?.url, "https://api.groq.com/openai/v1/chat/completions");
   assert.equal(result.content, "Authentication uses a session handler.");
-  assert.equal(result.model, DEFAULT_AI_MODELS.ask);
+  assert.equal(result.model, DEFAULT_AI_MODELS.deepAnalyze);
   assert.deepEqual(result.usage, {
     promptTokens: 120,
     completionTokens: 18,
@@ -61,10 +60,10 @@ test("Groq client streams split SSE deltas and returns the complete result", asy
       return new Response(new ReadableStream({
         start(controller) {
           controller.enqueue(encoder.encode(
-            'data: {"model":"llama-3.1-8b-instant","choices":[{"delta":{"content":"Auth"}}]}\n'
+            'data: {"model":"openai/gpt-oss-120b","choices":[{"delta":{"content":"Auth"}}]}\n'
           ));
           controller.enqueue(encoder.encode(
-            '\ndata: {"model":"llama-3.1-8b-instant","choices":[{"delta":{"content":" works."}}],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}\n\n'
+            '\ndata: {"model":"openai/gpt-oss-120b","choices":[{"delta":{"content":" works."}}],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}\n\n'
           ));
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
@@ -77,14 +76,14 @@ test("Groq client streams split SSE deltas and returns the complete result", asy
 
   const result = await client.stream({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask
+    model: DEFAULT_AI_MODELS.deepAnalyze
   }, (delta) => {
     deltas.push(delta);
   });
 
   assert.deepEqual(deltas, ["Auth", " works."]);
   assert.equal(result.content, "Auth works.");
-  assert.equal(result.model, DEFAULT_AI_MODELS.ask);
+  assert.equal(result.model, DEFAULT_AI_MODELS.deepAnalyze);
   assert.deepEqual(result.usage, {
     promptTokens: 10,
     completionTokens: 2,
@@ -107,7 +106,7 @@ test("Groq client retries rate limits with exponential backoff", async () => {
       }
 
       return jsonResponse({
-        model: DEFAULT_AI_MODELS.ask,
+        model: DEFAULT_AI_MODELS.deepAnalyze,
         choices: [{ message: { content: "Recovered." } }]
       });
     },
@@ -119,7 +118,7 @@ test("Groq client retries rate limits with exponential backoff", async () => {
 
   const result = await client.complete({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask
+    model: DEFAULT_AI_MODELS.deepAnalyze
   });
 
   assert.equal(requestCount, 4);
@@ -146,7 +145,7 @@ test("Groq client stops after three rate-limit retries", async () => {
   await assert.rejects(
     client.complete({
       messages: [{ role: "user", content: "Explain auth." }],
-      model: DEFAULT_AI_MODELS.ask
+      model: DEFAULT_AI_MODELS.deepAnalyze
     }),
     (error: unknown) => error instanceof DevmapError
       && /rate limit reached after retrying/i.test(error.message)
@@ -163,7 +162,7 @@ test("Groq client falls back when the primary model is unavailable", async () =>
       const body = JSON.parse(String(init?.body)) as { model: string };
       requestedModels.push(body.model);
 
-      if (body.model === DEFAULT_AI_MODELS.ask) {
+      if (body.model === DEFAULT_AI_MODELS.deepAnalyze) {
         return jsonResponse(
           { error: { message: "The model is not available." } },
           404
@@ -179,12 +178,12 @@ test("Groq client falls back when the primary model is unavailable", async () =>
 
   const result = await client.complete({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask,
+    model: DEFAULT_AI_MODELS.deepAnalyze,
     fallbackModel: DEFAULT_AI_MODELS.fallback
   });
 
   assert.deepEqual(requestedModels, [
-    DEFAULT_AI_MODELS.ask,
+    DEFAULT_AI_MODELS.deepAnalyze,
     DEFAULT_AI_MODELS.fallback
   ]);
   assert.equal(result.content, "Fallback answer.");
@@ -194,13 +193,13 @@ test("Groq client falls back when the primary model is unavailable", async () =>
 test("Groq client follows an ordered fallback chain after unavailable and rate-limited models", async () => {
   const requestedModels: string[] = [];
   const delays: number[] = [];
-  const [qwenModel, versatileModel] = DEFAULT_AI_FALLBACKS.ask;
+  const [qwenModel, versatileModel] = DEFAULT_AI_FALLBACKS.deepAnalyze;
   const client = new GroqClient("gsk_test", {
     fetch: async (_url, init) => {
       const body = JSON.parse(String(init?.body)) as { model: string };
       requestedModels.push(body.model);
 
-      if (body.model === DEFAULT_AI_MODELS.ask) {
+      if (body.model === DEFAULT_AI_MODELS.deepAnalyze) {
         return jsonResponse(
           { error: { message: "The model is not available." } },
           404
@@ -226,12 +225,12 @@ test("Groq client follows an ordered fallback chain after unavailable and rate-l
 
   const result = await client.complete({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask,
-    fallbackModels: DEFAULT_AI_FALLBACKS.ask
+    model: DEFAULT_AI_MODELS.deepAnalyze,
+    fallbackModels: DEFAULT_AI_FALLBACKS.deepAnalyze
   });
 
   assert.deepEqual(requestedModels, [
-    DEFAULT_AI_MODELS.ask,
+    DEFAULT_AI_MODELS.deepAnalyze,
     qwenModel,
     qwenModel,
     qwenModel,
@@ -250,7 +249,7 @@ test("Groq client removes duplicate models from the fallback chain", async () =>
       const body = JSON.parse(String(init?.body)) as { model: string };
       requestedModels.push(body.model);
 
-      if (body.model === DEFAULT_AI_MODELS.ask) {
+      if (body.model === DEFAULT_AI_MODELS.deepAnalyze) {
         return jsonResponse(
           { error: { message: "The model is not available." } },
           404
@@ -266,9 +265,9 @@ test("Groq client removes duplicate models from the fallback chain", async () =>
 
   await client.complete({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask,
+    model: DEFAULT_AI_MODELS.deepAnalyze,
     fallbackModels: [
-      DEFAULT_AI_MODELS.ask,
+      DEFAULT_AI_MODELS.deepAnalyze,
       DEFAULT_AI_MODELS.fallback,
       DEFAULT_AI_MODELS.fallback
     ],
@@ -276,7 +275,7 @@ test("Groq client removes duplicate models from the fallback chain", async () =>
   });
 
   assert.deepEqual(requestedModels, [
-    DEFAULT_AI_MODELS.ask,
+    DEFAULT_AI_MODELS.deepAnalyze,
     DEFAULT_AI_MODELS.fallback
   ]);
 });
@@ -284,7 +283,7 @@ test("Groq client removes duplicate models from the fallback chain", async () =>
 test("Groq streaming follows the fallback chain before emitting deltas", async () => {
   const requestedModels: string[] = [];
   const deltas: string[] = [];
-  const fallbackModel = DEFAULT_AI_FALLBACKS.ask[0];
+  const fallbackModel = DEFAULT_AI_FALLBACKS.deepAnalyze[0];
   const encoder = new TextEncoder();
   const client = new GroqClient("gsk_test", {
     fetch: async (_url, init) => {
@@ -295,7 +294,7 @@ test("Groq streaming follows the fallback chain before emitting deltas", async (
       requestedModels.push(body.model);
       assert.equal(body.stream, true);
 
-      if (body.model === DEFAULT_AI_MODELS.ask) {
+      if (body.model === DEFAULT_AI_MODELS.deepAnalyze) {
         return jsonResponse(
           { error: { message: "The model is not available." } },
           404
@@ -318,13 +317,13 @@ test("Groq streaming follows the fallback chain before emitting deltas", async (
 
   const result = await client.stream({
     messages: [{ role: "user", content: "Explain auth." }],
-    model: DEFAULT_AI_MODELS.ask,
-    fallbackModels: DEFAULT_AI_FALLBACKS.ask
+    model: DEFAULT_AI_MODELS.deepAnalyze,
+    fallbackModels: DEFAULT_AI_FALLBACKS.deepAnalyze
   }, (delta) => {
     deltas.push(delta);
   });
 
-  assert.deepEqual(requestedModels, [DEFAULT_AI_MODELS.ask, fallbackModel]);
+  assert.deepEqual(requestedModels, [DEFAULT_AI_MODELS.deepAnalyze, fallbackModel]);
   assert.deepEqual(deltas, ["Fallback stream."]);
   assert.equal(result.model, fallbackModel);
 });
@@ -344,8 +343,8 @@ test("Groq client does not fall back after authentication errors", async () => {
   await assert.rejects(
     client.complete({
       messages: [{ role: "user", content: "Explain auth." }],
-      model: DEFAULT_AI_MODELS.ask,
-      fallbackModels: DEFAULT_AI_FALLBACKS.ask
+      model: DEFAULT_AI_MODELS.deepAnalyze,
+      fallbackModels: DEFAULT_AI_FALLBACKS.deepAnalyze
     }),
     (error: unknown) => error instanceof DevmapError
       && /API key is invalid/i.test(error.message)
@@ -365,60 +364,12 @@ test("Groq client maps invalid credentials to an actionable error", async () => 
   await assert.rejects(
     client.complete({
       messages: [{ role: "user", content: "Explain auth." }],
-      model: DEFAULT_AI_MODELS.ask
+      model: DEFAULT_AI_MODELS.deepAnalyze
     }),
     (error: unknown) => error instanceof DevmapError
       && /API key is invalid/i.test(error.message)
       && error.hint?.includes("devmap init") === true
   );
-});
-
-test("ask prompt grounds the answer in snapshot context and preserves language", () => {
-  const context: QuestionContext = {
-    question: "Bagaimana autentikasi bekerja?",
-    intent: "explain",
-    keywords: ["auth", "session"],
-    expandedTerms: ["middleware"],
-    confidence: "high",
-    topScore: 72,
-    relevantFiles: [],
-    files: [
-      {
-        path: "lib/auth.ts",
-        score: 20,
-        reasons: ["evidence for Authentication"],
-        exports: ["getSession"],
-        topFunctions: [],
-        startLine: 1,
-        endLine: 4,
-        truncated: false,
-        content: "export async function getSession() {\n  return auth();\n}"
-      }
-    ]
-  };
-
-  const messages = buildAskMessages(context, {
-    projectName: "fixture",
-    framework: "nextjs"
-  });
-
-  assert.match(messages[0]?.content ?? "", /only the supplied DevMap context/i);
-  assert.match(messages[0]?.content ?? "", /same language/i);
-  assert.match(messages[0]?.content ?? "", /Do not restate the question/i);
-  assert.match(messages[0]?.content ?? "", /Do not repeat/i);
-  assert.match(messages[0]?.content ?? "", /Only mention files as existing files/i);
-  assert.match(messages[0]?.content ?? "", /suggested new or possible file/i);
-  assert.match(messages[0]?.content ?? "", /EXPANDED_TERMS/i);
-  assert.match(messages[0]?.content ?? "", /Key Files/);
-  assert.match(messages[0]?.content ?? "", /Limits/);
-  assert.match(messages[0]?.content ?? "", /existing supplied files/i);
-  assert.match(messages[1]?.content ?? "", /INTENT: explain/);
-  assert.match(messages[1]?.content ?? "", /EXPANDED_TERMS: middleware/);
-  assert.match(messages[1]?.content ?? "", /RETRIEVAL_CONFIDENCE: high/);
-  assert.match(messages[1]?.content ?? "", /EXPORTS: getSession/);
-  assert.match(messages[1]?.content ?? "", /Bagaimana autentikasi bekerja/);
-  assert.match(messages[1]?.content ?? "", /lib\/auth\.ts/);
-  assert.match(messages[1]?.content ?? "", /getSession/);
 });
 
 test("analyze prompt contains structured snapshot facts without raw source", async () => {

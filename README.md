@@ -297,7 +297,6 @@ Node.js 18+
 
 - [x] `devmap init`
 - [x] `devmap analyze`
-- [x] `devmap ask`
 - [x] `devmap onboarding`
 - [x] `devmap doctor`
 

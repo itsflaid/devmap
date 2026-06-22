@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { analyzeCommand } from "./commands/analyze.js";
-import { askCommand } from "./commands/ask.js";
 import { configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
@@ -32,13 +31,6 @@ program
   .option("--fresh", "ignore cache and run a fresh analysis")
   .option("--json", "output machine-readable JSON")
   .action((target, options) => analyzeCommand(target, options));
-
-program
-  .command("ask")
-  .description("Find files relevant to a codebase question")
-  .argument("<question...>", "question to ask")
-  .option("--json", "output machine-readable JSON")
-  .action((question, options) => askCommand(question, { json: options.json }));
 
 program
   .command("onboarding")

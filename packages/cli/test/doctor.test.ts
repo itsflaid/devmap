@@ -41,7 +41,7 @@ test("doctor reports project, provider, model, and snapshot diagnostics", async 
     assert.match(logs, /Framework\s+express/);
     assert.match(logs, /Provider\s+groq/);
     assert.match(logs, /API key\s+valid/);
-    assert.match(logs, /Model\s+llama-3\.1-8b-instant/);
+    assert.match(logs, /Model\s+openai\/gpt-oss-20b/);
     assert.match(logs, /Snapshot\s+valid/);
     assert.match(logs, /No issues found/);
     assert.doesNotMatch(logs, /gsk_fixture/);

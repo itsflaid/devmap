@@ -78,7 +78,7 @@ const ROLE_FEATURES: Array<{
     role: "cli-command",
     name: "CLI Commands",
     purpose: "Contains command entry points that orchestrate DevMap behavior.",
-    terms: ["cli", "command", "analyze", "ask", "init", "doctor"]
+    terms: ["cli", "command", "analyze", "init", "doctor"]
   },
   {
     role: "snapshot-engine",

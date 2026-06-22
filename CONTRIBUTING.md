@@ -60,7 +60,6 @@ pnpm dev
 
 # Or run a specific command directly
 npx tsx src/index.ts analyze
-npx tsx src/index.ts ask "how does auth work"
 
 # Build for production
 pnpm build
@@ -81,7 +80,6 @@ cd ~/projects/some-nextjs-app
 
 # Run devmap against it
 devmap analyze
-devmap ask "how does auth work"
 devmap doctor
 ```
 

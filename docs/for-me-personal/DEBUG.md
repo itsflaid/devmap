@@ -494,7 +494,7 @@ dengan pemberitahuan singkat.
 
 ### Solusi
 
-- Gunakan `openai/gpt-oss-20b` untuk `ask` dan standard `analyze`.
+- Gunakan `openai/gpt-oss-20b` untuk standard `analyze`.
 - Gunakan `llama-3.3-70b-versatile` untuk `analyze --deep`.
 - Gunakan `llama-3.3-70b-versatile` sebagai fallback.
 - Perbarui PRD dan architecture docs.
@@ -614,7 +614,7 @@ test satu pertanyaan.
 
 ### Gejala
 
-Jawaban `devmap ask` menampilkan marker seperti `**bold**`, backtick, dan table
+Output `devmap ask` (sebelum dihapus) menampilkan marker seperti `**bold**`, backtick, dan table
 pipe secara literal. Tabel lebar terpotong oleh terminal dan sulit dipindai.
 
 ### Akar Masalah
@@ -628,14 +628,14 @@ source preview, tetapi tidak memahami struktur Markdown yang dihasilkan model.
 - Render heading, prose, list, fenced code, dan inline formatting.
 - Ubah Markdown table menjadi record vertikal.
 - Bungkus text berdasarkan lebar terminal.
-- Gunakan renderer hanya untuk jawaban AI `ask` dan interpretation `analyze`.
+- Gunakan renderer hanya untuk jawaban AI `analyze`.
 - Pertahankan `codeBlock()` untuk static source context.
 
 ### Verifikasi
 
 - Unit test mencakup heading, inline marker, list, table, wrapping, dan code
   fence.
-- Integration test memastikan output `ask` dan cached `analyze` tidak
+- Integration test memastikan output `analyze` tidak
   menampilkan marker Markdown mentah.
 - Preview manual dengan contoh database menghasilkan blok `users` dan `rooms`
   yang terbaca tanpa table pipe.
@@ -745,14 +745,14 @@ TypeScript. Retry rate limit memakai satu cabang `if`, bukan loop berbatas.
 TypeScript type assertion tidak memvalidasi data runtime. Semua data persisted
 harus melewati boundary validation sebelum dipakai oleh command lain.
 
-## 14. Ask Output Terlalu Ramai Dan Jawaban Berulang
+## 14. Ask Output Terlalu Ramai Dan Jawaban Berulang (removed)
 
 **Tanggal:** 2026-06-16
 **Status:** Selesai
 
 ### Gejala
 
-`devmap ask` menampilkan `Relevant Files` dengan alasan scoring yang panjang
+Output `devmap ask` (sebelum dihapus) menampilkan `Relevant Files` dengan alasan scoring yang panjang
 dan jawaban AI dapat mengulang kalimat, memberi high-level outline terlalu
 panjang, atau menampilkan contoh kode padahal user hanya butuh arah file.
 
@@ -784,7 +784,7 @@ tidak relevan. Prompt `ask` belum memberi kontrak format yang cukup tegas.
 
 ### Verifikasi
 
-- `pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ask-command.test.ts test/ai-client.test.ts`
+- `pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ai-client.test.ts`
 
 ### Pelajaran
 
@@ -830,7 +830,7 @@ direct match atau membuat file lemah terlihat seolah relevan.
 - Focused suite:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ask-command.test.ts test/ai-client.test.ts
+pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ai-client.test.ts
 ```
 
 ### Pelajaran

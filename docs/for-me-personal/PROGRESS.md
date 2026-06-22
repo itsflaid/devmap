@@ -1,6 +1,32 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-22
+Terakhir diperbarui: 2026-06-23
+
+## Update 2026-06-23
+
+### Ask Command — Complete Removal
+
+- **Seluruh fitur `devmap ask` dihapus permanen.**
+- File dihapus: `src/commands/ask.ts`, `test/ask-command.test.ts`.
+- **Source code clean-up:**
+  - `index.ts` — hapus import dan registrasi command `ask`.
+  - `provider.ts` — hapus `"ask"` dari `AiTask` union type.
+  - `groq.ts` — hapus `DEFAULT_AI_MODELS.ask` dan `DEFAULT_AI_FALLBACKS.ask`.
+  - `prompts.ts` — hapus `buildAskMessages`, `buildQueryExpansionMessages`, type `AskProjectSummary`.
+  - `doctor.ts` — ganti `resolveAiRouting(config, "ask")` → `"analyze"`.
+  - `featureDetector.ts` — hapus `"ask"` dari terms CLI Commands.
+- **Test files clean-up:**
+  - Hapus `test/ask-command.test.ts`.
+  - `json-output.test.ts` — hapus test `ask --json`.
+  - `ai-client.test.ts` — hapus test `ask prompt`, ganti model constants jadi `deepAnalyze`.
+  - `openrouter-client.test.ts` — ganti `"ask"` jadi `"analyze"`.
+  - `doctor.test.ts` — update expected model regex.
+- **Dokumentasi:** hapus semua referensi `devmap ask` dari `PRD.md`, `docs/commands.md`, `docs/architecture.md`, `README.md`, `CONTRIBUTING.md`, `packages/cli/README.md`, `docs/design.md`, `docs/roadmap.md`, `docs/releasing.md`, `docs/generated-files.md`.
+- **Personal notes:** update `TEST.md`, `PROGRESS.md`, `DEBUG.md` (tandai entri ask sebagai removed).
+- **Test suite:** 112 pass, 2 fail (keduanya pre-existing — `analyzers.test.ts` routes params bug dan `context-builder.test.ts` confidence threshold).
+- **Type check:** lulus tanpa error.
+
+---
 
 ## Update 2026-06-22
 
@@ -197,11 +223,11 @@ Terakhir diperbarui: 2026-06-22
 - Snapshot reader memberi default aman untuk snapshot lama agar `ask` tetap
   berjalan sambil user bisa regenerate snapshot.
 
-### Ask Retrieval Strengthening
+### Ask Retrieval Strengthening (removed)
 
 - `QuestionContext` sekarang menyimpan `expandedTerms` selain `intent`,
   `keywords`, `confidence`, `relevantFiles`, dan `topScore`.
-- `devmap ask` dapat menjalankan query-expansion Groq ringan sebelum scoring.
+- Context Builder dapat menjalankan query-expansion Groq ringan sebelum scoring.
   Respons harus berupa JSON array dan hanya dipakai sebagai retrieval terms.
 - Expanded terms ikut ranking dengan bobot lebih rendah dari keyword langsung,
   sehingga direct match tetap mengalahkan inferred match.
@@ -219,9 +245,9 @@ Terakhir diperbarui: 2026-06-22
 
 ## Update 2026-06-16
 
-### Ask Output Polish
+### Ask Output (removed)
 
-- Human-readable `devmap ask` sekarang hanya menampilkan path pada bagian
+- Human-readable `devmap ask` (sebelum dihapus) hanya menampilkan path pada bagian
   `Relevant Files`; alasan scoring tetap tersedia di `--json`.
 - Query understanding memisahkan intent umum (`add_feature`, `change`,
   `debug`, `explain`, `navigate`, `general`) dari keyword pencarian agar
@@ -279,7 +305,7 @@ Terakhir diperbarui: 2026-06-22
 
 ### AI Response Streaming
 
-- Human-readable `devmap ask` dan AI interpretation pada `devmap analyze`
+- AI interpretation pada `devmap analyze`
   sekarang memakai Groq server-sent events.
 - Delta response direkonstruksi menjadi hasil lengkap untuk token metadata,
   snapshot persistence, dan cache.
@@ -310,7 +336,6 @@ Terakhir diperbarui: 2026-06-22
 
 ### Model Routing And Config
 
-- Default `devmap ask` memakai `llama-3.1-8b-instant`.
 - Standard `devmap analyze` tetap memakai `openai/gpt-oss-20b`.
 - `devmap analyze --deep` memakai `openai/gpt-oss-120b`.
 - Fallback model memakai `openai/gpt-oss-20b`.
@@ -406,7 +431,7 @@ Terakhir diperbarui: 2026-06-22
 
 ### Terminal Markdown Rendering
 
-- Jawaban AI dari `devmap ask` dan architecture interpretation dari
+- Architecture interpretation dari
   `devmap analyze` sekarang dirender sebagai output terminal yang terstruktur.
 - Heading memakai accent aqua dan separator.
 - Marker Markdown inline seperti bold, italic, strikethrough, link, dan
@@ -472,7 +497,7 @@ Terakhir diperbarui: 2026-06-22
 - Batas context adalah maksimal 5 file dan 200 baris per file.
 - File besar memakai relevant line window.
 - Path traversal dan symlink escape di luar project root ditolak.
-- `devmap ask` sudah memakai Context Builder secara lokal.
+- `devmap ask` (sebelum dihapus) sudah memakai Context Builder secara lokal.
 - Benchmark 20 pertanyaan mencakup auth, database, route session, halaman,
   layout, payment, dan entry point dalam Bahasa Indonesia dan English.
 - Hasil benchmark saat ini: top-1 accuracy 20/20 dan top-3 recall 20/20.
@@ -491,9 +516,9 @@ Terakhir diperbarui: 2026-06-22
   header `retry-after`.
 - Invalid API key, rate limit, provider failure, empty response, dan response
   yang tidak valid diterjemahkan menjadi error actionable.
-- Prompt `ask` hanya memakai context terpilih dan meminta jawaban dalam bahasa
+- Prompt `ask` (sebelum dihapus) hanya memakai context terpilih dan meminta jawaban dalam bahasa
   yang sama dengan pertanyaan.
-- `devmap ask` menampilkan token usage agar benchmarking dapat dilakukan.
+- `devmap ask` (sebelum dihapus) menampilkan token usage agar benchmarking dapat dilakukan.
 - Jika AI belum dikonfigurasi atau gagal, selected static context tetap
   ditampilkan.
 - Automated test AI memakai fake provider sehingga tidak menggunakan quota.

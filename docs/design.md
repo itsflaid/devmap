@@ -173,7 +173,6 @@ Start with:
 Popular commands:
 
   devmap analyze        scan current project
-  devmap ask "..."      ask your codebase
   devmap onboarding     generate reading guide
 ```
 

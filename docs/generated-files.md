@@ -25,8 +25,8 @@ Purpose:
 Direct AI agents to DevMap.
 
 Generated `DEVMAP.md` tells AI agents to use command-level `--json` output
-instead of parsing decorated terminal text. This applies to `analyze`, `ask`,
-and `doctor`, while `init --json` is intended for non-interactive setup with an
+instead of parsing decorated terminal text. This applies to `analyze` and
+`doctor`, while `init --json` is intended for non-interactive setup with an
 environment API key.
 
 Its navigation contract uses this order:
@@ -101,7 +101,6 @@ devmap analyze
 Purpose:
 
 - Project snapshot
-- Source of truth for ask
 - Full reusable AI context archive and debugging data
 
 Regenerated when project files change or when `devmap analyze --fresh` is used.

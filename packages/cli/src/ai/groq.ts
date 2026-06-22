@@ -14,18 +14,12 @@ const MAX_RATE_LIMIT_DELAY_MS = 10_000;
 const MAX_RATE_LIMIT_RETRIES = 3;
 
 export const DEFAULT_AI_MODELS = {
-  ask: "llama-3.1-8b-instant",
   analyze: "openai/gpt-oss-20b",
   deepAnalyze: "openai/gpt-oss-120b",
   fallback: "openai/gpt-oss-20b"
 } as const;
 
 export const DEFAULT_AI_FALLBACKS = {
-  ask: [
-    "qwen/qwen3.6-27b",
-    "llama-3.3-70b-versatile",
-    "openai/gpt-oss-20b"
-  ],
   analyze: [
     "qwen/qwen3.6-27b",
     "llama-3.3-70b-versatile",

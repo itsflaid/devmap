@@ -38,7 +38,7 @@ Expected interactive flow:
    atau ketik model ID gratis/berbayar yang ingin diuji.
 4. Pastikan output menjelaskan command
    `devmap config model <model-id>` untuk mengganti model nanti.
-5. Jalankan `devmap doctor`, `devmap analyze`, dan `devmap ask` lalu pastikan
+5. Jalankan `devmap doctor` dan `devmap analyze` lalu pastikan
    provider serta model yang tampil sesuai config.
 
 Non-interactive setup dapat memakai:
@@ -185,11 +185,7 @@ Jalankan focused test ranking dan evaluation:
 pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/context-builder-eval.test.ts
 ```
 
-Untuk polish output `ask`, jalankan focused contract test:
 
-```powershell
-pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/ask-command.test.ts test/ai-client.test.ts
-```
 
 Expected result:
 
@@ -240,11 +236,7 @@ Expected result:
 
 Manual source-mode check:
 
-```powershell
-pnpm dev:cli ask "where scanner"
-pnpm dev:cli ask "which tests cover the scanner?"
-pnpm dev:cli ask "where is the web UI dashboard component?"
-```
+
 
 Periksa `Relevant Files` dan prompt token usage. Query pertama seharusnya
 memprioritaskan production CLI source dan memakai context jauh lebih kecil
@@ -261,7 +253,7 @@ pasti.
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/config-command.test.ts test/analyze-ai.test.ts test/ask-command.test.ts
+pnpm --filter devmap exec tsx --test test/config-command.test.ts test/analyze-ai.test.ts
 ```
 
 Expected automatic routing:
@@ -330,14 +322,14 @@ Expected:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/ai-client.test.ts test/ask-command.test.ts test/analyze-ai.test.ts test/json-output.test.ts
+pnpm --filter devmap exec tsx --test test/ai-client.test.ts test/analyze-ai.test.ts test/json-output.test.ts
 ```
 
 Coverage penting:
 
 - SSE event tetap terbaca ketika JSON event terpecah pada network chunk;
 - delta dikirim berurutan dan hasil lengkap dikembalikan provider;
-- `ask` dan fresh AI interpretation `analyze` memakai streaming jika tersedia;
+- fresh AI interpretation `analyze` memakai streaming jika tersedia;
 - hasil lengkap `analyze` tetap disimpan ke snapshot;
 - `--json` memakai completion penuh dan tidak memanggil streaming.
 
@@ -346,8 +338,6 @@ Manual live check:
 ```powershell
 $env:GROQ_API_KEY="gsk_your_key"
 pnpm dev:cli -- analyze --fresh
-pnpm dev:cli -- ask "explain the main architecture"
-pnpm dev:cli -- ask "explain the main architecture" --json | ConvertFrom-Json
 Remove-Item Env:GROQ_API_KEY
 ```
 
@@ -767,7 +757,6 @@ Jalankan:
 ```powershell
 npx devmap init
 npx devmap analyze --fresh
-npx devmap ask "jelaskan struktur dan alur utama project ini"
 npx devmap doctor
 ```
 
@@ -827,7 +816,6 @@ Kemudian jalankan kembali:
 
 ```powershell
 npx devmap analyze --fresh
-npx devmap ask "pertanyaan pengujian"
 ```
 
 ### F. Cleanup Project Uji
@@ -889,7 +877,6 @@ Sekarang command dapat dijalankan dari project mana pun:
 ```powershell
 devmap --version
 devmap analyze --fresh
-devmap ask "jelaskan project ini"
 devmap doctor
 ```
 
@@ -924,8 +911,6 @@ Flow minimum:
 devmap init
 devmap analyze --fresh
 devmap analyze
-devmap ask "Bagaimana autentikasi bekerja?"
-devmap ask "Jelaskan struktur database dalam tabel"
 devmap doctor
 ```
 

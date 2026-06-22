@@ -10,7 +10,6 @@ DevMap MVP provides five core project commands and one configuration command:
 
 * `devmap init`
 * `devmap analyze`
-* `devmap ask`
 * `devmap onboarding`
 * `devmap doctor`
 * `devmap config model`
@@ -218,9 +217,8 @@ server-side. Database access is centralized through the data layer.
 Snapshot saved:
 .devmap/snapshot.json
 
-Next:
-devmap ask "how does authentication work?"
 ```
+
 
 ### Deep Output
 
@@ -260,169 +258,6 @@ Shared utilities, database access, authentication logic, and helpers.
 * Raw provider errors must not be shown directly to users
 * New AI interpretation streams progressively in human-readable mode
 * Cached interpretation is rendered immediately without a provider request
-
----
-
-## `devmap ask`
-
-Ask questions about the current project.
-
-### Purpose
-
-`devmap ask` answers natural-language questions about the codebase using the existing snapshot and selected relevant files.
-
-### Usage
-
-```bash
-devmap ask "how does authentication work?"
-devmap ask "where is payment logic handled?"
-devmap ask "explain the booking flow"
-devmap ask "which files handle AI integration?"
-devmap ask "where is a new user created?"
-```
-
-### Responsibilities
-
-* Read `.devmap/snapshot.json`
-* Run quick analysis if no snapshot exists
-* Detect question language
-* Extract generic intent and relevant keywords
-* Optionally expand retrieval terms with a lightweight AI call
-* Select relevant files
-* Calculate retrieval confidence
-* Build compact context
-* Send only relevant context to AI when confidence is sufficient
-* Return answer in the same language as the question
-
-### Internal Flow
-
-```txt
-Question
-  ↓
-Detect Language
-  ↓
-Read Snapshot
-  ↓
-Find Relevant Files
-  ↓
-Build Context
-  ↓
-Send To AI
-  ↓
-Stream Answer
-```
-
-### Context Selection Rules
-
-DevMap should select relevant files using:
-
-* File path matching
-* Keyword matching
-* Expanded retrieval-term matching
-* Import/export matching
-* Dependency matching
-* Known framework conventions
-
-Example question:
-
-```txt
-how does authentication work?
-```
-
-Likely relevant files:
-
-```txt
-middleware.ts
-lib/auth.ts
-lib/session.ts
-app/api/auth/*
-```
-
-### Hard Rules
-
-* Never send the entire project to AI
-* Prefer 3–5 most relevant files
-* Exclude files below the minimum relevance score of 25
-* Report retrieval confidence as `high`, `medium`, or `low`
-* Use low-confidence local answers instead of asking AI to guess from weak or
-  missing evidence
-* Include related files in output
-* Keep answer readable
-* Respond in the same language as the question
-* Technical labels can remain in English
-* Stream new AI answers progressively in human-readable mode
-* Do not stream `--json`; emit one complete JSON document instead
-
-### Output Example
-
-```txt
-Authentication Flow
-
-Authentication is handled using NextAuth.
-
-Flow:
-
-1. Request enters middleware.ts
-2. Session validation occurs
-3. Invalid session redirects to login
-4. Valid session continues to protected routes
-
-Key Files
-
-→ middleware.ts
-→ lib/auth.ts
-→ app/api/auth/*
-```
-
-### Low-Confidence Behavior
-
-If no strong matches are found, Ask does not pretend unrelated files are
-relevant. It returns an honest local answer:
-
-```txt
-No strong file matches found in the current snapshot.
-
-No strong matching files found for "login".
-
-The current snapshot does not contain strong evidence for that concept, so
-DevMap will not guess an existing implementation.
-```
-
-This protects users from hallucinated navigation and avoids spending answer
-tokens on weak context.
-
-### Query Expansion
-
-When Groq is configured, Ask may first request up to 10 generic retrieval terms
-as JSON. These expanded terms improve recall but do not choose files directly.
-Deterministic scoring still ranks files, and direct keyword matches outweigh
-expanded-term matches. If expansion fails, Ask falls back to keyword-only
-retrieval.
-
-### Missing Snapshot Behavior
-
-If no snapshot exists:
-
-```txt
-No snapshot found.
-
-Running quick analysis first...
-```
-
-Then continue answering the question.
-
-### Stale Snapshot Behavior
-
-If project files changed after last analyze:
-
-```txt
-Project changed since last analyze.
-
-Use existing snapshot or re-analyze first?
-
-[1] Use existing snapshot
-[2] Re-analyze now
-```
 
 ---
 
@@ -553,7 +388,7 @@ Issues found:
   Run devmap init again and enter a valid API key.
 
 ⚠ Snapshot is missing
-  Run devmap analyze before using devmap ask.
+  Run devmap analyze before using devmap onboarding.
 ```
 
 ### Rules
@@ -579,7 +414,6 @@ devmap config model auto
 
 `auto` restores command-based routing:
 
-* `ask` uses `llama-3.1-8b-instant`
 * `analyze` uses `openai/gpt-oss-20b`
 * `analyze --deep` uses `openai/gpt-oss-120b`
 
@@ -595,7 +429,6 @@ The typed model is stored as the primary choice and is not silently replaced.
 
 Automatic routing also uses ordered fallback chains:
 
-* `ask`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `openai/gpt-oss-20b`
 * `analyze`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `llama-3.1-8b-instant`
 * `analyze --deep`: `llama-3.3-70b-versatile`, `qwen/qwen3.6-27b`, then `openai/gpt-oss-20b`
 
@@ -644,7 +477,6 @@ integration.
 devmap init --json
 devmap analyze --json
 devmap analyze --deep --json
-devmap ask "where is authentication handled?" --json
 devmap onboarding --json
 devmap doctor --json
 devmap config model auto --json
@@ -662,8 +494,7 @@ Contract:
 * package-manager wrapper warnings may appear on stderr and are not part of the
   DevMap JSON document
 
-`analyze --json` returns the project snapshot. `ask --json` returns the answer,
-selected files, model, and token usage. `onboarding --json` returns guide
+`analyze --json` returns the project snapshot. `onboarding --json` returns guide
 metadata and Markdown. `doctor --json` returns diagnostics and issues as
 structured fields.
 

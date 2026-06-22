@@ -4,7 +4,7 @@ Understand any codebase in minutes, not days.
 
 DevMap is a CLI that combines static analysis with optional AI-powered
 interpretation. It maps project structure, generates reusable context, and
-answers focused questions without sending an entire repository to an AI model.
+maps project structure and generates reusable context without sending an entire repository to an AI model.
 
 Version `0.1.0` is an early beta focused on Next.js and Express projects.
 
@@ -34,7 +34,6 @@ Run these commands from the root of the project you want to understand:
 ```bash
 devmap init
 devmap analyze
-devmap ask "How does authentication work?"
 devmap onboarding
 devmap doctor
 ```
@@ -93,7 +92,6 @@ devmap init
 devmap analyze
 devmap analyze --deep
 devmap analyze --fresh
-devmap ask "Where is payment logic handled?"
 devmap onboarding --write
 devmap onboarding --write --language id
 devmap doctor
@@ -132,7 +130,6 @@ Use `--json` for scripts, editors, CI, or AI agents:
 
 ```bash
 devmap analyze --json
-devmap ask "Where is authentication handled?" --json
 devmap onboarding --json
 devmap doctor --json
 ```
@@ -152,7 +149,6 @@ support promise.
 
 - Project analysis runs locally before AI interpretation.
 - Full repository source is not sent to the selected provider.
-- `ask` selects a small set of relevant files.
 - `.env` files and common generated directories are ignored.
 - API keys are stored locally and should never be committed.
 

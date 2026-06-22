@@ -133,6 +133,8 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       .sort(compareFunctions)
       .slice(0, 8);
 
+    this.project.removeSourceFile(sourceFile);
+    
     return {
       analyzer: this.id,
       confidence: "high",

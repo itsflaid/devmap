@@ -146,7 +146,7 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   const routes = detectRoutes(files, framework);
   const database = detectDatabase(files);
   const features = attachFeatureEntryPoints(
-    detectFeatures(files, routes, database),
+    detectFeatures(files, analyses, routes, database), // ← tambah analyses
     routes,
     entryPoints,
     graph
@@ -657,32 +657,32 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
       ["Build the normalized project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)]
     ]
     : featureName === "Snapshot Engine"
-    ? [
-      ["Build the full project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)],
-      ["Persist and validate the snapshot", find(/\/cache\/snapshot\.[cm]?[jt]s$/)],
-      ["Generate the lightweight index and feature maps", find(/\/cache\/agentnavigation\.[cm]?[jt]s$/)]
-    ]
-    : featureName === "CLI Commands"
-    ? [
-      ["Parse and dispatch the user command", find(/\/src\/index\.[cm]?[jt]s$/)],
-      ["Orchestrate project analysis", find(/\/commands\/analyze\.[cm]?[jt]s$/)],
-      ["Render human or machine-readable output", find(/\/utils\/output\.[cm]?[jt]s$/)]
-    ]
-    : featureName === "AI Integration"
-    ? [
-      ["Build focused project context", find(/\/ai\/contextbuilder\.[cm]?[jt]s$/)],
-      ["Construct grounded model prompts", find(/\/ai\/prompts\.[cm]?[jt]s$/)],
-      ["Select the configured AI provider", find(/\/ai\/provider\.[cm]?[jt]s$/)],
-      [
-        "Call the configured provider adapter",
-        [
-          find(/\/ai\/groq\.[cm]?[jt]s$/),
-          find(/\/ai\/openrouter\.[cm]?[jt]s$/)
-        ].filter((file): file is string => Boolean(file)).join(" or ") || undefined
-      ],
-      ["Stream or return the completed response", find(/\/ai\/completion\.[cm]?[jt]s$/)]
-    ]
-    : [];
+      ? [
+        ["Build the full project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)],
+        ["Persist and validate the snapshot", find(/\/cache\/snapshot\.[cm]?[jt]s$/)],
+        ["Generate the lightweight index and feature maps", find(/\/cache\/agentnavigation\.[cm]?[jt]s$/)]
+      ]
+      : featureName === "CLI Commands"
+        ? [
+          ["Parse and dispatch the user command", find(/\/src\/index\.[cm]?[jt]s$/)],
+          ["Orchestrate project analysis", find(/\/commands\/analyze\.[cm]?[jt]s$/)],
+          ["Render human or machine-readable output", find(/\/utils\/output\.[cm]?[jt]s$/)]
+        ]
+        : featureName === "AI Integration"
+          ? [
+            ["Build focused project context", find(/\/ai\/contextbuilder\.[cm]?[jt]s$/)],
+            ["Construct grounded model prompts", find(/\/ai\/prompts\.[cm]?[jt]s$/)],
+            ["Select the configured AI provider", find(/\/ai\/provider\.[cm]?[jt]s$/)],
+            [
+              "Call the configured provider adapter",
+              [
+                find(/\/ai\/groq\.[cm]?[jt]s$/),
+                find(/\/ai\/openrouter\.[cm]?[jt]s$/)
+              ].filter((file): file is string => Boolean(file)).join(" or ") || undefined
+            ],
+            ["Stream or return the completed response", find(/\/ai\/completion\.[cm]?[jt]s$/)]
+          ]
+          : [];
 
   return steps
     .filter((step): step is [string, string] => Boolean(step[1]))

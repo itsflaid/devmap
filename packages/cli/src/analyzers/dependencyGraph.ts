@@ -78,6 +78,12 @@ function resolveImport(fromPath: string, specifier: string, localPaths: Set<stri
     const withoutExtension = normalized.slice(0, -3);
     candidates.push(`${withoutExtension}.ts`, `${withoutExtension}.tsx`);
   }
+  if (normalized.endsWith(".mjs")) {
+    candidates.push(`${normalized.slice(0, -4)}.mts`);
+  }
+  if (normalized.endsWith(".cjs")) {
+    candidates.push(`${normalized.slice(0, -4)}.cts`);
+  }
 
   return candidates.find((candidate) => localPaths.has(candidate)) ?? null;
 }

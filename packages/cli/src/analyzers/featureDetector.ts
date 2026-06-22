@@ -1,3 +1,4 @@
+import type { FileAnalysis } from "./fileAnalysis.js";
 import type { DatabaseInfo } from "./databaseDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import type { RouteInfo } from "./routeDetector.js";
@@ -146,6 +147,7 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
 
 export function detectFeatures(
   files: ScannedFile[],
+  analyses: Record<string, FileAnalysis>,
   routes: RouteInfo[],
   database?: DatabaseInfo
 ): FeatureInfo[] {
@@ -182,7 +184,7 @@ export function detectFeatures(
 
   for (const signal of FEATURE_SIGNALS) {
     const evidence = technicalFiles
-      .filter((file) => matchesSignal(file, signal.terms))
+      .filter((file) => matchesSignal(file, analyses[file.path], signal.terms))
       .map((file) => file.path)
       .sort()
       .slice(0, 5);
@@ -219,7 +221,7 @@ export function detectFeatures(
     ]));
   }
 
-  return enrichAuthenticationFeature(features, scopedFiles)
+  return enrichAuthenticationFeature(features, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
@@ -262,18 +264,38 @@ function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
   };
 }
 
-function matchesSignal(file: ScannedFile, terms: string[]): boolean {
+/**
+ * matchesSignal — pakai FileAnalysis.imports dari ts-morph kalau tersedia,
+ * fallback ke path-only check kalau file belum dianalysis (non-TS/JS files).
+ * Ini eliminasi false positive dari README.md dll yang mentok di content scan.
+ */
+function matchesSignal(
+  file: ScannedFile,
+  analysis: FileAnalysis | undefined,
+  terms: string[]
+): boolean {
   const path = file.path.toLowerCase();
-  const imports = readImportSpecifiers(file.content);
 
-  return terms.some((term) =>
-    path.includes(term)
-    || imports.some((specifier) => specifier.includes(term))
-  );
+  // Path match tetap berlaku untuk semua file
+  if (terms.some((term) => path.includes(term))) return true;
+
+  // Kalau ada analysis dari ts-morph/heuristic, pakai imports-nya — akurat, no false positive
+  if (analysis) {
+    return terms.some((term) =>
+      analysis.imports.some((specifier) => specifier.toLowerCase().includes(term))
+    );
+  }
+
+  // Fallback untuk file yang tidak punya analysis (harusnya jarang)
+  return false;
 }
 
-function enrichAuthenticationFeature(features: FeatureInfo[], files: ScannedFile[]): FeatureInfo[] {
-  const authFiles = collectAuthenticationFeatureFiles(files);
+function enrichAuthenticationFeature(
+  features: FeatureInfo[],
+  files: ScannedFile[],
+  analyses: Record<string, FileAnalysis>
+): FeatureInfo[] {
+  const authFiles = collectAuthenticationFeatureFiles(files, analyses);
   if (authFiles.length === 0) {
     return features;
   }
@@ -305,14 +327,21 @@ function enrichAuthenticationFeature(features: FeatureInfo[], files: ScannedFile
   ];
 }
 
-function collectAuthenticationFeatureFiles(files: ScannedFile[]): string[] {
+function collectAuthenticationFeatureFiles(
+  files: ScannedFile[],
+  analyses: Record<string, FileAnalysis>
+): string[] {
   return orderAuthenticationFiles(files
     .filter((file) => isArchitectureSource(file.path))
     .filter((file) => isTechnicalFeatureSource(file.path))
     .filter((file) => !isAnalyzerImplementationFile(file.path))
     .filter((file) => {
-      const imports = readImportSpecifiers(file.content);
-      const symbols = readSemanticSymbols(file.content);
+      const analysis = analyses[file.path];
+      // Pakai symbols + imports dari ts-morph kalau tersedia
+      const imports = analysis?.imports ?? extractImportsFallback(file.content);
+      const symbols = analysis
+        ? analysis.symbols.map((s) => s.name)
+        : extractSymbolsFallback(file.content);
       return detectAuthenticationSemanticRole(file.path, symbols, imports, file.content) !== null;
     })
     .map((file) => file.path));
@@ -413,7 +442,22 @@ export function authenticationFilePriority(path: string): number {
   return 80;
 }
 
-function readSemanticSymbols(content: string): string[] {
+/**
+ * Fallback functions — hanya dipanggil kalau FileAnalysis tidak tersedia.
+ * Untuk non-TS/JS files yang dihandle HeuristicAnalyzer / FallbackAnalyzer.
+ */
+function extractImportsFallback(content: string): string[] {
+  const imports: string[] = [];
+  const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|require\()\s*['"]([^'"]+)['"]/g;
+  let match = pattern.exec(content);
+  while (match) {
+    imports.push(match[1].toLowerCase());
+    match = pattern.exec(content);
+  }
+  return imports;
+}
+
+function extractSymbolsFallback(content: string): string[] {
   const symbols = new Set<string>();
   const patterns = [
     /export\s+(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
@@ -421,7 +465,6 @@ function readSemanticSymbols(content: string): string[] {
     /export\s+class\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
     /(?:function|const)\s+([A-Za-z_$][A-Za-z0-9_$]*(?:Auth|Session|Login|Register|SignOut|Provider)[A-Za-z0-9_$]*)/g
   ];
-
   for (const pattern of patterns) {
     let match = pattern.exec(content);
     while (match) {
@@ -429,23 +472,9 @@ function readSemanticSymbols(content: string): string[] {
       match = pattern.exec(content);
     }
   }
-
   return [...symbols];
 }
 
 function hasSymbol(symbols: string[], name: string): boolean {
   return symbols.some((symbol) => symbol.toLowerCase() === name);
-}
-
-function readImportSpecifiers(content: string): string[] {
-  const imports: string[] = [];
-  const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|require\()\s*['"]([^'"]+)['"]/g;
-  let match = pattern.exec(content);
-
-  while (match) {
-    imports.push(match[1].toLowerCase());
-    match = pattern.exec(content);
-  }
-
-  return imports;
 }

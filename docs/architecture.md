@@ -623,6 +623,7 @@ Commands should not call provider APIs directly.
 
 * OpenAI
 * Gemini
+* Ollama (Local)
 
 ### Provider Responsibilities
 
@@ -804,26 +805,6 @@ Detailed generated file behavior is documented in:
 
 * [generated-files.md](./generated-files.md)
 
----
-
-## Language Strategy
-
-Default language mode:
-
-```txt
-auto
-```
-
-### Rules
-
-| Output Type     | Language                             |
-| --------------- | ------------------------------------ |
-| CLI labels      | English                              |
-| Technical terms | English where natural                |
-| AI explanation  | Same as user question                |
-| Generated docs  | Config language or detected language |
-| Error messages  | English                              |
-| Help text       | English                              |
 
 ---
 

@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="./logo-devmap.png" alt="DevMap Logo" width="180" />
+  <img src="./assets/logo-devmap.png" alt="DevMap Logo" width="180" />
 </p>
 
 <h1 align="center">DevMap</h1>
 
 <p align="center">
-  Understand Any Codebase — For Developers and AI Agents
+Analyze once. Reuse context everywhere.
+Structured project intelligence for developers and AI agents.
 </p>
-
 
 <p align="center">
   <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
@@ -16,10 +16,7 @@
   <img src="https://img.shields.io/badge/status-MVP-2EE6D6?style=flat-square" alt="Status" />
 </p>
 
-
 > The first command you run after git clone.
-
-  Analyze once. Reuse context everywhere.
 
 Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
 
@@ -37,10 +34,10 @@ They open files, trace dependencies, follow feature flows, and rebuild understan
 
 The process repeats every time you:
 
-* start a new session
-* switch AI tools
-* bring in a new agent
-* revisit a project weeks later
+- start a new session
+- switch AI tools
+- bring in a new agent
+- revisit a project weeks later
 
 The code stays the same.
 
@@ -56,13 +53,13 @@ It analyzes your codebase and generates structured project intelligence that can
 
 Instead of rediscovering the codebase every time, agents and developers start with:
 
-* Project overview
-* Entry points
-* Feature maps
-* Critical files
-* Architecture summaries
-* Navigation paths
-* Onboarding guidance
+- Project overview
+- Entry points
+- Feature maps
+- Critical files
+- Architecture summaries
+- Navigation paths
+- Onboarding guidance
 
 Analyze once.
 
@@ -134,7 +131,7 @@ Generated Context
 
 | File                      | Role                            |
 | ------------------------- | ------------------------------- |
-| `DEVMAP.md`               | Human-readable project guidance |
+| `DEVMAP.md`               | DevMap project documentation    |
 | `AGENTS.md`               | Agent instructions              |
 | `.devmap/index.json`      | Agent entry point               |
 | `.devmap/features/*.json` | Feature-level navigation        |
@@ -164,12 +161,12 @@ Instead of exploring a repository from scratch, agents start with generated proj
 
 Supported workflows include:
 
-* Claude Code
-* OpenAI Codex
-* Gemini CLI
-* Cursor
-* GitHub Copilot
-* etc.
+- Claude Code
+- OpenAI Codex
+- Gemini CLI
+- Cursor
+- GitHub Copilot
+- etc.
 
 Without DevMap:
 
@@ -225,19 +222,18 @@ Use your preferred AI tool to change it.
 
 ### MVP
 
-* React.js
-* Next.js
-* Node.js
-* Express
+- React.js
+- Next.js
+- Node.js
+- Express
 
 ### Planned
 
-* Vue.js
-* Nest.js
-* Nuxt.js
-* Php - Laravel
-* All JS/TS ecosystem
-
+- Vue.js
+- Nest.js
+- Nuxt.js
+- Php - Laravel
+- All JS/TS ecosystem
 
 Workspace classification can identify Astro packages, but deep Astro analysis
 is not part of the current MVP support promise.
@@ -250,12 +246,12 @@ DevMap is free and open source.
 
 AI features require a provider API key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
 
-| Provider   | Status    |
-| ---------- | --------- |
-| Groq       | MVP       |
-| OpenRouter | MVP       |
-| OpenAI     | Planned   |
-| Gemini     | Planned   |
+| Provider   | Status  |
+| ---------- | ------- |
+| Groq       | MVP     |
+| OpenRouter | MVP     |
+| OpenAI     | Planned |
+| Gemini     | Planned |
 
 `devmap init` lets you choose Groq or OpenRouter with the arrow keys. For
 OpenRouter, pressing Enter at `OpenRouter model [openrouter/free]:` keeps the
@@ -299,25 +295,25 @@ Node.js 18+
 
 ### MVP
 
-* [x] `devmap init`
-* [x] `devmap analyze`
-* [x] `devmap ask`
-* [x] `devmap onboarding`
-* [x] `devmap doctor`
+- [x] `devmap init`
+- [x] `devmap analyze`
+- [x] `devmap ask`
+- [x] `devmap onboarding`
+- [x] `devmap doctor`
 
 ### Next
 
-* [ ] `devmap enhance onboarding`
-* [ ] `devmap features`
-* [ ] `devmap flow`
-* [ ] OpenAI provider
-* [ ] Gemini provider
+- [ ] `devmap enhance onboarding`
+- [ ] `devmap features`
+- [ ] `devmap flow`
+- [ ] OpenAI provider
+- [ ] Gemini provider
 
 ### Later
 
-* [ ] `devmap explain`
-* [ ] `devmap docs`
-* [ ] Local AI mode
+- [ ] `devmap explain`
+- [ ] `devmap docs`
+- [ ] Local AI mode
 
 See [docs/roadmap.md](./docs/roadmap.md) for details.
 
@@ -325,16 +321,16 @@ See [docs/roadmap.md](./docs/roadmap.md) for details.
 
 ## Documentation
 
-* [PRD.md](./PRD.md)
-* [docs/commands.md](./docs/commands.md)
-* [docs/architecture.md](./docs/architecture.md)
-* [docs/generated-files.md](./docs/generated-files.md)
-* [docs/design.md](./docs/design.md)
-* [docs/benchmarking.md](./docs/benchmarking.md)
-* [docs/roadmap.md](./docs/roadmap.md)
-* [docs/releasing.md](./docs/releasing.md)
-* [CHANGELOG.md](./CHANGELOG.md)
-* [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [PRD.md](./PRD.md)
+- [docs/commands.md](./docs/commands.md)
+- [docs/architecture.md](./docs/architecture.md)
+- [docs/generated-files.md](./docs/generated-files.md)
+- [docs/design.md](./docs/design.md)
+- [docs/benchmarking.md](./docs/benchmarking.md)
+- [docs/roadmap.md](./docs/roadmap.md)
+- [docs/releasing.md](./docs/releasing.md)
+- [CHANGELOG.md](./CHANGELOG.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ---
 

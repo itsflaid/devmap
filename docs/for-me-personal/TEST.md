@@ -131,8 +131,14 @@ Expected:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/onboarding-command.test.ts test/json-output.test.ts
+pnpm --filter devmap exec tsx --test test/onboarding-command.test.ts test/onboarding-model.test.ts test/json-output.test.ts
 ```
+
+Model layer (new):
+- `test/onboarding-model.test.ts` — `buildOnboardingModel()` dengan fixture
+  nyata (Next.js) dan snapshot kosong; verifikasi semua field `OnboardingModel`
+  terisi; validasi priority range (1-4); dukungan bahasa Indonesia; edge case
+  snapshot minimal tanpa features/flows.
 
 Manual source-mode check dari root DevMap:
 
@@ -551,8 +557,8 @@ pnpm --filter devmap test:types
 Hasil minimum saat ini:
 
 ```text
-tests 49
-pass 49
+tests 122
+pass 122
 fail 0
 ```
 

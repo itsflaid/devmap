@@ -1,6 +1,33 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-21
+Terakhir diperbarui: 2026-06-22
+
+## Update 2026-06-22
+
+### Onboarding Generator Refactor — Model Layer Separation
+
+- Memisahkan business logic dari renderer dengan arsitektur baru:
+  `Snapshot → buildOnboardingModel() → OnboardingModel → buildOnboardingMarkdown() → Markdown`.
+- **`src/onboarding/model.ts`** — tipe `OnboardingModel` yang hanya berisi data
+  siap-render (minimal, tanpa properti snapshot mentah).
+- **`src/onboarding/modelBuilder.ts`** — `buildOnboardingModel()` pure function
+  yang menerima `ProjectMap` dan `OnboardingLanguage`, lalu mengembalikan
+  `OnboardingModel`. Semua heuristik (priority ranking, grouping, konsep, flow)
+  dipindahkan ke sini.
+- **`src/commands/onboarding.ts`** — renderer kini hanya thin adapter yang
+  menerima `OnboardingModel` dan menghasilkan markdown via string builder.
+  Adapter minimal (`renderReadingAreasFromModel`, `renderKeyFlowsFromModel`)
+  tanpa business logic.
+- **`isStale`** dipindahkan ke options renderer, bukan bagian dari model.
+- **Helper existing tetap di shared utils** — tidak dipindahkan ke builder.
+- **Dead code removal** — ~700 line helper functions yang tidak lagi dipanggil
+  (lama `renderProjectIntroduction`, `renderMentalModel`, `groupReadingItems`,
+  dll.) dihapus dari `onboarding.ts`. Logikanya sudah ada di `modelBuilder.ts`.
+- **Format output tidak berubah** — seluruh 118 test lama tetap lulus.
+- **Unit test baru** — `test/onboarding-model.test.ts` mencakup: snapshot full,
+  bahasa Indonesia, validasi priority range, dan empty snapshot edge case.
+- **TypeScript** — strict type check lulus tanpa error.
+- **Total test suite**: 122 test, 0 fail.
 
 ## Update 2026-06-21
 

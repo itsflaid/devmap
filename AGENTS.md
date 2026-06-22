@@ -11,7 +11,6 @@ When working in this repository:
 ## Workflow
 
 1. Read the PRD and relevant documentation.
-2. If you Codex agent = Create a `codex/` branch and prepare the implementation locally, if not codex dont create a branch with prefix `codex/` and prepare the implementation locally.
 3. Add or update tests, documentation, and personal development notes.
 4. Run the relevant verification gates.
 5. Before committing, pushing, or opening the PR, stop and ask the user to

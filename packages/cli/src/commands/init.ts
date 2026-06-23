@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { scanFiles } from "../analyzers/fileScanner.js";
 import { detectFramework } from "../analyzers/frameworkDetector.js";
-import { validateGroqApiKey } from "../ai/groq.js";
+import { listGroqModels, validateGroqApiKey } from "../ai/groq.js";
 import {
   OPENROUTER_FREE_MODEL,
   validateOpenRouterApiKey
@@ -29,6 +29,7 @@ export type InitDependencies = {
     apiKey: string,
     provider: DevmapConfig["provider"]
   ) => Promise<void>;
+  listGroqModels?: (apiKey: string) => Promise<string[]>;
   isInteractive?: boolean;
   environmentApiKey?: string;
   environmentOpenRouterApiKey?: string;
@@ -97,9 +98,11 @@ async function runInit(
 
     const model = await resolveInitialModel({
       provider,
+      apiKey,
       prompt,
       interactive,
-      existingConfig
+      existingConfig,
+      listModels: dependencies.listGroqModels ?? listGroqModels
     });
 
     const agentsStatus = await inspectAgentsFile(projectRoot);
@@ -129,6 +132,9 @@ async function runInit(
     output.success("Config saved to ~/.devmap/config.json");
     if (provider === "openrouter") {
       output.note(`OpenRouter model: ${model}`);
+      output.note("Change it later with: devmap config model <model-id>");
+    } else if (model !== "auto") {
+      output.note(`Groq model: ${model}`);
       output.note("Change it later with: devmap config model <model-id>");
     }
     output.success(ignored ? "Added .devmap/ to .gitignore" : ".devmap/ already ignored");
@@ -238,15 +244,39 @@ async function resolveProvider(
 
 type ResolveInitialModelOptions = {
   provider: DevmapConfig["provider"];
+  apiKey: string;
   prompt: Prompt | null;
   interactive: boolean;
   existingConfig: DevmapConfig | null;
+  listModels: (apiKey: string) => Promise<string[]>;
 };
 
 async function resolveInitialModel(
   options: ResolveInitialModelOptions
 ): Promise<string> {
-  if (options.provider === "groq") return "auto";
+  if (options.provider === "groq") {
+    const existingModel = options.existingConfig?.provider === "groq"
+      ? options.existingConfig.model
+      : undefined;
+    if (!options.interactive || !options.prompt) return existingModel ?? "auto";
+
+    const models = await options.listModels(options.apiKey);
+    if (models.length === 0) {
+      throw new DevmapError(
+        "Groq did not return any available models.",
+        "Try again shortly or run devmap doctor."
+      );
+    }
+
+    const defaultModel = existingModel && models.includes(existingModel)
+      ? existingModel
+      : models[0]!;
+    return options.prompt.select(
+      "Groq model",
+      models.map((model) => ({ label: model, value: model })),
+      defaultModel
+    );
+  }
 
   const existingModel = options.existingConfig?.provider === "openrouter"
     ? options.existingConfig.model

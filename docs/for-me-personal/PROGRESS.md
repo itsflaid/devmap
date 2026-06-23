@@ -4,6 +4,24 @@ Terakhir diperbarui: 2026-06-23
 
 ## Update 2026-06-23
 
+### Groq Model Picker And Analyze Deep Removal
+
+- `~/.devmap/config.json` tetap menyimpan `provider`, `apiKey`, dan `model`.
+  Config lama tanpa `provider` atau `model` dibaca sebagai `provider: "groq"`
+  dan `model: "auto"` agar tetap backward compatible.
+- `devmap init` untuk Groq sekarang mengambil daftar model dari endpoint model
+  Groq setelah API key valid, lalu menampilkan picker arrow-key/Enter.
+- Model Groq yang dipilih disimpan ke global config dan dapat diganti dengan
+  `devmap config model <model-id>`.
+- OpenRouter setup tidak diubah: tetap memakai prompt model text dengan default
+  `openrouter/free`.
+- Flag `devmap analyze --deep` dihapus dari CLI dan dokumentasi aktif. Hasil
+  investigasi: analyzer static, snapshot, dan cache path-nya sama; perbedaan
+  sebelumnya hanya routing model/fallback, prompt/token limit, dan output
+  `Module Breakdown` kecil.
+
+---
+
 ### Ask Command — Complete Removal
 
 - **Seluruh fitur `devmap ask` dihapus permanen.**

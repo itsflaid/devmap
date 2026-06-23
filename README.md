@@ -253,10 +253,11 @@ AI features require a provider API key. DevMap uses Groq by default — analysis
 | OpenAI     | Planned |
 | Gemini     | Planned |
 
-`devmap init` lets you choose Groq or OpenRouter with the arrow keys. For
-OpenRouter, pressing Enter at `OpenRouter model [openrouter/free]:` keeps the
-free router; typing another model ID uses that free or paid model instead.
-Change it later with `devmap config model <model-id>`.
+`devmap init` lets you choose Groq or OpenRouter with the arrow keys. Groq
+shows the available model list and stores the selected model. For OpenRouter,
+pressing Enter at `OpenRouter model [openrouter/free]:` keeps the free router;
+typing another model ID uses that free or paid model instead. Change it later
+with `devmap config model <model-id>`.
 
 API keys are stored locally:
 

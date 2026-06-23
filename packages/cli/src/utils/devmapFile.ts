@@ -40,7 +40,6 @@ This repository uses DevMap to create reusable project context for developers an
 
 \`\`\`bash
 devmap analyze
-devmap analyze --deep
 devmap analyze --json
 devmap ask "how does authentication work?"
 devmap ask "where is authentication handled?" --json

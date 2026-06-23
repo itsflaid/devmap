@@ -90,7 +90,6 @@ DevMap-owned server.
 ```bash
 devmap init
 devmap analyze
-devmap analyze --deep
 devmap analyze --fresh
 devmap onboarding --write
 devmap onboarding --write --language id
@@ -98,9 +97,8 @@ devmap doctor
 devmap config model auto
 ```
 
-Groq automatic routing uses a fast model for focused questions and larger
-models for architecture analysis. OpenRouter uses the model selected during
-init. Change either provider's model with:
+Groq and OpenRouter use the model selected during init. Change either
+provider's model with:
 
 ```bash
 devmap config model <model-id>

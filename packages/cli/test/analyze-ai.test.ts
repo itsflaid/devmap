@@ -186,7 +186,7 @@ test("analyze warns and continues when package.json is malformed", async () => {
   }
 });
 
-test("analyze auto routing uses 20B normally and 120B for deep analysis", async () => {
+test("analyze auto routing uses the configured Groq analyze chain", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-model-routing-"));
   const requests: AiCompletionRequest[] = [];
   const client: AiClient = {
@@ -221,18 +221,9 @@ test("analyze auto routing uses 20B normally and 120B for deep analysis", async 
       { fresh: true },
       dependencies
     ));
-    await captureOutput(() => analyzeCommand(
-      projectRoot,
-      { deep: true, fresh: true },
-      dependencies
-    ));
-
     assert.equal(requests[0]?.model, DEFAULT_AI_MODELS.analyze);
     assert.equal(requests[1]?.model, DEFAULT_AI_MODELS.analyze);
-    assert.equal(requests[2]?.model, DEFAULT_AI_MODELS.deepAnalyze);
-    assert.equal(requests[3]?.model, DEFAULT_AI_MODELS.deepAnalyze);
     assert.deepEqual(requests[0]?.fallbackModels, DEFAULT_AI_FALLBACKS.analyze);
-    assert.deepEqual(requests[2]?.fallbackModels, DEFAULT_AI_FALLBACKS.deepAnalyze);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

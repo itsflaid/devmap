@@ -327,16 +327,11 @@ Run static analysis, generate project snapshot, and output a readable project ov
 
 ```bash
 devmap analyze
-devmap analyze --deep
 ```
 
-**`--deep` flag:**
-
-| | Standard | `--deep` |
-|---|---|---|
-| Analysis scope | Project-level overview | Per-module detailed explanation |
-| AI usage | Lower | Higher |
-| Best for | Quick mapping | Large/unfamiliar projects |
+`devmap analyze` uses the provider and model stored in
+`~/.devmap/config.json`. Groq users choose a model during setup and can change
+it later with `devmap config model <model-id>`.
 
 **Generated files:**
 
@@ -576,9 +571,7 @@ ai/
 | Command | Model | Reason |
 |---|---|---|
 | `analyze` | `openai/gpt-oss-20b` | Balanced architecture interpretation |
-| `analyze --deep` | `openai/gpt-oss-120b` | Heavy cross-module reasoning |
 | `analyze` fallbacks | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `llama-3.1-8b-instant` | Keep snapshot enrichment available across model-specific limits |
-| `analyze --deep` fallbacks | `llama-3.3-70b-versatile` -> `qwen/qwen3.6-27b` -> `openai/gpt-oss-20b` | Degrade heavy reasoning gradually instead of failing immediately |
 
 DevMap retries a rate-limited model up to three times, then advances through
 the command-specific chain. It also advances when a model is unavailable or
@@ -590,6 +583,10 @@ provider errors are shown to users.
 Model availability changes over time. Before changing the default routing,
 verify the current Groq model list and lifecycle status. Preview models must
 not be used as a primary default for a public DevMap release.
+
+Groq setup lists the currently available Groq models after validating the API
+key. Users choose one with arrow keys and Enter; the selected model is stored
+as the user's preferred model.
 
 OpenRouter setup asks for a model ID after validating the API key. Pressing
 Enter selects `openrouter/free`; entering another free or paid model stores
@@ -1017,7 +1014,7 @@ Rate limit reached.
 
 DevMap will retry in 12 seconds.
 
-Tip: Use standard analyze instead of --deep for lower token usage.
+Tip: Choose a smaller model with devmap config model <model-id> for lower token usage.
 ```
 
 All error messages must be:

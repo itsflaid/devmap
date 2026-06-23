@@ -106,7 +106,7 @@ test("OpenRouter routing prioritizes an explicit user model", () => {
     provider: "openrouter",
     apiKey: "sk-or-fixture",
     model: "qwen/qwen3-coder"
-  }, "deepAnalyze"), {
+  }, "analyze"), {
     model: "qwen/qwen3-coder",
     fallbackModels: []
   });

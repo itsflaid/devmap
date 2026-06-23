@@ -75,3 +75,14 @@ working on DevMap.
 Update the relevant document whenever implementation or verification changes
 its contents. Do not duplicate these personal notes into the public `docs/`
 folder unless the information is intended for users or contributors.
+
+<!-- DevMap Instruction Block -->
+## DevMap Context
+
+Before working in this repository, read `DEVMAP.md` first.
+Read `.devmap/index.json` first, then the relevant
+`.devmap/features/*.json` map. Inspect files from `sourcePriority` before
+exploring broadly. Use `.devmap/snapshot.json` only when those lightweight
+navigation files are insufficient. If the navigation files are missing, run
+`devmap analyze`.
+<!-- End DevMap Instruction Block -->

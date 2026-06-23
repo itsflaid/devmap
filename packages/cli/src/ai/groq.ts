@@ -15,7 +15,6 @@ const MAX_RATE_LIMIT_RETRIES = 3;
 
 export const DEFAULT_AI_MODELS = {
   analyze: "openai/gpt-oss-20b",
-  deepAnalyze: "openai/gpt-oss-120b",
   fallback: "openai/gpt-oss-20b"
 } as const;
 
@@ -24,13 +23,26 @@ export const DEFAULT_AI_FALLBACKS = {
     "qwen/qwen3.6-27b",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant"
-  ],
-  deepAnalyze: [
-    "llama-3.3-70b-versatile",
-    "qwen/qwen3.6-27b",
-    "openai/gpt-oss-20b"
   ]
 } as const;
+
+const EXCLUDED_MODEL_PATTERNS = [
+  /whisper/i,
+  /prompt-guard/i,
+  /compound/i,
+  /tts/i,
+  /vision/i,
+];
+
+const PREFERRED_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-70b-versatile",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.6-27b",
+  "qwen/qwen3-32b",
+  "llama-3.1-8b-instant",
+];
 
 export type GroqClientDependencies = {
   fetch?: typeof fetch;
@@ -205,26 +217,34 @@ export async function validateGroqApiKey(apiKey: string): Promise<void> {
   await inspectGroqProvider(apiKey);
 }
 
+export async function listGroqModels(
+  apiKey: string,
+  dependencies: Pick<GroqClientDependencies, "fetch"> = {}
+): Promise<string[]> {
+  const response = await fetchGroqModels(apiKey, dependencies);
+  if (response.status === 401 || response.status === 403) {
+    throw new DevmapError(
+      "The Groq API key is invalid.",
+      "Create or copy a valid key from https://console.groq.com/keys."
+    );
+  }
+
+  if (!response.ok) {
+    throw new DevmapError(
+      `Groq model lookup failed with HTTP ${response.status}.`,
+      "Try again shortly or check https://status.groq.com."
+    );
+  }
+
+  return readModelIds(response);
+}
+
 export async function inspectGroqProvider(
   apiKey: string,
   model?: string,
   dependencies: Pick<GroqClientDependencies, "fetch"> = {}
 ): Promise<GroqProviderInspection> {
-  const fetchImplementation = dependencies.fetch ?? fetch;
-  let response: Response;
-
-  try {
-    response = await fetchImplementation(GROQ_MODELS_URL, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`
-      }
-    });
-  } catch {
-    throw new DevmapError(
-      "Could not connect to Groq.",
-      "Check your internet connection and run devmap init again."
-    );
-  }
+  const response = await fetchGroqModels(apiKey, dependencies);
 
   if (response.status === 401 || response.status === 403) {
     throw new DevmapError(
@@ -245,6 +265,26 @@ export async function inspectGroqProvider(
     reachable: true,
     modelAvailable: !model || modelIds.includes(model)
   };
+}
+
+async function fetchGroqModels(
+  apiKey: string,
+  dependencies: Pick<GroqClientDependencies, "fetch"> = {}
+): Promise<Response> {
+  const fetchImplementation = dependencies.fetch ?? fetch;
+
+  try {
+    return await fetchImplementation(GROQ_MODELS_URL, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`
+      }
+    });
+  } catch {
+    throw new DevmapError(
+      "Could not connect to Groq.",
+      "Check your internet connection and run devmap init again."
+    );
+  }
 }
 
 type GroqCompletionPayload = {
@@ -502,7 +542,16 @@ async function readModelIds(response: Response): Promise<string[]> {
 
     return (payload.data ?? [])
       .map((model) => model.id)
-      .filter((id): id is string => typeof id === "string");
+      .filter((id): id is string => typeof id === "string")
+      .filter((id) => !EXCLUDED_MODEL_PATTERNS.some((pattern) => pattern.test(id)))
+      .sort((a, b) => {
+        const aIndex = PREFERRED_MODELS.indexOf(a);
+        const bIndex = PREFERRED_MODELS.indexOf(b);
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+        if (aIndex !== -1) return -1;
+        if (bIndex !== -1) return 1;
+        return a.localeCompare(b);
+      });
   } catch {
     throw new DevmapError(
       "Groq returned an unreadable model list.",

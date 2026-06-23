@@ -86,6 +86,33 @@ test("init uses environment API key and creates project setup files", async () =
   }
 });
 
+test("readConfig backfills provider and model for legacy Groq configs", async () => {
+  const temporaryHome = await mkdtemp(join(tmpdir(), "devmap-legacy-config-test-"));
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+
+  try {
+    process.env.HOME = temporaryHome;
+    process.env.USERPROFILE = temporaryHome;
+    const configPath = getConfigPath();
+    await mkdir(join(temporaryHome, ".devmap"), { recursive: true });
+
+    await writeFile(configPath, JSON.stringify({
+      apiKey: "gsk_legacy_fixture"
+    }), "utf8");
+
+    assert.deepEqual(await readConfig(), {
+      provider: "groq",
+      apiKey: "gsk_legacy_fixture",
+      model: "auto"
+    });
+  } finally {
+    restoreEnvironment("HOME", originalHome);
+    restoreEnvironment("USERPROFILE", originalUserProfile);
+    await rm(temporaryHome, { recursive: true, force: true });
+  }
+});
+
 test("interactive init appends DevMap instructions only after confirmation", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-agents-confirm-test-"));
   const original = "# Existing Instructions\n\nKeep this content.\n";
@@ -99,7 +126,8 @@ test("interactive init appends DevMap instructions only after confirmation", asy
       isInteractive: true,
       loadConfig: async () => null,
       persistConfig: async () => undefined,
-      validateApiKey: async () => undefined
+      validateApiKey: async () => undefined,
+      listGroqModels: async () => ["openai/gpt-oss-20b"]
     });
 
     const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
@@ -124,7 +152,8 @@ test("interactive init preserves existing AGENTS.md when confirmation is decline
       isInteractive: true,
       loadConfig: async () => null,
       persistConfig: async () => undefined,
-      validateApiKey: async () => undefined
+      validateApiKey: async () => undefined,
+      listGroqModels: async () => ["openai/gpt-oss-20b"]
     });
 
     assert.equal(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), original);
@@ -234,7 +263,7 @@ test("readConfig returns null for invalid config schemas", async () => {
 
 test("interactive init selects Groq with the provider menu", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-provider-test-"));
-  const prompt = createFakePrompt(["gsk_fixture"], ["groq"]);
+  const prompt = createFakePrompt(["gsk_fixture"], ["groq", "llama-3.3-70b-versatile"]);
   let savedConfig: DevmapConfig | null = null;
 
   try {
@@ -246,16 +275,20 @@ test("interactive init selects Groq with the provider menu", async () => {
       persistConfig: async (config) => {
         savedConfig = config;
       },
-      validateApiKey: async () => undefined
+      validateApiKey: async () => undefined,
+      listGroqModels: async () => [
+        "openai/gpt-oss-20b",
+        "llama-3.3-70b-versatile"
+      ]
     });
 
     assert.equal(prompt.closed, true);
     assert.deepEqual(savedConfig, {
       provider: "groq",
       apiKey: "gsk_fixture",
-      model: "auto"
+      model: "llama-3.3-70b-versatile"
     });
-    assert.deepEqual(prompt.selections, ["AI provider"]);
+    assert.deepEqual(prompt.selections, ["AI provider", "Groq model"]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

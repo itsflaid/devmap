@@ -44,6 +44,7 @@ devmap init
 * Confirm AI provider
 * Input API key or read environment variable
 * Validate API key
+* Ask for a Groq model from the provider model list
 * Ask for an OpenRouter model; Enter defaults to `openrouter/free`
 * Save global configuration to `~/.devmap/config.json`
 * Detect current project framework
@@ -122,15 +123,10 @@ Analyze the current project and generate a reusable project snapshot.
 
 ```bash
 devmap analyze
-devmap analyze --deep
 ```
 
-### Modes
-
-| Mode     | Purpose                                |
-| -------- | -------------------------------------- |
-| Standard | Fast project overview                  |
-| `--deep` | More detailed architecture explanation |
+`devmap analyze` uses the model stored in `~/.devmap/config.json`. Change the
+stored model with `devmap config model <model-id>`.
 
 ### Responsibilities
 
@@ -217,32 +213,6 @@ server-side. Database access is centralized through the data layer.
 Snapshot saved:
 .devmap/snapshot.json
 
-```
-
-
-### Deep Output
-
-When using:
-
-```bash
-devmap analyze --deep
-```
-
-DevMap adds a deeper module-level explanation.
-
-Example:
-
-```txt
-Module Breakdown
-
-app/
-Main application routes and layouts.
-
-app/api/
-Server-side API routes.
-
-lib/
-Shared utilities, database access, authentication logic, and helpers.
 ```
 
 ### Rules
@@ -415,7 +385,10 @@ devmap config model auto
 `auto` restores command-based routing:
 
 * `analyze` uses `openai/gpt-oss-20b`
-* `analyze --deep` uses `openai/gpt-oss-120b`
+
+For Groq, `devmap init` lists available models after API-key validation. Pick a
+model with the arrow keys and press Enter. The selected model is stored in the
+global config.
 
 For OpenRouter, `devmap init` prompts with:
 
@@ -430,7 +403,6 @@ The typed model is stored as the primary choice and is not silently replaced.
 Automatic routing also uses ordered fallback chains:
 
 * `analyze`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `llama-3.1-8b-instant`
-* `analyze --deep`: `llama-3.3-70b-versatile`, `qwen/qwen3.6-27b`, then `openai/gpt-oss-20b`
 
 DevMap advances after model-unavailable and transient provider responses. For
 rate limits, it first retries the current model three times with exponential
@@ -476,7 +448,6 @@ integration.
 ```bash
 devmap init --json
 devmap analyze --json
-devmap analyze --deep --json
 devmap onboarding --json
 devmap doctor --json
 devmap config model auto --json

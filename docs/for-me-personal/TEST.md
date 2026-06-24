@@ -52,6 +52,25 @@ Remove-Item Env:OPENROUTER_API_KEY
 Jangan simpan atau menyalin API key nyata ke repository, snapshot, output test,
 atau dokumentasi debugging.
 
+## Groq Model Picker And Analyze Command
+
+Focused automated tests:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/init-and-errors.test.ts test/config-command.test.ts test/analyze-ai.test.ts
+```
+
+Expected:
+
+- Config lama di `~/.devmap/config.json` yang hanya berisi `apiKey` tetap
+  terbaca sebagai Groq dengan `model: "auto"`.
+- Setup Groq interaktif menampilkan daftar model Groq setelah API key valid.
+- Pilih model dengan arrow key lalu Enter; model tersimpan di global config.
+- `devmap config model <model-id>` tetap dapat mengganti model yang tersimpan.
+- `devmap analyze --help` tidak menampilkan flag `--deep`.
+- OpenRouter setup tetap memakai prompt model text dengan default
+  `openrouter/free`.
+
 ## Mixed Workspace Snapshot Accuracy
 
 Jalankan static analyze pada root DevMap dengan config AI terisolasi:
@@ -258,12 +277,8 @@ pnpm --filter devmap exec tsx --test test/config-command.test.ts test/analyze-ai
 
 Expected automatic routing:
 
-- `ask`: `llama-3.1-8b-instant`
 - `analyze`: `openai/gpt-oss-20b`
-- `analyze --deep`: `openai/gpt-oss-120b`
-- `ask` fallback: Qwen 3.6 27B -> Llama 70B Versatile -> GPT-OSS 20B
 - `analyze` fallback: Qwen 3.6 27B -> Llama 70B Versatile -> Llama 8B Instant
-- deep fallback: Llama 70B Versatile -> Qwen 3.6 27B -> GPT-OSS 20B
 
 Automated expectations:
 
@@ -924,12 +939,6 @@ Pastikan:
 - file yang disebut memang relevan;
 - raw provider error dan stack trace tidak muncul;
 - `doctor` menyatakan key dan model valid.
-
-Tes deep model:
-
-```powershell
-devmap analyze --deep --fresh
-```
 
 Hapus key:
 

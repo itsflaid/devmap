@@ -79,6 +79,7 @@ folder unless the information is intended for users or contributors.
 <!-- DevMap Instruction Block -->
 ## DevMap Context
 
+<<<<<<< HEAD
 Before working in this repository, read `DEVMAP.md` for project metadata and available commands.
 
 ### Navigation
@@ -104,4 +105,12 @@ When source inspection is needed, inspect the smallest relevant set first.
 - Use `--json` when calling DevMap programmatically.
 - Do not edit files inside `.devmap/`.
 - Never commit API keys or provider credentials.
+=======
+Before working in this repository, read `DEVMAP.md` first.
+Read `.devmap/index.json` first, then the relevant
+`.devmap/features/*.json` map. Inspect files from `sourcePriority` before
+exploring broadly. Use `.devmap/snapshot.json` only when those lightweight
+navigation files are insufficient. If the navigation files are missing, run
+`devmap analyze`.
+>>>>>>> 444db40525ffadb7baa3444134b07809a842ad79
 <!-- End DevMap Instruction Block -->

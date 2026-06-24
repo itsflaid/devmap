@@ -16,7 +16,7 @@ export async function readConfig(): Promise<DevmapConfig | null> {
   try {
     const raw = await readFile(getConfigPath(), "utf8");
     const parsed = JSON.parse(raw) as unknown;
-    return isDevmapConfig(parsed) ? parsed : null;
+    return normalizeConfig(parsed);
   } catch {
     return null;
   }
@@ -28,14 +28,42 @@ export async function writeConfig(config: DevmapConfig): Promise<void> {
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
 }
 
-function isDevmapConfig(value: unknown): value is DevmapConfig {
-  return (
-    typeof value === "object"
-    && value !== null
-    && !Array.isArray(value)
-    && "provider" in value
-    && (value.provider === "groq" || value.provider === "openrouter")
-    && "model" in value
-    && typeof value.model === "string"
-  );
+function normalizeConfig(value: unknown): DevmapConfig | null {
+  if (
+    typeof value !== "object"
+    || value === null
+    || Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const provider = record.provider === undefined
+    ? "groq"
+    : record.provider;
+  const model = record.model === undefined
+    ? "auto"
+    : record.model;
+
+  if (provider !== "groq" && provider !== "openrouter") {
+    return null;
+  }
+
+  if (typeof model !== "string") {
+    return null;
+  }
+
+  const config: DevmapConfig = {
+    provider,
+    model
+  };
+
+  if (record.apiKey !== undefined) {
+    if (typeof record.apiKey !== "string") {
+      return null;
+    }
+    config.apiKey = record.apiKey;
+  }
+
+  return config;
 }

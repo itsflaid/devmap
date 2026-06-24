@@ -643,7 +643,6 @@ MVP default model routing:
 | Command          | Primary                    | Ordered fallbacks |
 | ---------------- | -------------------------- | ----------------- |
 | `analyze`        | `openai/gpt-oss-20b`       | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `llama-3.1-8b-instant` |
-| `analyze --deep` | `openai/gpt-oss-120b`      | `llama-3.3-70b-versatile` -> `qwen/qwen3.6-27b` -> `openai/gpt-oss-20b` |
 
 Each model receives up to three exponential-backoff retries for HTTP 429.
 After those retries, or when a model is unavailable or returns HTTP 5xx,
@@ -656,6 +655,10 @@ on 2026-06-20. Recheck provider lifecycle status before publishing a release.
 
 Users can override automatic routing with `devmap config model <model>`.
 Running `devmap config model auto` restores the defaults above.
+
+Groq setup lists available Groq models after API-key validation and stores the
+selected model in the global config. The stored model is used as the primary
+choice until the user changes it with `devmap config model`.
 
 OpenRouter does not use the Groq command-routing table. During `devmap init`,
 Enter accepts `openrouter/free`, while a typed model ID is stored and used

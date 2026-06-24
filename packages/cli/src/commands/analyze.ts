@@ -15,7 +15,6 @@ import { DevmapError } from "../utils/errors.js";
 import { output, withJsonOutput } from "../utils/output.js";
 
 export type AnalyzeOptions = {
-  deep?: boolean;
   fresh?: boolean;
   json?: boolean;
 };
@@ -56,7 +55,7 @@ async function runAnalyze(
 
   if (previous.status === "valid" && previous.snapshot.fingerprint === snapshot.fingerprint) {
     await writeAgentNavigationFiles(projectRoot, previous.snapshot);
-    printSnapshot(previous.snapshot, options.deep);
+    printSnapshot(previous.snapshot);
     output.success("Project is unchanged. Reused existing snapshot.");
     return printOrGenerateInterpretation(
       projectRoot,
@@ -69,7 +68,7 @@ async function runAnalyze(
   snapshot = await enrichSnapshot(snapshot, options, dependencies);
   await saveSnapshot(projectRoot, snapshot);
   await writeAgentNavigationFiles(projectRoot, snapshot);
-  printSnapshot(snapshot, options.deep);
+  printSnapshot(snapshot);
 
   output.success("Snapshot saved to .devmap/snapshot.json");
   output.success("Agent navigation saved to .devmap/index.json and .devmap/features/");
@@ -94,10 +93,7 @@ async function enrichSnapshot(
   const createAiClient = dependencies.createAiClient
     ?? createDefaultAiClient;
   const client = createAiClient(config);
-  const routing = resolveAiRouting(
-    config,
-    options.deep ? "deepAnalyze" : "analyze"
-  );
+  const routing = resolveAiRouting(config, "analyze");
 
   const enriched = await enrichSnapshotWithAi(
     snapshot,
@@ -114,8 +110,7 @@ async function enrichSnapshot(
 }
 
 function printSnapshot(
-  snapshot: Awaited<ReturnType<typeof createProjectMap>>,
-  deep = false
+  snapshot: Awaited<ReturnType<typeof createProjectMap>>
 ): void {
   output.keyValue("Project", snapshot.project.name);
   output.keyValue("Framework", snapshot.project.framework);
@@ -147,12 +142,6 @@ function printSnapshot(
     output.item(snapshot.database.provider);
   }
 
-  if (deep) {
-    output.section("Module Breakdown");
-    for (const file of snapshot.criticalFiles.slice(0, 5)) {
-      output.item(`${file.path}: ${file.reasons.join(", ")}`);
-    }
-  }
 }
 
 function printList(title: string, values: string[]): void {
@@ -190,20 +179,17 @@ async function printOrGenerateInterpretation(
   const createAiClient = dependencies.createAiClient
     ?? createDefaultAiClient;
   const client = createAiClient(config);
-  const routing = resolveAiRouting(
-    config,
-    options.deep ? "deepAnalyze" : "analyze"
-  );
+  const routing = resolveAiRouting(config, "analyze");
   const model = routing.model;
 
   output.step(`Interpreting architecture with ${model}`);
 
   try {
     const execution = await completeWithOptionalStreaming(client, {
-      messages: buildAnalyzeMessages(snapshot, options.deep),
+      messages: buildAnalyzeMessages(snapshot),
       model,
       fallbackModels: routing.fallbackModels,
-      maxCompletionTokens: options.deep ? 1800 : 1000,
+      maxCompletionTokens: 2500,
       temperature: 0.2
     }, !options.json, () => output.section("Architecture"));
     const interpretation = execution.result;

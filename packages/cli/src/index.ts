@@ -27,7 +27,6 @@ program
   .command("analyze")
   .description("Analyze project structure and generate a static project map")
   .argument("[target]", "folder to analyze", ".")
-  .option("--deep", "show a deeper static breakdown")
   .option("--fresh", "ignore cache and run a fresh analysis")
   .option("--json", "output machine-readable JSON")
   .action((target, options) => analyzeCommand(target, options));

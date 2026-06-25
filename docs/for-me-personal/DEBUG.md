@@ -1000,42 +1000,311 @@ serta Web Landing tanpa Authentication.
 Kata teknis di prompt, docs, dan detector source bukan bukti capability runtime.
 Feature attribution harus bertumpu pada struktur kode dan ownership file.
 
----
 
-## 15. Single Groq Fallback Gagal Saat Model Kedua Terbatas
+## 20. File Non-Native (.vue .svelte .astro) Tidak Ter-analyze Dengan Benar
 
-**Tanggal:** 2026-06-20
-
-**Status:** Selesai.
+**Tanggal:** 2026-06-26
+**Status:** Selesai
 
 ### Gejala
 
-Semua command hanya memiliki satu fallback `openai/gpt-oss-20b`. Jika primary
-dan fallback sama-sama unavailable atau terkena rate limit, DevMap langsung
-jatuh ke static output walaupun model Groq lain masih aktif.
+File `.vue`, `.svelte`, dan `.astro` masuk `HeuristicAnalyzer` yang hanya
+pakai regex. Akibatnya import dan symbol dari `<script>` block tidak
+terdeteksi dengan akurat. Confidence selalu `"medium"` padahal file ini
+adalah source code penuh yang bisa di-parse AST.
 
 ### Akar Masalah
 
-`AiCompletionRequest` hanya membawa `fallbackModel` tunggal dan `GroqClient`
-hanya mencoba fallback untuk model-unavailable. HTTP 429 yang tetap gagal
-setelah tiga retry tidak dapat berpindah model.
+ts-morph adalah pure TypeScript/JavaScript parser — dia tidak mengerti
+format SFC (Single File Component) yang mencampur template, style, dan
+script dalam satu file. Tidak ada preprocessing step yang memisahkan
+script block sebelum dilempar ke ts-morph.
 
 ### Solusi
 
-- Tambahkan ordered `fallbackModels` sambil mempertahankan field tunggal lama.
-- Gunakan chain berbeda untuk kebutuhan ringan, standard, dan deep analysis.
-- Izinkan failover setelah 429 retries, model-unavailable, dan HTTP 5xx.
-- Hentikan chain untuk credential dan request errors.
-- Deduplikasi primary dan fallback sebelum request dikirim.
+Buat layer `preprocessors/` sebelum ts-morph:
+
+```
+ScannedFile (.vue/.svelte/.astro)
+  → preprocessor.extract()     ekstrak pure JS/TS dari script block
+  → ExtractedScript             pure code + language + lineOffset
+  → ts-morph parse              semantic analysis seperti .ts biasa
+  → FileAnalysis (confidence: "high")
+```
+
+Setiap format punya preprocessor sendiri:
+- `VuePreprocessor` — regex match `<script>` dengan optional `lang="ts"`
+- `SveltePreprocessor` — prefer instance script, fallback ke module script
+- `AstroPreprocessor` — match frontmatter antara `---` fences
+
+File tanpa script block (template-only component) return `null` dari
+`extract()` — `TsMorphAnalyzer` handle ini dengan empty medium-confidence
+analysis daripada crash.
+
+`HeuristicAnalyzer.supports()` dihapus dari ketiga extension ini agar
+boundary antar analyzer eksplisit. Sebelumnya ada overlap yang membuat
+fallback implicit dan sulit di-debug.
 
 ### Verifikasi
 
-Endpoint model Groq akun development mengonfirmasi seluruh model pada chain
-aktif pada 2026-06-20. Unit test mencakup completion, streaming, rate-limit
-exhaustion, deduplication, dan credential failure tanpa mengekspos API key.
+Analyze project Vue/Nuxt atau Astro — file `.vue` dan `.astro` sekarang
+punya `analyzer: "ts-morph"` dan `analysisConfidence: "high"` di
+`fileIndex`.
 
 ### Pelajaran
 
-Fallback model harus berupa strategi berurutan per workload, bukan satu model
-global. Namun error yang tidak mungkin pulih lewat pergantian model tidak boleh
-memicu request tambahan.
+File yang punya embedded JS/TS butuh preprocessing sebelum masuk AST
+parser. Interface `LanguagePreprocessor` memisahkan extraction concern dari
+parsing concern — tambah format baru tidak perlu ubah ts-morph logic.
+
+---
+
+## 21. Feature Detection Hardcode ke Domain DevMap Sendiri
+
+**Tanggal:** 2026-06-26
+**Status:** Selesai
+
+### Gejala
+
+Hasil `devmap analyze` pada project lain (DevNote, toko online, dll) hanya
+menampilkan:
+
+```
+Authentication ✅
+Database ✅
+Documentation ✅
+Sisanya noise atau kosong ❌
+```
+
+Feature seperti "Snippet Management", "Workspace", "Order Management" tidak
+muncul. Sementara di project DevMap sendiri ada "Snapshot Engine" dan
+"Analysis Engine" yang tidak relevan untuk project lain.
+
+### Akar Masalah
+
+`featureDetector.ts` punya dua masalah utama:
+
+1. `ROLE_FEATURES` mengandung `"snapshot-engine"` dan `"analysis-engine"`
+   yang hanya match di folder `/src/analyzers/` dan `/src/cache/` — path
+   spesifik DevMap. Project lain selalu evidence kosong.
+
+2. `FEATURE_FILE_PRIORITIES` berisi regex path DevMap seperti:
+   `/\/analyzers\/tsmorphanalyzer\.[cm]?[jt]s$/` — sorting jadi arbitrary
+   untuk project lain karena semua pattern miss.
+
+3. Tidak ada mekanisme untuk detect domain features seperti "Snippet
+   Management" atau "Workspace" yang bergantung pada apa yang project
+   *lakukan*, bukan library apa yang dipakai.
+
+### Solusi
+
+Redesign feature detection menjadi pipeline berlayer:
+
+```
+Layer 1 — Technical Features (library-based, tetap ada)
+  FEATURE_SIGNALS: diperluas dari 6 ke 15 signals
+  matchesSignal: whole-word fix untuk term pendek
+
+Layer 2 — Entity Extraction (schema-based)
+  PrismaExtractor: parse schema.prisma → entity names + relations
+  RouteFallbackExtractor: derive entity hints dari URL segments
+
+Layer 3 — Capability Detection (route-based)
+  CRUD: group routes by resource + HTTP methods
+  Behavioral: sharing, collaboration, discovery, social, dll
+
+Layer 4 — Feature Assembly (consume Layer 1-3)
+  capabilitiesToFeatures(): CRUD capability → "Snippet Management"
+  entityGraphToFeatures(): Prisma entity → feature dengan relation context
+
+Layer 5 — AI Domain Inference (optional, structured metadata)
+  Input: entities + capabilities + technical features (bukan raw code)
+  Output: domain name + domain-specific features
+  Token: ~300-500 per call
+```
+
+Keputusan utama: **tidak** implement route-segment-to-feature-name mapping
+(`/snippets` → "Snippet Management") karena approach ini sama hardcode-nya
+dengan yang sebelumnya — cuma pindah layer. Entity extraction + capability
+detection lebih scalable karena tidak perlu tau nama domain upfront.
+
+`fileRole.ts` di-generalize: hapus `"snapshot-engine"` dan
+`"analysis-engine"`, tambah 6 generic architectural roles.
+
+### Verifikasi
+
+Analyze DevNote menghasilkan:
+```
+Snippet Management    ✅ dari CRUD capability /api/snippets
+Content Sharing       ✅ dari behavioral signal /snippets/[id]/share
+Team Collaboration    ✅ dari /workspaces/[id]/members + /join
+Social Interactions   ✅ dari /snippets/[id]/like + /favorite
+API Layer             ✅ dari fileRole "api-handler"
+Service Layer         ✅ dari fileRole "service"
+AI Integration        ❌ false positive dihilangkan (lihat #22)
+```
+
+### Pelajaran
+
+Feature detector yang bagus harus bisa jawab: "apa yang project ini
+*lakukan*?" bukan hanya "library apa yang dipakai?". Entity dan route
+adalah dua sumber informasi yang paling reliable karena keduanya adalah
+kontrak eksplisit project — bukan inferred dari naming.
+
+Domain-specific features (Syntax Highlighting, Certificate Generation, dll)
+memang tidak bisa di-detect secara static karena terlalu domain-specific.
+Itu territory AI inference — dan AI inference harus terima structured
+metadata, bukan raw source code.
+
+---
+
+## 22. "ai" Substring Match False Positive di Feature Detection
+
+**Tanggal:** 2026-06-26
+**Status:** Selesai
+
+### Gejala
+
+DevNote ke-detect punya "AI Integration" dengan evidence:
+- `apps/web/src/components/snippet/shared/SnippetDetail.tsx`
+- `apps/web/tailwind.config.ts`
+- `apps/web/src/components/snippet/SnippetList.tsx`
+
+DevNote tidak memakai AI library apapun.
+
+### Akar Masalah
+
+`matchesSignal()` pakai `path.includes(term)` untuk semua terms termasuk
+term pendek `"ai"`. Substring match menemukan:
+
+```
+"tailwind"    → "t-AI-lwind"  → match!
+"detail"      → "det-AI-l"   → match!
+"SnippetList" → tidak match   → tapi file lain match
+```
+
+Karena confidence dihitung dari jumlah evidence, banyak false positive
+membuat confidence "high".
+
+### Solusi
+
+Term ≤3 karakter harus match sebagai whole word, bukan substring:
+
+```typescript
+function matchesPathTerm(path: string, term: string): boolean {
+  if (term.length <= 3) {
+    return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path)
+  }
+  return path.includes(term)
+}
+```
+
+Test:
+```
+"tailwind.config.ts" + "ai" → ❌ (ai di tengah kata, tidak ada separator)
+"src/ai/provider.ts" + "ai" → ✅ (ai sebagai path segment, dikelilingi /)
+"lib/ai.ts" + "ai"          → ✅ (ai diikuti .)
+"SnippetDetail.tsx" + "ai"  → ❌ (ai di tengah kata)
+```
+
+Terms yang kena fix: `"ai"`, `"cms"`, `"db"`, `"i18n"`, `"l10n"`.
+Long terms seperti `"stripe"`, `"openai"`, `"redis"` tetap substring match.
+
+### Verifikasi
+
+Analyze DevNote — "AI Integration" tidak muncul lagi di features.
+
+### Pelajaran
+
+Term pendek dalam feature detection selalu berisiko substring false positive.
+Semua term ≤3 karakter harus pakai whole-word matching di path check.
+Import matching tetap aman pakai substring karena import specifiers adalah
+package names yang well-defined.
+
+---
+
+## 23. routeDetector Miss Monorepo Prefix
+
+**Tanggal:** 2026-06-26
+**Status:** Selesai
+
+### Gejala
+
+`devmap analyze` pada DevNote (monorepo dengan path `apps/web/src/app/...`)
+menghasilkan:
+
+```
+Routes
+──────────────────
+None detected yet
+```
+
+Padahal Entry Points sudah ke-detect dengan benar, termasuk:
+```
+apps/web/src/app/api/auth/[...nextauth]/route.ts
+```
+
+### Akar Masalah
+
+Regex di `detectNextRoutes()` memakai `^` anchor:
+
+```typescript
+/^(?:src\/)?app\/(.+\/)?(page|route)\.[jt]sx?$/
+```
+
+Anchor `^` memaksa match dari awal string. Path `apps/web/src/app/...`
+punya prefix `apps/web/` yang membuat anchor miss.
+
+### Solusi
+
+Ganti `^` dengan `(?:^|\/)` agar match di manapun dalam path:
+
+```typescript
+/(?:^|\/)(?:src\/)?app\/(.+\/)?(page|route)\.[jt]sx?$/
+```
+
+Fix yang sama diterapkan ke Pages Router pattern. `(?:^|\/)` artinya:
+"match di awal string ATAU setelah slash" — works untuk single-package
+dan monorepo.
+
+### Verifikasi
+
+Analyze DevNote menghasilkan 35 routes terdeteksi dengan benar:
+```
+/api/snippets → apps/web/src/app/api/snippets/route.ts
+/workspaces/[id] → apps/web/src/app/(dashboard)/workspaces/[id]/page.tsx
+...
+```
+
+### Pelajaran
+
+Regex dengan `^` anchor assume path dimulai dari project root. Monorepo
+dengan workspace packages (`apps/web/`, `packages/cli/`) melanggar asumsi
+ini. Gunakan `(?:^|\/)` untuk pattern yang harus berlaku di semua level path.
+
+---
+
+## Checklist Saat Menambahkan Debug Baru
+
+Tambahkan catatan baru ketika:
+
+- error membutuhkan investigasi lebih dari sekadar typo;
+- masalah hanya muncul pada OS atau versi Node tertentu;
+- penyebab berbeda dari gejala awal;
+- solusi mengubah arsitektur, konfigurasi, atau workflow;
+- masalah berpotensi muncul kembali saat release.
+
+Gunakan format:
+
+```md
+## Judul Masalah
+
+**Tanggal:** YYYY-MM-DD
+**Status:** Selesai / Belum selesai
+
+### Gejala
+### Akar Masalah
+### Solusi
+### Verifikasi
+### Pelajaran
+```

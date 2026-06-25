@@ -2,7 +2,7 @@ import type { FileAnalysis } from "./fileAnalysis.js";
 import type { DatabaseInfo } from "./databaseDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import type { RouteInfo } from "./routeDetector.js";
-import type { EntityGraph } from "./entityExtractor.js";
+import type { EntityGraph } from "./extractors/types.js";
 import type { CapabilityInfo } from "./capabilityDetector.js";
 import { classifyFileRole, isTechnicalFeatureSource, type FileRole } from "./fileRole.js";
 import { isArchitectureSource } from "./sourceScope.js";

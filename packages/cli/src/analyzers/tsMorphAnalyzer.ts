@@ -13,8 +13,27 @@ import type {
   SymbolInfo
 } from "./fileAnalysis.js";
 import type { ScannedFile } from "./fileScanner.js";
+import type { LanguagePreprocessor } from "./preprocessors/types.js";
+import { AstroPreprocessor } from "./preprocessors/astroPreprocessor.js";
+import { SveltePreprocessor } from "./preprocessors/sveltePreprocessor.js";
+import { VuePreprocessor } from "./preprocessors/vuePreprocessor.js";
 
-const SUPPORTED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
+// Native extensions — ts-morph parses these directly, no preprocessing needed.
+const NATIVE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
+
+// Preprocessors handle files that contain embedded JS/TS inside a larger format.
+// Order matters only for logging — each preprocessor's extensions are disjoint.
+const PREPROCESSORS: LanguagePreprocessor[] = [
+  new VuePreprocessor(),    // .vue  (also covers Nuxt)
+  new SveltePreprocessor(), // .svelte (also covers SvelteKit)
+  new AstroPreprocessor(),  // .astro
+];
+
+// All extensions this analyzer can handle (native + preprocessed)
+const ALL_SUPPORTED_EXTENSIONS = new Set([
+  ...NATIVE_EXTENSIONS,
+  ...PREPROCESSORS.flatMap((p) => p.extensions),
+]);
 
 export class TsMorphAnalyzer implements FileAnalyzer {
   readonly id = "ts-morph";
@@ -28,20 +47,54 @@ export class TsMorphAnalyzer implements FileAnalyzer {
   });
 
   supports(file: ScannedFile): boolean {
-    return SUPPORTED_EXTENSIONS.has(file.extension);
+    return ALL_SUPPORTED_EXTENSIONS.has(file.extension);
   }
 
   async analyze(file: ScannedFile, _context: AnalyzerContext): Promise<FileAnalysis> {
-    const sourceFile = this.project.createSourceFile(file.path, file.content, { overwrite: true });
-    const imports = new Set(
-      sourceFile.getImportDeclarations().map((declaration) => declaration.getModuleSpecifierValue())
-    );
+    // Native TS/JS files — parse directly
+    if (NATIVE_EXTENSIONS.has(file.extension)) {
+      return this.analyzeSource(file.path, file.content, file.path);
+    }
 
+    // Non-native files — find the right preprocessor and extract script block
+    const preprocessor = PREPROCESSORS.find((p) => p.extensions.includes(file.extension));
+    if (!preprocessor) {
+      // Should never happen since supports() gates this, but safety fallback
+      return emptyAnalysis(this.id, "medium");
+    }
+
+    const extracted = preprocessor.extract(file.content, file.path);
+    if (!extracted) {
+      // Valid case: template-only file with no script block (e.g. markup-only .astro)
+      // Return empty medium-confidence analysis rather than erroring.
+      return emptyAnalysis(this.id, "medium");
+    }
+
+    // Build a virtual path with the correct extension so ts-morph applies
+    // the right parser (TSX for Vue components, TS for Astro frontmatter, etc.)
+    const ext = extracted.virtualExtension ?? (extracted.language === "ts" ? ".ts" : ".js");
+    const virtualPath = replaceExtension(file.path, ext);
+
+    return this.analyzeSource(virtualPath, extracted.code, file.path);
+  }
+
+  private analyzeSource(
+    parsePath: string,
+    content: string,
+    _originalPath: string
+  ): FileAnalysis {
+    const sourceFile = this.project.createSourceFile(parsePath, content, { overwrite: true });
+
+    // --- Imports ---
+    const imports = new Set<string>();
+
+    for (const declaration of sourceFile.getImportDeclarations()) {
+      imports.add(declaration.getModuleSpecifierValue());
+    }
     for (const declaration of sourceFile.getExportDeclarations()) {
       const specifier = declaration.getModuleSpecifierValue();
       if (specifier) imports.add(specifier);
     }
-
     for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
       if (call.getExpression().getText() !== "require") continue;
       const argument = call.getArguments()[0];
@@ -50,7 +103,10 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       }
     }
 
+    // --- Exports ---
     const exports = [...sourceFile.getExportedDeclarations().keys()].sort();
+
+    // --- Symbols ---
     const symbols: SymbolInfo[] = [];
 
     for (const statement of sourceFile.getStatements()) {
@@ -100,8 +156,10 @@ export class TsMorphAnalyzer implements FileAnalyzer {
         continue;
       }
 
-      if (Node.isVariableStatement(statement)
-        && statement.getDeclarationKind() === VariableDeclarationKind.Const) {
+      if (
+        Node.isVariableStatement(statement)
+        && statement.getDeclarationKind() === VariableDeclarationKind.Const
+      ) {
         for (const declaration of statement.getDeclarations()) {
           const initializer = declaration.getInitializer();
           symbols.push({
@@ -119,6 +177,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       }
     }
 
+    // --- Top functions ---
     const topFunctions = symbols
       .filter((symbol): symbol is SymbolInfo & { kind: FunctionInfo["kind"] } =>
         ["function", "const", "class", "method"].includes(symbol.kind)
@@ -134,7 +193,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       .slice(0, 8);
 
     this.project.removeSourceFile(sourceFile);
-    
+
     return {
       analyzer: this.id,
       confidence: "high",
@@ -144,6 +203,30 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       topFunctions
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function replaceExtension(filePath: string, newExt: string): string {
+  const lastDot = filePath.lastIndexOf(".");
+  if (lastDot === -1) return filePath + newExt;
+  return filePath.slice(0, lastDot) + newExt;
+}
+
+function emptyAnalysis(
+  analyzerId: string,
+  confidence: FileAnalysis["confidence"]
+): FileAnalysis {
+  return {
+    analyzer: analyzerId,
+    confidence,
+    imports: [],
+    exports: [],
+    symbols: [],
+    topFunctions: []
+  };
 }
 
 function createDeclarationSymbol(

@@ -16,7 +16,6 @@ import type { ScannedFile } from "./fileScanner.js";
 // Current regex approach covers import/export detection well enough for MVP scope,
 // but won't handle scope-aware analysis (e.g. distinguishing code from comments in Python).
 const HEURISTIC_EXTENSIONS = new Set([
-  ".astro",
   ".cjs",
   ".cs",
   ".cts",
@@ -27,8 +26,6 @@ const HEURISTIC_EXTENSIONS = new Set([
   ".php",
   ".py",
   ".rb",
-  ".svelte",
-  ".vue"
 ]);
 
 export class HeuristicAnalyzer implements FileAnalyzer {

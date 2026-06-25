@@ -7,6 +7,14 @@ import type {
 } from "./fileAnalysis.js";
 import type { ScannedFile } from "./fileScanner.js";
 
+// TS/JS extensions are intentionally excluded here.
+// TsMorphAnalyzer handles .ts/.tsx/.js/.jsx with full AST accuracy (confidence: "high").
+// If ts-morph throws on a malformed file, AnalyzerRegistry falls through to this analyzer.
+// Keeping TS/JS out of this set makes that fallback explicit rather than silent.
+//
+// TODO: Replace regex-based analysis for non-JS languages with tree-sitter grammars post-MVP.
+// Current regex approach covers import/export detection well enough for MVP scope,
+// but won't handle scope-aware analysis (e.g. distinguishing code from comments in Python).
 const HEURISTIC_EXTENSIONS = new Set([
   ".astro",
   ".cjs",
@@ -27,8 +35,7 @@ export class HeuristicAnalyzer implements FileAnalyzer {
   readonly id = "heuristic";
 
   supports(file: ScannedFile): boolean {
-    return HEURISTIC_EXTENSIONS.has(file.extension)
-      || [".ts", ".tsx", ".js", ".jsx"].includes(file.extension);
+    return HEURISTIC_EXTENSIONS.has(file.extension);
   }
 
   async analyze(file: ScannedFile, _context: AnalyzerContext): Promise<FileAnalysis> {

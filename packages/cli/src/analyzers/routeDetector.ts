@@ -25,7 +25,12 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
   const routes: RouteInfo[] = [];
 
   for (const file of files.filter((item) => isArchitectureSource(item.path))) {
-    const appMatch = file.path.match(/^(?:src\/)?app\/(.+\/)?(page|route)\.[jt]sx?$/);
+    // App Router — match anywhere in path, not just root.
+    // Supports: src/app/, app/, apps/web/src/app/, packages/web/src/app/, dll.
+    // Sebelumnya pakai ^(?:src\/)? yang miss monorepo prefix seperti apps/web/.
+    const appMatch = file.path.match(
+      /(?:^|\/)(?:src\/)?app\/(.+\/)?(page|route)\.[jt]sx?$/
+    );
     if (appMatch) {
       const segments = (appMatch[1] ?? "").split("/").filter(Boolean);
       const routePath = toRoutePath(segments);
@@ -39,7 +44,10 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
       continue;
     }
 
-    const pagesMatch = file.path.match(/^(?:src\/)?pages\/(.+)\.[jt]sx?$/);
+    // Pages Router — sama, ganti ^ ke (?:^|\/) buat monorepo support.
+    const pagesMatch = file.path.match(
+      /(?:^|\/)(?:src\/)?pages\/(.+)\.[jt]sx?$/
+    );
     if (!pagesMatch || pagesMatch[1].startsWith("_")) {
       continue;
     }
@@ -90,7 +98,9 @@ function detectExpressRoutes(files: ScannedFile[]): RouteInfo[] {
 }
 
 function toRoutePath(segments: string[]): string {
-  const visible = segments.filter((segment) => !segment.startsWith("(") && !segment.startsWith("@"));
+  const visible = segments.filter(
+    (segment) => !segment.startsWith("(") && !segment.startsWith("@")
+  );
   return `/${visible.join("/")}`.replace(/\/+/g, "/");
 }
 

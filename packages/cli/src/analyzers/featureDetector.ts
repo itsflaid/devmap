@@ -19,6 +19,11 @@ export type FeatureInfo = {
 
 export type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
 
+// ---------------------------------------------------------------------------
+// FEATURE_SIGNALS — deteksi fitur berdasarkan import specifiers dan path terms.
+// Generic: berlaku untuk semua project yang di-analyze, bukan cuma DevMap.
+// Tambahkan terms baru seiring ekosistem berkembang (library baru, dll).
+// ---------------------------------------------------------------------------
 const FEATURE_SIGNALS: Array<{
   name: string;
   terms: string[];
@@ -26,36 +31,187 @@ const FEATURE_SIGNALS: Array<{
 }> = [
   {
     name: "Authentication",
-    terms: ["auth", "login", "session", "jwt", "next-auth", "clerk"],
+    terms: [
+      // Libraries
+      "next-auth", "auth0", "clerk", "lucia", "better-auth", "passport",
+      "firebase/auth", "@supabase/auth", "kinde",
+      // Generic terms
+      "auth", "login", "session", "jwt", "oauth", "openid",
+    ],
     purpose: "Handles authentication, identity, sessions, login, and access control."
   },
   {
     name: "Payments",
-    terms: ["payment", "stripe", "midtrans"],
-    purpose: "Handles payment providers and transaction workflows."
+    terms: [
+      // Libraries / providers
+      "stripe", "midtrans", "xendit", "@xendit", "paypal", "braintree",
+      "razorpay", "paddle", "lemonsqueezy", "lemon-squeezy",
+      // Generic terms
+      "payment", "checkout", "billing", "subscription", "invoice",
+    ],
+    purpose: "Handles payment providers, billing, and transaction workflows."
   },
   {
     name: "File Upload",
-    terms: ["upload", "multer", "cloudinary"],
-    purpose: "Handles file ingestion, storage, and upload providers."
+    terms: [
+      // Libraries / providers
+      "multer", "formidable", "busboy", "cloudinary", "uploadthing",
+      "aws-sdk/s3", "@aws-sdk/client-s3", "minio", "backblaze",
+      "firebase/storage", "@supabase/storage",
+      // Generic terms
+      "upload", "storage", "bucket", "blob",
+    ],
+    purpose: "Handles file ingestion, cloud storage, and upload providers."
   },
   {
     name: "Email",
-    terms: ["email", "resend", "nodemailer"],
-    purpose: "Handles application email delivery and templates."
+    terms: [
+      // Libraries / providers
+      "resend", "nodemailer", "@sendgrid/mail", "sendgrid", "mailgun",
+      "postmark", "@postmark", "aws-sdk/ses", "@aws-sdk/client-ses",
+      "react-email", "@react-email",
+      // Generic terms
+      "email", "mailer", "smtp",
+    ],
+    purpose: "Handles transactional email delivery and templates."
   },
   {
     name: "AI Integration",
-    terms: ["openai", "groq", "openrouter", "gemini", "generative-ai"],
-    purpose: "Handles AI providers, prompts, and model-facing context."
+    terms: [
+      // Libraries / providers
+      "openai", "groq", "openrouter", "@anthropic-ai/sdk", "anthropic",
+      "google-generative-ai", "@google/generative-ai", "cohere",
+      "mistralai", "together", "replicate", "huggingface",
+      "langchain", "@langchain", "llamaindex", "ai", "vercel/ai",
+      // Generic terms
+      "generative-ai", "llm", "embedding", "vectorstore",
+    ],
+    purpose: "Handles AI providers, LLM calls, prompts, and model context."
   },
   {
     name: "Notifications",
-    terms: ["notification", "web-push", "pusher"],
-    purpose: "Handles user notifications and push delivery."
-  }
+    terms: [
+      // Libraries / providers
+      "web-push", "pusher", "ably", "soketi", "firebase-messaging",
+      "@firebase/messaging", "onesignal", "novu", "@novu",
+      // Generic terms
+      "notification", "push", "realtime", "websocket",
+    ],
+    purpose: "Handles push notifications, real-time events, and user alerts."
+  },
+  {
+    name: "Caching",
+    terms: [
+      // Libraries / providers
+      "ioredis", "redis", "@upstash/redis", "upstash", "keyv",
+      "lru-cache", "node-cache", "memcached",
+      // Generic terms
+      "cache", "ttl", "invalidate",
+    ],
+    purpose: "Handles in-memory and distributed caching strategies."
+  },
+  {
+    name: "Search",
+    terms: [
+      // Libraries / providers
+      "meilisearch", "typesense", "algolia", "@algolia",
+      "elasticsearch", "@elastic/elasticsearch",
+      "orama", "@orama",
+      // Generic terms
+      "search", "fulltext", "index", "facet",
+    ],
+    purpose: "Handles full-text search, indexing, and faceted filtering."
+  },
+  {
+    name: "Background Jobs",
+    terms: [
+      // Libraries / providers
+      "bullmq", "bull", "bee-queue", "agenda", "node-cron",
+      "inngest", "@inngest", "trigger.dev", "@trigger.dev",
+      "quirrel",
+      // Generic terms
+      "queue", "worker", "job", "cron", "scheduler",
+    ],
+    purpose: "Handles background processing, job queues, and scheduled tasks."
+  },
+  {
+    name: "Logging & Monitoring",
+    terms: [
+      // Libraries / providers
+      "pino", "winston", "bunyan", "morgan",
+      "@sentry/node", "@sentry/nextjs", "sentry",
+      "datadog", "dd-trace", "opentelemetry", "@opentelemetry",
+      "posthog", "@posthog",
+      // Generic terms
+      "logger", "telemetry", "tracing",
+    ],
+    purpose: "Handles application logging, error tracking, and observability."
+  },
+  {
+    name: "Testing",
+    terms: [
+      // Libraries
+      "vitest", "jest", "@testing-library", "playwright",
+      "cypress", "supertest", "msw",
+      // Generic terms
+      "test", "spec", "mock", "fixture",
+    ],
+    purpose: "Contains test suites, mocks, and testing infrastructure."
+  },
+  {
+    name: "Internationalization",
+    terms: [
+      // Libraries
+      "next-intl", "next-i18next", "i18next", "react-i18next",
+      "lingui", "@lingui", "formatjs", "react-intl",
+      // Generic terms
+      "i18n", "l10n", "locale", "translation",
+    ],
+    purpose: "Handles multi-language support, locale routing, and translations."
+  },
+  {
+    name: "Analytics",
+    terms: [
+      // Libraries / providers
+      "posthog", "mixpanel", "@mixpanel", "amplitude",
+      "google-analytics", "gtag", "plausible",
+      "segment", "@segment",
+      // Generic terms
+      "analytics", "tracking", "event",
+    ],
+    purpose: "Handles user analytics, event tracking, and product metrics."
+  },
+  {
+    name: "Rate Limiting",
+    terms: [
+      // Libraries / providers
+      "@upstash/ratelimit", "express-rate-limit",
+      "rate-limiter-flexible", "bottleneck",
+      // Generic terms
+      "ratelimit", "rate-limit", "throttle",
+    ],
+    purpose: "Handles API rate limiting and request throttling."
+  },
+  {
+    name: "CMS & Content",
+    terms: [
+      // Libraries / providers
+      "contentlayer", "@contentlayer", "sanity", "@sanity",
+      "contentful", "strapi", "payload", "keystatic",
+      "notion", "@notionhq",
+      // Generic terms
+      "cms", "content", "mdx",
+    ],
+    purpose: "Handles CMS integrations and structured content management."
+  },
 ];
 
+// ---------------------------------------------------------------------------
+// ROLE_FEATURES — deteksi fitur berdasarkan FileRole classification.
+// Hanya include roles yang generic / berlaku di banyak project.
+// DevMap-specific roles (snapshot-engine, analysis-engine) TIDAK di sini —
+// mereka akan ke-skip otomatis di project lain karena evidence-nya kosong.
+// ---------------------------------------------------------------------------
 const ROLE_FEATURES: Array<{
   role: FileRole;
   name: string;
@@ -66,19 +222,19 @@ const ROLE_FEATURES: Array<{
     role: "documentation",
     name: "Documentation",
     purpose: "Explains project behavior, setup, architecture, and contribution guidance.",
-    terms: ["documentation", "docs", "readme", "guide"]
+    terms: ["documentation", "docs", "readme", "guide", "contributing", "changelog"]
   },
   {
     role: "landing-ui",
     name: "Web Landing",
-    purpose: "Contains public landing and marketing user interface code.",
-    terms: ["web", "landing", "marketing", "hero", "ui"]
+    purpose: "Contains public-facing landing page and marketing UI components.",
+    terms: ["web", "landing", "marketing", "hero", "ui", "homepage"]
   },
   {
     role: "cli-command",
     name: "CLI Commands",
-    purpose: "Contains command entry points that orchestrate DevMap behavior.",
-    terms: ["cli", "command", "analyze", "init", "doctor"]
+    purpose: "Contains CLI entry points and command handlers.",
+    terms: ["cli", "command", "bin", "argv", "commander", "yargs"]
   },
   {
     role: "snapshot-engine",
@@ -96,53 +252,132 @@ const ROLE_FEATURES: Array<{
     role: "ai-integration",
     name: "AI Integration",
     purpose: "Handles AI providers, prompts, and model-facing context.",
-    terms: ["ai", "groq", "openrouter", "prompt", "context", "model"]
+    terms: ["ai", "groq", "openrouter", "prompt", "context", "model", "llm"]
   }
 ];
 
+// ---------------------------------------------------------------------------
+// FEATURE_FILE_PRIORITIES — sort evidence files dalam tiap feature.
+// Hanya berisi patterns yang GENERIC — berlaku di banyak project.
+// Path DevMap-specific (\/analyzers\/tsmorphanalyzer, dll) dihapus.
+// ---------------------------------------------------------------------------
 const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
-  "AI Integration": [
-    /\/ai\/provider\.[cm]?[jt]s$/,
-    /\/ai\/groq\.[cm]?[jt]s$/,
-    /\/ai\/openrouter\.[cm]?[jt]s$/,
-    /\/ai\/contextbuilder\.[cm]?[jt]s$/,
-    /\/ai\/prompts\.[cm]?[jt]s$/,
-    /\/ai\/completion\.[cm]?[jt]s$/
-  ],
-  "Analysis Engine": [
-    /\/analyzers\/projectmap\.[cm]?[jt]s$/,
-    /\/analyzers\/analyzerregistry\.[cm]?[jt]s$/,
-    /\/analyzers\/tsmorphanalyzer\.[cm]?[jt]s$/,
-    /\/analyzers\/heuristicanalyzer\.[cm]?[jt]s$/,
-    /\/analyzers\/fileanalysis\.[cm]?[jt]s$/,
-    /\/analyzers\/filescanner\.[cm]?[jt]s$/,
-    /\/analyzers\/dependencygraph\.[cm]?[jt]s$/,
-    /\/analyzers\/featuredetector\.[cm]?[jt]s$/
-  ],
-  "Snapshot Engine": [
-    /\/analyzers\/projectmap\.[cm]?[jt]s$/,
-    /\/cache\/snapshot\.[cm]?[jt]s$/,
-    /\/cache\/agentnavigation\.[cm]?[jt]s$/,
-    /\/cache\/filehash\.[cm]?[jt]s$/
-  ],
-  "CLI Commands": [
-    /\/commands\/analyze\.[cm]?[jt]s$/,
-    /\/commands\/ask\.[cm]?[jt]s$/,
-    /\/commands\/init\.[cm]?[jt]s$/,
-    /\/commands\/doctor\.[cm]?[jt]s$/,
-    /\/commands\/onboarding\.[cm]?[jt]s$/
-  ],
+  // Documentation: urutan universal — README selalu paling penting
   Documentation: [
     /(^|\/)readme\.md$/,
-    /(^|\/)prd\.md$/,
-    /(^|\/)agents\.md$/,
-    /(^|\/)contributing\.md$/
+    /(^|\/)contributing\.md$/,
+    /(^|\/)changelog\.md$/,
+    /(^|\/)license(\.md)?$/,
+    /(^|\/)docs\/index\.md$/,
+    /(^|\/)docs\//,
   ],
+
+  // Authentication: urutan berdasarkan architectural importance
+  Authentication: [
+    // Config / adapter (paling penting — defines provider)
+    /(^|\/)src\/auth\.[cm]?[jt]sx?$/,
+    /(^|\/)auth\.[cm]?[jt]sx?$/,
+    /\/auth\/config\.[cm]?[jt]sx?$/,
+    // Middleware / guard
+    /(^|\/)middleware\.[cm]?[jt]sx?$/,
+    /\/auth\/middleware\.[cm]?[jt]sx?$/,
+    // API handlers
+    /\/api\/auth\//,
+    /\/api\/.*\/(login|register|logout)\.[cm]?[jt]sx?$/,
+    // Providers / context
+    /\/providers?\/auth[^/]*\.[cm]?[jt]sx?$/,
+    /\/context\/auth[^/]*\.[cm]?[jt]sx?$/,
+  ],
+
+  // Payments: config / client dulu, baru handlers
+  Payments: [
+    /\/lib\/stripe\.[cm]?[jt]sx?$/,
+    /\/lib\/payment[^/]*\.[cm]?[jt]sx?$/,
+    /\/api\/.*webhook[^/]*\.[cm]?[jt]sx?$/,
+    /\/api\/.*checkout[^/]*\.[cm]?[jt]sx?$/,
+    /\/api\/.*payment[^/]*\.[cm]?[jt]sx?$/,
+  ],
+
+  // AI Integration: provider / client dulu, baru consumers
+  "AI Integration": [
+    /\/lib\/ai\.[cm]?[jt]sx?$/,
+    /\/ai\/provider\.[cm]?[jt]sx?$/,
+    /\/ai\/client\.[cm]?[jt]sx?$/,
+    /\/lib\/openai\.[cm]?[jt]sx?$/,
+    /\/lib\/groq\.[cm]?[jt]sx?$/,
+    /\/ai\/prompts?\.[cm]?[jt]sx?$/,
+    /\/ai\/completion\.[cm]?[jt]sx?$/,
+  ],
+
+  // Email: mailer config dulu, baru templates
+  Email: [
+    /\/lib\/email[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/mailer[^/]*\.[cm]?[jt]sx?$/,
+    /\/emails?\//,
+    /\/templates?\//,
+  ],
+
+  // File Upload: config / client dulu
+  "File Upload": [
+    /\/lib\/upload[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/storage[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/cloudinary[^/]*\.[cm]?[jt]sx?$/,
+    /\/api\/.*upload[^/]*\.[cm]?[jt]sx?$/,
+  ],
+
+  // Background Jobs: queue config dulu
+  "Background Jobs": [
+    /\/lib\/queue[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/worker[^/]*\.[cm]?[jt]sx?$/,
+    /\/workers?\//,
+    /\/jobs?\//,
+    /\/queues?\//,
+  ],
+
+  // Caching: client config dulu
+  Caching: [
+    /\/lib\/redis\.[cm]?[jt]sx?$/,
+    /\/lib\/cache[^/]*\.[cm]?[jt]sx?$/,
+    /\/cache\//,
+  ],
+
+  // CLI Commands: entry point dulu, baru subcommands
+  "CLI Commands": [
+    /\/src\/index\.[cm]?[jt]sx?$/,
+    /\/bin\//,
+    /\/commands?\/index\.[cm]?[jt]sx?$/,
+    /\/commands?\//,
+  ],
+
+  // Web Landing: index / hero dulu
   "Web Landing": [
-    /\/pages\/index\.astro$/,
-    /\/landing\/herosection\./,
-    /\/landing\/siteheader\./
-  ]
+    /\/pages\/index\.(astro|tsx?|jsx?)$/,
+    /\/app\/page\.(tsx?|jsx?)$/,
+    /\/landing\//,
+    /(hero|pricing|features?section)[^/]*\.(astro|tsx?|jsx?|vue|svelte)$/,
+  ],
+
+  // Testing: setup / config dulu
+  Testing: [
+    /\/(vitest|jest)\.config\.[cm]?[jt]sx?$/,
+    /\/test-utils?\.[cm]?[jt]sx?$/,
+    /\/setup\.(test|spec)\.[cm]?[jt]sx?$/,
+  ],
+
+  // Search: client / config dulu
+  Search: [
+    /\/lib\/search[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/meilisearch[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/algolia[^/]*\.[cm]?[jt]sx?$/,
+  ],
+
+  // Logging: config dulu
+  "Logging & Monitoring": [
+    /\/lib\/logger[^/]*\.[cm]?[jt]sx?$/,
+    /\/lib\/sentry[^/]*\.[cm]?[jt]sx?$/,
+    /\/instrumentation\.[cm]?[jt]sx?$/,
+    /\/sentry\.(client|server|edge)\.[cm]?[jt]sx?$/,
+  ],
 };
 
 export function detectFeatures(
@@ -175,7 +410,8 @@ export function detectFeatures(
         definition.name,
         evidence,
         definition.terms,
-        definition.purpose
+        definition.purpose,
+        analyses
       ));
     }
   }
@@ -186,7 +422,10 @@ export function detectFeatures(
     const evidence = technicalFiles
       .filter((file) => matchesSignal(file, analyses[file.path], signal.terms))
       .map((file) => file.path)
-      .sort()
+      .sort((left, right) =>
+        featureFilePriority(signal.name, left) - featureFilePriority(signal.name, right)
+        || left.localeCompare(right)
+      )
       .slice(0, 5);
 
     if (evidence.length > 0) {
@@ -194,7 +433,8 @@ export function detectFeatures(
         signal.name,
         evidence,
         signal.terms,
-        signal.purpose
+        signal.purpose,
+        analyses
       ));
     }
   }
@@ -206,8 +446,9 @@ export function detectFeatures(
       "schema",
       "model",
       "repository",
+      "migration",
       database.provider.toLowerCase()
-    ]));
+    ], undefined, analyses));
   }
 
   const apiFiles = [...new Set(routes.filter((route) => route.kind === "api").map((route) => route.file))];
@@ -217,19 +458,41 @@ export function detectFeatures(
       "route",
       "endpoint",
       "request",
-      "response"
-    ]));
+      "response",
+      "handler",
+    ], undefined, analyses));
   }
 
   return enrichAuthenticationFeature(features, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));
 }
 
+// ---------------------------------------------------------------------------
+// calculateFeatureConfidence — weight by analyzer quality, not just count.
+// ts-morph (confidence: "high") = semantically verified via AST.
+// heuristic/fallback = regex-based, less certain.
+// ---------------------------------------------------------------------------
+function calculateFeatureConfidence(
+  evidence: string[],
+  analyses: Record<string, FileAnalysis>
+): FeatureInfo["confidence"] {
+  if (evidence.length === 0) return "low";
+
+  const highQualityCount = evidence.filter(
+    (path) => analyses[path]?.confidence === "high"
+  ).length;
+
+  if (highQualityCount >= 2) return "high";
+  if (highQualityCount >= 1 || evidence.length >= 2) return "medium";
+  return "low";
+}
+
 function createFeatureInfo(
   name: string,
   evidence: string[],
   terms: string[],
-  purpose = `Identifies ${name.toLowerCase()} capability in the project.`
+  purpose = `Identifies ${name.toLowerCase()} capability in the project.`,
+  analyses: Record<string, FileAnalysis> = {}
 ): FeatureInfo {
   const files = evidence.filter((item) => item.includes("/") || /\.[A-Za-z0-9]+$/.test(item));
 
@@ -240,7 +503,7 @@ function createFeatureInfo(
     businessFlow: [],
     entryPoints: [],
     searchTerms: [...new Set(terms.map((term) => term.toLowerCase()))].slice(0, 8),
-    confidence: evidence.length >= 2 ? "high" : "medium",
+    confidence: calculateFeatureConfidence(evidence, analyses),
     evidence
   };
 }
@@ -255,20 +518,39 @@ function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
   const existing = features[existingIndex];
   const files = [...new Set([...existing.files, ...addition.files])];
   const evidence = [...new Set([...existing.evidence, ...addition.evidence])];
+
   features[existingIndex] = {
     ...existing,
     files,
     evidence,
     searchTerms: [...new Set([...existing.searchTerms, ...addition.searchTerms])].slice(0, 8),
-    confidence: evidence.length >= 2 ? "high" : existing.confidence
+    confidence: mergeTwoConfidences(existing.confidence, addition.confidence)
   };
 }
 
-/**
- * matchesSignal — pakai FileAnalysis.imports dari ts-morph kalau tersedia,
- * fallback ke path-only check kalau file belum dianalysis (non-TS/JS files).
- * Ini eliminasi false positive dari README.md dll yang mentok di content scan.
- */
+function mergeTwoConfidences(
+  a: FeatureInfo["confidence"],
+  b: FeatureInfo["confidence"]
+): FeatureInfo["confidence"] {
+  const rank: Record<FeatureInfo["confidence"], number> = { high: 2, medium: 1, low: 0 };
+  return rank[a] >= rank[b] ? a : b;
+}
+
+// ---------------------------------------------------------------------------
+// matchesSignal — imports from ts-morph first, fallback to path check.
+// Prevents false positives from README.md, comments, etc.
+//
+// PATH MATCHING RULES:
+// - Long terms (>3 chars): substring match is fine. "stripe" won't appear in
+//   unrelated paths by accident.
+// - Short terms (<=3 chars): MUST be whole word/segment. "ai" as substring
+//   matches "detail", "tailwind", "email" — all false positives.
+//   e.g. "ai" should only match "src/ai/", "ai.ts", not "detail.tsx".
+//
+// IMPORT MATCHING:
+// - Always substring — import specifiers are package names like "openai",
+//   "@anthropic-ai/sdk". Substring is safe and necessary here.
+// ---------------------------------------------------------------------------
 function matchesSignal(
   file: ScannedFile,
   analysis: FileAnalysis | undefined,
@@ -276,18 +558,28 @@ function matchesSignal(
 ): boolean {
   const path = file.path.toLowerCase();
 
-  // Path match tetap berlaku untuk semua file
-  if (terms.some((term) => path.includes(term))) return true;
+  if (terms.some((term) => matchesPathTerm(path, term))) return true;
 
-  // Kalau ada analysis dari ts-morph/heuristic, pakai imports-nya — akurat, no false positive
   if (analysis) {
     return terms.some((term) =>
       analysis.imports.some((specifier) => specifier.toLowerCase().includes(term))
     );
   }
 
-  // Fallback untuk file yang tidak punya analysis (harusnya jarang)
   return false;
+}
+
+function matchesPathTerm(path: string, term: string): boolean {
+  // Short terms (<=3 chars) — whole word only, surrounded by path separators.
+  // Prevents "ai" matching "detail", "tailwind", "email", "rain", etc.
+  if (term.length <= 3) {
+    return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path);
+  }
+  return path.includes(term);
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function enrichAuthenticationFeature(
@@ -308,7 +600,10 @@ function enrichAuthenticationFeature(
           ...feature,
           files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
           evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
-          confidence: "high"
+          confidence: calculateFeatureConfidence(
+            [...new Set([...feature.evidence, ...authFiles])],
+            analyses
+          )
         }
         : feature
     );
@@ -317,13 +612,8 @@ function enrichAuthenticationFeature(
   return [
     ...features,
     createFeatureInfo("Authentication", authFiles, [
-      "auth",
-      "authentication",
-      "login",
-      "session",
-      "jwt",
-      "next-auth"
-    ])
+      "auth", "authentication", "login", "session", "jwt", "next-auth"
+    ], undefined, analyses)
   ];
 }
 
@@ -337,7 +627,6 @@ function collectAuthenticationFeatureFiles(
     .filter((file) => !isAnalyzerImplementationFile(file.path))
     .filter((file) => {
       const analysis = analyses[file.path];
-      // Pakai symbols + imports dari ts-morph kalau tersedia
       const imports = analysis?.imports ?? extractImportsFallback(file.content);
       const symbols = analysis
         ? analysis.symbols.map((s) => s.name)
@@ -360,12 +649,14 @@ export function detectAuthenticationSemanticRole(
   const normalizedPath = path.toLowerCase();
   const text = `${normalizedPath} ${symbols.join(" ")} ${imports.join(" ")} ${content}`.toLowerCase();
   const normalizedImports = imports.map((specifier) => specifier.toLowerCase());
+
   const hasAuthImport = normalizedImports.some((specifier) =>
-    /(^|[/@-])(auth|next-auth|auth0|clerk)([/.-]|$)/.test(specifier)
+    /(^|[/@-])(auth|next-auth|auth0|clerk|lucia|better-auth|passport|kinde)([/.-]|$)/.test(specifier)
     || /supabase.*auth/.test(specifier)
+    || /firebase\/auth/.test(specifier)
   );
   const hasAuthSymbol = symbols.some((symbol) =>
-    /(auth|session|login|register|signin|signout|jwt|token)/i.test(symbol)
+    /(auth|session|login|register|signin|signout|jwt|token|credential)/i.test(symbol)
   );
   const hasAuthPath = /(^|[/._-])(auth|session|login|register|signin|signout)([/._-]|$)/.test(normalizedPath);
   const hasGuardPath = /(^|[/._-])(guard|middleware|proxy|protected)([/._-]|$)/.test(normalizedPath);
@@ -373,28 +664,32 @@ export function detectAuthenticationSemanticRole(
     /(guard|middleware|proxy|protected)/i.test(symbol)
   );
 
-  if (/(^|\/)src\/auth\.[cm]?[jt]sx?$/.test(normalizedPath)
+  if (
+    /(^|\/)src\/auth\.[cm]?[jt]sx?$/.test(normalizedPath)
     || /(^|\/)auth\.[cm]?[jt]sx?$/.test(normalizedPath)
     || (hasSymbol(symbols, "auth") && hasSymbol(symbols, "handlers"))
-    || hasAuthImport && /\b(nextauth|getserversession|getsession|credentials)\b/.test(text)
+    || (hasAuthImport && /\b(nextauth|getserversession|getsession|credentials|authconfig)\b/.test(text))
   ) {
     return "auth-config";
   }
 
-  if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalizedPath)
-    || (hasAuthPath || hasAuthImport || hasAuthSymbol) && (hasGuardPath || hasGuardSymbol)
+  if (
+    /(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalizedPath)
+    || ((hasAuthPath || hasAuthImport || hasAuthSymbol) && (hasGuardPath || hasGuardSymbol))
   ) {
     return "guard";
   }
 
-  if (/providers?\.[cm]?[jt]sx?$/.test(normalizedPath)
+  if (
+    /providers?\.[cm]?[jt]sx?$/.test(normalizedPath)
     && (hasAuthImport || hasAuthSymbol)
   ) {
     return "provider";
   }
 
-  if (/(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalizedPath)
-    && /\b(signout|handlesignout|usesession|sessionprovider)\b/.test(text)
+  if (
+    /(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalizedPath)
+    && /\b(signout|handlesignout|usesession|sessionprovider|useauth)\b/.test(text)
   ) {
     return "consumer";
   }
@@ -408,11 +703,11 @@ export function detectAuthenticationSemanticRole(
 
 function featureFilePriority(featureName: string, path: string): number {
   const normalized = path.toLowerCase();
+
   if (featureName === "Documentation") {
     if (normalized === "readme.md") return 0;
-    if (normalized === "agents.md") return 1;
-    if (normalized === "contributing.md") return 2;
-    if (normalized === "prd.md") return 3;
+    if (normalized === "contributing.md") return 1;
+    if (normalized === "changelog.md") return 2;
     if (/^packages\/[^/]+\/readme\.md$/.test(normalized)) return 10;
     if (/^docs\//.test(normalized)) return 20;
     return 30 + normalized.split("/").length;
@@ -434,7 +729,9 @@ export function authenticationFilePriority(path: string): number {
   const normalized = path.toLowerCase();
   if (/(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalized)) return 10;
   if (/(^|\/)(src\/)?auth\.[cm]?[jt]sx?$/.test(normalized)) return 20;
-  if (/\/api\/.*register|register.*\/route\.[cm]?[jt]s$/.test(normalized)) return 30;
+  if (/\/auth\/config\.[cm]?[jt]sx?$/.test(normalized)) return 25;
+  if (/\/api\/auth\//.test(normalized)) return 30;
+  if (/\/api\/.*\/(login|register|logout)\.[cm]?[jt]s$/.test(normalized)) return 35;
   if (/login.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) return 40;
   if (/register.*(page|form)\.[cm]?[jt]sx?$/.test(normalized)) return 45;
   if (/providers?\.[cm]?[jt]sx?$/.test(normalized)) return 50;
@@ -442,10 +739,10 @@ export function authenticationFilePriority(path: string): number {
   return 80;
 }
 
-/**
- * Fallback functions — hanya dipanggil kalau FileAnalysis tidak tersedia.
- * Untuk non-TS/JS files yang dihandle HeuristicAnalyzer / FallbackAnalyzer.
- */
+// ---------------------------------------------------------------------------
+// Fallback helpers — only called when FileAnalysis is unavailable.
+// Used for non-TS/JS files handled by HeuristicAnalyzer / FallbackAnalyzer.
+// ---------------------------------------------------------------------------
 function extractImportsFallback(content: string): string[] {
   const imports: string[] = [];
   const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|require\()\s*['"]([^'"]+)['"]/g;
@@ -463,7 +760,7 @@ function extractSymbolsFallback(content: string): string[] {
     /export\s+(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
     /export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
     /export\s+class\s+([A-Za-z_$][A-Za-z0-9_$]*)/g,
-    /(?:function|const)\s+([A-Za-z_$][A-Za-z0-9_$]*(?:Auth|Session|Login|Register|SignOut|Provider)[A-Za-z0-9_$]*)/g
+    /(?:function|const)\s+([A-Za-z_$][A-Za-z0-9_$]*(?:Auth|Session|Login|Register|SignOut|Provider|Guard)[A-Za-z0-9_$]*)/g
   ];
   for (const pattern of patterns) {
     let match = pattern.exec(content);

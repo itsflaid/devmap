@@ -2,6 +2,8 @@ import type { FileAnalysis } from "./fileAnalysis.js";
 import type { DatabaseInfo } from "./databaseDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import type { RouteInfo } from "./routeDetector.js";
+import type { EntityGraph } from "./entityExtractor.js";
+import type { CapabilityInfo } from "./capabilityDetector.js";
 import { classifyFileRole, isTechnicalFeatureSource, type FileRole } from "./fileRole.js";
 import { isArchitectureSource } from "./sourceScope.js";
 
@@ -218,6 +220,7 @@ const ROLE_FEATURES: Array<{
   purpose: string;
   terms: string[];
 }> = [
+  // --- Universal roles — berlaku semua project ---
   {
     role: "documentation",
     name: "Documentation",
@@ -237,23 +240,41 @@ const ROLE_FEATURES: Array<{
     terms: ["cli", "command", "bin", "argv", "commander", "yargs"]
   },
   {
-    role: "snapshot-engine",
-    name: "Snapshot Engine",
-    purpose: "Builds, stores, validates, and reuses project snapshots.",
-    terms: ["snapshot", "projectmap", "analyze", "cache", "index"]
+    role: "api-handler",
+    name: "API Layer",
+    purpose: "Contains route handlers, controllers, and API endpoint definitions.",
+    terms: ["api", "route", "handler", "controller", "endpoint", "rest"]
   },
   {
-    role: "analysis-engine",
-    name: "Analysis Engine",
-    purpose: "Scans source files and extracts project structure and relationships.",
-    terms: ["analysis", "analyzer", "scanner", "detector", "dependency"]
+    role: "service",
+    name: "Service Layer",
+    purpose: "Contains business logic, use cases, and domain services.",
+    terms: ["service", "usecase", "business-logic", "domain", "action"]
+  },
+  {
+    role: "middleware",
+    name: "Middleware",
+    purpose: "Contains middleware, guards, interceptors, and request pipelines.",
+    terms: ["middleware", "guard", "interceptor", "proxy", "pipeline"]
+  },
+  {
+    role: "repository",
+    name: "Data Access Layer",
+    purpose: "Contains database access logic, repositories, and query builders.",
+    terms: ["repository", "dao", "database", "prisma", "drizzle", "query"]
+  },
+  {
+    role: "ui-component",
+    name: "UI Components",
+    purpose: "Contains reusable UI components, pages, and views.",
+    terms: ["component", "ui", "view", "page", "layout", "screen"]
   },
   {
     role: "ai-integration",
     name: "AI Integration",
     purpose: "Handles AI providers, prompts, and model-facing context.",
-    terms: ["ai", "groq", "openrouter", "prompt", "context", "model", "llm"]
-  }
+    terms: ["ai", "llm", "prompt", "openai", "groq", "anthropic", "model"]
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -384,7 +405,9 @@ export function detectFeatures(
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>,
   routes: RouteInfo[],
-  database?: DatabaseInfo
+  database?: DatabaseInfo,
+  entityGraph?: EntityGraph,
+  capabilities?: CapabilityInfo[]
 ): FeatureInfo[] {
   const features: FeatureInfo[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
@@ -463,9 +486,126 @@ export function detectFeatures(
     ], undefined, analyses));
   }
 
+  // Domain features — derived from capabilities (Step 2) which are based on
+  // route patterns + HTTP methods. More reliable than raw route segment mapping
+  // because capabilities already understand CRUD vs sharing vs collaboration.
+  if (capabilities && capabilities.length > 0) {
+    for (const feature of capabilitiesToFeatures(capabilities)) {
+      mergeFeature(features, feature);
+    }
+  }
+
+  // Entity-based features — dari Prisma schema atau route hints (Step 1).
+  // Hanya aktif kalau entityGraph tersedia dan punya data.
+  if (entityGraph && entityGraph.entityNames.length > 0) {
+    for (const feature of entityGraphToFeatures(entityGraph)) {
+      mergeFeature(features, feature);
+    }
+  }
+
   return enrichAuthenticationFeature(features, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));
 }
+
+// ---------------------------------------------------------------------------
+// capabilitiesToFeatures — convert CapabilityInfo[] ke FeatureInfo[].
+//
+// CapabilityInfo dari capabilityDetector sudah structured — tinggal map
+// ke FeatureInfo format yang dipakai featureDetector dan snapshot.
+//
+// Capability "crud" pada entity "Snippet" → feature "Snippet Management"
+// Capability "sharing" → feature "Content Sharing"
+// ---------------------------------------------------------------------------
+function capabilitiesToFeatures(capabilities: CapabilityInfo[]): FeatureInfo[] {
+  return capabilities.map((cap) => {
+    const name = cap.name;
+    const terms = [
+      cap.kind,
+      ...cap.entities.map((e) => e.toLowerCase()),
+    ];
+
+    return {
+      name,
+      purpose: purposeFromCapability(cap),
+      files: cap.evidence,
+      entryPoints: cap.evidence.slice(0, 2),
+      businessFlow: [],
+      searchTerms: [...new Set(terms)].slice(0, 8),
+      confidence: cap.confidence,
+      evidence: cap.evidence
+    };
+  });
+}
+
+function purposeFromCapability(cap: CapabilityInfo): string {
+  const entityList = cap.entities.length > 0
+    ? cap.entities.join(", ")
+    : "resources";
+
+  switch (cap.kind) {
+    case "crud":         return `Handles create, read, update, and delete operations for ${entityList}.`;
+    case "sharing":      return `Handles content sharing via public links and share tokens.`;
+    case "collaboration":return `Handles team collaboration, workspaces, and member management.`;
+    case "discovery":    return `Handles public content discovery and browsing.`;
+    case "publishing":   return `Handles content publishing and visibility management.`;
+    case "social":       return `Handles social interactions like likes, favorites, and reactions.`;
+    case "file-management": return `Handles file uploads, storage, and media management.`;
+    case "real-time":    return `Handles real-time events, websockets, and live updates.`;
+    case "search":       return `Handles full-text search and content filtering.`;
+    case "reporting":    return `Handles usage statistics, analytics, and reporting.`;
+    default:             return `Handles ${cap.kind} operations for ${entityList}.`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// entityGraphToFeatures — convert EntityGraph ke high-level domain features.
+//
+// Berbeda dari capabilitiesToFeatures yang focus ke behavior,
+// ini focus ke *apa yang di-manage* project — entity-centric view.
+//
+// Hanya generate feature kalau entity punya relasi atau multiple routes —
+// biar gak terlalu noisy buat project dengan banyak entity kecil.
+// ---------------------------------------------------------------------------
+function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
+  if (entityGraph.source === "empty") return [];
+
+  const features: FeatureInfo[] = [];
+
+  // Hanya include entity yang punya relasi ke entity lain (meaningful entity)
+  // atau semua kalau source adalah route-hint (less strict karena data terbatas)
+  const meaningfulEntities = entityGraph.source === "prisma"
+    ? entityGraph.entities.filter((e) =>
+        e.relations.length > 0 ||
+        entityGraph.relations.some((r) => r.from === e.name || r.to === e.name)
+      )
+    : entityGraph.entities;
+
+  for (const entity of meaningfulEntities.slice(0, 8)) {
+    const relatedNames = entityGraph.relations
+      .filter((r) => r.from === entity.name || r.to === entity.name)
+      .map((r) => r.from === entity.name ? r.to : r.from);
+
+    features.push({
+      name: `${entity.name} Management`,
+      purpose: relatedNames.length > 0
+        ? `Manages ${entity.name} and its relationships with ${relatedNames.join(", ")}.`
+        : `Manages ${entity.name} data and operations.`,
+      files: [],
+      entryPoints: [],
+      businessFlow: [],
+      searchTerms: [
+        entity.name.toLowerCase(),
+        ...relatedNames.map((n) => n.toLowerCase()),
+        "management", "crud"
+      ].slice(0, 8),
+      confidence: entityGraph.source === "prisma" ? "high" : "medium",
+      evidence: []
+    });
+  }
+
+  return features;
+}
+
 
 // ---------------------------------------------------------------------------
 // calculateFeatureConfidence — weight by analyzer quality, not just count.

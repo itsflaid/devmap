@@ -89,18 +89,40 @@ function isTestPath(path: string): boolean {
   );
 }
 
+// Meta-files that are NOT meaningful project documentation.
+// These are repo boilerplate, DevMap meta, or GitHub management files.
+// They still get role "documentation" for isTechnicalFeatureSource filtering,
+// but are excluded from Documentation feature evidence in featureDetector.
+const DOCUMENTATION_META_FILENAMES = new Set([
+  "devmap.md", "agents.md",
+  "contributing.md", "code_of_conduct.md", "code-of-conduct.md",
+  "security.md", "license.md", "licence.md", "changelog.md",
+  "pull_request_template.md", "issue_template.md", "codeowners",
+]);
+
 function isDocumentationPath(path: string, filename: string): boolean {
+  // All .md, .mdx, .txt and doc folders are classified as "documentation" role.
+  // The role is used broadly for isTechnicalFeatureSource() filtering.
+  // Narrower filtering (excluding meta-files) happens in featureDetector.ts
+  // via isDocumentationEvidence().
   return (
     filename.endsWith(".md")
     || filename.endsWith(".mdx")
     || filename.endsWith(".txt")
     || /(^|\/)docs?(\/|$)/.test(path)
+    || /(^|\/)wiki(\/|$)/.test(path)
     || /(^|\/)changelog(s)?(\/|\.md$)/.test(path)
     || /(^|\/)contributing(\.md)?$/.test(path)
     || /(^|\/)license(\.md)?$/.test(path)
     || /(^|\/)readme(\.md)?$/.test(path)
     || /(^|\/)agents?\.md$/.test(path)
+    || /(openapi|swagger)\.(json|yaml|yml)$/.test(filename)
   );
+}
+
+/** Export buat featureDetector — check apakah file ini meaningful doc evidence */
+export function isDocumentationMeta(filename: string): boolean {
+  return DOCUMENTATION_META_FILENAMES.has(filename.toLowerCase());
 }
 
 function isConfigPath(path: string, filename: string, ext: string): boolean {
@@ -238,7 +260,9 @@ function isAIIntegrationPath(path: string, filename: string): boolean {
     /(^|\/)src\/ai\/(\/|$)/.test(path)
     || /(^|\/)ai\/(\/|$)/.test(path)
     || /(^|\/)src\/lib\/(openai|groq|anthropic|gemini|langchain|ai)\.[cm]?[jt]sx?$/.test(path)
-    || /(^|\/)src\/(llm|models?|prompts?)(\/|$)/.test(path)
+    // "models?" intentionally excluded — src/models/ almost always means
+    // database/domain models, not AI models. Use src/llm/ or src/ai/ instead.
+    || /(^|\/)src\/(llm|prompts?)(\/|$)/.test(path)
     || /\.(prompt|chain)\.[cm]?[jt]sx?$/.test(filename)
   );
 }

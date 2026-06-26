@@ -1,5 +1,5 @@
 import type { RouteInfo } from "./routeDetector.js";
-import type { EntityGraph } from "./entityExtractor.js";
+import type { EntityGraph } from "./extractors/types.js";
 
 // ---------------------------------------------------------------------------
 // Types

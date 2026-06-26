@@ -234,7 +234,7 @@ async function printOrGenerateInterpretation(
       messages: buildAnalyzeMessages(snapshot),
       model,
       fallbackModels: routing.fallbackModels,
-      maxCompletionTokens: 2500,
+      maxCompletionTokens: 1800,
       temperature: 0.2
     }, !options.json, () => output.section("Architecture"));
     const interpretation = execution.result;

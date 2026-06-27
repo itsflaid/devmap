@@ -22,6 +22,15 @@ import { detectRoutes, type RouteInfo } from "./routeDetector.js";
 import { detectExternalServices } from "./serviceDetector.js";
 import { isArchitectureSource } from "./sourceScope.js";
 import type { FileAnalysis, SymbolInfo } from "./fileAnalysis.js";
+import { extractEntities } from "./extractors/index.js";
+import { type EntityGraph } from "./extractors/types.js";
+import { detectCapabilities, type CapabilityInfo } from "./capabilityDetector.js";
+import {
+  inferDomain,
+  buildDomainInferenceInput,
+  domainFeaturesToFeatureInfo,
+  type DomainInferenceResult
+} from "./domainInference.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 
@@ -105,6 +114,10 @@ export type ProjectMap = {
   externalServices: string[];
   database?: DatabaseInfo;
   features: FeatureInfo[];
+  entityGraph?: EntityGraph;
+  capabilities?: CapabilityInfo[];
+  /** AI-inferred domain understanding — present kalau AI inference berhasil */
+  domain?: DomainInferenceResult;
   flows: FlowInfo[];
   onboarding: {
     recommendedPath: string[];
@@ -128,7 +141,15 @@ export type ProjectMap = {
   fileIndex: Record<string, FileIndexEntry>;
 };
 
-export async function createProjectMap(projectRoot: string): Promise<ProjectMap> {
+export async function createProjectMap(
+  projectRoot: string,
+  /**
+   * Optional AI caller — kalau disediakan, domain inference (Step 5) akan dijalankan.
+   * Kalau tidak ada, hanya static analysis yang jalan.
+   * Injected biar decoupled dari provider specifics (Groq, OpenRouter, dll).
+   */
+  callAI?: (prompt: string) => Promise<string>
+): Promise<ProjectMap> {
   const files = await scanFiles(projectRoot);
   const analyses = await analyzeFiles(files);
   const graph = buildDependencyGraph(files, analyses);
@@ -145,12 +166,47 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
   const entryPoints = detectEntryPoints(graph);
   const routes = detectRoutes(files, framework);
   const database = detectDatabase(files);
+
+  // Step 1: Extract entities dari schema (Prisma dll) atau route fallback
+  const entityGraph = extractEntities(files, routes);
+
+  // Step 2: Detect capabilities dari route patterns + HTTP methods
+  const capabilities = detectCapabilities(routes, entityGraph);
+
+  // Step 3: Detect features — consume entityGraph + capabilities
   const features = attachFeatureEntryPoints(
-    detectFeatures(files, analyses, routes, database), // ← tambah analyses
+    detectFeatures(files, analyses, routes, database, entityGraph, capabilities),
     routes,
     entryPoints,
     graph
   );
+  // Step 4: AI domain inference (optional — hanya jalan kalau callAI disediakan)
+  // Kirim structured metadata ke AI, dapat domain summary + domain-specific features.
+  // Kalau gagal atau callAI tidak ada, static features tetap lengkap.
+  let domain: DomainInferenceResult | undefined;
+  if (callAI) {
+    const inferenceInput = buildDomainInferenceInput(
+      entityGraph,
+      capabilities,
+      features,
+      framework,
+      routes.length
+    );
+    const result = await inferDomain(inferenceInput, callAI);
+    if (result) {
+      domain = result;
+      // Merge domain-specific features ke features list
+      const domainFeatures = domainFeaturesToFeatureInfo(result.domainFeatures);
+      for (const df of domainFeatures) {
+        // Hanya tambah kalau belum ada feature dengan nama sama
+        if (!features.some((f) => f.name.toLowerCase() === df.name.toLowerCase())) {
+          features.push(df);
+        }
+      }
+      features.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }
+
   const criticalFiles = rankCriticalFiles(files, analyses, references, entryPoints);
   const fileIndex = Object.fromEntries(files.map((file) => [
     file.path,
@@ -188,6 +244,9 @@ export async function createProjectMap(projectRoot: string): Promise<ProjectMap>
     externalServices: detectExternalServices(files),
     ...(database ? { database } : {}),
     features,
+    ...(entityGraph.source !== "empty" ? { entityGraph } : {}),
+    ...(capabilities.length > 0 ? { capabilities } : {}),
+    ...(domain ? { domain } : {}),
     flows,
     onboarding: {
       recommendedPath: buildOnboardingPath(files, entryPoints, criticalFiles, fileIndex)
@@ -645,44 +704,87 @@ function buildFeatureBusinessFlow(
   return steps;
 }
 
+/**
+ * buildStructuralFeatureFlow — build human-readable flow steps untuk sebuah feature.
+ *
+ * Generic by design — bekerja untuk project apapun berdasarkan:
+ * 1. FileRole classification — detect architectural layers dari file paths
+ * 2. Naming conventions — common patterns yang berlaku cross-domain
+ *
+ * Sebelumnya hardcode DevMap-specific paths (Analysis Engine, Snapshot Engine).
+ * Sekarang derive flow dari actual files yang ditemukan di project.
+ */
 function buildStructuralFeatureFlow(featureName: string, files: string[]): string[] {
-  const find = (...patterns: RegExp[]) => files.find((file) =>
-    patterns.some((pattern) => pattern.test(file.toLowerCase()))
-  );
-  const steps: Array<[string, string | undefined]> = featureName === "Analysis Engine"
-    ? [
-      ["Scan project files", find(/\/analyzers\/filescanner\.[cm]?[jt]s$/)],
-      ["Choose a compatible file analyzer", find(/\/analyzers\/analyzerregistry\.[cm]?[jt]s$/)],
-      ["Extract normalized AST or heuristic metadata", find(/\/analyzers\/tsmorphanalyzer\.[cm]?[jt]s$/)],
-      ["Build the normalized project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)]
-    ]
-    : featureName === "Snapshot Engine"
-      ? [
-        ["Build the full project map", find(/\/analyzers\/projectmap\.[cm]?[jt]s$/)],
-        ["Persist and validate the snapshot", find(/\/cache\/snapshot\.[cm]?[jt]s$/)],
-        ["Generate the lightweight index and feature maps", find(/\/cache\/agentnavigation\.[cm]?[jt]s$/)]
-      ]
-      : featureName === "CLI Commands"
-        ? [
-          ["Parse and dispatch the user command", find(/\/src\/index\.[cm]?[jt]s$/)],
-          ["Orchestrate project analysis", find(/\/commands\/analyze\.[cm]?[jt]s$/)],
-          ["Render human or machine-readable output", find(/\/utils\/output\.[cm]?[jt]s$/)]
-        ]
-        : featureName === "AI Integration"
-          ? [
-            ["Build focused project context", find(/\/ai\/contextbuilder\.[cm]?[jt]s$/)],
-            ["Construct grounded model prompts", find(/\/ai\/prompts\.[cm]?[jt]s$/)],
-            ["Select the configured AI provider", find(/\/ai\/provider\.[cm]?[jt]s$/)],
-            [
-              "Call the configured provider adapter",
-              [
-                find(/\/ai\/groq\.[cm]?[jt]s$/),
-                find(/\/ai\/openrouter\.[cm]?[jt]s$/)
-              ].filter((file): file is string => Boolean(file)).join(" or ") || undefined
-            ],
-            ["Stream or return the completed response", find(/\/ai\/completion\.[cm]?[jt]s$/)]
-          ]
-          : [];
+  const find = (...patterns: RegExp[]) =>
+    files.find((file) => patterns.some((p) => p.test(file.toLowerCase())));
+
+  const steps: Array<[string, string | undefined]> = [];
+
+  // --- Authentication flow (special case, high value) ---
+  if (featureName === "Authentication") {
+    steps.push(
+      ["Guard protected routes", find(/middleware\.[cm]?[jt]sx?$/, /proxy\.[cm]?[jt]sx?$/)],
+      ["Configure auth provider", find(/\/auth\.[cm]?[jt]sx?$/, /\/auth\/config/)],
+      ["Handle login", find(/login.*route\.[cm]?[jt]s$/, /\/api\/auth\/.*sign/)],
+      ["Handle registration", find(/register.*route\.[cm]?[jt]s$/, /\/api\/auth\/register/)],
+      ["Expose session context", find(/provider.*\.[cm]?[jt]sx?$/, /session.*provider/)],
+    );
+  }
+
+  // --- API layer flow ---
+  else if (featureName === "API Layer") {
+    steps.push(
+      ["Receive and validate request", find(/\/(routes?|controllers?|handlers?)\//)],
+      ["Apply business logic", find(/\/(services?|usecases?|domain)\//)],
+      ["Access data layer", find(/\/(repositories?|lib\/prisma|lib\/db)/)],
+      ["Return response", find(/\/(routes?|controllers?|handlers?)\//)],
+    );
+  }
+
+  // --- Service layer flow ---
+  else if (featureName === "Service Layer") {
+    steps.push(
+      ["Entry via service interface", find(/\/(services?|usecases?)\//)],
+      ["Validate business rules", find(/\/(validators?|schemas?|dto)\//)],
+      ["Persist via data layer", find(/\/(repositories?|lib\/prisma|lib\/db)/)],
+    );
+  }
+
+  // --- CLI Commands flow ---
+  else if (featureName === "CLI Commands") {
+    steps.push(
+      ["Parse and dispatch command", find(/\/(src\/)?index\.[cm]?[jt]s$/, /\/bin\//)],
+      ["Execute command handler", find(/\/(commands?|cli)\//)],
+      ["Render output", find(/\/(output|reporter|formatter|render)\.[cm]?[jt]s$/)],
+    );
+  }
+
+  // --- AI Integration flow ---
+  else if (featureName === "AI Integration") {
+    steps.push(
+      ["Build context", find(/\/(context|contextbuilder)\.[cm]?[jt]s$/)],
+      ["Construct prompt", find(/\/(prompt|prompts)\.[cm]?[jt]s$/)],
+      ["Call AI provider", find(/\/(openai|groq|anthropic|gemini|provider)\.[cm]?[jt]s$/)],
+      ["Process completion", find(/\/(completion|response|stream)\.[cm]?[jt]s$/)],
+    );
+  }
+
+  // --- Generic CRUD flow — berlaku buat Snippet Management, Order Management, dll ---
+  else {
+    // Extract entity name dari feature name (e.g. "Snippet Management" → "snippet")
+    const entitySlug = featureName
+      .toLowerCase()
+      .replace(/\s+(management|system|module|feature)$/, "")
+      .replace(/\s+/g, "[-_]?");
+
+    const entityPattern = new RegExp(`\/${entitySlug}`, "i");
+
+    steps.push(
+      ["Handle API request", find(entityPattern, /\/(routes?|controllers?|api)\//i)],
+      ["Apply business logic", find(/\/(services?|usecases?|actions?)\//i)],
+      ["Access data", find(/\/(repositories?|lib\/prisma|db\/)\//i)],
+    );
+  }
 
   return steps
     .filter((step): step is [string, string] => Boolean(step[1]))

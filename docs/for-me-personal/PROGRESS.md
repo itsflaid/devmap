@@ -1,6 +1,134 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-23
+Terakhir diperbarui: 2026-06-26
+
+## Update 2026-06-26
+
+### Preprocessor Layer — Vue, Svelte, Astro Support
+
+Ditambahkan layer preprocessor baru sebelum ts-morph untuk menangani file
+yang mengandung embedded JS/TS di dalam format non-native.
+
+**File baru:**
+
+- `src/analyzers/preprocessors/types.ts` — interface `LanguagePreprocessor`
+  dan type `ExtractedScript`. Interface ini adalah kontrak yang harus
+  diimplementasikan oleh setiap preprocessor baru.
+- `src/analyzers/preprocessors/vuePreprocessor.ts` — ekstrak `<script>` dan
+  `<script setup>` dari Vue SFC, support `lang="ts"`. Satu preprocessor
+  mencakup Vue dan Nuxt karena format file identik.
+- `src/analyzers/preprocessors/sveltePreprocessor.ts` — ekstrak `<script>`
+  dari Svelte component, prefer instance script dibanding module script.
+  Mencakup Svelte dan SvelteKit.
+- `src/analyzers/preprocessors/astroPreprocessor.ts` — ekstrak frontmatter
+  `---` dari Astro component. Frontmatter selalu TypeScript by default.
+
+**File diubah:**
+
+- `src/analyzers/tsMorphAnalyzer.ts` — `supports()` sekarang menerima
+  `.vue`, `.svelte`, `.astro` selain native `.ts/.tsx/.js/.jsx`. `analyze()`
+  menjalankan preprocessor sebelum ts-morph untuk file non-native. File
+  tanpa script block (template-only) menghasilkan empty analysis dengan
+  confidence `"medium"` daripada crash.
+- `src/analyzers/heuristicAnalyzer.ts` — hapus `.vue`, `.svelte`, `.astro`
+  dari `HEURISTIC_EXTENSIONS`. Boundary antar analyzer sekarang eksplisit:
+  ts-morph handle semua JS/TS termasuk yang embedded, heuristic handle
+  non-JS murni seperti Python/PHP/Go.
+
+---
+
+### Domain Feature Detection Pipeline
+
+Ditambahkan pipeline baru untuk mendeteksi fitur domain spesifik project
+(Snippet Management, Workspace, Order Management, dll) tanpa hardcode nama
+domain. Pipeline terdiri dari tiga layer yang bekerja secara berurutan.
+
+**File baru:**
+
+- `src/analyzers/extractors/types.ts` — type `EntityInfo`, `EntityGraph`,
+  `RelationInfo`, interface `IEntityExtractor`. Siap multi-source: tambah
+  extractor baru = tambah satu file + satu if block di index.ts.
+- `src/analyzers/extractors/index.ts` — orchestrator fallback chain.
+  Coba tiap extractor berurutan, fallback ke route hints kalau semua gagal.
+- `src/analyzers/extractors/prismaExtractor.ts` — parse `schema.prisma`
+  untuk ekstrak model names, field types, dan relasi antar model. Deteksi
+  relasi: one-to-one, one-to-many, many-to-many dari field list dan
+  back-reference.
+- `src/analyzers/extractors/routeFallbackExtractor.ts` — derive entity names
+  dari URL segments sebagai fallback kalau tidak ada schema. `/api/snippets`
+  → `Snippet`. Singularize: `categories` → `Category`, `replies` → `Reply`.
+- `src/analyzers/capabilityDetector.ts` — detect capabilities dari route
+  HTTP methods dan path patterns. CRUD: group routes by resource, cek
+  GET+POST+PUT+DELETE coverage. Behavioral: sharing, collaboration,
+  discovery, social, file-management, real-time, search, reporting.
+- `src/analyzers/domainInference.ts` — Step 5, AI domain inference. Kirim
+  structured metadata (bukan raw code) ke AI, dapat domain summary dan
+  domain-specific features. Token usage ~300-500 per call. Return null
+  kalau AI tidak tersedia — static features tetap ada.
+
+**File diubah:**
+
+- `src/analyzers/featureDetector.ts` — tambah import `EntityGraph` dan
+  `CapabilityInfo`. `detectFeatures()` terima dua parameter opsional baru:
+  `entityGraph` dan `capabilities`. Tambah `capabilitiesToFeatures()` dan
+  `entityGraphToFeatures()` untuk convert hasil pipeline ke `FeatureInfo[]`.
+  Hapus `DOMAIN_ROUTE_SIGNALS` dan `inferDomainFeatures()` yang sebelumnya
+  ada — approach route-segment-to-feature-name dianggap tidak scalable.
+  `FEATURE_SIGNALS` diperluas dari 6 ke 15 signal dengan library terms
+  lebih lengkap. `matchesSignal()` diperbaiki: term pendek ≤3 karakter
+  (`"ai"`, `"cms"`, `"db"`) pakai whole-word matching dengan regex
+  `(?:^|[/._-])term(?:[/._-]|$)` — mencegah `"ai"` false positive pada
+  path `tailwind.config.ts` atau `SnippetDetail.tsx`.
+- `src/analyzers/fileRole.ts` — hapus role `"snapshot-engine"` dan
+  `"analysis-engine"` yang spesifik DevMap. Tambah enam generic roles:
+  `"config"`, `"api-handler"`, `"service"`, `"middleware"`, `"repository"`,
+  `"ui-component"`. Export baru: `isArchitecturalRole()`.
+- `src/analyzers/routeDetector.ts` — fix monorepo prefix: ganti
+  `^(?:src\/)?app\/` ke `(?:^|\/)(?:src\/)?app\/` agar path
+  `apps/web/src/app/api/...` ke-detect dengan benar. Fix yang sama
+  diterapkan ke Pages Router pattern.
+- `src/analyzers/frameworkDetector.ts` — gate Express file-pattern
+  detection di balik dep check. `server.ts` dan `app.ts` adalah filename
+  umum di Next.js — tanpa gate ini bisa false positive.
+- `src/analyzers/projectMap.ts` — tambah import `extractEntities`,
+  `detectCapabilities`, `inferDomain`. Tambah `entityGraph`, `capabilities`,
+  dan `domain` ke `ProjectMap` type (semua opsional). `createProjectMap()`
+  terima `callAI` opsional — kalau tidak ada, static analysis tetap jalan
+  normal. Pipeline sekarang punya Step 1-4 eksplisit sebelum `rankCriticalFiles`.
+  `buildStructuralFeatureFlow()` di-generalize: hapus hardcode DevMap paths,
+  ganti dengan role-based dan naming-convention detection yang berlaku
+  untuk project apapun.
+- `src/commands/analyze.ts` — tambah `buildCallAI()` helper yang wrap
+  `AiClient` menjadi `(prompt: string) => Promise<string>`. Pass ke
+  `createProjectMap()`. Tambah domain section di `printSnapshot()`.
+
+---
+
+### False Positive Fix: AI Integration di DevNote
+
+DevNote ke-detect punya "AI Integration" padahal tidak memakai AI library.
+Root cause: `matchesSignal()` pakai `path.includes("ai")` yang match
+substring di `tailwind.config.ts` ("tai**l**w**i**nd") dan
+`SnippetDetail.tsx` ("det**ai**l").
+
+Fix: term ≤3 karakter harus match sebagai whole word/segment, bukan
+substring. `"ai"` sekarang hanya match kalau dikelilingi separator path
+(`/`, `.`, `_`, `-`).
+
+---
+
+### ROLE_FEATURES Generalized
+
+`ROLE_FEATURES` sebelumnya mengandung `"snapshot-engine"` dan
+`"analysis-engine"` yang hanya match di project DevMap sendiri. Di project
+Express/Next.js biasa, kedua role itu menghasilkan evidence kosong — wasted
+computation tanpa output.
+
+Sekarang ROLE_FEATURES berisi 9 entries yang semua generic: Documentation,
+Web Landing, CLI Commands, API Layer, Service Layer, Middleware, Data Access
+Layer, UI Components, AI Integration.
+
+---
 
 ## Update 2026-06-23
 

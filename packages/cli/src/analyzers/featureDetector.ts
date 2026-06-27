@@ -2,7 +2,9 @@ import type { FileAnalysis } from "./fileAnalysis.js";
 import type { DatabaseInfo } from "./databaseDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import type { RouteInfo } from "./routeDetector.js";
-import { classifyFileRole, isTechnicalFeatureSource, type FileRole } from "./fileRole.js";
+import type { EntityGraph, RelationInfo } from "./extractors/types.js";
+import type { CapabilityInfo } from "./capabilityDetector.js";
+import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "./fileRole.js";
 import { isArchitectureSource } from "./sourceScope.js";
 
 export type FeatureInfo = {
@@ -19,11 +21,6 @@ export type FeatureInfo = {
 
 export type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
 
-// ---------------------------------------------------------------------------
-// FEATURE_SIGNALS — deteksi fitur berdasarkan import specifiers dan path terms.
-// Generic: berlaku untuk semua project yang di-analyze, bukan cuma DevMap.
-// Tambahkan terms baru seiring ekosistem berkembang (library baru, dll).
-// ---------------------------------------------------------------------------
 const FEATURE_SIGNALS: Array<{
   name: string;
   terms: string[];
@@ -32,10 +29,8 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Authentication",
     terms: [
-      // Libraries
       "next-auth", "auth0", "clerk", "lucia", "better-auth", "passport",
       "firebase/auth", "@supabase/auth", "kinde",
-      // Generic terms
       "auth", "login", "session", "jwt", "oauth", "openid",
     ],
     purpose: "Handles authentication, identity, sessions, login, and access control."
@@ -43,10 +38,8 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Payments",
     terms: [
-      // Libraries / providers
       "stripe", "midtrans", "xendit", "@xendit", "paypal", "braintree",
       "razorpay", "paddle", "lemonsqueezy", "lemon-squeezy",
-      // Generic terms
       "payment", "checkout", "billing", "subscription", "invoice",
     ],
     purpose: "Handles payment providers, billing, and transaction workflows."
@@ -54,11 +47,9 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "File Upload",
     terms: [
-      // Libraries / providers
       "multer", "formidable", "busboy", "cloudinary", "uploadthing",
       "aws-sdk/s3", "@aws-sdk/client-s3", "minio", "backblaze",
       "firebase/storage", "@supabase/storage",
-      // Generic terms
       "upload", "storage", "bucket", "blob",
     ],
     purpose: "Handles file ingestion, cloud storage, and upload providers."
@@ -66,11 +57,9 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Email",
     terms: [
-      // Libraries / providers
       "resend", "nodemailer", "@sendgrid/mail", "sendgrid", "mailgun",
       "postmark", "@postmark", "aws-sdk/ses", "@aws-sdk/client-ses",
       "react-email", "@react-email",
-      // Generic terms
       "email", "mailer", "smtp",
     ],
     purpose: "Handles transactional email delivery and templates."
@@ -78,23 +67,20 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "AI Integration",
     terms: [
-      // Libraries / providers
+      // Provider SDKs only — no generic terms like "ai", "llm", "embedding"
+      // Path matching is disabled for AI; detection is import-only (see matchesSignal)
       "openai", "groq", "openrouter", "@anthropic-ai/sdk", "anthropic",
-      "google-generative-ai", "@google/generative-ai", "cohere",
+      "google-generative-ai", "@google/generative-ai", "@google/genai", "cohere",
       "mistralai", "together", "replicate", "huggingface",
-      "langchain", "@langchain", "llamaindex", "ai", "vercel/ai",
-      // Generic terms
-      "generative-ai", "llm", "embedding", "vectorstore",
+      "langchain", "@langchain", "llamaindex", "@vercel/ai", "ai/react",
     ],
     purpose: "Handles AI providers, LLM calls, prompts, and model context."
   },
   {
     name: "Notifications",
     terms: [
-      // Libraries / providers
       "web-push", "pusher", "ably", "soketi", "firebase-messaging",
       "@firebase/messaging", "onesignal", "novu", "@novu",
-      // Generic terms
       "notification", "push", "realtime", "websocket",
     ],
     purpose: "Handles push notifications, real-time events, and user alerts."
@@ -102,10 +88,8 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Caching",
     terms: [
-      // Libraries / providers
       "ioredis", "redis", "@upstash/redis", "upstash", "keyv",
       "lru-cache", "node-cache", "memcached",
-      // Generic terms
       "cache", "ttl", "invalidate",
     ],
     purpose: "Handles in-memory and distributed caching strategies."
@@ -113,11 +97,9 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Search",
     terms: [
-      // Libraries / providers
       "meilisearch", "typesense", "algolia", "@algolia",
       "elasticsearch", "@elastic/elasticsearch",
       "orama", "@orama",
-      // Generic terms
       "search", "fulltext", "index", "facet",
     ],
     purpose: "Handles full-text search, indexing, and faceted filtering."
@@ -125,11 +107,9 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Background Jobs",
     terms: [
-      // Libraries / providers
       "bullmq", "bull", "bee-queue", "agenda", "node-cron",
       "inngest", "@inngest", "trigger.dev", "@trigger.dev",
       "quirrel",
-      // Generic terms
       "queue", "worker", "job", "cron", "scheduler",
     ],
     purpose: "Handles background processing, job queues, and scheduled tasks."
@@ -137,12 +117,10 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Logging & Monitoring",
     terms: [
-      // Libraries / providers
       "pino", "winston", "bunyan", "morgan",
       "@sentry/node", "@sentry/nextjs", "sentry",
       "datadog", "dd-trace", "opentelemetry", "@opentelemetry",
       "posthog", "@posthog",
-      // Generic terms
       "logger", "telemetry", "tracing",
     ],
     purpose: "Handles application logging, error tracking, and observability."
@@ -150,10 +128,8 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Testing",
     terms: [
-      // Libraries
       "vitest", "jest", "@testing-library", "playwright",
       "cypress", "supertest", "msw",
-      // Generic terms
       "test", "spec", "mock", "fixture",
     ],
     purpose: "Contains test suites, mocks, and testing infrastructure."
@@ -161,10 +137,8 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Internationalization",
     terms: [
-      // Libraries
       "next-intl", "next-i18next", "i18next", "react-i18next",
       "lingui", "@lingui", "formatjs", "react-intl",
-      // Generic terms
       "i18n", "l10n", "locale", "translation",
     ],
     purpose: "Handles multi-language support, locale routing, and translations."
@@ -172,11 +146,9 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Analytics",
     terms: [
-      // Libraries / providers
       "posthog", "mixpanel", "@mixpanel", "amplitude",
       "google-analytics", "gtag", "plausible",
       "segment", "@segment",
-      // Generic terms
       "analytics", "tracking", "event",
     ],
     purpose: "Handles user analytics, event tracking, and product metrics."
@@ -184,10 +156,8 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "Rate Limiting",
     terms: [
-      // Libraries / providers
       "@upstash/ratelimit", "express-rate-limit",
       "rate-limiter-flexible", "bottleneck",
-      // Generic terms
       "ratelimit", "rate-limit", "throttle",
     ],
     purpose: "Handles API rate limiting and request throttling."
@@ -195,11 +165,9 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "CMS & Content",
     terms: [
-      // Libraries / providers
       "contentlayer", "@contentlayer", "sanity", "@sanity",
       "contentful", "strapi", "payload", "keystatic",
       "notion", "@notionhq",
-      // Generic terms
       "cms", "content", "mdx",
     ],
     purpose: "Handles CMS integrations and structured content management."
@@ -207,10 +175,15 @@ const FEATURE_SIGNALS: Array<{
 ];
 
 // ---------------------------------------------------------------------------
-// ROLE_FEATURES — deteksi fitur berdasarkan FileRole classification.
-// Hanya include roles yang generic / berlaku di banyak project.
-// DevMap-specific roles (snapshot-engine, analysis-engine) TIDAK di sini —
-// mereka akan ke-skip otomatis di project lain karena evidence-nya kosong.
+// ROLE_FEATURES — only user-visible features, not architectural layers.
+//
+// Excluded intentionally:
+//   "api-handler", "service", "middleware", "repository", "ui-component"
+//   → architectural implementation concerns, not domain features
+//   "ai-integration"
+//   → detected via FEATURE_SIGNALS (import-based), role-based too noisy
+//   "documentation"
+//   → re-added with strict meta-file filtering via isDocumentationEvidence()
 // ---------------------------------------------------------------------------
 const ROLE_FEATURES: Array<{
   role: FileRole;
@@ -221,8 +194,8 @@ const ROLE_FEATURES: Array<{
   {
     role: "documentation",
     name: "Documentation",
-    purpose: "Explains project behavior, setup, architecture, and contribution guidance.",
-    terms: ["documentation", "docs", "readme", "guide", "contributing", "changelog"]
+    purpose: "Contains project documentation, API references, and developer guides.",
+    terms: ["documentation", "docs", "guide", "reference", "api", "wiki"]
   },
   {
     role: "landing-ui",
@@ -236,33 +209,65 @@ const ROLE_FEATURES: Array<{
     purpose: "Contains CLI entry points and command handlers.",
     terms: ["cli", "command", "bin", "argv", "commander", "yargs"]
   },
-  {
-    role: "snapshot-engine",
-    name: "Snapshot Engine",
-    purpose: "Builds, stores, validates, and reuses project snapshots.",
-    terms: ["snapshot", "projectmap", "analyze", "cache", "index"]
-  },
-  {
-    role: "analysis-engine",
-    name: "Analysis Engine",
-    purpose: "Scans source files and extracts project structure and relationships.",
-    terms: ["analysis", "analyzer", "scanner", "detector", "dependency"]
-  },
-  {
-    role: "ai-integration",
-    name: "AI Integration",
-    purpose: "Handles AI providers, prompts, and model-facing context.",
-    terms: ["ai", "groq", "openrouter", "prompt", "context", "model", "llm"]
-  }
 ];
 
 // ---------------------------------------------------------------------------
-// FEATURE_FILE_PRIORITIES — sort evidence files dalam tiap feature.
-// Hanya berisi patterns yang GENERIC — berlaku di banyak project.
-// Path DevMap-specific (\/analyzers\/tsmorphanalyzer, dll) dihapus.
+// Documentation evidence filter
+// ---------------------------------------------------------------------------
+
+function isDocumentationEvidence(filePath: string): boolean {
+  const normalized = filePath.toLowerCase();
+  const filename = normalized.split("/").at(-1) ?? normalized;
+
+  // Skip GitHub meta folder
+  if (/(^|\/)\.github(\/|$)/.test(normalized)) return false;
+
+  // Delegate to fileRole's meta-file list — single source of truth
+  if (isDocumentationMeta(filename)) return false;
+
+  // Must be in docs/ folder, wiki/, meaningful README, or API spec
+  return (
+    /(^|\/)docs?(\/|$)/.test(normalized)
+    || /(^|\/)wiki(\/|$)/.test(normalized)
+    || filename === "readme.md"
+    || /\.(guide|tutorial|reference)\.(md|mdx)$/.test(filename)
+    || /(openapi|swagger)\.(json|yaml|yml)$/.test(filename)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Feature evidence file filter
+//
+// Excludes files that represent infrastructure/generated artifacts, not
+// feature implementation. These files contain domain keywords (table names,
+// column names) that would otherwise cause false positive feature detection.
+//
+// Excluded:
+//   - prisma/migrations/* — SQL migration history, not feature code
+//   - migrations/*        — same for non-Prisma ORMs
+//   - *.sql               — raw SQL, not implementation
+//   - generated/*         — auto-generated code, not authored
+//   - *.generated.*       — same pattern
+//   - schema.prisma        — Prisma schema, surfaced separately as database info
+// ---------------------------------------------------------------------------
+function isFeatureEvidenceFile(path: string): boolean {
+  const lower = path.toLowerCase();
+
+  return !(
+    /\/prisma\/migrations\//.test(lower)
+    || /\/migrations\//.test(lower)
+    || /\.sql$/.test(lower)
+    || /\/generated\//.test(lower)
+    || /\.generated\./.test(lower)
+    || /\/prisma\/schema\.prisma$/.test(lower)
+    || /^prisma\/schema\.prisma$/.test(lower)
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FEATURE_FILE_PRIORITIES
 // ---------------------------------------------------------------------------
 const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
-  // Documentation: urutan universal — README selalu paling penting
   Documentation: [
     /(^|\/)readme\.md$/,
     /(^|\/)contributing\.md$/,
@@ -271,25 +276,17 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
     /(^|\/)docs\/index\.md$/,
     /(^|\/)docs\//,
   ],
-
-  // Authentication: urutan berdasarkan architectural importance
   Authentication: [
-    // Config / adapter (paling penting — defines provider)
     /(^|\/)src\/auth\.[cm]?[jt]sx?$/,
     /(^|\/)auth\.[cm]?[jt]sx?$/,
     /\/auth\/config\.[cm]?[jt]sx?$/,
-    // Middleware / guard
     /(^|\/)middleware\.[cm]?[jt]sx?$/,
     /\/auth\/middleware\.[cm]?[jt]sx?$/,
-    // API handlers
     /\/api\/auth\//,
     /\/api\/.*\/(login|register|logout)\.[cm]?[jt]sx?$/,
-    // Providers / context
     /\/providers?\/auth[^/]*\.[cm]?[jt]sx?$/,
     /\/context\/auth[^/]*\.[cm]?[jt]sx?$/,
   ],
-
-  // Payments: config / client dulu, baru handlers
   Payments: [
     /\/lib\/stripe\.[cm]?[jt]sx?$/,
     /\/lib\/payment[^/]*\.[cm]?[jt]sx?$/,
@@ -297,8 +294,6 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
     /\/api\/.*checkout[^/]*\.[cm]?[jt]sx?$/,
     /\/api\/.*payment[^/]*\.[cm]?[jt]sx?$/,
   ],
-
-  // AI Integration: provider / client dulu, baru consumers
   "AI Integration": [
     /\/lib\/ai\.[cm]?[jt]sx?$/,
     /\/ai\/provider\.[cm]?[jt]sx?$/,
@@ -308,24 +303,18 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
     /\/ai\/prompts?\.[cm]?[jt]sx?$/,
     /\/ai\/completion\.[cm]?[jt]sx?$/,
   ],
-
-  // Email: mailer config dulu, baru templates
   Email: [
     /\/lib\/email[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/mailer[^/]*\.[cm]?[jt]sx?$/,
     /\/emails?\//,
     /\/templates?\//,
   ],
-
-  // File Upload: config / client dulu
   "File Upload": [
     /\/lib\/upload[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/storage[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/cloudinary[^/]*\.[cm]?[jt]sx?$/,
     /\/api\/.*upload[^/]*\.[cm]?[jt]sx?$/,
   ],
-
-  // Background Jobs: queue config dulu
   "Background Jobs": [
     /\/lib\/queue[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/worker[^/]*\.[cm]?[jt]sx?$/,
@@ -333,45 +322,33 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
     /\/jobs?\//,
     /\/queues?\//,
   ],
-
-  // Caching: client config dulu
   Caching: [
     /\/lib\/redis\.[cm]?[jt]sx?$/,
     /\/lib\/cache[^/]*\.[cm]?[jt]sx?$/,
     /\/cache\//,
   ],
-
-  // CLI Commands: entry point dulu, baru subcommands
   "CLI Commands": [
     /\/src\/index\.[cm]?[jt]sx?$/,
     /\/bin\//,
     /\/commands?\/index\.[cm]?[jt]sx?$/,
     /\/commands?\//,
   ],
-
-  // Web Landing: index / hero dulu
   "Web Landing": [
     /\/pages\/index\.(astro|tsx?|jsx?)$/,
     /\/app\/page\.(tsx?|jsx?)$/,
     /\/landing\//,
     /(hero|pricing|features?section)[^/]*\.(astro|tsx?|jsx?|vue|svelte)$/,
   ],
-
-  // Testing: setup / config dulu
   Testing: [
     /\/(vitest|jest)\.config\.[cm]?[jt]sx?$/,
     /\/test-utils?\.[cm]?[jt]sx?$/,
     /\/setup\.(test|spec)\.[cm]?[jt]sx?$/,
   ],
-
-  // Search: client / config dulu
   Search: [
     /\/lib\/search[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/meilisearch[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/algolia[^/]*\.[cm]?[jt]sx?$/,
   ],
-
-  // Logging: config dulu
   "Logging & Monitoring": [
     /\/lib\/logger[^/]*\.[cm]?[jt]sx?$/,
     /\/lib\/sentry[^/]*\.[cm]?[jt]sx?$/,
@@ -380,23 +357,70 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Entry point scoring
+//
+// Lower score = better entry point candidate.
+// Generic utility/helper files score >= ENTRY_POINT_EXCLUDE_THRESHOLD (excluded).
+// Route handlers score lowest (preferred).
+// ---------------------------------------------------------------------------
+const ENTRY_POINT_EXCLUDE_THRESHOLD = 90;
+
+function scoreEntryPointRelevance(file: string, _context: string): number {
+  const lower = file.toLowerCase();
+
+  // Hard exclude — never good entry points
+  if (/\/(utils?|helpers?|constants?|types?|shared)\.[cm]?[jt]sx?$/.test(lower)) return 100;
+  if (/\/(index)\.[cm]?[jt]sx?$/.test(lower) && !/\/(api|routes?|commands?)\//.test(lower)) return 95;
+  if (/\.(d\.ts)$/.test(lower)) return 100;
+
+  // Route handlers — best entry points
+  if (/\/(route|handler)\.[cm]?[jt]sx?$/.test(lower)) return 5;
+  if (/\/api\//.test(lower)) return 10;
+
+  // Service files — good secondary entry points
+  if (/\.(service|usecase|action)\.[cm]?[jt]sx?$/.test(lower)) return 20;
+  if (/\/services?\//.test(lower)) return 25;
+
+  // CLI command handlers
+  if (/\/(commands?|bin)\//.test(lower)) return 15;
+
+  // UI pages — relevant for UI-facing features
+  if (/\/(pages?|app)\/.+\/(page|layout)\.[cm]?[jt]sx?$/.test(lower)) return 30;
+  if (/\/components?\//.test(lower)) return 50;
+
+  // Lib files — okay but not ideal
+  if (/\/lib\//.test(lower)) return 60;
+
+  return 70;
+}
+
+// ---------------------------------------------------------------------------
+// Main entry
+// ---------------------------------------------------------------------------
+
 export function detectFeatures(
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>,
   routes: RouteInfo[],
-  database?: DatabaseInfo
+  database?: DatabaseInfo,
+  entityGraph?: EntityGraph,
+  capabilities?: CapabilityInfo[]
 ): FeatureInfo[] {
   const features: FeatureInfo[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
 
+  // --- ROLE_FEATURES ---
   for (const definition of ROLE_FEATURES) {
     const evidence = scopedFiles
       .filter((file) =>
         classifyFileRole(file.path) === definition.role
         || (definition.name === "CLI Commands"
           && /(^|\/)src\/index\.[cm]?[jt]s$/.test(file.path.toLowerCase()))
-        || (definition.name === "Snapshot Engine"
-          && /(^|\/)projectmap\.[cm]?[jt]sx?$/.test(file.path.toLowerCase()))
+      )
+      .filter((file) => isFeatureEvidenceFile(file.path))
+      .filter((file) =>
+        definition.role !== "documentation" || isDocumentationEvidence(file.path)
       )
       .map((file) => file.path)
       .sort((left, right) =>
@@ -416,11 +440,15 @@ export function detectFeatures(
     }
   }
 
-  const technicalFiles = scopedFiles.filter((file) => isTechnicalFeatureSource(file.path));
+  // --- FEATURE_SIGNALS ---
+  // Pre-filtered once — isFeatureEvidenceFile applied here, not inside the loop
+  const technicalFiles = scopedFiles
+    .filter((file) => isTechnicalFeatureSource(file.path))
+    .filter((file) => isFeatureEvidenceFile(file.path));
 
   for (const signal of FEATURE_SIGNALS) {
     const evidence = technicalFiles
-      .filter((file) => matchesSignal(file, analyses[file.path], signal.terms))
+      .filter((file) => matchesSignal(file, analyses[file.path], signal.terms, signal.name))
       .map((file) => file.path)
       .sort((left, right) =>
         featureFilePriority(signal.name, left) - featureFilePriority(signal.name, right)
@@ -439,28 +467,20 @@ export function detectFeatures(
     }
   }
 
-  if (database) {
-    const evidence = database.files.length > 0 ? database.files : [database.provider];
-    features.push(createFeatureInfo("Database", evidence, [
-      "database",
-      "schema",
-      "model",
-      "repository",
-      "migration",
-      database.provider.toLowerCase()
-    ], undefined, analyses));
+  // Database and API Routes are architectural concerns, not domain features.
+  // Database info lives in snapshot.database, routes in snapshot.routes.
+  // They are surfaced per-feature via capability detection and entity extraction.
+
+  if (capabilities && capabilities.length > 0) {
+    for (const feature of capabilitiesToFeatures(capabilities)) {
+      mergeFeature(features, feature);
+    }
   }
 
-  const apiFiles = [...new Set(routes.filter((route) => route.kind === "api").map((route) => route.file))];
-  if (apiFiles.length > 0) {
-    features.push(createFeatureInfo("API Routes", apiFiles.slice(0, 5), [
-      "api",
-      "route",
-      "endpoint",
-      "request",
-      "response",
-      "handler",
-    ], undefined, analyses));
+  if (entityGraph && entityGraph.entityNames.length > 0) {
+    for (const feature of entityGraphToFeatures(entityGraph)) {
+      mergeFeature(features, feature);
+    }
   }
 
   return enrichAuthenticationFeature(features, scopedFiles, analyses)
@@ -468,20 +488,182 @@ export function detectFeatures(
 }
 
 // ---------------------------------------------------------------------------
-// calculateFeatureConfidence — weight by analyzer quality, not just count.
-// ts-morph (confidence: "high") = semantically verified via AST.
-// heuristic/fallback = regex-based, less certain.
+// capabilitiesToFeatures
+// ---------------------------------------------------------------------------
+function capabilitiesToFeatures(capabilities: CapabilityInfo[]): FeatureInfo[] {
+  return capabilities.map((cap) => {
+    const terms = [cap.kind, ...cap.entities.map((e) => e.toLowerCase())];
+
+    const scoredEvidence = cap.evidence
+      .map((file) => ({ file, score: scoreEntryPointRelevance(file, cap.kind) }))
+      .sort((a, b) => a.score - b.score);
+
+    const entryPoints = scoredEvidence
+      .filter((e) => e.score < ENTRY_POINT_EXCLUDE_THRESHOLD)
+      .slice(0, 2)
+      .map((e) => e.file);
+
+    return {
+      name: cap.name,
+      purpose: purposeFromCapability(cap),
+      files: cap.evidence,
+      entryPoints,
+      businessFlow: [],
+      searchTerms: [...new Set(terms)].slice(0, 8),
+      confidence: cap.confidence,
+      evidence: cap.evidence
+    };
+  });
+}
+
+function purposeFromCapability(cap: CapabilityInfo): string {
+  const entityList = cap.entities.length > 0 ? cap.entities.join(", ") : "resources";
+  switch (cap.kind) {
+    case "crud":            return `Handles create, read, update, and delete operations for ${entityList}.`;
+    case "sharing":         return `Handles content sharing via public links and share tokens.`;
+    case "collaboration":   return `Handles team collaboration, workspaces, and member management.`;
+    case "discovery":       return `Handles public content discovery and browsing.`;
+    case "publishing":      return `Handles content publishing and visibility management.`;
+    case "social":          return `Handles social interactions like likes, favorites, and reactions.`;
+    case "file-management": return `Handles file uploads, storage, and media management.`;
+    case "real-time":       return `Handles real-time events, websockets, and live updates.`;
+    case "search":          return `Handles full-text search and content filtering.`;
+    case "reporting":       return `Handles usage statistics, analytics, and reporting.`;
+    default:                return `Handles ${cap.kind} operations for ${entityList}.`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// entityGraphToFeatures
+//
+// Entity ownership model:
+//
+//   OWNED  — relations where `from === entity.name` (entity initiates the relation).
+//            These are items the entity is responsible for: User owns Sessions,
+//            Plan owns PlanItems. Shown as "including X" in purpose string.
+//
+//   REFERENCED — relations where `to === entity.name` (other entities point here).
+//                e.g. Room.userId → Room references User, not the other way around.
+//                These are NOT included in User's purpose — they live in Room's feature.
+//
+//   PEER   — many-to-many relations between two non-child entities.
+//            Shown as "relates to X" — mentioned but not as owned items.
+//
+// Child entities (owned via one-to-many) are skipped as standalone features —
+// they are only mentioned inside the parent's purpose string.
+// ---------------------------------------------------------------------------
+function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
+  if (entityGraph.source === "empty") return [];
+
+  // Build set of child entity names — entities that are the "many" side of a
+  // one-to-many relation. These should NOT appear as standalone features.
+  const childEntityNames = new Set<string>();
+  for (const relation of entityGraph.relations) {
+    if (relation.kind === "one-to-many" || relation.kind === "many-to-many") {
+      childEntityNames.add(relation.to);
+    }
+  }
+
+  const features: FeatureInfo[] = [];
+
+  // For Prisma source: only include entities that participate in at least one relation.
+  // For route-hint source: include all (less schema info available).
+  const meaningfulEntities = entityGraph.source === "prisma"
+    ? entityGraph.entities.filter((e) =>
+        entityGraph.relations.some((r) => r.from === e.name || r.to === e.name)
+      )
+    : entityGraph.entities;
+
+  for (const entity of meaningfulEntities.slice(0, 8)) {
+    // Skip child entities — they appear inside their parent's purpose
+    if (childEntityNames.has(entity.name)) continue;
+
+    // OWNED: items this entity is responsible for (entity → child via one-to-many / one-to-one)
+    // These are direct lifecycle children — e.g. Plan owns PlanItems, User owns Sessions
+    const ownedNames = entityGraph.relations
+      .filter((r) =>
+        r.from === entity.name
+        && (r.kind === "one-to-many" || r.kind === "one-to-one")
+        && !childEntityNames.has(r.to) === false // only actual children
+      )
+      .map((r) => r.to);
+
+    // Correct: owned = from this entity, excluding things that are already filtered as children
+    // Re-derive cleanly
+    const directlyOwned = entityGraph.relations
+      .filter((r) => r.from === entity.name && r.kind === "one-to-many")
+      .map((r) => r.to);
+
+    const oneToOneOwned = entityGraph.relations
+      .filter((r) => r.from === entity.name && r.kind === "one-to-one")
+      .map((r) => r.to);
+
+    const allOwned = [...new Set([...directlyOwned, ...oneToOneOwned])];
+
+    // PEER: many-to-many relations this entity participates in
+    // These are relationships, not ownership — e.g. User ↔ Role
+    const peerNames = entityGraph.relations
+      .filter((r) =>
+        r.kind === "many-to-many"
+        && (r.from === entity.name || r.to === entity.name)
+      )
+      .map((r) => r.from === entity.name ? r.to : r.from)
+      .filter((n) => !childEntityNames.has(n) && n !== entity.name);
+
+    // Build purpose string based on what we found
+    const purpose = buildEntityPurpose(entity.name, allOwned, peerNames);
+
+    // Build search terms
+    const searchTerms = [
+      entity.name.toLowerCase(),
+      ...allOwned.map((n) => n.toLowerCase()),
+      ...peerNames.map((n) => n.toLowerCase()),
+      "management", "crud"
+    ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 8);
+
+    features.push({
+      name: `${entity.name} Management`,
+      purpose,
+      files: [],
+      entryPoints: [],
+      businessFlow: [],
+      searchTerms,
+      confidence: entityGraph.source === "prisma" ? "high" : "medium",
+      evidence: []
+    });
+  }
+
+  return features;
+}
+
+function buildEntityPurpose(
+  entityName: string,
+  owned: string[],
+  peers: string[]
+): string {
+  if (owned.length > 0 && peers.length > 0) {
+    return `Manages ${entityName} (including ${owned.join(", ")}) and its associations with ${peers.join(", ")}.`;
+  }
+  if (owned.length > 0) {
+    return `Manages ${entityName} and its owned items: ${owned.join(", ")}.`;
+  }
+  if (peers.length > 0) {
+    return `Manages ${entityName} and its associations with ${peers.join(", ")}.`;
+  }
+  return `Manages ${entityName} data and operations.`;
+}
+
+// ---------------------------------------------------------------------------
+// Confidence calculation
 // ---------------------------------------------------------------------------
 function calculateFeatureConfidence(
   evidence: string[],
   analyses: Record<string, FileAnalysis>
 ): FeatureInfo["confidence"] {
   if (evidence.length === 0) return "low";
-
   const highQualityCount = evidence.filter(
     (path) => analyses[path]?.confidence === "high"
   ).length;
-
   if (highQualityCount >= 2) return "high";
   if (highQualityCount >= 1 || evidence.length >= 2) return "medium";
   return "low";
@@ -496,12 +678,19 @@ function createFeatureInfo(
 ): FeatureInfo {
   const files = evidence.filter((item) => item.includes("/") || /\.[A-Za-z0-9]+$/.test(item));
 
+  const entryPoints = files
+    .map((file) => ({ file, score: scoreEntryPointRelevance(file, name.toLowerCase()) }))
+    .sort((a, b) => a.score - b.score)
+    .filter((e) => e.score < ENTRY_POINT_EXCLUDE_THRESHOLD)
+    .slice(0, 2)
+    .map((e) => e.file);
+
   return {
     name,
     purpose,
     files,
     businessFlow: [],
-    entryPoints: [],
+    entryPoints,
     searchTerms: [...new Set(terms.map((term) => term.toLowerCase()))].slice(0, 8),
     confidence: calculateFeatureConfidence(evidence, analyses),
     evidence
@@ -514,15 +703,11 @@ function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
     features.push(addition);
     return;
   }
-
   const existing = features[existingIndex];
-  const files = [...new Set([...existing.files, ...addition.files])];
-  const evidence = [...new Set([...existing.evidence, ...addition.evidence])];
-
   features[existingIndex] = {
     ...existing,
-    files,
-    evidence,
+    files: [...new Set([...existing.files, ...addition.files])],
+    evidence: [...new Set([...existing.evidence, ...addition.evidence])],
     searchTerms: [...new Set([...existing.searchTerms, ...addition.searchTerms])].slice(0, 8),
     confidence: mergeTwoConfidences(existing.confidence, addition.confidence)
   };
@@ -537,25 +722,65 @@ function mergeTwoConfidences(
 }
 
 // ---------------------------------------------------------------------------
-// matchesSignal — imports from ts-morph first, fallback to path check.
-// Prevents false positives from README.md, comments, etc.
+// matchesSignal
 //
-// PATH MATCHING RULES:
-// - Long terms (>3 chars): substring match is fine. "stripe" won't appear in
-//   unrelated paths by accident.
-// - Short terms (<=3 chars): MUST be whole word/segment. "ai" as substring
-//   matches "detail", "tailwind", "email" — all false positives.
-//   e.g. "ai" should only match "src/ai/", "ai.ts", not "detail.tsx".
+// AI Integration: import-only, no path matching.
+//   Rationale: "ai", "llm", "embedding", "model" appear in too many non-AI
+//   contexts (path names, variable names, migration files). Only an actual
+//   provider import is reliable evidence.
 //
-// IMPORT MATCHING:
-// - Always substring — import specifiers are package names like "openai",
-//   "@anthropic-ai/sdk". Substring is safe and necessary here.
+//   Accepted provider imports (must match exactly — not substring):
+//     openai, groq, anthropic, @anthropic-ai/sdk, google-generative-ai,
+//     @google/generative-ai, @google/genai, cohere, mistralai, together,
+//     replicate, huggingface, langchain, @langchain/*, llamaindex,
+//     @vercel/ai, ai/react, openrouter
+//
+// All other signals: path matching first, then import matching.
 // ---------------------------------------------------------------------------
+
+const AI_PROVIDER_IMPORTS = new Set([
+  "openai",
+  "groq",
+  "openrouter",
+  "anthropic",
+  "@anthropic-ai/sdk",
+  "cohere",
+  "mistralai",
+  "together",
+  "replicate",
+  "huggingface",
+  "llamaindex",
+]);
+
+const AI_PROVIDER_PREFIXES = [
+  "langchain",
+  "@langchain/",
+  "google-generative-ai",
+  "@google/generative-ai",
+  "@google/genai",
+  "@vercel/ai",
+  "ai/",
+];
+
+function isAiProviderImport(specifier: string): boolean {
+  const lower = specifier.toLowerCase();
+  if (AI_PROVIDER_IMPORTS.has(lower)) return true;
+  return AI_PROVIDER_PREFIXES.some((prefix) => lower.startsWith(prefix));
+}
+
 function matchesSignal(
   file: ScannedFile,
   analysis: FileAnalysis | undefined,
-  terms: string[]
+  terms: string[],
+  featureName?: string
 ): boolean {
+  // AI Integration: ONLY import-based — path match is too noisy.
+  // Must find at least one recognized AI provider import.
+  if (featureName === "AI Integration") {
+    if (!analysis) return false;
+    return analysis.imports.some(isAiProviderImport);
+  }
+
   const path = file.path.toLowerCase();
 
   if (terms.some((term) => matchesPathTerm(path, term))) return true;
@@ -570,8 +795,7 @@ function matchesSignal(
 }
 
 function matchesPathTerm(path: string, term: string): boolean {
-  // Short terms (<=3 chars) — whole word only, surrounded by path separators.
-  // Prevents "ai" matching "detail", "tailwind", "email", "rain", etc.
+  // Short terms (≤3 chars) — whole word only, prevent "ai" matching "detail"/"tailwind"
   if (term.length <= 3) {
     return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path);
   }
@@ -582,29 +806,30 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// ---------------------------------------------------------------------------
+// Authentication enrichment
+// ---------------------------------------------------------------------------
 function enrichAuthenticationFeature(
   features: FeatureInfo[],
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>
 ): FeatureInfo[] {
   const authFiles = collectAuthenticationFeatureFiles(files, analyses);
-  if (authFiles.length === 0) {
-    return features;
-  }
+  if (authFiles.length === 0) return features;
 
-  const existingAuth = features.find((feature) => feature.name === "Authentication");
+  const existingAuth = features.find((f) => f.name === "Authentication");
   if (existingAuth) {
     return features.map((feature) =>
       feature.name === "Authentication"
         ? {
-          ...feature,
-          files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
-          evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
-          confidence: calculateFeatureConfidence(
-            [...new Set([...feature.evidence, ...authFiles])],
-            analyses
-          )
-        }
+            ...feature,
+            files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
+            evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
+            confidence: calculateFeatureConfidence(
+              [...new Set([...feature.evidence, ...authFiles])],
+              analyses
+            )
+          }
         : feature
     );
   }
@@ -621,23 +846,31 @@ function collectAuthenticationFeatureFiles(
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>
 ): string[] {
-  return orderAuthenticationFiles(files
-    .filter((file) => isArchitectureSource(file.path))
-    .filter((file) => isTechnicalFeatureSource(file.path))
-    .filter((file) => !isAnalyzerImplementationFile(file.path))
-    .filter((file) => {
-      const analysis = analyses[file.path];
-      const imports = analysis?.imports ?? extractImportsFallback(file.content);
-      const symbols = analysis
-        ? analysis.symbols.map((s) => s.name)
-        : extractSymbolsFallback(file.content);
-      return detectAuthenticationSemanticRole(file.path, symbols, imports, file.content) !== null;
-    })
-    .map((file) => file.path));
+  return orderAuthenticationFiles(
+    files
+      .filter((file) => isArchitectureSource(file.path))
+      .filter((file) => isTechnicalFeatureSource(file.path))
+      .filter((file) => isFeatureEvidenceFile(file.path))
+      .filter((file) => !isAnalyzerImplementationFile(file.path))
+      .filter((file) => classifyFileRole(file.path) !== "ai-integration")
+      .filter((file) => {
+        const analysis = analyses[file.path];
+        const imports = analysis?.imports ?? extractImportsFallback(file.content);
+        const symbols = analysis
+          ? analysis.symbols.map((s) => s.name)
+          : extractSymbolsFallback(file.content);
+        return detectAuthenticationSemanticRole(file.path, symbols, imports, file.content) !== null;
+      })
+      .map((file) => file.path)
+  );
 }
 
 function isAnalyzerImplementationFile(path: string): boolean {
-  return /(^|\/)(analyzers?|detectors?)\//i.test(path);
+  const normalized = path.toLowerCase();
+  return (
+    /(^|\/)(analyzers?|detectors?)\//. test(normalized)
+    || /(^|\/)[^/]+(?:analyzer|detector)\.[cm]?[jt]sx?$/.test(normalized)
+  );
 }
 
 export function detectAuthenticationSemanticRole(
@@ -648,59 +881,48 @@ export function detectAuthenticationSemanticRole(
 ): AuthSemanticRole | null {
   const normalizedPath = path.toLowerCase();
   const text = `${normalizedPath} ${symbols.join(" ")} ${imports.join(" ")} ${content}`.toLowerCase();
-  const normalizedImports = imports.map((specifier) => specifier.toLowerCase());
+  const normalizedImports = imports.map((s) => s.toLowerCase());
 
-  const hasAuthImport = normalizedImports.some((specifier) =>
-    /(^|[/@-])(auth|next-auth|auth0|clerk|lucia|better-auth|passport|kinde)([/.-]|$)/.test(specifier)
-    || /supabase.*auth/.test(specifier)
-    || /firebase\/auth/.test(specifier)
+  const hasAuthImport = normalizedImports.some((s) =>
+    /(^|[/@-])(auth|next-auth|auth0|clerk|lucia|better-auth|passport|kinde)([/.-]|$)/.test(s)
+    || /supabase.*auth/.test(s)
+    || /firebase\/auth/.test(s)
   );
-  const hasAuthSymbol = symbols.some((symbol) =>
-    /(auth|session|login|register|signin|signout|jwt|token|credential)/i.test(symbol)
+  const hasAuthSymbol = symbols.some((s) =>
+    /(auth|session|login|register|signin|signout|jwt|token|credential)/i.test(s)
   );
   const hasAuthPath = /(^|[/._-])(auth|session|login|register|signin|signout)([/._-]|$)/.test(normalizedPath);
   const hasGuardPath = /(^|[/._-])(guard|middleware|proxy|protected)([/._-]|$)/.test(normalizedPath);
-  const hasGuardSymbol = symbols.some((symbol) =>
-    /(guard|middleware|proxy|protected)/i.test(symbol)
-  );
+  const hasGuardSymbol = symbols.some((s) => /(guard|middleware|proxy|protected)/i.test(s));
 
   if (
     /(^|\/)src\/auth\.[cm]?[jt]sx?$/.test(normalizedPath)
     || /(^|\/)auth\.[cm]?[jt]sx?$/.test(normalizedPath)
     || (hasSymbol(symbols, "auth") && hasSymbol(symbols, "handlers"))
     || (hasAuthImport && /\b(nextauth|getserversession|getsession|credentials|authconfig)\b/.test(text))
-  ) {
-    return "auth-config";
-  }
+  ) return "auth-config";
 
   if (
     /(^|\/)(src\/)?(proxy|middleware)\.[cm]?[jt]sx?$/.test(normalizedPath)
     || ((hasAuthPath || hasAuthImport || hasAuthSymbol) && (hasGuardPath || hasGuardSymbol))
-  ) {
-    return "guard";
-  }
+  ) return "guard";
 
-  if (
-    /providers?\.[cm]?[jt]sx?$/.test(normalizedPath)
-    && (hasAuthImport || hasAuthSymbol)
-  ) {
+  if (/providers?\.[cm]?[jt]sx?$/.test(normalizedPath) && (hasAuthImport || hasAuthSymbol))
     return "provider";
-  }
 
   if (
     /(app-shell|layout)\.[cm]?[jt]sx?$/.test(normalizedPath)
     && /\b(signout|handlesignout|usesession|sessionprovider|useauth)\b/.test(text)
-  ) {
-    return "consumer";
-  }
+  ) return "consumer";
 
-  if (hasAuthPath || hasAuthImport || hasAuthSymbol) {
-    return "consumer";
-  }
+  if (hasAuthPath || hasAuthImport || hasAuthSymbol) return "consumer";
 
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// File priority helpers
+// ---------------------------------------------------------------------------
 function featureFilePriority(featureName: string, path: string): number {
   const normalized = path.toLowerCase();
 
@@ -740,8 +962,7 @@ export function authenticationFilePriority(path: string): number {
 }
 
 // ---------------------------------------------------------------------------
-// Fallback helpers — only called when FileAnalysis is unavailable.
-// Used for non-TS/JS files handled by HeuristicAnalyzer / FallbackAnalyzer.
+// Fallback helpers (used when ts-morph analysis unavailable)
 // ---------------------------------------------------------------------------
 function extractImportsFallback(content: string): string[] {
   const imports: string[] = [];
@@ -773,5 +994,5 @@ function extractSymbolsFallback(content: string): string[] {
 }
 
 function hasSymbol(symbols: string[], name: string): boolean {
-  return symbols.some((symbol) => symbol.toLowerCase() === name);
+  return symbols.some((s) => s.toLowerCase() === name);
 }

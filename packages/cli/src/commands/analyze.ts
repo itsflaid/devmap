@@ -50,7 +50,12 @@ async function runAnalyze(
   output.section("DevMap Analyze");
   output.step(`Scanning ${projectRoot}`);
 
-  let snapshot = await createProjectMap(projectRoot);
+  // Build callAI wrapper — dipakai oleh domain inference (Step 5) di createProjectMap.
+  // Dibuat di sini biar analyze command yang kontrol config + client lifecycle,
+  // sementara projectMap tetap decoupled dari AI provider specifics.
+  const callAI = await buildCallAI(dependencies);
+
+  let snapshot = await createProjectMap(projectRoot, callAI);
   const previous = options.fresh ? { status: "missing" as const } : await inspectSnapshot(projectRoot);
 
   if (previous.status === "valid" && previous.snapshot.fingerprint === snapshot.fingerprint) {
@@ -109,6 +114,40 @@ async function enrichSnapshot(
   return enriched;
 }
 
+/**
+ * buildCallAI — build callAI wrapper untuk domain inference di createProjectMap.
+ *
+ * Return undefined kalau config tidak ada atau apiKey tidak di-set —
+ * createProjectMap akan skip domain inference dan hanya jalankan static analysis.
+ *
+ * Wrapper ini intentionally simple: satu user message, satu string response.
+ * Domain inference prompt sudah structured di domainInference.ts — tidak perlu
+ * system prompt tambahan di sini.
+ */
+async function buildCallAI(
+  dependencies: AnalyzeDependencies
+): Promise<((prompt: string) => Promise<string>) | undefined> {
+  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const config = await loadConfig();
+
+  if (!config?.apiKey) return undefined;
+
+  const createAiClient = dependencies.createAiClient ?? createDefaultAiClient;
+  const client = createAiClient(config);
+  const routing = resolveAiRouting(config, "analyze");
+
+  return async (prompt: string): Promise<string> => {
+    const result = await client.complete({
+      messages: [{ role: "user", content: prompt }],
+      model: routing.model,
+      fallbackModels: routing.fallbackModels,
+      maxCompletionTokens: 600,  // domain inference gak butuh banyak token
+      temperature: 0.1            // low temperature buat consistent JSON output
+    });
+    return result.content;
+  };
+}
+
 function printSnapshot(
   snapshot: Awaited<ReturnType<typeof createProjectMap>>
 ): void {
@@ -136,6 +175,12 @@ function printSnapshot(
   printList("Routes", snapshot.routes.map((route) => `${route.path} -> ${route.file}`));
   printList("External Services", snapshot.externalServices);
   printList("Features", snapshot.features.map((feature) => feature.name));
+
+  if (snapshot.domain) {
+    output.section("Domain");
+    output.keyValue("Type", snapshot.domain.domain);
+    output.item(snapshot.domain.summary);
+  }
 
   if (snapshot.database) {
     output.section("Database");
@@ -189,7 +234,7 @@ async function printOrGenerateInterpretation(
       messages: buildAnalyzeMessages(snapshot),
       model,
       fallbackModels: routing.fallbackModels,
-      maxCompletionTokens: 2500,
+      maxCompletionTokens: 1800,
       temperature: 0.2
     }, !options.json, () => output.section("Architecture"));
     const interpretation = execution.result;

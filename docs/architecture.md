@@ -13,13 +13,9 @@ DevMap follows this principle:
 20% AI Interpretation
 ```
 
-Static analysis is the foundation.
+Static analysis is the foundation. AI is an enhancement layer.
 
-AI is an enhancement layer.
-
-DevMap should not rely on AI to understand an entire project from raw source files.
-
-Instead, DevMap should first extract structured project information, then use AI to explain that information in a readable way.
+DevMap should not rely on AI to understand an entire project from raw source files. Instead, DevMap extracts structured project information first, then uses AI to interpret and explain that information.
 
 ---
 
@@ -30,55 +26,139 @@ Project Files
   ↓
 Scanner
   ↓
-Static Analyzer
+Preprocessor Layer        (Vue / Svelte / Astro)
   ↓
-Project Map
+Analyzer Registry         (TsMorph / Heuristic / Fallback)
   ↓
-Snapshot
+Detector Layer            (Routes / Framework / Database / Services)
   ↓
-Context Builder
+Entity Extraction         (Prisma schema → route fallback)
   ↓
-AI Layer
+Capability Detection      (CRUD / Sharing / Collaboration / etc.)
+  ↓
+Feature Detection         (Technical + Domain features)
+  ↓
+AI Domain Inference       (optional — structured metadata only)
+  ↓
+Project Map Assembly
+  ↓
+Snapshot + Navigation Files
   ↓
 Terminal Output
 ```
 
-### Explanation
+---
 
-| Layer           | Purpose                              |
-| --------------- | ------------------------------------ |
-| Scanner         | Finds relevant project files         |
-| Static Analyzer | Extracts structure and relationships |
-| Project Map     | Internal structured analysis result  |
-| Snapshot        | Saved reusable project context       |
-| Context Builder | Selects relevant files for questions |
-| AI Layer        | Explains and answers                 |
-| Terminal Output | Displays result to user              |
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+
+    ROOT[Project Root]
+    ROOT --> SCAN[File Scanner]
+    SCAN --> FILES[ScannedFile Array]
+
+    FILES --> REG[Analyzer Registry]
+
+    REG -->|".vue .svelte .astro"| PRE[Preprocessor Layer]
+    PRE -->|VuePreprocessor| TSM
+    PRE -->|SveltePreprocessor| TSM
+    PRE -->|AstroPreprocessor| TSM
+
+    REG -->|".ts .tsx .js .jsx"| TSM[TsMorphAnalyzer]
+    REG -->|".py .php .go .rb"| HEU[HeuristicAnalyzer]
+    REG -->|"*"| FALL[FallbackAnalyzer]
+
+    TSM -->|"confidence: high"| ANALYSIS[FileAnalysis Map]
+    HEU -->|"confidence: medium"| ANALYSIS
+    FALL -->|"confidence: low"| ANALYSIS
+
+    FILES --> FW[Framework Detector]
+    FILES --> ROUTES[Route Detector]
+    FILES --> DB[Database Detector]
+    FILES --> EXT[External Service Detector]
+    FILES --> META[Project Metadata]
+
+    ANALYSIS --> DEP[Dependency Graph]
+    DEP --> ENTRY[Entry Point Detector]
+
+    FILES -->|"schema.prisma"| ENTITY[Entity Extractor]
+    ROUTES -->|"fallback if no schema"| ENTITY
+    ENTITY --> RELGRAPH[Relationship Graph]
+
+    ROUTES --> CAP[Capability Detector]
+    ENTITY --> CAP
+
+    ANALYSIS --> FEAT[Feature Detector]
+    ROUTES --> FEAT
+    DB --> FEAT
+    ENTITY --> FEAT
+    RELGRAPH --> FEAT
+    CAP --> FEAT
+
+    FEAT --> TECH_FEAT[Technical Features\nAuth, Payments, Email, etc.]
+    FEAT --> DOMAIN_FEAT[Domain Features\nSnippet Mgmt, Workspace, etc.]
+
+    TECH_FEAT --> AI_IN[AI Inference Input\nentities + capabilities\n+ technical features]
+    DOMAIN_FEAT --> AI_IN
+    ENTITY --> AI_IN
+    CAP --> AI_IN
+
+    AI_IN -->|"~300-500 tokens"| AI[AI Domain Inference\noptional]
+    AI -->|"domain name + summary\n+ domain features"| AI_OUT[Domain Result]
+
+    ANALYSIS --> CRIT[Critical File Ranker]
+    DEP --> CRIT
+    ENTRY --> CRIT
+
+    META --> PMAP[Project Map]
+    FW --> PMAP
+    ROUTES --> PMAP
+    DB --> PMAP
+    EXT --> PMAP
+    DEP --> PMAP
+    ENTRY --> PMAP
+    CRIT --> PMAP
+    TECH_FEAT --> PMAP
+    DOMAIN_FEAT --> PMAP
+    AI_OUT -->|optional| PMAP
+
+    PMAP --> SNAP[Snapshot Generator]
+    SNAP --> DEVMAP[.devmap/]
+    DEVMAP --> IDX[index.json\nagent entry point]
+    DEVMAP --> FMAP[features/*.json\nper-feature navigation]
+    DEVMAP --> SHOT[snapshot.json\ncomplete project context]
+```
 
 ---
 
 ## Supported MVP Stacks
 
-DevMap MVP focuses on:
+DevMap MVP targets fullstack web projects built with JavaScript and TypeScript:
 
-* Next.js
-* Express
-* React
+| Stack | Status |
+|---|---|
+| Next.js | ✅ MVP |
+| React + Express | ✅ MVP |
+| Nuxt.js | ✅ MVP (via Vue preprocessor) |
+| SvelteKit | ✅ MVP (via Svelte preprocessor) |
+| Astro | ✅ MVP (via Astro frontmatter preprocessor) |
+| Express (standalone) | ✅ MVP |
 
-Other stacks are future roadmap items.
+Frontend-only SPAs and non-web projects are planned post-MVP.
 
 ---
 
 ## Scanner
 
-The scanner is responsible for discovering project files.
+The scanner discovers project files.
 
 ### Responsibilities
 
-* Traverse project directories
-* Collect file metadata
-* Apply ignore rules
-* Return relevant source files
+- Traverse project directories
+- Collect file metadata
+- Apply ignore rules
+- Return relevant source files
 
 ### Default Ignore Rules
 
@@ -101,510 +181,232 @@ out/
 public/assets/
 ```
 
-### Scanner Output
+---
 
-The scanner returns a list of relevant files with metadata such as:
+## Preprocessor Layer
 
-* path
-* extension
-* size
-* last modified time
+Framework-specific file formats (.vue, .svelte, .astro) contain embedded JS/TS inside a larger format alongside templates, styles, and markup. ts-morph can only parse pure JS/TS, so these files go through a preprocessing step first.
+
+### Source File Support
+
+| File type | Parser | Confidence |
+|---|---|---|
+| `.ts` `.tsx` `.js` `.jsx` | ts-morph (AST) | high |
+| `.vue` (Vue / Nuxt) | VuePreprocessor → ts-morph | high |
+| `.svelte` (Svelte / SvelteKit) | SveltePreprocessor → ts-morph | high |
+| `.astro` (Astro) | AstroPreprocessor → ts-morph | high |
+| `.py` `.php` `.go` `.rb` | Heuristic (regex) | medium |
+| Other | Fallback | low |
+
+### Preprocessors
+
+- **VuePreprocessor** — extracts `<script>` and `<script setup>` blocks, supports `lang="ts"`. Covers Vue and Nuxt.
+- **SveltePreprocessor** — extracts `<script>` block, prefers instance script over module script. Covers Svelte and SvelteKit.
+- **AstroPreprocessor** — extracts frontmatter between `---` fences. Always TypeScript.
+
+Files without a script block return an empty medium-confidence result rather than crashing.
 
 ---
 
-## Static Analyzer
-
-The analyzer extracts useful structure from scanned files.
-
-### Responsibilities
-
-* Detect framework
-* Detect language
-* Detect package manager
-* Detect routes
-* Detect API routes
-* Detect imports
-* Detect exports
-* Detect dependencies
-* Detect external services
-* Detect database usage
-* Detect entry points
-* Detect critical files
-* Detect common features
-
-### Analyzer Registry
-
-Scanned files pass through a normalized analyzer registry before `ProjectMap`
-is built:
+## Analyzer Registry
 
 ```txt
-Scanner -> TsMorphAnalyzer | HeuristicAnalyzer | FallbackAnalyzer -> FileAnalysis
+ScannedFile
+  ↓
+AnalyzerRegistry
+  ├── TsMorphAnalyzer   (.ts .tsx .js .jsx + preprocessed .vue .svelte .astro)
+  ├── HeuristicAnalyzer (.py .php .go .rb .cs etc.)
+  └── FallbackAnalyzer  (everything else)
+  ↓
+FileAnalysis { analyzer, confidence, imports, exports, symbols, topFunctions }
 ```
 
-- `.ts`, `.tsx`, `.js`, and `.jsx` use `ts-morph` with high confidence.
-- Other recognized source files keep regex/heuristic extraction with medium
-  confidence.
-- Unknown file types receive a low-confidence fallback result.
-- Existing snapshot fields remain available; AST metadata enriches imports,
-  exports, symbols, and top functions for JavaScript and TypeScript.
+`confidence` propagates through the pipeline — feature detection uses it to weigh evidence quality.
 
 ---
 
 ## Framework Detection
 
-Framework detection should use:
+Framework detection uses `package.json` dependencies first, then file structure as secondary signal.
 
-* `package.json` dependencies
-* project folder patterns
-* framework-specific files
+| Signal | Detection |
+|---|---|
+| `next` dependency | Next.js |
+| `app/page`, `app/layout`, `app/route` | Next.js App Router |
+| `pages/_app`, `pages/api` | Next.js Pages Router |
+| `express` dependency + server file | Express |
+| `react` + browser runtime | Standalone React |
+| `vue` dependency | Vue / Nuxt |
+| `svelte` dependency | Svelte / SvelteKit |
+| `astro` dependency or `src/pages/*.astro` | Astro |
 
-### Examples
-
-| Signal                     | Detection                |
-| -------------------------- | ------------------------ |
-| `next` dependency          | Next.js                  |
-| `app/page`, `app/layout`, or `app/route` | Next.js App Router |
-| `pages/_app`, `pages/_document`, or `pages/api` | Next.js Pages Router |
-| `express` dependency       | Express                  |
-| `server.ts` or `server.js` | Node/Express entry point |
-| `react` plus browser runtime/tooling and JSX/TSX source | Standalone React |
-| `astro` dependency or `src/pages/*.astro` | Astro workspace framework |
-
-Next.js detection runs before React because Next projects also depend on
-React. A generic `src/app/` folder is not enough to infer Next.js; source-only
-fallback requires Next conventions such as `app/page`, `app/layout`,
-`app/route`, or a Next config file.
-
-Snapshots distinguish the primary `framework` from the additive `frameworks`
-list. A Node CLI monorepo with an Astro landing site has `framework: unknown`,
-`projectType: node-cli`, and `frameworks: [astro]`. Astro detection here is
-classification only; deep Astro route/component analysis is future work.
+Express file-pattern detection is gated behind dependency check to prevent false positives on Next.js projects with `app.ts` utility files.
 
 ---
 
 ## Dependency Graph
 
-The dependency graph maps relationships between files.
+Maps which files import which other files. Used for critical file detection, entry point detection, and context expansion.
 
-### Purpose
+---
 
-Understand which files import other files.
+## Feature Detection Pipeline
 
-### Example
+Feature detection runs in five layers. Layers 1–4 are static and deterministic. Layer 5 is AI-powered and optional.
+
+### Layer 1 — Technical Features
+
+Detected from library imports and dependency patterns. 15 signal categories:
+
+Authentication, Payments, Email, File Upload, AI Integration, Caching, Search, Background Jobs, Logging & Monitoring, Testing, Internationalization, Analytics, Rate Limiting, CMS & Content, Notifications.
+
+**AI Integration is import-only** — path matching disabled to prevent false positives from paths containing "ai", "model", "detail", "tailwind", etc.
+
+Short terms (≤3 chars) use whole-word path matching: `"ai"` only matches `src/ai/` not `detail.tsx`.
+
+### Layer 2 — Entity Extraction
+
+Extracts domain entities from Prisma schema (high confidence) or falls back to route segment hints (low confidence).
 
 ```txt
-app/page.tsx
-  → components/Hero.tsx
-  → lib/db.ts
+schema.prisma → User, Snippet, Collection, Workspace, Order
+/api/snippets → Snippet (route fallback when no schema)
 ```
 
-### Used For
+Relation graph built from Prisma field types. Child entities (owned via one-to-many / many-to-many) are not surfaced as standalone features — they appear in their parent's purpose.
 
-* Critical file detection
-* Entry point detection
-* Context expansion
-* Better retrieval context
+Extractor registry is multi-source ready: Drizzle, TypeORM, Mongoose support can be added by adding one file + one registration line.
 
----
+### Layer 3 — Capability Detection
 
-## Entry Point Detection
+Detects what the project does from route HTTP methods and URL patterns.
 
-Entry points are files where application execution or routing commonly starts.
+| Signal | Capability |
+|---|---|
+| GET + POST + PUT + DELETE on resource | CRUD |
+| `/share`, `/shareId` routes | Sharing |
+| `/workspace`, `/members`, `/invite` | Collaboration |
+| `/explore`, `/discover`, `/feed` | Discovery |
+| `/like`, `/favorite`, `/reaction` | Social |
+| `/publish`, `/draft` | Publishing |
+| `/upload`, `/attachment` | File Management |
+| `/stats`, `/analytics`, `/metrics` | Reporting |
 
-### Next.js Examples
+### Layer 4 — Feature Assembly
 
-```txt
-app/layout.tsx
-app/page.tsx
-middleware.ts
-app/api/*/route.ts
-pages/_app.tsx
-pages/index.tsx
+Combines Layers 1–3 into `FeatureInfo[]`. No hardcoded domain names.
+
+CRUD capability on entity "Snippet" → "Snippet Management". Capability "sharing" → "Content Sharing".
+
+Entry points scored by relevance: route handlers score best (5), utils/helpers excluded (100).
+
+### Layer 5 — AI Domain Inference
+
+Compact structured metadata sent to AI — not raw source code:
+
+```json
+{
+  "entities": ["Snippet", "Collection", "Workspace"],
+  "capabilities": ["crud", "sharing", "collaboration"],
+  "technicalFeatures": ["Authentication", "Database"],
+  "routeCount": 35,
+  "framework": "nextjs"
+}
 ```
 
-### Express Examples
+AI returns domain name, summary, and domain-specific features. Token usage: ~300–500 per analysis. Falls back gracefully if AI unavailable.
 
-```txt
-server.ts
-server.js
-app.ts
-app.js
-index.ts
-index.js
-```
+### What is NOT a Feature
 
----
+These are architectural concerns, not domain features. They live in `snapshot.routes`, `snapshot.database`, and `snapshot.fileIndex`:
 
-## Critical File Detection
-
-Critical files are files that strongly affect project behavior.
-
-### Signals
-
-* Imported by many files
-* Used by entry points
-* Contains shared configuration
-* Contains auth, database, API, or provider logic
-* Has framework-specific importance
-
-### Examples
-
-```txt
-lib/db.ts
-lib/auth.ts
-middleware.ts
-prisma/schema.prisma
-src/server.ts
-```
-
----
-
-## External Service Detection
-
-DevMap detects external services using dependency and import patterns.
-
-### Examples
-
-| Dependency / Import     | Service    |
-| ----------------------- | ---------- |
-| `@prisma/client`        | Prisma     |
-| `@supabase/supabase-js` | Supabase   |
-| `next-auth`             | NextAuth   |
-| `stripe`                | Stripe     |
-| `midtrans-client`       | Midtrans   |
-| `resend`                | Resend     |
-| `cloudinary`            | Cloudinary |
-| `openai`                | OpenAI     |
-| `@google/generative-ai` | Gemini     |
-| `groq-sdk`              | Groq       |
-
----
-
-## Database Detection
-
-DevMap should detect database usage through:
-
-* dependencies
-* schema files
-* configuration files
-* imports
-* environment variable names
-
-### Examples
-
-| Signal                  | Detection           |
-| ----------------------- | ------------------- |
-| `prisma/schema.prisma`  | Prisma              |
-| `@prisma/client`        | Prisma Client       |
-| `drizzle.config.ts`     | Drizzle             |
-| `mongoose`              | MongoDB / Mongoose  |
-| `@supabase/supabase-js` | Supabase            |
-| `DATABASE_URL`          | Database connection |
-
----
-
-## Feature Detection
-
-Feature detection identifies common application capabilities.
-
-### MVP Feature Categories
-
-* Authentication
-* Database
-* API routes
-* File upload
-* Payments
-* Email
-* AI integration
-* Notifications
-
-### Examples
-
-| Signal                                  | Feature        |
-| --------------------------------------- | -------------- |
-| `next-auth`, `auth`, `session`, `login` | Authentication |
-| `stripe`, `midtrans`, `payment`         | Payments       |
-| `cloudinary`, `upload`, `multer`        | File Upload    |
-| `resend`, `nodemailer`, `email`         | Email          |
-| `openai`, `groq`, `gemini`, `ai`        | AI Integration |
+- API Routes, Database
+- API Layer, Service Layer, Middleware, Data Access Layer
+- UI Components (belong to their respective domain feature)
 
 ---
 
 ## Snapshot
 
-Snapshot is the reusable project context generated by DevMap.
-
-### File
+### File Structure
 
 ```txt
-.devmap/snapshot.json
+.devmap/
+  index.json          ← agent entry point (lightweight)
+  features/*.json     ← per-feature navigation maps
+  snapshot.json       ← complete project context
 ```
 
-### Purpose
+### Folder Strategy (Current + Future)
 
-* Store current project analysis
-* Act as source of truth for AI context
-* Provide reusable context for AI agents
-* Avoid repeated project exploration
+```txt
+.devmap/
+  snapshot.json       ← static analysis output, regenerated by `devmap analyze`
+  index.json          ← lightweight agent entry point
+  features/           ← per-feature navigation maps
+
+  [future — Phase 5]
+  agent/
+    context.json      ← persistent reusable context
+    knowledge.json    ← validated business knowledge
+    glossary.json     ← project terminology
+    decisions.json    ← architectural decisions
+    tasks.json        ← optional long-term agent task state
+```
+
+`devmap analyze` only regenerates the static analysis artifacts (`snapshot.json`,
+`index.json`, and `features/`). Files inside `.devmap/agent/` are owned by the
+Agent Layer and are preserved across analyses, allowing AI agents to accumulate
+validated project knowledge without modifying the reproducible static snapshot.
+
+`devmap analyze` only regenerates the static files. Future agent knowledge persists independently in `knowledge/`.
 
 ### Snapshot Rules
 
-* Must include schema version
-* Must include generated timestamp
-* Must not contain full raw project source by default
-* Must be compact
-* Must be deterministic
-* Must be regenerated by `devmap analyze`
+- Must not contain full raw project source
+- Must be compact and deterministic
+- Must include schema version
+- Must be regenerated by `devmap analyze`
+- AI enrichment is batched and optional — analyze continues if enrichment fails
 
 ---
 
-## Recommended Snapshot Shape
-
-```ts
-interface DevMapSnapshot {
-  version: string;
-  generatedAt: string;
-
-  project: {
-    name?: string;
-    root: string;
-    framework: "nextjs" | "express" | "react" | "node" | "unknown";
-    language: "typescript" | "javascript" | "mixed" | "unknown";
-    packageManager: "pnpm" | "npm" | "yarn" | "bun" | "unknown";
-  };
-
-  stats: {
-    totalFiles: number;
-    relevantFiles: number;
-    totalLines?: number;
-  };
-
-  entryPoints: EntryPoint[];
-  criticalFiles: CriticalFile[];
-  routes: RouteInfo[];
-  apiRoutes: ApiRouteInfo[];
-  dependencies: DependencyInfo[];
-  externalServices: ExternalServiceInfo[];
-  database?: DatabaseInfo;
-  features: FeatureInfo[];
-  flows: FlowInfo[];
-  fileIndex: Record<string, FileInfo>;
-}
-```
-
-In snapshot schema v1, `totalFiles` and `relevantFiles` both count the files
-returned by the filtered scanner. DevMap does not currently walk the ignored
-filesystem paths to calculate a separate pre-filter total. Both fields remain
-in the schema for compatibility and for a future analyzer that may collect
-those counts separately.
-
-### Tier 1 File Index
-
-Each `fileIndex` entry stores compact navigation metadata:
-
-| Field | Purpose |
-| ----- | ------- |
-| `purpose` | One-sentence description of what the file does when available |
-| `scope` | Responsibility classification: API, UI, database, config, service, CLI, test, docs, or unknown |
-| `topFunctions` | Compact list of important functions or exported code symbols with line numbers |
-| `featureRefs` | Feature names that reference this file |
-| `searchTerms` | Retrieval-focused terms used by context builder |
-| `importance` | Static importance score from references, entry point status, critical-file score, and feature ownership |
-
-The scope classifier is responsibility-based. Framework conventions may provide
-supporting evidence, but no framework is required for classification.
-
-AI enrichment may improve `purpose` and `searchTerms`, but it is batched in
-chunks of at most 20 files and skipped if the provider fails. Static analysis
-and snapshot generation must still complete.
-
-### Minimal Flows
-
-Snapshot schema includes `flows` as a foundation for future `FLOW.md`
-generation. Phase 1 creates small feature flows for high-confidence features
-and request/API flows from detected routes plus local dependency edges. Flow
-steps may include important exported symbols, but DevMap still does not build a
-full call graph or separate flow analyzer.
-
-Feature metadata also stores a primary `entryPoint` and a short
-`businessFlow` when DevMap can infer them from routes or dependencies. This
-gives future generated docs a human-oriented path through the feature, not only
-a list of files.
-
-Structural feature flows describe behavior such as scanning, analyzer
-selection, project-map construction, snapshot persistence, and navigation-file
-generation. They must not duplicate the feature file list as a second list.
-
-### Onboarding and Change Impact
-
-Snapshot schema includes two lightweight navigation aids:
-
-| Field | Purpose |
-| ----- | ------- |
-| `onboarding.recommendedPath` | Ordered files a new developer or AI agent should read first |
-| `changeImpact` | File-level impacted features, flows, and direct dependents |
-
-These fields are static-first and intentionally shallow. They are meant to guide
-future `ONBOARDING.md`, `FLOW.md`, and safer edit planning without building a
-full symbol graph.
-
-### Agent Contract
-
-Generated `DEVMAP.md` contains the complete agent navigation contract. It tells
-agents to read `.devmap/index.json`, open the relevant feature map, and inspect
-its `sourcePriority` files before broad repository exploration. The full
-`.devmap/snapshot.json` is used only when the lightweight maps are insufficient.
-
-The index separates technical framework detection from repository shape:
+## Generated Files Strategy
 
 ```txt
-framework     -> nextjs | react | express | unknown
-projectType   -> node-cli | web-app | api-service | library | unknown
-workspaceType -> monorepo | single-package
+Committed to git (user-editable):
+  DEVMAP.md     ← DevMap usage instructions, generated once on init
+  AGENTS.md     ← AI agent instructions, never overwritten
+
+Gitignored (always regeneratable):
+  .devmap/      ← all generated artifacts
 ```
 
-This avoids labeling a TypeScript CLI monorepo as a fake framework while still
-giving agents an immediate mental model. Project summaries are deterministic
-and combine this classification with the primary package description and
-detected capabilities.
-
-Index `criticalFiles` are ranked for reading order: executable entry points
-first, then command/flow owners, feature owners, and finally structural
-importance. Import count remains a supporting signal rather than the primary
-definition of where an agent should start.
-
-The snapshot also stores a compact `agentInstructions` object for machine
-readers. This is intentionally small: policy fields live in JSON, while the
-human-readable workflow lives in `DEVMAP.md`.
+`DEVMAP.md` in the project root is the only public signal that a project uses DevMap. Developers who clone the repo run `devmap analyze` to regenerate `.devmap/` locally.
 
 ---
 
 ## Context Builder
 
-The Context Builder selects relevant context before sending anything to AI.
+Selects relevant project context before sending anything to AI.
 
-It is one of the most important parts of DevMap.
+### MVP Strategy (no embeddings)
 
-Poor context selection creates:
+- File path matching
+- Keyword matching
+- Import/export matching
+- Dependency matching
+- Known framework conventions
 
-* high token usage
-* irrelevant answers
-* slow responses
-* hallucinated explanations
-
-Good context selection creates:
-
-* lower token usage
-* better answers
-* faster responses
-* repeatable project understanding
-
----
-
-## Context Builder Strategy
-
-MVP does not use embeddings or vector search.
-
-Use pragmatic heuristics first:
-
-* File path matching
-* Keyword matching
-* Retrieval-only AI query expansion when provider config is available
-* Import/export matching
-* Dependency matching
-* Known framework conventions
-
-### Example
-
-Question:
-
-```txt
-how does authentication work?
-```
-
-Extract keywords:
-
-```txt
-auth
-authentication
-login
-session
-token
-middleware
-```
-
-Likely selected files:
-
-```txt
-middleware.ts
-lib/auth.ts
-lib/session.ts
-app/api/auth/*
-```
-
-### Relevance Confidence And Query Expansion
-
-The Context Builder records retrieval quality in `QuestionContext`:
-
-```ts
-{
-  intent,
-  keywords,
-  expandedTerms,
-  confidence,
-  relevantFiles,
-  topScore
-}
-```
-
-Confidence is derived from the best ranked file:
+### Relevance Scoring
 
 | Confidence | Score |
-| ---------- | ----- |
-| `high`     | 70+   |
-| `medium`   | 40+   |
-| `low`      | < 40  |
+|---|---|
+| high | 70+ |
+| medium | 40+ |
+| low | < 40 |
 
-Files below score 25 are excluded before context is read. This prevents Ask
-from selecting unrelated files only because they scored slightly above other
-unrelated files.
-
-Before scoring, the context builder can make a small Groq request that returns generic
-retrieval terms as a JSON array. This call is not allowed to choose files or
-invent project-specific paths. It only improves recall for deterministic
-ranking.
-
-Direct keyword matches score higher than expanded-term matches. If expansion
-fails, returns invalid JSON, or no AI config exists, Context Builder falls back
-to keyword-only behavior.
-
-Low-confidence contexts are not sent to the answer model. Human output explains
-that no strong match was found and suggests investigation paths instead.
-
----
-
-## Context Builder Limits
-
-| Limit                | Value                     |
-| -------------------- | ------------------------- |
-| Preferred file count | 3–5 files                 |
-| Maximum file count   | 5 files                   |
-| English navigation queries | 2 files, 60 lines each |
-| Large file behavior  | Extract relevant sections |
-| Full project source  | Never sent                |
-
-Test files and fixtures are excluded from normal product questions. They are
-eligible when an English query explicitly mentions testing terms such as
-`test`, `spec`, `fixture`, or `coverage`.
-
-Explicit English scope terms provide a ranking boost:
-
-* `cli`, `command`, `terminal`
-* `web`, `ui`, `frontend`, `component`, `page`
-* `docs`, `documentation`, `readme`
-
-Scope matching is a boost rather than a hard exclusion so cross-package
-dependencies can still be selected when their direct relevance is stronger.
+Files below score 25 are excluded.
 
 ---
 
@@ -612,336 +414,42 @@ dependencies can still be selected when their direct relevance is stronger.
 
 All AI interactions go through a provider abstraction.
 
-Commands should not call provider APIs directly.
+### Current Providers
 
-### MVP Providers
+- Groq
+- OpenRouter
 
-* Groq
-* OpenRouter
+### Extensibility
 
-### Future Providers
+The provider interface is designed to support additional AI providers without changing the command layer.
 
-* OpenAI
-* Gemini
-* Ollama (Local)
-
-### Provider Responsibilities
-
-* Validate API key
-* Check model availability where possible
-* Send completion request
-* Stream response
-* Handle provider-specific errors
-* Normalize output for commands
-
----
-
-## Model Routing
-
-MVP default model routing:
-
-| Command          | Primary                    | Ordered fallbacks |
-| ---------------- | -------------------------- | ----------------- |
-| `analyze`        | `openai/gpt-oss-20b`       | `qwen/qwen3.6-27b` -> `llama-3.3-70b-versatile` -> `llama-3.1-8b-instant` |
-
-Each model receives up to three exponential-backoff retries for HTTP 429.
-After those retries, or when a model is unavailable or returns HTTP 5xx,
-DevMap advances to the next unique model. Credentials and invalid requests do
-not trigger failover. The chain is resolved before streaming emits content, so
-a fallback cannot duplicate a partially rendered answer.
-
-Model IDs in this table were confirmed active through the Groq model-list API
-on 2026-06-20. Recheck provider lifecycle status before publishing a release.
-
-Users can override automatic routing with `devmap config model <model>`.
-Running `devmap config model auto` restores the defaults above.
-
-Groq setup lists available Groq models after API-key validation and stores the
-selected model in the global config. The stored model is used as the primary
-choice until the user changes it with `devmap config model`.
-
-OpenRouter does not use the Groq command-routing table. During `devmap init`,
-Enter accepts `openrouter/free`, while a typed model ID is stored and used
-exactly as the user selected it. Explicit OpenRouter model choices receive no
-hidden DevMap fallback. The OpenRouter adapter supports the provider's native
-ordered `models` request when a caller explicitly supplies fallbacks.
-
-Raw provider errors should not be shown directly to users.
-
----
-
-## Streaming AI Output
-
-Groq and OpenRouter chat completions use server-sent events for human-readable
-`analyze` output. Each provider adapter reconstructs the response while
-emitting incremental deltas to the output layer.
-
-Terminal Markdown is buffered to paragraph boundaries before rendering. This
-keeps headings, lists, tables, wrapping, and inline formatting readable while
-still showing the answer before generation has fully completed.
-
-Rules:
-
-* streaming is an optional `AiClient` capability
-* commands fall back to regular completion for clients without streaming
-* the final reconstructed text is used for snapshot persistence and metadata
-* rate-limit retry and ordered model fallback happen before consuming response deltas
-* `--json` never streams because stdout must contain one complete JSON document
-
----
-
-## Prompt Strategy
-
-Prompt templates should be centralized.
-
-### Rules
-
-* Do not inline prompts inside command logic
-* Keep prompts versionable
-* Keep prompts short and structured
-* Prefer structured JSON input
-* Ask AI to explain, not discover
-* Do not ask AI to infer facts not present in the snapshot/context
-
----
-
-## Token Strategy
-
-DevMap is designed to reduce repeated AI exploration.
-
-However, token-efficiency claims must be benchmarked before being used in public marketing.
-
-### Token Rules
-
-* Static analysis first
-* Never send the full raw project
-* Send compact snapshot data
-* Cache and reuse snapshot
-
----
-
-## Cache Strategy
-
-MVP cache source:
-
-```txt
-.devmap/snapshot.json
-```
-
-Future cache source:
-
-```txt
-.devmap/cache.json
-```
-
-### MVP Behavior
-
-* `devmap analyze` generates snapshot
-* `devmap analyze` reuses snapshot
-* If no snapshot exists, `analyze` runs fresh analysis
-* If project changes, user may be prompted to re-analyze
-
-### Future Optimization
-
-Future cache may include:
-
-* file hashes
-* dependency graph
-* extracted metadata
-* last analysis result per file
-
----
-
-## Storage
-
-### Global Config
-
-```txt
-~/.devmap/config.json
-```
-
-Stores:
-
-* provider
-* API key
-* default model
-* language preference
-
-### Project Files
-
-```txt
-.devmap/
-└── snapshot.json
-```
-
-Stores:
-
-* latest project snapshot
-* lightweight agent index in `.devmap/index.json`
-* focused maps in `.devmap/features/*.json`
-
-Future:
-
-```txt
-.devmap/
-├── snapshot.json
-└── cache.json
-```
-
----
-
-## Generated Files
-
-DevMap may generate or update:
-
-```txt
-DEVMAP.md
-AGENTS.md
-.devmap/index.json
-.devmap/features/*.json
-.devmap/snapshot.json
-```
-
-Detailed generated file behavior is documented in:
-
-* [generated-files.md](./generated-files.md)
-
-
----
-
-## Error Handling
-
-Errors should be actionable.
-
-### Rules
-
-* Do not show raw stack traces by default
-* Explain what failed
-* Explain why it may have failed
-* Tell user what to do next
-* Use `devmap doctor` when useful
-
-### Example
-
-```txt
-Unable to validate API key.
-
-Possible causes:
-- API key is invalid
-- Internet connection failed
-- Provider service is unavailable
-
-Next:
-Run devmap init again or check your provider dashboard.
-```
-
----
-
-## Output Strategy
-
-CLI output should be:
-
-* readable
-* minimal
-* actionable
-* friendly for developers
-* consistent across commands
-
-### Agent Output
-
-Every MVP command supports `--json`. JSON mode is implemented at the output
-context layer so nested operations do not leak human progress text into stdout.
-
-Rules:
-
-* emit exactly one JSON document to stdout
-* suppress ANSI, Markdown rendering, bullets, and separators
-* keep human output as the default
-* use structured error objects and preserve non-zero exit codes for thrown failures
-* keep command result schemas stable enough for agents and scripts
-
-### Output Should Include
-
-* progress feedback
-* clear success messages
-* clear next step
-* useful error messages
-
----
-
-## Cross-Platform Strategy
-
-DevMap should support:
-
-* Windows
-* macOS
-* Linux
-
-### Rules
-
-* Use cross-platform path utilities
-* Avoid shell-specific assumptions
-* Avoid hardcoded path separators
-* Test with different package managers
+Examples include OpenAI, Gemini, and Ollama.
 
 ---
 
 ## Architecture Boundaries
 
-### Commands
-
-Commands orchestrate behavior.
-
-They should not contain heavy analysis logic.
-
-### Analyzer
-
-Analyzer extracts project structure.
-
-It should not call AI directly.
-
-### Context Builder
-
-Context Builder selects relevant project context.
-
-It should not format terminal output.
-
-### AI Layer
-
-AI Layer communicates with providers.
-
-It should not scan files directly.
-
-### Output Layer
-
-Output Layer formats terminal messages.
-
-It should not contain business logic.
+| Layer | Responsibility | Must NOT |
+|---|---|---|
+| Commands | Orchestrate behavior | Contain heavy analysis logic |
+| Scanner | Discover files | Call AI |
+| Preprocessors | Extract JS/TS from framework files | Parse AST |
+| Analyzer | Extract file structure | Call AI directly |
+| Feature Detector | Classify capabilities | Hardcode domain names |
+| Entity Extractor | Build entity graph | Know feature names |
+| Capability Detector | Detect behaviors from routes | Know entity schemas |
+| Context Builder | Select relevant context | Format terminal output |
+| AI Layer | Communicate with providers | Scan files directly |
+| Output Layer | Format terminal messages | Contain business logic |
 
 ---
 
 ## Source of Truth
 
-Product direction:
-
-* `../PRD.md`
-
-Command behavior:
-
-* [commands.md](./commands.md)
-
-Generated file behavior:
-
-* [generated-files.md](./generated-files.md)
-
-Benchmarking:
-
-* [benchmarking.md](./benchmarking.md)
-
-Testing:
-
-* [testing.md](./testing.md)
-
-Roadmap:
-
-* [roadmap.md](./roadmap.md)
+| Topic | File |
+|---|---|
+| Product direction | `../PRD.md` |
+| Command behavior | `docs/commands.md` |
+| Generated file behavior | `docs/generated-files.md` |
+| Benchmarking | `docs/benchmarking.md` |
+| Roadmap | `docs/roadmap.md` |

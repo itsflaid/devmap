@@ -418,12 +418,12 @@ function rankContextFiles(
 
     const criticalFile = snapshot.criticalFiles.find((file) => file.path === path);
     if (criticalFile && score > 0) {
-      score += Math.min(criticalFile.score, 5);
+      score += Math.min(Math.ceil(criticalFile.score / 3), 15);
       reasons.push("critical project file");
     }
 
     if (score > 0 && metadata.importance > 0) {
-      score += Math.min(Math.ceil(metadata.importance / 20), 5);
+      score += Math.min(Math.ceil(metadata.importance / 10), 10);
       reasons.push("important snapshot file");
     }
 

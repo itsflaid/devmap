@@ -730,23 +730,42 @@ function collectAuthenticationFeatureFiles(
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>
 ): string[] {
-  return orderAuthenticationFiles(files
-    .filter((file) => isArchitectureSource(file.path))
-    .filter((file) => isTechnicalFeatureSource(file.path))
-    .filter((file) => !isAnalyzerImplementationFile(file.path))
-    .filter((file) => {
-      const analysis = analyses[file.path];
-      const imports = analysis?.imports ?? extractImportsFallback(file.content);
-      const symbols = analysis
-        ? analysis.symbols.map((s) => s.name)
-        : extractSymbolsFallback(file.content);
-      return detectAuthenticationSemanticRole(file.path, symbols, imports, file.content) !== null;
-    })
-    .map((file) => file.path));
+  return orderAuthenticationFiles(
+    files
+      .filter((file) => isArchitectureSource(file.path))
+      .filter((file) => isTechnicalFeatureSource(file.path))
+      .filter((file) => !isAnalyzerImplementationFile(file.path))
+      .filter((file) => classifyFileRole(file.path) !== "ai-integration")
+      .filter((file) => {
+        const analysis = analyses[file.path];
+        const imports = analysis?.imports ?? extractImportsFallback(file.content);
+        const symbols = analysis
+          ? analysis.symbols.map((s) => s.name)
+          : extractSymbolsFallback(file.content);
+
+        return (
+          detectAuthenticationSemanticRole(
+            file.path,
+            symbols,
+            imports,
+            file.content
+          ) !== null
+        );
+      })
+      .map((file) => file.path)
+  );
 }
 
 function isAnalyzerImplementationFile(path: string): boolean {
-  return /(^|\/)(analyzers?|detectors?)\//i.test(path);
+  const normalized = path.toLowerCase();
+
+  return (
+    // Analyzer/Detector folders
+    /(^|\/)(analyzers?|detectors?)\//.test(normalized)
+
+    // Files ending with Analyzer / Detector
+    || /(^|\/)[^/]+(?:analyzer|detector)\.[cm]?[jt]sx?$/.test(normalized)
+  );
 }
 
 export function detectAuthenticationSemanticRole(

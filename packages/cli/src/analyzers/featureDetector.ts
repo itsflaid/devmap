@@ -2,7 +2,7 @@ import type { FileAnalysis } from "./fileAnalysis.js";
 import type { DatabaseInfo } from "./databaseDetector.js";
 import type { ScannedFile } from "./fileScanner.js";
 import type { RouteInfo } from "./routeDetector.js";
-import type { EntityGraph } from "./extractors/types.js";
+import type { EntityGraph, RelationInfo } from "./extractors/types.js";
 import type { CapabilityInfo } from "./capabilityDetector.js";
 import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "./fileRole.js";
 import { isArchitectureSource } from "./sourceScope.js";
@@ -67,11 +67,12 @@ const FEATURE_SIGNALS: Array<{
   {
     name: "AI Integration",
     terms: [
+      // Provider SDKs only — no generic terms like "ai", "llm", "embedding"
+      // Path matching is disabled for AI; detection is import-only (see matchesSignal)
       "openai", "groq", "openrouter", "@anthropic-ai/sdk", "anthropic",
-      "google-generative-ai", "@google/generative-ai", "cohere",
+      "google-generative-ai", "@google/generative-ai", "@google/genai", "cohere",
       "mistralai", "together", "replicate", "huggingface",
-      "langchain", "@langchain", "llamaindex", "ai", "vercel/ai",
-      "generative-ai", "llm", "embedding", "vectorstore",
+      "langchain", "@langchain", "llamaindex", "@vercel/ai", "ai/react",
     ],
     purpose: "Handles AI providers, LLM calls, prompts, and model context."
   },
@@ -235,6 +236,35 @@ function isDocumentationEvidence(filePath: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Feature evidence file filter
+//
+// Excludes files that represent infrastructure/generated artifacts, not
+// feature implementation. These files contain domain keywords (table names,
+// column names) that would otherwise cause false positive feature detection.
+//
+// Excluded:
+//   - prisma/migrations/* — SQL migration history, not feature code
+//   - migrations/*        — same for non-Prisma ORMs
+//   - *.sql               — raw SQL, not implementation
+//   - generated/*         — auto-generated code, not authored
+//   - *.generated.*       — same pattern
+//   - schema.prisma        — Prisma schema, surfaced separately as database info
+// ---------------------------------------------------------------------------
+function isFeatureEvidenceFile(path: string): boolean {
+  const lower = path.toLowerCase();
+
+  return !(
+    /\/prisma\/migrations\//.test(lower)
+    || /\/migrations\//.test(lower)
+    || /\.sql$/.test(lower)
+    || /\/generated\//.test(lower)
+    || /\.generated\./.test(lower)
+    || /\/prisma\/schema\.prisma$/.test(lower)
+    || /^prisma\/schema\.prisma$/.test(lower)
+  );
+}
+
+// ---------------------------------------------------------------------------
 // FEATURE_FILE_PRIORITIES
 // ---------------------------------------------------------------------------
 const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
@@ -332,7 +362,7 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
 //
 // Lower score = better entry point candidate.
 // Generic utility/helper files score >= ENTRY_POINT_EXCLUDE_THRESHOLD (excluded).
-// Route handlers, service files score low (preferred as entry points).
+// Route handlers score lowest (preferred).
 // ---------------------------------------------------------------------------
 const ENTRY_POINT_EXCLUDE_THRESHOLD = 90;
 
@@ -380,6 +410,7 @@ export function detectFeatures(
   const features: FeatureInfo[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
 
+  // --- ROLE_FEATURES ---
   for (const definition of ROLE_FEATURES) {
     const evidence = scopedFiles
       .filter((file) =>
@@ -387,7 +418,7 @@ export function detectFeatures(
         || (definition.name === "CLI Commands"
           && /(^|\/)src\/index\.[cm]?[jt]s$/.test(file.path.toLowerCase()))
       )
-      // Documentation: filter out meta-files, only keep meaningful project docs
+      .filter((file) => isFeatureEvidenceFile(file.path))
       .filter((file) =>
         definition.role !== "documentation" || isDocumentationEvidence(file.path)
       )
@@ -409,7 +440,11 @@ export function detectFeatures(
     }
   }
 
-  const technicalFiles = scopedFiles.filter((file) => isTechnicalFeatureSource(file.path));
+  // --- FEATURE_SIGNALS ---
+  // Pre-filtered once — isFeatureEvidenceFile applied here, not inside the loop
+  const technicalFiles = scopedFiles
+    .filter((file) => isTechnicalFeatureSource(file.path))
+    .filter((file) => isFeatureEvidenceFile(file.path));
 
   for (const signal of FEATURE_SIGNALS) {
     const evidence = technicalFiles
@@ -459,7 +494,6 @@ function capabilitiesToFeatures(capabilities: CapabilityInfo[]): FeatureInfo[] {
   return capabilities.map((cap) => {
     const terms = [cap.kind, ...cap.entities.map((e) => e.toLowerCase())];
 
-    // Score evidence files — prefer route handlers over utils
     const scoredEvidence = cap.evidence
       .map((file) => ({ file, score: scoreEntryPointRelevance(file, cap.kind) }))
       .sort((a, b) => a.score - b.score);
@@ -485,35 +519,45 @@ function capabilitiesToFeatures(capabilities: CapabilityInfo[]): FeatureInfo[] {
 function purposeFromCapability(cap: CapabilityInfo): string {
   const entityList = cap.entities.length > 0 ? cap.entities.join(", ") : "resources";
   switch (cap.kind) {
-    case "crud":          return `Handles create, read, update, and delete operations for ${entityList}.`;
-    case "sharing":       return `Handles content sharing via public links and share tokens.`;
-    case "collaboration": return `Handles team collaboration, workspaces, and member management.`;
-    case "discovery":     return `Handles public content discovery and browsing.`;
-    case "publishing":    return `Handles content publishing and visibility management.`;
-    case "social":        return `Handles social interactions like likes, favorites, and reactions.`;
+    case "crud":            return `Handles create, read, update, and delete operations for ${entityList}.`;
+    case "sharing":         return `Handles content sharing via public links and share tokens.`;
+    case "collaboration":   return `Handles team collaboration, workspaces, and member management.`;
+    case "discovery":       return `Handles public content discovery and browsing.`;
+    case "publishing":      return `Handles content publishing and visibility management.`;
+    case "social":          return `Handles social interactions like likes, favorites, and reactions.`;
     case "file-management": return `Handles file uploads, storage, and media management.`;
-    case "real-time":     return `Handles real-time events, websockets, and live updates.`;
-    case "search":        return `Handles full-text search and content filtering.`;
-    case "reporting":     return `Handles usage statistics, analytics, and reporting.`;
-    default:              return `Handles ${cap.kind} operations for ${entityList}.`;
+    case "real-time":       return `Handles real-time events, websockets, and live updates.`;
+    case "search":          return `Handles full-text search and content filtering.`;
+    case "reporting":       return `Handles usage statistics, analytics, and reporting.`;
+    default:                return `Handles ${cap.kind} operations for ${entityList}.`;
   }
 }
 
 // ---------------------------------------------------------------------------
-// entityGraphToFeatures — entity-centric domain features dengan parent-child detection
+// entityGraphToFeatures
+//
+// Entity ownership model:
+//
+//   OWNED  — relations where `from === entity.name` (entity initiates the relation).
+//            These are items the entity is responsible for: User owns Sessions,
+//            Plan owns PlanItems. Shown as "including X" in purpose string.
+//
+//   REFERENCED — relations where `to === entity.name` (other entities point here).
+//                e.g. Room.userId → Room references User, not the other way around.
+//                These are NOT included in User's purpose — they live in Room's feature.
+//
+//   PEER   — many-to-many relations between two non-child entities.
+//            Shown as "relates to X" — mentioned but not as owned items.
+//
+// Child entities (owned via one-to-many) are skipped as standalone features —
+// they are only mentioned inside the parent's purpose string.
 // ---------------------------------------------------------------------------
 function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
   if (entityGraph.source === "empty") return [];
 
-  // Build child entity set — entities owned by another via one-to-many / many-to-many.
-  // Child entities are NOT standalone features — they're mentioned in parent's purpose.
-  //
-  // Example:
-  //   Plan → PlanItem (one-to-many) → PlanItem is child, skip as standalone
-  //   DailyLog → DailyLogItem (one-to-many) → DailyLogItem is child
-  //   Snippet (no parent) → standalone feature ✅
+  // Build set of child entity names — entities that are the "many" side of a
+  // one-to-many relation. These should NOT appear as standalone features.
   const childEntityNames = new Set<string>();
-
   for (const relation of entityGraph.relations) {
     if (relation.kind === "one-to-many" || relation.kind === "many-to-many") {
       childEntityNames.add(relation.to);
@@ -522,6 +566,8 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
 
   const features: FeatureInfo[] = [];
 
+  // For Prisma source: only include entities that participate in at least one relation.
+  // For route-hint source: include all (less schema info available).
   const meaningfulEntities = entityGraph.source === "prisma"
     ? entityGraph.entities.filter((e) =>
         entityGraph.relations.some((r) => r.from === e.name || r.to === e.name)
@@ -529,34 +575,51 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
     : entityGraph.entities;
 
   for (const entity of meaningfulEntities.slice(0, 8)) {
-    // Skip child entities — mentioned in parent's purpose instead
+    // Skip child entities — they appear inside their parent's purpose
     if (childEntityNames.has(entity.name)) continue;
 
-    // Direct children of this entity
-    const childNames = entityGraph.relations
-      .filter((r) => r.from === entity.name &&
-        (r.kind === "one-to-many" || r.kind === "many-to-many"))
+    // OWNED: items this entity is responsible for (entity → child via one-to-many / one-to-one)
+    // These are direct lifecycle children — e.g. Plan owns PlanItems, User owns Sessions
+    const ownedNames = entityGraph.relations
+      .filter((r) =>
+        r.from === entity.name
+        && (r.kind === "one-to-many" || r.kind === "one-to-one")
+        && !childEntityNames.has(r.to) === false // only actual children
+      )
       .map((r) => r.to);
 
-    // Other related entities (non-child)
-    const relatedNames = entityGraph.relations
+    // Correct: owned = from this entity, excluding things that are already filtered as children
+    // Re-derive cleanly
+    const directlyOwned = entityGraph.relations
+      .filter((r) => r.from === entity.name && r.kind === "one-to-many")
+      .map((r) => r.to);
+
+    const oneToOneOwned = entityGraph.relations
+      .filter((r) => r.from === entity.name && r.kind === "one-to-one")
+      .map((r) => r.to);
+
+    const allOwned = [...new Set([...directlyOwned, ...oneToOneOwned])];
+
+    // PEER: many-to-many relations this entity participates in
+    // These are relationships, not ownership — e.g. User ↔ Role
+    const peerNames = entityGraph.relations
       .filter((r) =>
-        (r.from === entity.name || r.to === entity.name) &&
-        !childNames.includes(r.from === entity.name ? r.to : r.from)
+        r.kind === "many-to-many"
+        && (r.from === entity.name || r.to === entity.name)
       )
       .map((r) => r.from === entity.name ? r.to : r.from)
-      .filter((n) => !childEntityNames.has(n));
+      .filter((n) => !childEntityNames.has(n) && n !== entity.name);
 
-    let purpose: string;
-    if (childNames.length > 0 && relatedNames.length > 0) {
-      purpose = `Manages ${entity.name} (including ${childNames.join(", ")}) and its relationships with ${relatedNames.join(", ")}.`;
-    } else if (childNames.length > 0) {
-      purpose = `Manages ${entity.name} and its owned items: ${childNames.join(", ")}.`;
-    } else if (relatedNames.length > 0) {
-      purpose = `Manages ${entity.name} and its relationships with ${relatedNames.join(", ")}.`;
-    } else {
-      purpose = `Manages ${entity.name} data and operations.`;
-    }
+    // Build purpose string based on what we found
+    const purpose = buildEntityPurpose(entity.name, allOwned, peerNames);
+
+    // Build search terms
+    const searchTerms = [
+      entity.name.toLowerCase(),
+      ...allOwned.map((n) => n.toLowerCase()),
+      ...peerNames.map((n) => n.toLowerCase()),
+      "management", "crud"
+    ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 8);
 
     features.push({
       name: `${entity.name} Management`,
@@ -564,18 +627,30 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
       files: [],
       entryPoints: [],
       businessFlow: [],
-      searchTerms: [
-        entity.name.toLowerCase(),
-        ...childNames.map((n) => n.toLowerCase()),
-        ...relatedNames.map((n) => n.toLowerCase()),
-        "management", "crud"
-      ].slice(0, 8),
+      searchTerms,
       confidence: entityGraph.source === "prisma" ? "high" : "medium",
       evidence: []
     });
   }
 
   return features;
+}
+
+function buildEntityPurpose(
+  entityName: string,
+  owned: string[],
+  peers: string[]
+): string {
+  if (owned.length > 0 && peers.length > 0) {
+    return `Manages ${entityName} (including ${owned.join(", ")}) and its associations with ${peers.join(", ")}.`;
+  }
+  if (owned.length > 0) {
+    return `Manages ${entityName} and its owned items: ${owned.join(", ")}.`;
+  }
+  if (peers.length > 0) {
+    return `Manages ${entityName} and its associations with ${peers.join(", ")}.`;
+  }
+  return `Manages ${entityName} data and operations.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -603,7 +678,6 @@ function createFeatureInfo(
 ): FeatureInfo {
   const files = evidence.filter((item) => item.includes("/") || /\.[A-Za-z0-9]+$/.test(item));
 
-  // Score entry points — avoid utils/helpers as entry points
   const entryPoints = files
     .map((file) => ({ file, score: scoreEntryPointRelevance(file, name.toLowerCase()) }))
     .sort((a, b) => a.score - b.score)
@@ -649,23 +723,65 @@ function mergeTwoConfidences(
 
 // ---------------------------------------------------------------------------
 // matchesSignal
+//
+// AI Integration: import-only, no path matching.
+//   Rationale: "ai", "llm", "embedding", "model" appear in too many non-AI
+//   contexts (path names, variable names, migration files). Only an actual
+//   provider import is reliable evidence.
+//
+//   Accepted provider imports (must match exactly — not substring):
+//     openai, groq, anthropic, @anthropic-ai/sdk, google-generative-ai,
+//     @google/generative-ai, @google/genai, cohere, mistralai, together,
+//     replicate, huggingface, langchain, @langchain/*, llamaindex,
+//     @vercel/ai, ai/react, openrouter
+//
+// All other signals: path matching first, then import matching.
 // ---------------------------------------------------------------------------
+
+const AI_PROVIDER_IMPORTS = new Set([
+  "openai",
+  "groq",
+  "openrouter",
+  "anthropic",
+  "@anthropic-ai/sdk",
+  "cohere",
+  "mistralai",
+  "together",
+  "replicate",
+  "huggingface",
+  "llamaindex",
+]);
+
+const AI_PROVIDER_PREFIXES = [
+  "langchain",
+  "@langchain/",
+  "google-generative-ai",
+  "@google/generative-ai",
+  "@google/genai",
+  "@vercel/ai",
+  "ai/",
+];
+
+function isAiProviderImport(specifier: string): boolean {
+  const lower = specifier.toLowerCase();
+  if (AI_PROVIDER_IMPORTS.has(lower)) return true;
+  return AI_PROVIDER_PREFIXES.some((prefix) => lower.startsWith(prefix));
+}
+
 function matchesSignal(
   file: ScannedFile,
   analysis: FileAnalysis | undefined,
   terms: string[],
   featureName?: string
 ): boolean {
-  const path = file.path.toLowerCase();
-
-  // AI Integration: ONLY import-based — path match too noisy.
-  // "model", "ai", "llm", "embedding" appear in too many non-AI contexts.
+  // AI Integration: ONLY import-based — path match is too noisy.
+  // Must find at least one recognized AI provider import.
   if (featureName === "AI Integration") {
     if (!analysis) return false;
-    return terms.some((term) =>
-      analysis.imports.some((specifier) => specifier.toLowerCase().includes(term))
-    );
+    return analysis.imports.some(isAiProviderImport);
   }
+
+  const path = file.path.toLowerCase();
 
   if (terms.some((term) => matchesPathTerm(path, term))) return true;
 
@@ -679,7 +795,7 @@ function matchesSignal(
 }
 
 function matchesPathTerm(path: string, term: string): boolean {
-  // Short terms (<=3 chars) — whole word only, prevent "ai" matching "detail"
+  // Short terms (≤3 chars) — whole word only, prevent "ai" matching "detail"/"tailwind"
   if (term.length <= 3) {
     return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path);
   }
@@ -706,14 +822,14 @@ function enrichAuthenticationFeature(
     return features.map((feature) =>
       feature.name === "Authentication"
         ? {
-          ...feature,
-          files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
-          evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
-          confidence: calculateFeatureConfidence(
-            [...new Set([...feature.evidence, ...authFiles])],
-            analyses
-          )
-        }
+            ...feature,
+            files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
+            evidence: orderAuthenticationFiles([...new Set([...feature.evidence, ...authFiles])]),
+            confidence: calculateFeatureConfidence(
+              [...new Set([...feature.evidence, ...authFiles])],
+              analyses
+            )
+          }
         : feature
     );
   }
@@ -734,6 +850,7 @@ function collectAuthenticationFeatureFiles(
     files
       .filter((file) => isArchitectureSource(file.path))
       .filter((file) => isTechnicalFeatureSource(file.path))
+      .filter((file) => isFeatureEvidenceFile(file.path))
       .filter((file) => !isAnalyzerImplementationFile(file.path))
       .filter((file) => classifyFileRole(file.path) !== "ai-integration")
       .filter((file) => {
@@ -742,15 +859,7 @@ function collectAuthenticationFeatureFiles(
         const symbols = analysis
           ? analysis.symbols.map((s) => s.name)
           : extractSymbolsFallback(file.content);
-
-        return (
-          detectAuthenticationSemanticRole(
-            file.path,
-            symbols,
-            imports,
-            file.content
-          ) !== null
-        );
+        return detectAuthenticationSemanticRole(file.path, symbols, imports, file.content) !== null;
       })
       .map((file) => file.path)
   );
@@ -758,12 +867,8 @@ function collectAuthenticationFeatureFiles(
 
 function isAnalyzerImplementationFile(path: string): boolean {
   const normalized = path.toLowerCase();
-
   return (
-    // Analyzer/Detector folders
-    /(^|\/)(analyzers?|detectors?)\//.test(normalized)
-
-    // Files ending with Analyzer / Detector
+    /(^|\/)(analyzers?|detectors?)\//. test(normalized)
     || /(^|\/)[^/]+(?:analyzer|detector)\.[cm]?[jt]sx?$/.test(normalized)
   );
 }
@@ -857,7 +962,7 @@ export function authenticationFilePriority(path: string): number {
 }
 
 // ---------------------------------------------------------------------------
-// Fallback helpers
+// Fallback helpers (used when ts-morph analysis unavailable)
 // ---------------------------------------------------------------------------
 function extractImportsFallback(content: string): string[] {
   const imports: string[] = [];

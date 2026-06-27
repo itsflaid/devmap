@@ -1,281 +1,397 @@
 # DevMap — Roadmap
 
-> Phases are sequential. Each phase must ship before the next one begins.
-> Every phase should deliver something a real developer can immediately use.
+> Phases are sequential. Do not start a phase before the previous one ships.
+> Each phase has a clear deliverable — something a real user can run.
 
 ---
 
-# Phase 1 — Foundation
+## Phase 1 — Foundation ✅
+**Goal:** Core analysis engine works.
 
-**Goal:** Build a reliable static analysis engine that understands modern web projects without relying on AI.
-
-## Tasks
-
-### Core Analysis
-- File scanner with configurable ignore rules
-- MD5 file hashing for incremental cache
-- Analyzer registry
-- `ts-morph` analyzer for JavaScript/TypeScript
-- Heuristic fallback analyzer for unsupported files
-- Framework detection (Next.js, Express, etc.)
-- Import/require parser
-- Dependency graph generation
-- Entry point detection using graph topology
+**Delivered:**
+- File scanner with ignore list
+- Normalized analyzer registry with ts-morph for JS/TS and heuristic fallback
+- Preprocessor layer for Vue/Svelte/Astro (embedded JS/TS extraction)
+- Framework detection (Next.js, Express, React, Vue/Nuxt, Svelte/SvelteKit, Astro)
+- Route detection with monorepo prefix support
+- Entity extraction from Prisma schema with route fallback
+- Relationship graph builder (one-to-one, one-to-many, many-to-many)
+- Capability detection (CRUD, Sharing, Collaboration, Discovery, Social, etc.)
+- Feature detection pipeline — 5 layers (Technical → Entity → Capability → Assembly → AI)
+- Domain inference via AI — structured metadata only, ~300-500 tokens
+- Dependency graph and entry point detection
 - External service detection
-- Capability detection
-- Entity extraction
-- Domain inference
-- Feature detection
-- Project map JSON generation
+- Project map assembly
+- Lightweight agent index and per-feature navigation maps
+- `devmap init` — setup wizard
+- `devmap analyze` — full analysis pipeline
+- `devmap doctor` — diagnostics
 
-### Navigation
-- Lightweight project index
-- Per-feature navigation maps
+**Deliverable:** `devmap analyze` outputs accurate project structure with domain features for fullstack web JS/TS projects.
 
-### CLI
-- `devmap init`
-- `devmap analyze`
-- `devmap doctor`
+---
 
-## Deliverable
+## Phase 2 — Understanding (Current)
+**Goal:** Developers can understand any project faster through dedicated navigation commands.
 
-A developer can run:
+**Commands:**
+
+### ⭐ `devmap onboarding` — HIGH PRIORITY
+Polish existing implementation. Current output is too generic.
+
+Core question it answers:
+> Where should I start reading this project?
+
+Target output sections:
+1. What This Project Does
+2. Mental Model
+3. Key Concepts
+4. Important Areas to Understand
+5. Key Flows
+6. Where to Start (ordered reading path with explanation)
+
+Rules:
+- Derives reading path from snapshot, not generic advice
+- Explains why each file should be read, not just lists it
+- Works without AI call (snapshot-based)
+- `--write` creates `ONBOARDING.md`
+
+---
+
+### ⭐ `devmap map [feature/file?]`
+Core question it answers:
+> This file/feature — what does it connect to, and how?
 
 ```bash
-devmap analyze
+devmap map                    # full project dependency map
+devmap map authentication     # map one feature
+devmap map src/lib/auth.ts    # map one file
 ```
 
-and receive an accurate understanding of the project structure through pure static analysis without any AI.
+Output: text dependency tree + `.devmap/maps/[name].md` + `.devmap/maps/[name].mermaid`
+
+Differentiator from `flow`: map = spatial (who connects to whom), flow = temporal (what happens in order).
 
 ---
 
-# Phase 2 — Codebase Understanding
-
-**Goal:** Help developers understand unfamiliar codebases within minutes.
-
-This phase builds entirely on the analysis snapshot produced in Phase 1.
-
-## Tasks
-
-### `devmap onboarding`
-Generate a high-quality project reading guide.
-
-Focus:
-- Project overview
-- Suggested reading order
-- Architecture summary
-- Feature overview
-- Important entry points
-
----
-
-### `devmap map`
-
-Generate project relationship maps.
-
-Support:
-
-- Entire project
-- Individual feature
-- Individual file
-
-Outputs:
-
-- Markdown
-- Mermaid diagram
-
----
-
-### `devmap explain`
-
-Explain code using the existing analysis snapshot.
-
-Support:
-
-- File
-- Function
-- Feature
-- Module
-
-Explain should consume existing DevMap context instead of rebuilding project understanding.
-
----
-
-### `devmap flow`
-
-Generate execution flow documentation.
-
-Support:
-
-- Authentication flow
-- API flow
-- Request lifecycle
-- Feature flow
-
-Outputs:
-
-- Markdown narrative
-- Mermaid diagrams
-
----
-
-## Deliverable
-
-Developers can explore an unfamiliar repository using:
+### ⭐ `devmap explain [file/feature/function]`
+Core question it answers:
+> What does this file/feature/function do, in detail?
 
 ```bash
-devmap onboarding
-
-devmap map
-
-devmap explain authentication
-
-devmap flow authentication
+devmap explain src/lib/auth.ts
+devmap explain "authentication feature"
+devmap explain createWorkspace
 ```
 
-without manually reading hundreds of files.
+Output: prose explanation of what the target does, what imports it, what it imports, why it's critical.
+
+Requires AI — but targeted (one file/feature at a time, not whole codebase).
 
 ---
 
-# Phase 3 — AI Experience
+### ⭐ `devmap flow [target?]`
+Core question it answers:
+> How does this feature work from start to finish?
 
-**Goal:** Make AI-assisted understanding reliable, fast, and provider-independent.
+```bash
+devmap flow                   # top 5 most critical flows (curated default)
+devmap flow --all             # all detected flows
+devmap flow authentication    # specific feature flow
+devmap flow /api/snippets     # specific route flow
+```
 
-This phase improves the AI experience rather than introducing AI itself.
+Output per flow:
+- `.devmap/flows/[name].md` — narrative step-by-step explanation
+- `.devmap/flows/[name].mermaid` — Mermaid diagram
 
-## Tasks
-
-### Providers
-
-Add additional providers beyond the MVP.
-
-- Claude
-- Gemini
-- Ollama
-- Custom OpenAI-compatible providers
+`devmap flow` without target = curated top flows, not a dump. Use `--all` for complete output.
 
 ---
+
+### Phase 2 — Generated file structure
+
+```txt
+.devmap/
+  index.json
+  snapshot.json
+  features/*.json
+  maps/               ← devmap map output
+    authentication.md
+    authentication.mermaid
+    project.md
+  flows/              ← devmap flow output
+    authentication.md
+    authentication.mermaid
+  onboarding.md       ← devmap onboarding --write output
+```
+
+**Phase 2 Priority order:**
+```
+1. devmap onboarding (polish)
+2. devmap map
+3. devmap explain
+4. devmap flow
+```
+
+**Deliverable:** Developer can clone any fullstack JS/TS project, run DevMap, and understand its structure in under 10 minutes without reading every file.
+
+---
+
+## Phase 2.5 — Ship & Distribute
+**Goal:** Real users, real feedback.
+
+Do not skip this. Perfect code with zero users = wasted effort.
+
+**Tasks:**
+- npm publish (`devmap` package)
+- Landing page live (Astro + Tailwind, already designed)
+- README with demo GIF
+- Demo video / GIF (single most important distribution asset)
+- First 10 real users
+- Collect feedback
+
+**Deliverable:** DevMap is publicly installable and discoverable.
+
+---
+
+## Phase 3 — AI Experience
+**Goal:** Make AI understanding faster, more consistent, and provider-agnostic.
+
+**Tasks:**
+
+### Provider Support
+- OpenAI provider
+- Gemini provider
+- Ollama local provider (offline, no API key)
 
 ### AI Experience
-
+- Better Context Builder ranking
 - Better prompt templates
-- Context Builder improvements
-- Keyword ranking
-- Context compression
-- Token-aware trimming
-- Provider fallback
-- Retry logic
-- Streaming improvements
-- Better error handling
-- AI cache optimization
-- Stale snapshot detection
+- Better streaming UX
+- Improved explanation quality
+- Improved flow narration
+- Provider diagnostics
+- Per-project provider override
+
+**Note:** Ollama requires clear warnings about model size, RAM requirements, and download time. Never silently download large models.
+
+**Deliverable:** Developers can use any major AI provider while receiving consistent, high-quality project explanations.
 
 ---
 
-## Deliverable
+## Phase 4 — Agent Layer
+**Goal:** DevMap becomes the persistent context layer shared between developers and AI agents.
 
-Developers can choose any supported provider while receiving consistent DevMap outputs with minimal prompt engineering.
+Static analysis remains the source of truth. Runtime context is stored separately so AI agents can build upon previous understanding without modifying analysis results.
 
----
+### Runtime Structure
 
-# Phase 4 — Universal Codebase Support
+```txt
+.devmap/
+  snapshot.json
+  index.json
+  features/
 
-**Goal:** Expand DevMap beyond modern web applications.
+  agent/
+    context.json      ← reusable project context
+    history.json      ← previous agent interactions
+    cache.json        ← reusable runtime cache
+    state.json        ← current agent runtime state
+```
 
-Support will be added gradually based on demand and implementation maturity.
+`snapshot.json` is always generated by `devmap analyze`.
 
-Potential targets include:
-
-- Spring
-- Laravel
-- Django
-- FastAPI
-- Flutter
-- Electron
-- Go
-- Rust
-- .NET
-
-The implementation order is intentionally flexible.
+Files inside `.devmap/agent/` are managed independently and are never overwritten by static analysis.
 
 ---
 
-## Deliverable
+### Tasks
 
-DevMap understands multiple ecosystems using language-specific analyzers while preserving a consistent user experience.
+#### Persistent Context
+- Runtime project context
+- Incremental context updates
+- Context versioning
+- Context merge strategy
 
----
+#### Runtime Intelligence
+- Agent state management
+- Context cache
+- Smart context refresh
+- Staleness detection using file hashes
 
-# Phase 5 — Agent Layer
+#### Agent Collaboration
+- Knowledge delta specification
+- Safe merge algorithm
+- Conflict detection
+- Runtime history tracking
 
-**Goal:** Transform DevMap from a snapshot generator into a continuously maintained codebase understanding layer.
-
-## Tasks
-
-### Incremental Understanding
-
-- Incremental snapshot updates
-- Working context
-- Smart cache
-- Context Builder
-- Context synchronization
-
----
-
-### Background Intelligence
-
-- File change tracking
-- Feature impact detection
-- Incremental analysis
-- Context invalidation
+#### Developer Experience
+- VS Code integration
+- Smart cache for unchanged files
+- Agent diagnostics
+- Runtime cleanup utilities
 
 ---
 
-### Developer Experience
+### DevMap Responsibilities
 
-- IDE integration
-- Reusable context
-- Faster AI context generation
-
----
-
-## Deliverable
-
-DevMap maintains project understanding over time instead of rebuilding context from scratch after every change.
+- Generate immutable project snapshots
+- Store runtime context
+- Merge context updates safely
+- Detect stale runtime data
+- Preserve compatibility between snapshot and runtime context
 
 ---
 
-# Beyond the Roadmap
+### AI Agent Responsibilities
 
-The following ideas represent the long-term vision for DevMap.
-
-They are **not scheduled**, **not guaranteed**, and may evolve based on community feedback and real-world usage.
-
-Potential directions include:
-
-- DevMap Dashboard
-- Visual Explorer
-- VS Code Extension
-- JetBrains Plugin
-- Team Workspace
-- Shared Snapshots
-- Cloud Snapshot History
-- Architecture Timeline
-- CI/CD Integration
-- DevMap Cloud
-
-The priority remains building the best possible CLI before expanding into additional products.
+- Consume DevMap context
+- Reuse existing runtime context
+- Propose incremental context updates
+- Avoid rebuilding project understanding from scratch
 
 ---
 
-# Version History
+### Design Principles
 
-| Version | Milestone | Description |
-|----------|-----------|-------------|
-| 0.1.0 | Foundation | Initial public release with static analysis, Groq/OpenRouter support, project snapshot, and onboarding |
-| 0.2.0 | Understanding | `devmap map`, improved onboarding, and overall analyzer reliability |
-| 0.3.0 | Understanding | `devmap explain` and `devmap flow` |
-| 1.0.0 | Stable | Mature web codebase understanding experience |
-| 2.x | AI Experience | Expanded provider support and improved AI reasoning |
-| 3.x | Universal | Multi-language and multi-framework support |
-| 4.x | Agent Layer | Incremental understanding and reusable project context |
+- Static analysis remains the source of truth.
+- Runtime context never replaces snapshot data.
+- Runtime context should always be reproducible or discardable.
+- Agents extend understanding instead of redefining it.
+- Runtime updates should be incremental whenever possible.
+
+---
+
+### Deliverable
+
+Developers and AI agents share a persistent project context that grows over time.
+
+Instead of rebuilding repository understanding every session, agents reuse existing context, update only what changed, and preserve useful project knowledge across conversations.
+
+---
+
+## Phase 5 — Universal Analyzer
+**Goal:** Expand DevMap beyond fullstack JavaScript/TypeScript while preserving the same analysis pipeline and snapshot format.
+
+Phase 5 extends the static analysis engine to additional ecosystems through language-specific analyzers and extractors. Every supported language should produce the same high-level snapshot structure, allowing all DevMap commands to work consistently regardless of the underlying technology.
+
+---
+
+### Phase 5a — Frontend SPA Support
+
+Support projects that do not rely on file-based routing.
+
+**Tasks:**
+
+- `clientRouteDetector.ts` — React Router, Vue Router, TanStack Router, Svelte routing
+- Store extraction
+  - Zustand
+  - Redux Toolkit
+  - Pinia
+  - Vuex (legacy)
+- Client-side entry point detection
+- Client-side feature detection
+- Better dependency graph for SPA architectures
+
+**Deliverable:**
+
+Full support for:
+
+- React SPA
+- Vue SPA
+- Svelte SPA
+
+without requiring Next.js, Nuxt, or SvelteKit.
+
+---
+
+### Phase 5b — Multi-language Support (Community-driven)
+
+Each language adds its own parser, analyzer, and extractor while producing the same normalized DevMap snapshot.
+
+| Language | Framework | Strategy |
+|----------|-----------|----------|
+| PHP | Laravel | tree-sitter-php |
+| Python | Django / FastAPI | tree-sitter-python |
+| Java | Spring Boot | tree-sitter-java |
+| Go | Gin / Echo | tree-sitter-go |
+| Rust | Axum / Actix | tree-sitter-rust |
+| Dart | Flutter | tree-sitter-dart |
+| C# | ASP.NET Core | tree-sitter-c-sharp |
+
+Tree-sitter provides the parsing layer.
+
+Each ecosystem contributes language-specific implementations such as:
+
+- Analyzer
+- Entity Extractor
+- Route Detector
+- Framework Detector
+- Capability Detector (when needed)
+
+All implementations must produce the same normalized snapshot schema.
+
+---
+
+### Community Contributions
+
+Universal Analyzer is designed to be community extensible.
+
+Typical contributions include:
+
+- New framework detectors
+- New entity extractors
+- New route detectors
+- Additional language analyzers
+- Database extractors (Drizzle, TypeORM, Mongoose, etc.)
+- Benchmark repositories
+- Accuracy improvements
+- False-positive reduction
+
+---
+
+### Design Principles
+
+- Static analysis remains deterministic.
+- AI is never responsible for parsing source code.
+- Every analyzer produces the same normalized output schema.
+- New languages should integrate without changing existing commands.
+- Existing commands (`analyze`, `map`, `flow`, `explain`, `onboarding`) should work automatically once a language is supported.
+
+---
+
+### Deliverable
+
+DevMap analyzes the majority of modern web and application codebases using the same commands, snapshot format, and developer workflow regardless of programming language.
+
+---
+
+## Phase 6 — Platform (Vision)
+**Goal:** Team and cloud features. Requires revenue model first.
+
+- Web dashboard for snapshot history and visualization
+- Visual Explorer — interactive architecture diagram
+- Team Workspace — shared snapshots across team
+- CI/CD integration — auto-analyze on push
+- Monitoring — track architectural drift over time
+
+**Note:** Do not plan this in detail until Phase 5 ships and revenue model exists.
+
+---
+
+## Version History
+
+| Version | Phase | Description |
+|---|---|---|
+| 0.1.0 | 1 | Early beta — static analysis, Groq AI, domain features, JSON output, streaming |
+| 0.2.0 | 1 | Feedback-driven analyzer improvements |
+| 1.0.0 | 1 | Stable `devmap analyze` release |
+| 1.1.0 | 2 | `devmap onboarding` polished |
+| 1.2.0 | 2 | `devmap map` |
+| 1.3.0 | 2 | `devmap explain` |
+| 1.4.0 | 2 | `devmap flow` |
+| 2.0.0 | 3 | OpenAI + Gemini + Ollama |
+| 3.0.0 | 4 | Frontend SPA support |
+| 4.0.0 | 5 | Agent Layer — knowledge persistence |
+| 5.0.0 | 6 | Platform — dashboard + team features |

@@ -212,6 +212,42 @@ const ROLE_FEATURES: Array<{
 ];
 
 // ---------------------------------------------------------------------------
+// Infrastructure entity names — auth provider internals and ORM bookkeeping
+// entities that should never appear as standalone domain features.
+//
+// These are excluded from entityGraphToFeatures regardless of their relations.
+//
+// Rule: an entity is infrastructure if it exists solely to support an
+// external system (auth provider, ORM, payment processor) and has no
+// business logic of its own visible to the application domain.
+//
+// "Account" is excluded here because in NextAuth / Lucia schemas it
+// represents an OAuth provider link record, not a user-facing account.
+// Projects that genuinely use "Account" as a domain entity (e.g. billing
+// accounts, bank accounts) will still detect it via FEATURE_SIGNALS or
+// capabilitiesToFeatures — so excluding it here is safe.
+// ---------------------------------------------------------------------------
+const INFRASTRUCTURE_ENTITY_NAMES = new Set([
+  // NextAuth / Lucia / Better-Auth internals
+  "Account",
+  "Session",
+  "VerificationToken",
+  "VerificationCode",
+  "Authenticator",
+
+  // Generic auth infrastructure
+  "PasswordResetToken",
+  "RefreshToken",
+  "OAuthToken",
+  "OAuthAccount",
+
+  // Audit / system tables
+  "AuditLog",
+  "ActivityLog",
+  "EventLog",
+]);
+
+// ---------------------------------------------------------------------------
 // Documentation evidence filter
 // ---------------------------------------------------------------------------
 
@@ -219,13 +255,9 @@ function isDocumentationEvidence(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
   const filename = normalized.split("/").at(-1) ?? normalized;
 
-  // Skip GitHub meta folder
   if (/(^|\/)\.github(\/|$)/.test(normalized)) return false;
-
-  // Delegate to fileRole's meta-file list — single source of truth
   if (isDocumentationMeta(filename)) return false;
 
-  // Must be in docs/ folder, wiki/, meaningful README, or API spec
   return (
     /(^|\/)docs?(\/|$)/.test(normalized)
     || /(^|\/)wiki(\/|$)/.test(normalized)
@@ -238,17 +270,9 @@ function isDocumentationEvidence(filePath: string): boolean {
 // ---------------------------------------------------------------------------
 // Feature evidence file filter
 //
-// Excludes files that represent infrastructure/generated artifacts, not
-// feature implementation. These files contain domain keywords (table names,
-// column names) that would otherwise cause false positive feature detection.
-//
-// Excluded:
-//   - prisma/migrations/* — SQL migration history, not feature code
-//   - migrations/*        — same for non-Prisma ORMs
-//   - *.sql               — raw SQL, not implementation
-//   - generated/*         — auto-generated code, not authored
-//   - *.generated.*       — same pattern
-//   - schema.prisma        — Prisma schema, surfaced separately as database info
+// Excludes files that are generated artifacts or migration history —
+// these contain domain keywords (table/column names) that cause false
+// positive feature detection without representing actual implementation.
 // ---------------------------------------------------------------------------
 function isFeatureEvidenceFile(path: string): boolean {
   const lower = path.toLowerCase();
@@ -362,34 +386,27 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
 //
 // Lower score = better entry point candidate.
 // Generic utility/helper files score >= ENTRY_POINT_EXCLUDE_THRESHOLD (excluded).
-// Route handlers score lowest (preferred).
 // ---------------------------------------------------------------------------
 const ENTRY_POINT_EXCLUDE_THRESHOLD = 90;
 
 function scoreEntryPointRelevance(file: string, _context: string): number {
   const lower = file.toLowerCase();
 
-  // Hard exclude — never good entry points
   if (/\/(utils?|helpers?|constants?|types?|shared)\.[cm]?[jt]sx?$/.test(lower)) return 100;
   if (/\/(index)\.[cm]?[jt]sx?$/.test(lower) && !/\/(api|routes?|commands?)\//.test(lower)) return 95;
   if (/\.(d\.ts)$/.test(lower)) return 100;
 
-  // Route handlers — best entry points
   if (/\/(route|handler)\.[cm]?[jt]sx?$/.test(lower)) return 5;
   if (/\/api\//.test(lower)) return 10;
 
-  // Service files — good secondary entry points
   if (/\.(service|usecase|action)\.[cm]?[jt]sx?$/.test(lower)) return 20;
   if (/\/services?\//.test(lower)) return 25;
 
-  // CLI command handlers
   if (/\/(commands?|bin)\//.test(lower)) return 15;
 
-  // UI pages — relevant for UI-facing features
   if (/\/(pages?|app)\/.+\/(page|layout)\.[cm]?[jt]sx?$/.test(lower)) return 30;
   if (/\/components?\//.test(lower)) return 50;
 
-  // Lib files — okay but not ideal
   if (/\/lib\//.test(lower)) return 60;
 
   return 70;
@@ -441,7 +458,7 @@ export function detectFeatures(
   }
 
   // --- FEATURE_SIGNALS ---
-  // Pre-filtered once — isFeatureEvidenceFile applied here, not inside the loop
+  // Pre-filter once here — avoids redundant isFeatureEvidenceFile calls inside each signal loop
   const technicalFiles = scopedFiles
     .filter((file) => isTechnicalFeatureSource(file.path))
     .filter((file) => isFeatureEvidenceFile(file.path));
@@ -469,11 +486,10 @@ export function detectFeatures(
 
   // Database and API Routes are architectural concerns, not domain features.
   // Database info lives in snapshot.database, routes in snapshot.routes.
-  // They are surfaced per-feature via capability detection and entity extraction.
 
   if (capabilities && capabilities.length > 0) {
     for (const feature of capabilitiesToFeatures(capabilities)) {
-      mergeFeature(features, feature);
+      if (feature !== null) mergeFeature(features, feature);
     }
   }
 
@@ -489,8 +505,16 @@ export function detectFeatures(
 
 // ---------------------------------------------------------------------------
 // capabilitiesToFeatures
+//
+// Capabilities with no resolvable entry points are dropped — they represent
+// route patterns detected without backing implementation files, which
+// produces low-quality features (empty criticalFiles, misleading names).
+//
+// Example: ChatMe's "Message Exchange" capability has entryPoints: [] because
+// Message is the core data model (notes), not a messaging feature. Dropping
+// it avoids surfacing a misleading feature with zero file evidence.
 // ---------------------------------------------------------------------------
-function capabilitiesToFeatures(capabilities: CapabilityInfo[]): FeatureInfo[] {
+function capabilitiesToFeatures(capabilities: CapabilityInfo[]): Array<FeatureInfo | null> {
   return capabilities.map((cap) => {
     const terms = [cap.kind, ...cap.entities.map((e) => e.toLowerCase())];
 
@@ -502,6 +526,10 @@ function capabilitiesToFeatures(capabilities: CapabilityInfo[]): FeatureInfo[] {
       .filter((e) => e.score < ENTRY_POINT_EXCLUDE_THRESHOLD)
       .slice(0, 2)
       .map((e) => e.file);
+
+    // Drop capabilities with no resolvable entry points and non-high confidence.
+    // These are weak detections: route pattern matched but no backing file found.
+    if (entryPoints.length === 0 && cap.confidence !== "high") return null;
 
     return {
       name: cap.name,
@@ -538,82 +566,122 @@ function purposeFromCapability(cap: CapabilityInfo): string {
 //
 // Entity ownership model:
 //
-//   OWNED  — relations where `from === entity.name` (entity initiates the relation).
-//            These are items the entity is responsible for: User owns Sessions,
-//            Plan owns PlanItems. Shown as "including X" in purpose string.
+//   TRUE CHILD — entity with a single parent via one-to-many AND no own
+//                children (leaf node), OR has a child-like name suffix.
+//                Skipped as standalone feature; mentioned in parent's purpose.
+//                Example: ChecklistItem (owned by Message, no children, suffix "Item")
 //
-//   REFERENCED — relations where `to === entity.name` (other entities point here).
-//                e.g. Room.userId → Room references User, not the other way around.
-//                These are NOT included in User's purpose — they live in Room's feature.
+//   STANDALONE — entity with multiple parents, or entity that itself owns
+//                other entities (intermediate node). Gets its own feature.
+//                Example: Room (owned by User, but owns Message[])
+//                Example: Message (owned by User+Room, but owns ChecklistItem[])
 //
-//   PEER   — many-to-many relations between two non-child entities.
-//            Shown as "relates to X" — mentioned but not as owned items.
+//   OWNED      — non-infra, non-true-child entities this entity owns via
+//                one-to-many. Shown in purpose string.
 //
-// Child entities (owned via one-to-many) are skipped as standalone features —
-// they are only mentioned inside the parent's purpose string.
+//   PEER       — many-to-many associations. Shown as "associates with X".
+//
+//   REFERENCED-BY — other entities holding FK to this entity.
+//                NOT included in purpose — belongs to the referencing entity.
+//
+// Infrastructure entities (auth provider internals, ORM bookkeeping) are
+// excluded entirely via INFRASTRUCTURE_ENTITY_NAMES.
 // ---------------------------------------------------------------------------
+
+// Suffixes that semantically indicate a sub-item of a parent entity.
+// Used as a tiebreaker when an entity has a single parent and no children.
+const TRUE_CHILD_SUFFIXES = /(?:Item|Entry|Detail|Line|Row|Part|Step|Variant|Option)$/;
+
+/**
+ * isTrueChildEntity — determines if an entity should be skipped as standalone.
+ *
+ * An entity is a true child if ALL of:
+ *   1. Exactly ONE parent owns it via one-to-many (single exclusive owner)
+ *   2. It has NO outgoing one-to-many of its own (leaf node)
+ *      OR its name has a child-like suffix (Item, Entry, Detail, etc.)
+ *
+ * Rationale for condition 2:
+ *   - ChecklistItem: single parent (Message), no children, suffix "Item" → true child ✅
+ *   - Room: single parent (User) BUT owns Message[] → NOT true child, gets own feature ✅
+ *   - Message: owned by User+Room (2 parents) → NOT true child, gets own feature ✅
+ */
+function isTrueChildEntity(entityName: string, relations: RelationInfo[]): boolean {
+  const parents = relations.filter((r) => r.to === entityName && r.kind === "one-to-many");
+  if (parents.length === 0) return false; // no parent = not a child
+  if (parents.length > 1) return false;   // multiple parents = shared entity
+
+  const hasOwnChildren = relations.some(
+    (r) => r.from === entityName && r.kind === "one-to-many"
+  );
+
+  if (!hasOwnChildren) return true;
+  if (TRUE_CHILD_SUFFIXES.test(entityName)) return true;
+
+  return false;
+}
+
 function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
   if (entityGraph.source === "empty") return [];
 
-  // Build set of child entity names — entities that are the "many" side of a
-  // one-to-many relation. These should NOT appear as standalone features.
-  const childEntityNames = new Set<string>();
-  for (const relation of entityGraph.relations) {
-    if (relation.kind === "one-to-many" || relation.kind === "many-to-many") {
-      childEntityNames.add(relation.to);
+  // Deduplicate relations across the graph (entities each hold their own slice)
+  const relations: RelationInfo[] = [];
+  const seenRelKeys = new Set<string>();
+  for (const entity of entityGraph.entities) {
+    for (const r of entity.relations) {
+      const key = `${r.from}→${r.to}:${r.kind}`;
+      if (!seenRelKeys.has(key)) {
+        seenRelKeys.add(key);
+        relations.push(r);
+      }
     }
   }
 
+  // Build true child set using the heuristic
+  const trueChildNames = new Set<string>(
+    entityGraph.entities
+      .map((e) => e.name)
+      .filter((name) => isTrueChildEntity(name, relations))
+  );
+
   const features: FeatureInfo[] = [];
 
-  // For Prisma source: only include entities that participate in at least one relation.
-  // For route-hint source: include all (less schema info available).
   const meaningfulEntities = entityGraph.source === "prisma"
     ? entityGraph.entities.filter((e) =>
-        entityGraph.relations.some((r) => r.from === e.name || r.to === e.name)
+        relations.some((r) => r.from === e.name || r.to === e.name)
       )
     : entityGraph.entities;
 
   for (const entity of meaningfulEntities.slice(0, 8)) {
-    // Skip child entities — they appear inside their parent's purpose
-    if (childEntityNames.has(entity.name)) continue;
+    // Skip true child entities — they appear inside their parent's purpose
+    if (trueChildNames.has(entity.name)) continue;
 
-    // OWNED: items this entity is responsible for (entity → child via one-to-many / one-to-one)
-    // These are direct lifecycle children — e.g. Plan owns PlanItems, User owns Sessions
-    const ownedNames = entityGraph.relations
-      .filter((r) =>
-        r.from === entity.name
-        && (r.kind === "one-to-many" || r.kind === "one-to-one")
-        && !childEntityNames.has(r.to) === false // only actual children
-      )
-      .map((r) => r.to);
+    // Skip known infrastructure entities — auth provider internals, ORM bookkeeping
+    if (INFRASTRUCTURE_ENTITY_NAMES.has(entity.name)) continue;
 
-    // Correct: owned = from this entity, excluding things that are already filtered as children
-    // Re-derive cleanly
-    const directlyOwned = entityGraph.relations
+    // OWNED: non-infra, non-true-child entities this entity owns via one-to-many
+    const ownedNames = relations
       .filter((r) => r.from === entity.name && r.kind === "one-to-many")
-      .map((r) => r.to);
+      .map((r) => r.to)
+      .filter((n) => !INFRASTRUCTURE_ENTITY_NAMES.has(n) && !trueChildNames.has(n));
 
-    const oneToOneOwned = entityGraph.relations
+    const oneToOneOwned = relations
       .filter((r) => r.from === entity.name && r.kind === "one-to-one")
-      .map((r) => r.to);
+      .map((r) => r.to)
+      .filter((n) => !INFRASTRUCTURE_ENTITY_NAMES.has(n) && !trueChildNames.has(n));
 
-    const allOwned = [...new Set([...directlyOwned, ...oneToOneOwned])];
+    const allOwned = [...new Set([...ownedNames, ...oneToOneOwned])];
 
-    // PEER: many-to-many relations this entity participates in
-    // These are relationships, not ownership — e.g. User ↔ Role
-    const peerNames = entityGraph.relations
+    // PEER: many-to-many associations — not ownership, just relationships
+    const peerNames = relations
       .filter((r) =>
         r.kind === "many-to-many"
         && (r.from === entity.name || r.to === entity.name)
       )
       .map((r) => r.from === entity.name ? r.to : r.from)
-      .filter((n) => !childEntityNames.has(n) && n !== entity.name);
+      .filter((n) => !INFRASTRUCTURE_ENTITY_NAMES.has(n) && !trueChildNames.has(n) && n !== entity.name);
 
-    // Build purpose string based on what we found
     const purpose = buildEntityPurpose(entity.name, allOwned, peerNames);
 
-    // Build search terms
     const searchTerms = [
       entity.name.toLowerCase(),
       ...allOwned.map((n) => n.toLowerCase()),
@@ -725,15 +793,8 @@ function mergeTwoConfidences(
 // matchesSignal
 //
 // AI Integration: import-only, no path matching.
-//   Rationale: "ai", "llm", "embedding", "model" appear in too many non-AI
-//   contexts (path names, variable names, migration files). Only an actual
-//   provider import is reliable evidence.
-//
-//   Accepted provider imports (must match exactly — not substring):
-//     openai, groq, anthropic, @anthropic-ai/sdk, google-generative-ai,
-//     @google/generative-ai, @google/genai, cohere, mistralai, together,
-//     replicate, huggingface, langchain, @langchain/*, llamaindex,
-//     @vercel/ai, ai/react, openrouter
+//   "ai", "llm", "embedding", "model" appear in too many non-AI contexts.
+//   Only a recognized provider import is reliable evidence.
 //
 // All other signals: path matching first, then import matching.
 // ---------------------------------------------------------------------------
@@ -774,8 +835,6 @@ function matchesSignal(
   terms: string[],
   featureName?: string
 ): boolean {
-  // AI Integration: ONLY import-based — path match is too noisy.
-  // Must find at least one recognized AI provider import.
   if (featureName === "AI Integration") {
     if (!analysis) return false;
     return analysis.imports.some(isAiProviderImport);
@@ -795,7 +854,8 @@ function matchesSignal(
 }
 
 function matchesPathTerm(path: string, term: string): boolean {
-  // Short terms (≤3 chars) — whole word only, prevent "ai" matching "detail"/"tailwind"
+  // Short terms (≤3 chars) — whole-word match only
+  // Prevents "ai" matching "detail", "tailwind", "email"
   if (term.length <= 3) {
     return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path);
   }
@@ -868,7 +928,7 @@ function collectAuthenticationFeatureFiles(
 function isAnalyzerImplementationFile(path: string): boolean {
   const normalized = path.toLowerCase();
   return (
-    /(^|\/)(analyzers?|detectors?)\//. test(normalized)
+    /(^|\/)(analyzers?|detectors?)\//.test(normalized)
     || /(^|\/)[^/]+(?:analyzer|detector)\.[cm]?[jt]sx?$/.test(normalized)
   );
 }

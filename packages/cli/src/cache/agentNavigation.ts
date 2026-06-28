@@ -1,7 +1,7 @@
 import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { FeatureInfo } from "../analyzers/featureDetector.js";
-import type { ProjectMap } from "../analyzers/projectMap.js";
+import type { FeatureInfo } from "../analyzers/features/featureDetector.js";
+import type { ProjectMap } from "../analyzers/pipeline/projectMap.js";
 
 export type AgentNavigationWriteResult = {
   indexPath: string;

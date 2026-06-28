@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { buildQuestionContext } from "../src/ai/contextBuilder.js";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const fixtures = {

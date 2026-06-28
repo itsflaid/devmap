@@ -1,6 +1,6 @@
-import type { ScannedFile } from "./fileScanner.js";
+import type { ScannedFile } from "../analysis/fileScanner.js";
 import type { Framework } from "./frameworkDetector.js";
-import { isArchitectureSource } from "./sourceScope.js";
+import { isArchitectureSource } from "../graph/sourceScope.js";
 
 export type RouteInfo = {
   path: string;

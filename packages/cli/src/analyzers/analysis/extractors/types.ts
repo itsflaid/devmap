@@ -1,5 +1,5 @@
 import type { ScannedFile } from "../fileScanner.js";
-import type { RouteInfo } from "../routeDetector.js";
+import type { RouteInfo } from "../../detectors/routeDetector.js";
 
 // ---------------------------------------------------------------------------
 // Core types

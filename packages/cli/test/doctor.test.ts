@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { saveSnapshot } from "../src/cache/snapshot.js";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { doctorCommand } from "../src/commands/doctor.js";
 
 test("doctor reports project, provider, model, and snapshot diagnostics", async () => {

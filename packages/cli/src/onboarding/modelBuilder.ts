@@ -1,4 +1,4 @@
-import type { ProjectMap } from "../analyzers/projectMap.js";
+import type { ProjectMap } from "../analyzers/pipeline/projectMap.js";
 import type { OnboardingLanguage, OnboardingModel, ReadingItem, FlowBlock } from "./model.js";
 
 export function buildOnboardingModel(

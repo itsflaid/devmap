@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
-import type { ScannedFile } from "./fileScanner.js";
-import type { DetectedFramework, Framework } from "./frameworkDetector.js";
+import type { ScannedFile } from "../analysis/fileScanner.js";
+import type { DetectedFramework, Framework } from "../detectors/frameworkDetector.js";
 
 export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";

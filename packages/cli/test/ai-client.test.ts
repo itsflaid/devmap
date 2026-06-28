@@ -9,7 +9,7 @@ import {
   type GroqClientDependencies
 } from "../src/ai/groq.js";
 import { buildAnalyzeMessages } from "../src/ai/prompts.js";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { DevmapError } from "../src/utils/errors.js";
 
 test("Groq client returns normalized content and token usage", async () => {

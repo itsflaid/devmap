@@ -1,5 +1,5 @@
-import type { ScannedFile } from "./fileScanner.js";
-import { isArchitectureSource } from "./sourceScope.js";
+import type { ScannedFile } from "../analysis/fileScanner.js";
+import { isArchitectureSource } from "../graph/sourceScope.js";
 
 export type Framework = "nextjs" | "react" | "express" | "astro" | "unknown";
 export type DetectedFramework = Exclude<Framework, "unknown">;

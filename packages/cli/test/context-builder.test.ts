@@ -9,7 +9,7 @@ import {
   extractContextKeywords,
   normalizeExpandedTerms
 } from "../src/ai/contextBuilder.js";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const fixtureRoot = join(testDirectory, "fixtures", "nextjs-project");

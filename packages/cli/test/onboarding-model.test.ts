@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import type { ProjectMap } from "../src/analyzers/projectMap.js";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import type { ProjectMap } from "../src/analyzers/pipeline/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import type { OnboardingModel, ReadingItem } from "../src/onboarding/model.js";
 import { buildOnboardingModel } from "../src/onboarding/modelBuilder.js";
 

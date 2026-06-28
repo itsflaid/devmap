@@ -5,12 +5,12 @@ import {
   resolveAiRouting,
   type ProviderInspection
 } from "../ai/provider.js";
-import { scanFiles } from "../analyzers/fileScanner.js";
+import { scanFiles } from "../analyzers/analysis/fileScanner.js";
 import {
   detectFramework,
   detectFrameworks
-} from "../analyzers/frameworkDetector.js";
-import { detectProjectMetadata } from "../analyzers/projectMetadata.js";
+} from "../analyzers/detectors/frameworkDetector.js";
+import { detectProjectMetadata } from "../analyzers/pipeline/projectMetadata.js";
 import { inspectSnapshot } from "../cache/snapshot.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";

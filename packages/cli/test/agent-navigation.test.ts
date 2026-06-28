@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { writeAgentNavigationFiles } from "../src/cache/agentNavigation.js";
 
 test("agent navigation writer creates a compact index and feature maps", async () => {
@@ -83,7 +83,7 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
     await writeFixtureFile(
       projectRoot,
       "packages/cli/src/commands/analyze.ts",
-      'import { createProjectMap } from "../analyzers/projectMap.js";\nexport async function analyzeCommand() { return createProjectMap(); }\n'
+      'import { createProjectMap } from "../analyzers/pipeline/projectMap.js";\nexport async function analyzeCommand() { return createProjectMap(); }\n'
     );
     await writeFixtureFile(
       projectRoot,
@@ -168,7 +168,7 @@ test("agent navigation describes mixed CLI workspaces without misleading agents"
     await writeFixtureFile(
       projectRoot,
       "packages/cli/src/commands/analyze.ts",
-      'import { createProjectMap } from "../analyzers/projectMap.js"; import type { Project } from "../ai/types.js"; export function analyzeCommand(): Project { return createProjectMap() as Project; }\n'
+      'import { createProjectMap } from "../analyzers/pipeline/projectMap.js"; import type { Project } from "../ai/types.js"; export function analyzeCommand(): Project { return createProjectMap() as Project; }\n'
     );
     await writeFixtureFile(
       projectRoot,

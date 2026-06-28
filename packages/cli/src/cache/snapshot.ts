@@ -4,8 +4,8 @@ import {
   createProjectFingerprint,
   SNAPSHOT_SCHEMA_VERSION,
   type ProjectMap
-} from "../analyzers/projectMap.js";
-import { scanFiles } from "../analyzers/fileScanner.js";
+} from "../analyzers/pipeline/projectMap.js";
+import { scanFiles } from "../analyzers/analysis/fileScanner.js";
 import { DevmapError } from "../utils/errors.js";
 
 export type SnapshotStatus =

@@ -1,37 +1,37 @@
-import { hashContent } from "../cache/fileHash.js";
+import { hashContent } from "../../cache/fileHash.js";
 import { analyzeFiles } from "./analyzerRegistry.js";
-import { detectDatabase, type DatabaseInfo } from "./databaseDetector.js";
-import { buildDependencyGraph, countReferences } from "./dependencyGraph.js";
-import { detectEntryPoints } from "./entryPoints.js";
+import { detectDatabase, type DatabaseInfo } from "../detectors/databaseDetector.js";
+import { buildDependencyGraph, countReferences } from "../graph/dependencyGraph.js";
+import { detectEntryPoints } from "../graph/entryPoints.js";
 import {
   authenticationFilePriority,
   detectAuthenticationSemanticRole,
   detectFeatures,
   orderAuthenticationFiles,
   type FeatureInfo
-} from "./featureDetector.js";
-import type { ScannedFile } from "./fileScanner.js";
-import { scanFiles } from "./fileScanner.js";
+} from "../features/featureDetector.js";
+import type { ScannedFile } from "../analysis/fileScanner.js";
+import { scanFiles } from "../analysis/fileScanner.js";
 import {
   detectFramework,
   detectFrameworks,
   type Framework
-} from "./frameworkDetector.js";
+} from "../detectors/frameworkDetector.js";
 import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
-import { detectRoutes, type RouteInfo } from "./routeDetector.js";
-import { detectExternalServices } from "./serviceDetector.js";
-import { isArchitectureSource } from "./sourceScope.js";
-import type { FileAnalysis, SymbolInfo } from "./fileAnalysis.js";
-import { extractEntities } from "./extractors/index.js";
-import { type EntityGraph } from "./extractors/types.js";
-import { detectCapabilities, type CapabilityInfo } from "./capabilityDetector.js";
+import { detectRoutes, type RouteInfo } from "../detectors/routeDetector.js";
+import { detectExternalServices } from "../detectors/serviceDetector.js";
+import { isArchitectureSource } from "../graph/sourceScope.js";
+import type { FileAnalysis, SymbolInfo } from "../analysis/fileAnalysis.js";
+import { extractEntities } from "../analysis/extractors/index.js";
+import { type EntityGraph } from "../analysis/extractors/types.js";
+import { detectCapabilities, type CapabilityInfo } from "../detectors/capabilityDetector.js";
 import {
   inferDomain,
   buildDomainInferenceInput,
   domainFeaturesToFeatureInfo,
   type DomainInferenceResult
-} from "./domainInference.js";
-import { mergeDomainFeatures } from "./featureMerge.js";
+} from "../inference/domainInference.js";
+import { mergeDomainFeatures } from "../features/featureMerge.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 

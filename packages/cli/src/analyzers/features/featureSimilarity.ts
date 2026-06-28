@@ -39,69 +39,74 @@ export type FeatureIdentity = {
 };
 
 // ---------------------------------------------------------------------------
-// Weights
-//
-// File overlap mendapat bobot tertinggi karena paling concrete:
-// dua feature yang share file yang sama hampir pasti feature yang sama.
-//
-// Name similarity mendapat bobot rendah karena paling volatile:
-// AI dapat generate "Plan Management" atau "Customizable Plans" untuk
-// konsep yang sama — ini yang kita coba hilangkan sebagai primary key.
+// Config
 // ---------------------------------------------------------------------------
 
-const WEIGHTS = {
-  /** File paths yang overlap */
+/**
+ * MAX_SEARCH_TERMS — cross-cutting constant untuk search term cap.
+ * Konsisten dengan featureDetector. Dipakai di similarity engine dan merge.
+ */
+export const MAX_SEARCH_TERMS = 8;
+
+/**
+ * FeatureSimilarityConfig — weights dan threshold yang bisa di-override.
+ */
+export type FeatureSimilarityConfig = {
+  weights: {
+    fileOverlap: number;
+    termOverlap: number;
+    entityOverlap: number;
+    nameSimilarity: number;
+  };
+  threshold: number;
+};
+
+const DEFAULT_WEIGHTS = {
   fileOverlap: 0.45,
-  /** searchTerms yang overlap */
   termOverlap: 0.25,
-  /** relatedEntities yang overlap */
   entityOverlap: 0.20,
-  /** Trigram similarity antara nama */
   nameSimilarity: 0.10,
 } as const;
 
+export const DEFAULT_SIMILARITY_CONFIG: FeatureSimilarityConfig = {
+  weights: DEFAULT_WEIGHTS,
+  threshold: 0.35,
+};
+
 /**
- * DEFAULT_THRESHOLD — minimum composite score biar dua feature dianggap sama.
- *
- * 0.35 dipilih setelah evaluasi beberapa contoh nyata:
- *   "Plan Management" ↔ "Customizable Plans":
- *     - termOverlap: "plan", "management" → ~0.5 * 0.25 = 0.125
- *     - entityOverlap: "Plan" match → 1.0 * 0.20 = 0.20
- *     - nameSimilarity: trigram ~0.3 * 0.10 = 0.03
- *     - total: ~0.355 → MATCH ✓
- *
- *   "Authentication" ↔ "Search":
- *     - no file / term / entity overlap
- *     - nameSimilarity: very low
- *     - total: ~0.02 → NO MATCH ✓
- *
- *   "Search" ↔ "Search Functionality":
- *     - termOverlap: "search" → high * 0.25 = 0.25
- *     - nameSimilarity: trigram ~0.55 * 0.10 = 0.055
- *     - total: ~0.305 → borderline; kalau ada entity overlap juga = MATCH ✓
+ * DEFAULT_SIMILARITY_THRESHOLD — backward compat alias.
  */
-export const DEFAULT_SIMILARITY_THRESHOLD = 0.35;
+export const DEFAULT_SIMILARITY_THRESHOLD = DEFAULT_SIMILARITY_CONFIG.threshold;
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+function resolveConfig(config?: FeatureSimilarityConfig): FeatureSimilarityConfig {
+  return config ?? DEFAULT_SIMILARITY_CONFIG;
+}
 
 /**
  * computeSimilarity — hitung composite similarity score antara dua feature.
  *
  * @returns 0.0 - 1.0 (0 = no similarity, 1 = identical)
  */
-export function computeSimilarity(a: FeatureIdentity, b: FeatureIdentity): number {
+export function computeSimilarity(
+  a: FeatureIdentity,
+  b: FeatureIdentity,
+  config?: FeatureSimilarityConfig
+): number {
+  const { weights } = resolveConfig(config);
   const fileScore   = jaccardSimilarity(new Set(a.files), new Set(b.files));
   const termScore   = jaccardSimilarity(new Set(normTerms(a.searchTerms)), new Set(normTerms(b.searchTerms)));
   const entityScore = jaccardSimilarity(new Set(normTerms(a.relatedEntities)), new Set(normTerms(b.relatedEntities)));
   const nameScore   = trigramSimilarity(a.name, b.name);
 
   return (
-    fileScore   * WEIGHTS.fileOverlap +
-    termScore   * WEIGHTS.termOverlap +
-    entityScore * WEIGHTS.entityOverlap +
-    nameScore   * WEIGHTS.nameSimilarity
+    fileScore   * weights.fileOverlap +
+    termScore   * weights.termOverlap +
+    entityScore * weights.entityOverlap +
+    nameScore   * weights.nameSimilarity
   );
 }
 
@@ -111,9 +116,13 @@ export function computeSimilarity(a: FeatureIdentity, b: FeatureIdentity): numbe
 export function isSimilarFeature(
   a: FeatureIdentity,
   b: FeatureIdentity,
-  threshold = DEFAULT_SIMILARITY_THRESHOLD
+  thresholdOrConfig?: number | FeatureSimilarityConfig
 ): boolean {
-  return computeSimilarity(a, b) >= threshold;
+  if (typeof thresholdOrConfig === "number") {
+    return computeSimilarity(a, b) >= thresholdOrConfig;
+  }
+  const config = resolveConfig(thresholdOrConfig);
+  return computeSimilarity(a, b, config) >= config.threshold;
 }
 
 /**
@@ -125,13 +134,20 @@ export function isSimilarFeature(
 export function findSimilarFeature(
   candidates: FeatureIdentity[],
   target: FeatureIdentity,
-  threshold = DEFAULT_SIMILARITY_THRESHOLD
+  thresholdOrConfig?: number | FeatureSimilarityConfig
 ): { index: number; score: number } | null {
+  const config = resolveConfig(
+    typeof thresholdOrConfig === "object" ? thresholdOrConfig : undefined
+  );
+  const threshold = typeof thresholdOrConfig === "number"
+    ? thresholdOrConfig
+    : config.threshold;
+
   let bestIndex = -1;
   let bestScore = 0;
 
   for (let i = 0; i < candidates.length; i++) {
-    const score = computeSimilarity(candidates[i], target);
+    const score = computeSimilarity(candidates[i], target, config);
     if (score > bestScore) {
       bestScore = score;
       bestIndex = i;
@@ -140,6 +156,113 @@ export function findSimilarFeature(
 
   if (bestIndex === -1 || bestScore < threshold) return null;
   return { index: bestIndex, score: bestScore };
+}
+
+// ---------------------------------------------------------------------------
+// Explainability — internal debugging only
+// ---------------------------------------------------------------------------
+
+/**
+ * SimilarityExplanation — breakdown per faktor + reasons.
+ * @internal — kandidat masuk devmap doctor output nanti, bukan public API.
+ */
+export type SimilarityExplanation = {
+  score: number;
+  threshold: number;
+  similar: boolean;
+  factors: {
+    fileOverlap: { score: number; weight: number; contribution: number; detail: string };
+    termOverlap: { score: number; weight: number; contribution: number; detail: string };
+    entityOverlap: { score: number; weight: number; contribution: number; detail: string };
+    nameSimilarity: { score: number; weight: number; contribution: number; detail: string };
+  };
+  weaknesses: string[];
+};
+
+/**
+ * computeSimilarityWithExplanation — seperti computeSimilarity, tapi return
+ * breakdown detail buat debugging.
+ * @internal
+ */
+export function computeSimilarityWithExplanation(
+  a: FeatureIdentity,
+  b: FeatureIdentity,
+  config?: FeatureSimilarityConfig
+): SimilarityExplanation {
+  const { weights, threshold } = resolveConfig(config);
+
+  const fileScore   = jaccardSimilarity(new Set(a.files), new Set(b.files));
+  const termScore   = jaccardSimilarity(new Set(normTerms(a.searchTerms)), new Set(normTerms(b.searchTerms)));
+  const entityScore = jaccardSimilarity(new Set(normTerms(a.relatedEntities)), new Set(normTerms(b.relatedEntities)));
+  const nameScore   = trigramSimilarity(a.name, b.name);
+
+  const factors = {
+    fileOverlap: {
+      score: fileScore,
+      weight: weights.fileOverlap,
+      contribution: fileScore * weights.fileOverlap,
+      detail: a.files.length === 0 && b.files.length === 0
+        ? "both empty"
+        : a.files.length === 0 || b.files.length === 0
+          ? "one side empty"
+          : `overlap ${describeFilesOverlap(a.files, b.files)}`,
+    },
+    termOverlap: {
+      score: termScore,
+      weight: weights.termOverlap,
+      contribution: termScore * weights.termOverlap,
+      detail: a.searchTerms.length === 0 && b.searchTerms.length === 0
+        ? "both empty"
+        : a.searchTerms.length === 0 || b.searchTerms.length === 0
+          ? "one side empty"
+          : `jaccard ${termScore.toFixed(3)}`,
+    },
+    entityOverlap: {
+      score: entityScore,
+      weight: weights.entityOverlap,
+      contribution: entityScore * weights.entityOverlap,
+      detail: a.relatedEntities.length === 0 && b.relatedEntities.length === 0
+        ? "both empty"
+        : a.relatedEntities.length === 0 || b.relatedEntities.length === 0
+          ? "one side empty"
+          : `jaccard ${entityScore.toFixed(3)}`,
+    },
+    nameSimilarity: {
+      score: nameScore,
+      weight: weights.nameSimilarity,
+      contribution: nameScore * weights.nameSimilarity,
+      detail: `trigram ${nameScore.toFixed(3)}`,
+    },
+  };
+
+  const total = factors.fileOverlap.contribution
+    + factors.termOverlap.contribution
+    + factors.entityOverlap.contribution
+    + factors.nameSimilarity.contribution;
+
+  const weaknesses: string[] = [];
+  if (a.files.length === 0 || b.files.length === 0) {
+    weaknesses.push("one or both sides have no files — fileOverlap may be unreliable");
+  }
+  if (total < threshold && total >= threshold - 0.1) {
+    weaknesses.push(`score ${total.toFixed(3)} is close to threshold ${threshold}`);
+  }
+
+  return {
+    score: total,
+    threshold,
+    similar: total >= threshold,
+    factors,
+    weaknesses,
+  };
+}
+
+function describeFilesOverlap(a: string[], b: string[]): string {
+  const setA = new Set(a);
+  const overlap = b.filter((f) => setA.has(f));
+  return overlap.length > 0
+    ? `${overlap.length}/${Math.max(a.length, b.length)} files`
+    : "none";
 }
 
 // ---------------------------------------------------------------------------

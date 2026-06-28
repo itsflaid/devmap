@@ -1,6 +1,47 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-28
+Terakhir diperbarui: 2026-06-29
+
+## Update 2026-06-29
+
+### Hardening Merge — Complete
+
+All 9 steps of `hardening-merge-plan.md` completed in Session 2.
+
+**Step 4 — `projectMap.ts` Confidence boost quality gate:**
+- `attachFeatureEntryPoints` now accepts 5th parameter `analyses?: Record<string, FileAnalysis>`
+- Confidence only boosted to "high" when at least 1 evidence file has `analysisConfidence: "high"`
+- Prevents 2 low-quality fallback files from falsely boosting confidence
+
+**Step 5 — `featureDetector.ts` Signal fixes:**
+- Removed `"posthog"`, `"@posthog"` from Logging & Monitoring signal (they remain in Analytics)
+- Replaced hardcoded `featureName === "AI Integration"` with `importOnly?: true` flag on FEATURE_SIGNALS type
+- `matchesSignal` now checks `signal.importOnly` instead of feature name string
+
+**Step 6 — `domainInference.ts` Medium confidence inclusion:**
+- `buildDomainInferenceInput` filter changed from `f.confidence === "high"` to `f.confidence === "high" || f.confidence === "medium"`
+- Capability features with medium confidence now contribute to domain inference input
+
+**Step 7 — `featureDetector.ts` Regex pre-compile:**
+- Added `regexCache` Map at module scope to cache compiled RegExp patterns per term
+- Prevents repeated `new RegExp()` calls for static terms ≤7 chars in `matchesPathTerm`
+
+**Step 8 — Unit tests (22 scenarios):**
+- New file: `test/feature-similarity-merge.test.ts`
+- Covers: `computeSimilarity`, `findSimilarFeature`, `mergeIntoFeatureList`, `mergeFeatureData`, `mergeDomainFeatures`, `jaccardSimilarity`, `trigramSimilarity`, `buildFeatureFingerprint`, `fingerprintSimilarity`, `attachFeatureEntryPoints`
+- All 22 tests pass
+
+**Step 9 — Regression + typecheck:**
+- Typecheck passes
+- 120/137 tests pass (17 pre-existing failures unchanged)
+
+**Verification:**
+```bash
+pnpm test:types        # typecheck
+pnpm test:unit         # unit tests (120 pass, 17 pre-existing fail)
+```
+
+---
 
 ## Update 2026-06-28
 

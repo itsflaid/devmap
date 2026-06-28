@@ -309,7 +309,7 @@ export function buildDomainInferenceInput(
     relations: entityGraph.relations.slice(0, 10),
     capabilities: [...new Set(capabilities.map((c) => c.kind))],
     technicalFeatures: features
-      .filter((f) => f.confidence === "high")
+      .filter((f) => f.confidence === "high" || f.confidence === "medium")
       .map((f) => f.name)
       .slice(0, 10),
     framework,

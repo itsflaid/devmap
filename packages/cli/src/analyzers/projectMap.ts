@@ -31,6 +31,7 @@ import {
   domainFeaturesToFeatureInfo,
   type DomainInferenceResult
 } from "./domainInference.js";
+import { mergeDomainFeatures } from "./featureMerge.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 
@@ -195,14 +196,12 @@ export async function createProjectMap(
     const result = await inferDomain(inferenceInput, callAI);
     if (result) {
       domain = result;
-      // Merge domain-specific features ke features list
+      // Merge domain-specific features ke features list.
+      // Pakai similarity engine — bukan name equality — sehingga
+      // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
+      // Canonical name (first-seen) dipertahankan oleh mergeDomainFeatures.
       const domainFeatures = domainFeaturesToFeatureInfo(result.domainFeatures);
-      for (const df of domainFeatures) {
-        // Hanya tambah kalau belum ada feature dengan nama sama
-        if (!features.some((f) => f.name.toLowerCase() === df.name.toLowerCase())) {
-          features.push(df);
-        }
-      }
+      mergeDomainFeatures(features, domainFeatures);
       features.sort((a, b) => a.name.localeCompare(b.name));
     }
   }

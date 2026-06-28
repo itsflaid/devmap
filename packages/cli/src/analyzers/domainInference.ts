@@ -279,10 +279,15 @@ export function domainFeaturesToFeatureInfo(
     files: [],
     entryPoints: [],
     businessFlow: [],
+    // searchTerms include relatedEntities agar similarity engine dapat
+    // mencocokkan AI feature dengan static feature via entity overlap.
+    // Contoh: AI returns relatedEntities: ["Plan", "Subscription"]
+    //         Static feature "Plan Management" punya searchTerms: ["plan", "subscription", ...]
+    //         → entityOverlap / termOverlap tinggi → di-merge, bukan duplicate.
     searchTerms: [
       ...df.relatedEntities.map((e) => e.toLowerCase()),
-      ...df.name.toLowerCase().split(" ")
-    ].slice(0, 8),
+      ...df.name.toLowerCase().split(/\s+/).filter(Boolean)
+    ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 12),
     confidence: "medium" as const, // AI-inferred = medium, bukan high
     evidence: []
   }));

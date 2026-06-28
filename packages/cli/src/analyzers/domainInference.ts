@@ -1,6 +1,9 @@
 import type { EntityGraph } from "./extractors/types.js";
 import type { CapabilityInfo } from "./capabilityDetector.js";
 import type { FeatureInfo } from "./featureDetector.js";
+import { createHash } from "node:crypto";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { join } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +38,77 @@ export type DomainInferenceInput = {
 };
 
 // ---------------------------------------------------------------------------
+// Cache
+//
+// Domain inference di-cache di .devmap/domain-cache.json berdasarkan hash
+// dari DomainInferenceInput. Kalau input tidak berubah (entity names, relations,
+// capabilities, framework sama), cached result langsung dipakai tanpa LLM call.
+//
+// Ini memastikan `devmap analyze` idempotent — hasil feature names tidak
+// berubah tiap run selama codebase tidak berubah.
+//
+// Cache invalidation otomatis: kalau hash input berubah (tambah entity baru,
+// ubah relasi, dll), cache di-skip dan LLM dipanggil ulang.
+// ---------------------------------------------------------------------------
+
+type DomainInferenceCache = {
+  inputHash: string;
+  result: DomainInferenceResult;
+  cachedAt: string;
+};
+
+function hashDomainInput(input: DomainInferenceInput): string {
+  const stable = JSON.stringify({
+    // Sort semua array biar hash deterministic regardless of order
+    entityNames: [...input.entityNames].sort(),
+    relations: [...input.relations]
+      .map((r) => `${r.from}:${r.kind}:${r.to}`)
+      .sort(),
+    capabilities: [...input.capabilities].sort(),
+    technicalFeatures: [...input.technicalFeatures].sort(),
+    routeCount: input.routeCount,
+    framework: input.framework,
+  });
+  return createHash("sha256").update(stable).digest("hex").slice(0, 16);
+}
+
+async function readDomainCache(
+  projectRoot: string,
+  inputHash: string
+): Promise<DomainInferenceResult | null> {
+  try {
+    const cachePath = join(projectRoot, ".devmap", "domain-cache.json");
+    const raw = await readFile(cachePath, "utf-8");
+    const cache = JSON.parse(raw) as DomainInferenceCache;
+
+    if (cache.inputHash !== inputHash) return null; // input berubah → stale
+    return cache.result;
+  } catch {
+    return null; // file tidak ada atau corrupt → miss
+  }
+}
+
+async function writeDomainCache(
+  projectRoot: string,
+  inputHash: string,
+  result: DomainInferenceResult
+): Promise<void> {
+  try {
+    const devmapDir = join(projectRoot, ".devmap");
+    await mkdir(devmapDir, { recursive: true });
+    const cachePath = join(devmapDir, "domain-cache.json");
+    const cache: DomainInferenceCache = {
+      inputHash,
+      result,
+      cachedAt: new Date().toISOString(),
+    };
+    await writeFile(cachePath, JSON.stringify(cache, null, 2) + "\n", "utf-8");
+  } catch {
+    // Cache write gagal = non-fatal, lanjut tanpa cache
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main entry
 // ---------------------------------------------------------------------------
 
@@ -45,26 +119,48 @@ export type DomainInferenceInput = {
  * Ini menjaga token usage minimal (~300-500 token per call) dan
  * memastikan AI focus pada domain inference, bukan code analysis.
  *
+ * Cache: result di-cache di .devmap/domain-cache.json berdasarkan hash input.
+ * Kalau input tidak berubah, cached result dipakai langsung (no LLM call).
+ * Ini memastikan analyze idempotent — feature names tidak berubah tiap run.
+ *
  * Dipanggil SETELAH static analysis selesai (Step 1-4) — sebagai enhancement,
  * bukan replacement. Kalau AI unavailable, static features tetap ada.
  *
- * @param input   - Structured metadata dari static analysis
- * @param callAI  - Injected AI caller — decoupled dari provider specifics
+ * @param input       - Structured metadata dari static analysis
+ * @param callAI      - Injected AI caller — decoupled dari provider specifics
+ * @param projectRoot - Root project path, untuk baca/tulis cache
  */
 export async function inferDomain(
   input: DomainInferenceInput,
-  callAI: (prompt: string) => Promise<string>
+  callAI: (prompt: string) => Promise<string>,
+  projectRoot?: string
 ): Promise<DomainInferenceResult | null> {
   // Skip kalau data terlalu sedikit — AI inference gak akan meaningful
   if (input.entityNames.length === 0 && input.capabilities.length === 0) {
     return null;
   }
 
+  const inputHash = hashDomainInput(input);
+
+  // Cache hit → return langsung, no LLM call
+  if (projectRoot) {
+    const cached = await readDomainCache(projectRoot, inputHash);
+    if (cached) return cached;
+  }
+
   const prompt = buildDomainInferencePrompt(input);
 
   try {
     const raw = await callAI(prompt);
-    return parseDomainInferenceResponse(raw, input);
+    const result = parseDomainInferenceResponse(raw, input);
+    if (!result) return null;
+
+    // Tulis ke cache buat run berikutnya
+    if (projectRoot) {
+      await writeDomainCache(projectRoot, inputHash, result);
+    }
+
+    return result;
   } catch {
     // AI inference adalah enhancement, bukan blocker
     // Kalau gagal, return null — caller tetap punya static features

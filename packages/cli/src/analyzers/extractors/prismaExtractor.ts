@@ -1,5 +1,5 @@
 import type { ScannedFile } from "../fileScanner.js";
-import type { EntityInfo, FieldInfo, IEntityExtractor } from "./types.js";
+import type { EntityInfo, FieldInfo, RelationInfo, IEntityExtractor } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -35,14 +35,17 @@ export class PrismaExtractor implements IEntityExtractor {
   }
 
   extract(files: ScannedFile[]): EntityInfo[] {
-    const entities: EntityInfo[] = [];
+    const allEntities: EntityInfo[] = [];
 
     for (const file of files) {
       if (!file.path.endsWith(".prisma")) continue;
-      entities.push(...parsePrismaSchema(file.content));
+      allEntities.push(...parsePrismaSchema(file.content));
     }
 
-    return entities;
+    // Build relations after all entities are parsed.
+    // We need the full entity name set to distinguish relations from scalars
+    // and to determine relation direction (one-to-many vs many-to-one).
+    return buildRelations(allEntities);
   }
 }
 
@@ -57,9 +60,9 @@ export class PrismaExtractor implements IEntityExtractor {
  *   model User {
  *     id        String     @id @default(cuid())
  *     email     String     @unique
- *     snippets  Snippet[]              ← relation one-to-many
- *     workspace Workspace?             ← relation one-to-one optional
- *     authorId  String                 ← FK scalar, bukan relasi langsung
+ *     rooms     Room[]              ← relation one-to-many (User owns Rooms)
+ *     workspace Workspace?          ← relation one-to-one optional
+ *     userId    String              ← FK scalar, bukan relasi langsung
  *   }
  */
 function parsePrismaSchema(content: string): EntityInfo[] {
@@ -74,6 +77,7 @@ function parsePrismaSchema(content: string): EntityInfo[] {
     const body = match[2];
     const fields = parsePrismaFields(body);
 
+    // relations di-populate di buildRelations() setelah semua entity ter-parse
     entities.push({ name, fields, relations: [], source: "prisma" });
     match = modelPattern.exec(content);
   }
@@ -118,6 +122,86 @@ function parsePrismaFields(body: string): FieldInfo[] {
   }
 
   return fields;
+}
+
+// ---------------------------------------------------------------------------
+// Relation builder
+//
+// Prisma relasi selalu bidirectional — kedua sisi model punya field relasi.
+// Kita derive arah relasi dari field type modifier:
+//
+//   User { rooms Room[] }   → User has many Room  → one-to-many (User → Room)
+//   Room { user User }      → Room belongs to User → many-to-one (Room → User)
+//   User { profile Profile? } → one-to-one optional
+//
+// Strategy: iterate tiap entity, cari field yang isRelation.
+//   - Field isList (Type[])  → from: thisEntity, to: fieldType, kind: one-to-many
+//   - Field !isList + optional → from: thisEntity, to: fieldType, kind: one-to-one
+//   - Field !isList + required → many-to-one (FK holder) — kita skip ini karena
+//     sisi lain (the "one") sudah generate one-to-many dari perspektifnya.
+//
+// Dedup: pakai Set string key biar relasi yang sama dari kedua sisi tidak double.
+//
+// Self-referential relations (Message → Message via sourceMessage/reminders):
+//   Field bertipe sama dengan entity sendiri → skip, ini bukan cross-entity relation.
+// ---------------------------------------------------------------------------
+
+function buildRelations(entities: EntityInfo[]): EntityInfo[] {
+  const entityNames = new Set(entities.map((e) => e.name));
+  const seenRelations = new Set<string>();
+  const allRelations: RelationInfo[] = [];
+
+  for (const entity of entities) {
+    for (const field of entity.fields) {
+      if (!field.isRelation) continue;
+      if (!entityNames.has(field.type)) continue;
+
+      // Skip self-referential — e.g. Message.sourceMessage: Message?
+      // These are valid Prisma patterns but not cross-entity ownership relations
+      if (field.type === entity.name) continue;
+
+      if (field.isList) {
+        // Type[] → one-to-many: this entity owns many of field.type
+        // e.g. User.rooms Room[] → User → Room (one-to-many)
+        const key = `${entity.name}→${field.type}:one-to-many`;
+        if (!seenRelations.has(key)) {
+          seenRelations.add(key);
+          allRelations.push({ from: entity.name, to: field.type, kind: "one-to-many" });
+        }
+      } else {
+        // Type or Type? (non-list) → this entity holds the FK (many-to-one side)
+        // We skip many-to-one here — the one-to-many from the parent already covers it.
+        // Exception: if there is NO corresponding list field on the other side,
+        // this might be a one-to-one — add it as such.
+        const otherEntity = entities.find((e) => e.name === field.type);
+        if (!otherEntity) continue;
+
+        const otherSideHasList = otherEntity.fields.some(
+          (f) => f.isRelation && f.type === entity.name && f.isList
+        );
+
+        if (!otherSideHasList) {
+          // No list on the other side → one-to-one
+          // Use alphabetical order to deduplicate bidirectional one-to-one fields
+          const [a, b] = [entity.name, field.type].sort();
+          const key = `${a}↔${b}:one-to-one`;
+          if (!seenRelations.has(key)) {
+            seenRelations.add(key);
+            allRelations.push({ from: entity.name, to: field.type, kind: "one-to-one" });
+          }
+        }
+        // If other side has list → many-to-one, already handled from the list side → skip
+      }
+    }
+  }
+
+  // Attach relations back to each entity
+  return entities.map((entity) => ({
+    ...entity,
+    relations: allRelations.filter(
+      (r) => r.from === entity.name || r.to === entity.name
+    ),
+  }));
 }
 
 // ---------------------------------------------------------------------------

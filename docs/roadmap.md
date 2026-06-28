@@ -384,14 +384,13 @@ DevMap analyzes the majority of modern web and application codebases using the s
 
 | Version | Phase | Description |
 |---|---|---|
-| 0.1.0 | 1 | Early beta — static analysis, Groq AI, domain features, JSON output, streaming |
-| 0.2.0 | 1 | Feedback-driven analyzer improvements |
-| 1.0.0 | 1 | Stable `devmap analyze` release |
-| 1.1.0 | 2 | `devmap onboarding` polished |
-| 1.2.0 | 2 | `devmap map` |
-| 1.3.0 | 2 | `devmap explain` |
-| 1.4.0 | 2 | `devmap flow` |
+| 0.1.0 | 1 | init + analyze + onboarding + doctor |
+| 0.1.0 | 1 | release |
+| 0.2.0 | 2 | devmap map |
+| 0.3.0 | 2 | devmap explain |
+| 0.4.0 | 2 | devmap flow |
+| 1.0.0 | 1 | Update |
 | 2.0.0 | 3 | OpenAI + Gemini + Ollama |
-| 3.0.0 | 4 | Frontend SPA support |
-| 4.0.0 | 5 | Agent Layer — knowledge persistence |
+| 3.0.0 | 4 | Agent Layer — knowledge persistence |
+| 4.0.0 | 5 | Universal Analyzer |
 | 5.0.0 | 6 | Platform — dashboard + team features |

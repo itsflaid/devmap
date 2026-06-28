@@ -60,7 +60,10 @@ export function detectCapabilities(
   capabilities.push(...crudCapabilities);
 
   // --- Behavioral capabilities dari route patterns ---
-  const behavioral = detectBehavioralCapabilities(apiRoutes, pageRoutes, entityGraph);
+  // Only use API routes for behavioral detection — page routes produce too many
+  // false positives because page paths often contain domain keywords that
+  // don't represent actual capabilities (e.g. /search page = UI, not search infra)
+  const behavioral = detectBehavioralCapabilities(apiRoutes, entityGraph);
   capabilities.push(...behavioral);
 
   return deduplicateCapabilities(capabilities);
@@ -118,29 +121,49 @@ function detectCrudCapabilities(
 
 // ---------------------------------------------------------------------------
 // Behavioral capabilities
+//
+// Threshold design rationale:
+//
+//   highConfidenceAt = 1 was too aggressive — a single route match on a
+//   generic path like /search or /stats was enough to create a "high"
+//   confidence feature, even when that route was just a UI page.
+//
+//   New thresholds:
+//   - Search: 2 — one /search page is a UI pattern, not a search infrastructure
+//   - Reporting: 2 — one /stats or /dashboard page doesn't mean reporting infra
+//   - Social: 3 — needs multiple social signals (likes AND comments, etc.)
+//   - All others: 1 or 2 depending on signal specificity
+//
+//   Additionally: behavioral detection now only runs on API routes (not page
+//   routes) to avoid UI pages being confused with backend capabilities.
 // ---------------------------------------------------------------------------
 
 const BEHAVIORAL_SIGNALS: Array<{
   kind: CapabilityKind;
   name: string;
   pathPatterns: RegExp[];
-  highConfidenceAt?: number;
+  /** Minimum number of matching API routes to reach "high" confidence */
+  highConfidenceAt: number;
+  /** Minimum matches to surface as a capability at all (default: 1) */
+  minimumMatches?: number;
 }> = [
-  // Sharing
+  // Sharing — specific enough that 1 match is fine
   {
     kind: "sharing",
     name: "Content Sharing",
     pathPatterns: [/\/(share|shares|shareId|shared)(\/|$)/i],
-    highConfidenceAt: 2
+    highConfidenceAt: 2,
+    minimumMatches: 1,
   },
   // Publishing
   {
     kind: "publishing",
     name: "Content Publishing",
     pathPatterns: [/\/(publish|unpublish|draft|drafts)(\/|$)/i],
-    highConfidenceAt: 1
+    highConfidenceAt: 1,
+    minimumMatches: 1,
   },
-  // Collaboration
+  // Collaboration — workspace/member/invite are strong signals
   {
     kind: "collaboration",
     name: "Team Collaboration",
@@ -150,7 +173,8 @@ const BEHAVIORAL_SIGNALS: Array<{
       /\/(invite|invites?|join)(\/|$)/i,
       /\/(team|teams)(\/|$)/i,
     ],
-    highConfidenceAt: 2
+    highConfidenceAt: 2,
+    minimumMatches: 1,
   },
   // Discovery
   {
@@ -160,9 +184,11 @@ const BEHAVIORAL_SIGNALS: Array<{
       /\/(explore|discover|browse)(\/|$)/i,
       /\/(feed|trending|featured)(\/|$)/i,
     ],
-    highConfidenceAt: 1
+    highConfidenceAt: 1,
+    minimumMatches: 1,
   },
-  // Social
+  // Social — needs multiple signals to avoid false positives
+  // e.g. a single /comments route could be anything
   {
     kind: "social",
     name: "Social Interactions",
@@ -172,7 +198,8 @@ const BEHAVIORAL_SIGNALS: Array<{
       /\/(comment|comments|reply|replies)(\/|$)/i,
       /\/(follow|followers|following)(\/|$)/i,
     ],
-    highConfidenceAt: 2
+    highConfidenceAt: 3,
+    minimumMatches: 2,  // needs at least 2 distinct social routes to surface
   },
   // File management
   {
@@ -183,12 +210,10 @@ const BEHAVIORAL_SIGNALS: Array<{
       /\/(attachment|attachments)(\/|$)/i,
       /\/(media|asset|assets)(\/|$)/i,
     ],
-    highConfidenceAt: 1
+    highConfidenceAt: 1,
+    minimumMatches: 1,
   },
-  // Real-time — only explicit transport-level signals.
-  // "event/events/subscribe" dihapus: terlalu generic.
-  // Calendar events, DOM events, subscription management semua bisa match
-  // padahal bukan real-time transport feature.
+  // Real-time — transport-level signals only, very specific
   {
     kind: "real-time",
     name: "Real-time Features",
@@ -197,42 +222,45 @@ const BEHAVIORAL_SIGNALS: Array<{
       /\/(live|stream|streaming)(\/|$)/i,
       /\/(sse|server-sent)(\/|$)/i,
     ],
-    highConfidenceAt: 1
+    highConfidenceAt: 1,
+    minimumMatches: 1,
   },
-  // Search
+  // Search — needs at least 2 API routes to surface
+  // A single /api/search could be a simple filter, not search infrastructure
   {
     kind: "search",
     name: "Search",
     pathPatterns: [/\/(search|find|query|lookup)(\/|$)/i],
-    highConfidenceAt: 1
+    highConfidenceAt: 2,
+    minimumMatches: 2,  // must have at least 2 distinct search API routes
   },
-  // Reporting
+  // Reporting — dashboard alone is not enough (many apps have a /dashboard page)
   {
     kind: "reporting",
     name: "Statistics & Reporting",
     pathPatterns: [
       /\/(stats?|analytics?|metric|metrics)(\/|$)/i,
       /\/(report|reports)(\/|$)/i,
-      /\/(dashboard)(\/|$)/i,
     ],
-    highConfidenceAt: 1
+    highConfidenceAt: 2,
+    minimumMatches: 1,
   },
 ];
 
 function detectBehavioralCapabilities(
+  // Only API routes now — page routes removed to cut false positives
   apiRoutes: RouteInfo[],
-  pageRoutes: RouteInfo[],
   entityGraph: EntityGraph
 ): CapabilityInfo[] {
-  const allRoutes = [...apiRoutes, ...pageRoutes];
   const capabilities: CapabilityInfo[] = [];
 
   for (const signal of BEHAVIORAL_SIGNALS) {
-    const matched = allRoutes.filter((route) =>
+    const matched = apiRoutes.filter((route) =>
       signal.pathPatterns.some((pattern) => pattern.test(route.path))
     );
 
-    if (matched.length === 0) continue;
+    const minimum = signal.minimumMatches ?? 1;
+    if (matched.length < minimum) continue;
 
     const entities = [...new Set(
       matched
@@ -308,10 +336,6 @@ function singularize(word: string): string {
   return word;
 }
 
-function capitalize(str: string): string {
-  return str.length === 0 ? str : str[0].toUpperCase() + str.slice(1);
-}
-
 function deduplicateCapabilities(capabilities: CapabilityInfo[]): CapabilityInfo[] {
   const seen = new Map<string, CapabilityInfo>();
 
@@ -342,14 +366,11 @@ function higherConfidence(
 }
 
 // NON_RESOURCE_SEGMENTS — path segments yang bukan nama resource.
-//
-// "history" ditambahkan karena hampir selalu sub-resource dari entity lain
-// (conversation history, chat history) bukan resource standalone.
-// Kalau dibiarkan, route /conversation/[id]/history spawn "History Management"
-// atau trigger false positive real-time detection.
 const NON_RESOURCE_SEGMENTS = new Set([
   "auth", "oauth", "callback", "health",
   "ping", "status", "public", "internal",
   "static", "assets", "files", "me", "self",
   "history",
+  // tambahan: common Next.js/UI page paths yang bukan API resource
+  "dashboard", "settings", "profile", "search",
 ]);

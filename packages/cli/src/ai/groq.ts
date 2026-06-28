@@ -27,11 +27,16 @@ export const DEFAULT_AI_FALLBACKS = {
 } as const;
 
 const EXCLUDED_MODEL_PATTERNS = [
-  /whisper/i,
-  /prompt-guard/i,
-  /compound/i,
-  /tts/i,
-  /vision/i,
+  /whisper/i,         // speech-to-text models (whisper-large-v3, distil-whisper-*)
+  /prompt-guard/i,    // content moderation (llama-prompt-guard-*)
+  /\bguard\b/i,       // safety classifier models (llama-guard-3-8b, etc.)
+  /compound/i,        // compound-beta orchestration models — not plain chat completions
+  /\btts\b/i,         // text-to-speech (playai-tts, playai-tts-arabic)
+  /\bvision\b/i,      // vision-only models
+  /llava/i,           // LLaVA multimodal vision family
+  /\bembed\b/i,       // embedding models — no chat completions API
+  /\bspeculative\b/i, // speculative decoding variants
+  /\brerank\b/i,      // reranking models
 ];
 
 const PREFERRED_MODELS = [

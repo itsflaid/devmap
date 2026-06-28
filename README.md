@@ -4,10 +4,8 @@
 
 <h1 align="center">DevMap</h1>
 
-<p align="center">
-Analyze once. Reuse context everywhere.
-Structured project intelligence for developers and AI agents.
-</p>
+> The first command you run after git clone.
+
 
 <p align="center">
   <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
@@ -16,7 +14,10 @@ Structured project intelligence for developers and AI agents.
   <img src="https://img.shields.io/badge/status-MVP-2EE6D6?style=flat-square" alt="Status" />
 </p>
 
-> The first command you run after git clone.
+<p align="center">
+Analyze once. Reuse context everywhere.
+Structured project intelligence for developers and AI agents.
+</p>
 
 Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
 
@@ -298,21 +299,19 @@ Node.js 18+
 
 - [x] `devmap init`
 - [x] `devmap analyze`
-- [x] `devmap onboarding`
 - [x] `devmap doctor`
+- [  ] `devmap onboarding`
 
 ### Next
-
-- [ ] `devmap enhance onboarding`
-- [ ] `devmap features`
+- [ ] `devmap map`
+- [ ] `devmap explain`
 - [ ] `devmap flow`
-- [ ] OpenAI provider
-- [ ] Gemini provider
+
 
 ### Later
 
-- [ ] `devmap explain`
-- [ ] `devmap docs`
+- [ ] OpenAI provider
+- [ ] Gemini provider
 - [ ] Local AI mode
 
 See [docs/roadmap.md](./docs/roadmap.md) for details.

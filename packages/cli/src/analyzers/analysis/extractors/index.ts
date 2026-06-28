@@ -1,5 +1,5 @@
-import type { ScannedFile } from "../fileScanner.js";
-import type { RouteInfo } from "../../detectors/routeDetector.js";
+import type { ScannedFile } from "../index.js";
+import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityGraph, EntityInfo, IEntityExtractor, RelationInfo } from "./types.js";
 import { PrismaExtractor } from "./prismaExtractor.js";
 import { RouteFallbackExtractor } from "./fallbackExtractor.js";

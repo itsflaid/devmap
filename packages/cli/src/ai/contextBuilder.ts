@@ -1,6 +1,6 @@
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
-import type { ProjectMap } from "../analyzers/pipeline/projectMap.js";
+import type { ProjectMap } from "../analyzers/pipeline/index.js";
 
 const DEFAULT_MAX_FILES = 5;
 const DEFAULT_MAX_LINES_PER_FILE = 200;

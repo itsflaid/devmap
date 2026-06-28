@@ -1,4 +1,4 @@
-import type { ProjectMap } from "../analyzers/pipeline/projectMap.js";
+import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import type { AiClient, AiMessage } from "./types.js";
 
 const FILE_BATCH_SIZE = 20;

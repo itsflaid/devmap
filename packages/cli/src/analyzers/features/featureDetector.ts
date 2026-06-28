@@ -1,11 +1,16 @@
-import type { FileAnalysis } from "../analysis/fileAnalysis.js";
-import type { DatabaseInfo } from "../detectors/databaseDetector.js";
-import type { ScannedFile } from "../analysis/fileScanner.js";
-import type { RouteInfo } from "../detectors/routeDetector.js";
-import type { EntityGraph, RelationInfo } from "../analysis/extractors/types.js";
-import type { CapabilityInfo } from "../detectors/capabilityDetector.js";
-import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "../analysis/fileRole.js";
-import { isArchitectureSource } from "../graph/sourceScope.js";
+import type {
+  FileAnalysis,
+  ScannedFile,
+  EntityGraph,
+  RelationInfo,
+} from "../analysis/index.js";
+import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "../analysis/index.js";
+import type {
+  DatabaseInfo,
+  RouteInfo,
+  CapabilityInfo,
+} from "../detectors/index.js";
+import { isArchitectureSource } from "../graph/index.js";
 import { mergeIntoFeatureList } from "./featureMerge.js";
 
 export type FeatureInfo = {

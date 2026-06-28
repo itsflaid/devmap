@@ -1,6 +1,6 @@
-import type { EntityGraph } from "../analysis/extractors/types.js";
-import type { CapabilityInfo } from "../detectors/capabilityDetector.js";
-import type { FeatureInfo } from "../features/featureDetector.js";
+import type { EntityGraph } from "../analysis/index.js";
+import type { CapabilityInfo } from "../detectors/index.js";
+import type { FeatureInfo } from "../features/index.js";
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";

@@ -1,5 +1,5 @@
 import type { ScannedFile } from "./fileScanner.js";
-import type { RouteInfo } from "../detectors/routeDetector.js";
+import type { RouteInfo } from "../detectors/index.js";
 
 export type AnalysisConfidence = "high" | "medium" | "low";
 

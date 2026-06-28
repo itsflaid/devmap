@@ -1,37 +1,40 @@
 import { hashContent } from "../../cache/fileHash.js";
 import { analyzeFiles } from "./analyzerRegistry.js";
-import { detectDatabase, type DatabaseInfo } from "../detectors/databaseDetector.js";
-import { buildDependencyGraph, countReferences } from "../graph/dependencyGraph.js";
-import { detectEntryPoints } from "../graph/entryPoints.js";
+import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
+import {
+  detectDatabase, type DatabaseInfo,
+  detectFramework, detectFrameworks, type Framework,
+  detectRoutes, type RouteInfo,
+  detectExternalServices,
+  detectCapabilities, type CapabilityInfo,
+} from "../detectors/index.js";
+import {
+  buildDependencyGraph, countReferences,
+  detectEntryPoints,
+  isArchitectureSource,
+} from "../graph/index.js";
 import {
   authenticationFilePriority,
   detectAuthenticationSemanticRole,
   detectFeatures,
   orderAuthenticationFiles,
-  type FeatureInfo
-} from "../features/featureDetector.js";
-import type { ScannedFile } from "../analysis/fileScanner.js";
-import { scanFiles } from "../analysis/fileScanner.js";
+  mergeDomainFeatures,
+  type FeatureInfo,
+} from "../features/index.js";
 import {
-  detectFramework,
-  detectFrameworks,
-  type Framework
-} from "../detectors/frameworkDetector.js";
-import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
-import { detectRoutes, type RouteInfo } from "../detectors/routeDetector.js";
-import { detectExternalServices } from "../detectors/serviceDetector.js";
-import { isArchitectureSource } from "../graph/sourceScope.js";
-import type { FileAnalysis, SymbolInfo } from "../analysis/fileAnalysis.js";
-import { extractEntities } from "../analysis/extractors/index.js";
-import { type EntityGraph } from "../analysis/extractors/types.js";
-import { detectCapabilities, type CapabilityInfo } from "../detectors/capabilityDetector.js";
+  scanFiles,
+  extractEntities,
+  type ScannedFile,
+  type EntityGraph,
+  type FileAnalysis,
+  type SymbolInfo,
+} from "../analysis/index.js";
 import {
   inferDomain,
   buildDomainInferenceInput,
   domainFeaturesToFeatureInfo,
-  type DomainInferenceResult
-} from "../inference/domainInference.js";
-import { mergeDomainFeatures } from "../features/featureMerge.js";
+  type DomainInferenceResult,
+} from "../inference/index.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 

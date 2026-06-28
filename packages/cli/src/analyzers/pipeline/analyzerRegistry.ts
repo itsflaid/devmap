@@ -2,10 +2,10 @@ import type {
   AnalyzerContext,
   FileAnalysis,
   FileAnalyzer
-} from "../analysis/fileAnalysis.js";
-import type { ScannedFile } from "../analysis/fileScanner.js";
+} from "../analysis/index.js";
+import type { ScannedFile } from "../analysis/index.js";
 import { FallbackAnalyzer, HeuristicAnalyzer } from "./heuristicAnalyzer.js";
-import { TsMorphAnalyzer } from "../analysis/tsMorphAnalyzer.js";
+import { TsMorphAnalyzer } from "../analysis/index.js";
 
 export class AnalyzerRegistry {
   constructor(private readonly analyzers: FileAnalyzer[]) {}

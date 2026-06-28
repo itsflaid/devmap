@@ -500,7 +500,7 @@ export function detectFeatures(
   }
 
   if (entityGraph && entityGraph.entityNames.length > 0) {
-    for (const feature of entityGraphToFeatures(entityGraph)) {
+    for (const feature of entityGraphToFeatures(entityGraph, scopedFiles)) {
       mergeFeature(features, feature);
     }
   }
@@ -614,7 +614,36 @@ function isTrueChildEntity(entityName: string, relations: RelationInfo[]): boole
   return false;
 }
 
-function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
+function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
+  const lowerName = entityName.toLowerCase();
+  const nameSegments = splitNameToSegments(lowerName);
+
+  return files
+    .filter((f) => {
+      const lowerPath = f.path.toLowerCase();
+      const pathSegments = lowerPath.split(/[/\\]/);
+
+      return pathSegments.some((segment) => {
+        const fileStem = segment.replace(/\.[^/.]+$/, "");
+        if (fileStem === lowerName) return true;
+        const segParts = splitNameToSegments(fileStem);
+        return nameSegments.some((ns) => segParts.includes(ns));
+      });
+    })
+    .map((f) => f.path)
+    .slice(0, 5);
+}
+
+function splitNameToSegments(name: string): string[] {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = []): FeatureInfo[] {
   if (entityGraph.source === "empty") return [];
 
   // Deduplicate relations across the graph
@@ -677,15 +706,17 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
       "management", "crud"
     ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 8);
 
+    const entityFiles = findEntityFiles(entity.name, files);
+
     features.push({
       name: `${entity.name} Management`,
       purpose,
-      files: [],
+      files: entityFiles,
       entryPoints: [],
       businessFlow: [],
       searchTerms,
       confidence: entityGraph.source === "prisma" ? "high" : "medium",
-      evidence: []
+      evidence: entityFiles
     });
   }
 

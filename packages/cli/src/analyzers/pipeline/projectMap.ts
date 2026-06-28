@@ -182,7 +182,8 @@ export async function createProjectMap(
     detectFeatures(files, analyses, routes, database, entityGraph, capabilities),
     routes,
     entryPoints,
-    graph
+    graph,
+    analyses
   );
   // Step 4: AI domain inference (optional — hanya jalan kalau callAI disediakan)
   // Kirim structured metadata ke AI, dapat domain summary + domain-specific features.
@@ -605,7 +606,8 @@ function attachFeatureEntryPoints(
   features: FeatureInfo[],
   routes: RouteInfo[],
   entryPoints: string[],
-  graph: Record<string, string[]>
+  graph: Record<string, string[]>,
+  analyses?: Record<string, FileAnalysis>
 ): FeatureInfo[] {
   return features.map((feature) => {
     const relatedRouteEntries = routes
@@ -620,6 +622,9 @@ function attachFeatureEntryPoints(
       : feature.files;
     const entryPoint = chooseFeatureEntryPoint(feature.name, orderedFiles, relatedEntries, routes, graph);
     const businessFlow = buildFeatureBusinessFlow(feature.name, entryPoint, graph, orderedFiles);
+    const hasHighQualityEvidence = analyses
+      ? feature.evidence.some((path) => analyses[path]?.confidence === "high")
+      : false;
 
     return {
       ...feature,
@@ -627,7 +632,7 @@ function attachFeatureEntryPoints(
       ...(entryPoint ? { entryPoint } : {}),
       entryPoints: relatedEntries,
       businessFlow,
-      confidence: feature.files.length >= 2 || relatedEntries.length > 0
+      confidence: hasHighQualityEvidence && (feature.files.length >= 2 || relatedEntries.length > 0)
         ? "high"
         : feature.confidence
     };

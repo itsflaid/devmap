@@ -31,6 +31,7 @@ const FEATURE_SIGNALS: Array<{
   name: string;
   terms: string[];
   purpose: string;
+  importOnly?: true;
 }> = [
   {
     name: "Authentication",
@@ -72,9 +73,10 @@ const FEATURE_SIGNALS: Array<{
   },
   {
     name: "AI Integration",
+    importOnly: true,
     terms: [
       // Provider SDKs only — no generic terms like "ai", "llm", "embedding"
-      // Path matching is disabled for AI; detection is import-only (see matchesSignal)
+      // Path matching is disabled for AI; detection is import-only
       "openai", "groq", "openrouter", "@anthropic-ai/sdk", "anthropic",
       "google-generative-ai", "@google/generative-ai", "@google/genai", "cohere",
       "mistralai", "together", "replicate", "huggingface",
@@ -126,7 +128,6 @@ const FEATURE_SIGNALS: Array<{
       "pino", "winston", "bunyan", "morgan",
       "@sentry/node", "@sentry/nextjs", "sentry",
       "datadog", "dd-trace", "opentelemetry", "@opentelemetry",
-      "posthog", "@posthog",
       "logger", "telemetry", "tracing",
     ],
     purpose: "Handles application logging, error tracking, and observability."
@@ -471,7 +472,7 @@ export function detectFeatures(
 
   for (const signal of FEATURE_SIGNALS) {
     const evidence = technicalFiles
-      .filter((file) => matchesSignal(file, analyses[file.path], signal.terms, signal.name))
+      .filter((file) => matchesSignal(file, analyses[file.path], signal.terms, signal.importOnly))
       .map((file) => file.path)
       .sort((left, right) =>
         featureFilePriority(signal.name, left) - featureFilePriority(signal.name, right)
@@ -839,9 +840,9 @@ function matchesSignal(
   file: ScannedFile,
   analysis: FileAnalysis | undefined,
   terms: string[],
-  featureName?: string
+  importOnly?: boolean
 ): boolean {
-  if (featureName === "AI Integration") {
+  if (importOnly) {
     if (!analysis) return false;
     return analysis.imports.some(isAiProviderImport);
   }
@@ -859,6 +860,15 @@ function matchesSignal(
   return false;
 }
 
+const regexCache = new Map<string, RegExp>();
+
+function getOrCompilePattern(term: string): RegExp {
+  if (regexCache.has(term)) return regexCache.get(term)!;
+  const pattern = new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`);
+  regexCache.set(term, pattern);
+  return pattern;
+}
+
 function matchesPathTerm(path: string, term: string): boolean {
   // All terms ≤7 chars use word-boundary matching to prevent partial matches.
   //
@@ -867,7 +877,7 @@ function matchesPathTerm(path: string, term: string): boolean {
   //            "upload" must not match "LoginUploadWidget.tsx"
   // ≥8 chars: substring is fine — long terms are specific enough (e.g. "elasticsearch")
   if (term.length <= 7) {
-    return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path);
+    return getOrCompilePattern(term).test(path);
   }
   return path.includes(term);
 }

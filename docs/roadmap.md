@@ -155,7 +155,33 @@ Do not skip this. Perfect code with zero users = wasted effort.
 
 ---
 
-## Phase 3 — AI Experience
+## Phase 3 — Frontend SPA Support
+**Goal:** Expand analysis coverage to pure frontend projects that do not rely on file-based or server-side routing.
+
+> Rationale: Frontend SPA support is still JS/TS — same language, different architectural pattern. It belongs here, before AI provider expansion, because the quality of what DevMap analyzes matters more than how many providers can analyze it. A Vite + React Router app should be a first-class citizen, not a Phase 5 afterthought.
+
+**Tasks:**
+
+- `clientRouteDetector.ts` — React Router, Vue Router, TanStack Router, Svelte routing
+- Store extraction
+  - Zustand
+  - Redux Toolkit
+  - Pinia
+  - Vuex (legacy)
+- Client-side entry point detection
+- Client-side feature detection
+- Better dependency graph for SPA architectures
+
+**Full support for:**
+- React SPA (Vite + React Router)
+- Vue SPA (Vite + Vue Router / Pinia)
+- Svelte SPA (Vite + Svelte routing)
+
+**Deliverable:** `devmap analyze` produces accurate snapshots for pure frontend SPA projects, with no requirement for Next.js, Nuxt, or SvelteKit.
+
+---
+
+## Phase 4 — AI Experience
 **Goal:** Make AI understanding faster, more consistent, and provider-agnostic.
 
 **Tasks:**
@@ -180,7 +206,7 @@ Do not skip this. Perfect code with zero users = wasted effort.
 
 ---
 
-## Phase 4 — Agent Layer
+## Phase 5 — Agent Layer
 **Goal:** DevMap becomes the persistent context layer shared between developers and AI agents.
 
 Static analysis remains the source of truth. Runtime context is stored separately so AI agents can build upon previous understanding without modifying analysis results.
@@ -271,42 +297,14 @@ Instead of rebuilding repository understanding every session, agents reuse exist
 
 ---
 
-## Phase 5 — Universal Analyzer
+## Phase 6 — Universal Analyzer
 **Goal:** Expand DevMap beyond fullstack JavaScript/TypeScript while preserving the same analysis pipeline and snapshot format.
 
-Phase 5 extends the static analysis engine to additional ecosystems through language-specific analyzers and extractors. Every supported language should produce the same high-level snapshot structure, allowing all DevMap commands to work consistently regardless of the underlying technology.
+Phase 6 extends the static analysis engine to additional ecosystems through language-specific analyzers and extractors. Every supported language should produce the same high-level snapshot structure, allowing all DevMap commands to work consistently regardless of the underlying technology.
 
 ---
 
-### Phase 5a — Frontend SPA Support
-
-Support projects that do not rely on file-based routing.
-
-**Tasks:**
-
-- `clientRouteDetector.ts` — React Router, Vue Router, TanStack Router, Svelte routing
-- Store extraction
-  - Zustand
-  - Redux Toolkit
-  - Pinia
-  - Vuex (legacy)
-- Client-side entry point detection
-- Client-side feature detection
-- Better dependency graph for SPA architectures
-
-**Deliverable:**
-
-Full support for:
-
-- React SPA
-- Vue SPA
-- Svelte SPA
-
-without requiring Next.js, Nuxt, or SvelteKit.
-
----
-
-### Phase 5b — Multi-language Support (Community-driven)
+### Phase 6a — Multi-language Support (Community-driven)
 
 Each language adds its own parser, analyzer, and extractor while producing the same normalized DevMap snapshot.
 
@@ -367,7 +365,7 @@ DevMap analyzes the majority of modern web and application codebases using the s
 
 ---
 
-## Phase 6 — Platform (Vision)
+## Phase 7 — Platform (Vision)
 **Goal:** Team and cloud features. Requires revenue model first.
 
 - Web dashboard for snapshot history and visualization
@@ -376,21 +374,21 @@ DevMap analyzes the majority of modern web and application codebases using the s
 - CI/CD integration — auto-analyze on push
 - Monitoring — track architectural drift over time
 
-**Note:** Do not plan this in detail until Phase 5 ships and revenue model exists.
+**Note:** Do not plan this in detail until Phase 6 ships and revenue model exists.
 
 ---
 
 ## Version History
 
 | Version | Phase | Description |
-|---|---|---|
-| 0.1.0 | 1 | init + analyze + onboarding + doctor |
-| 0.1.0 | 1 | release |
-| 0.2.0 | 2 | devmap map |
-| 0.3.0 | 2 | devmap explain |
-| 0.4.0 | 2 | devmap flow |
-| 1.0.0 | 1 | Update |
-| 2.0.0 | 3 | OpenAI + Gemini + Ollama |
-| 3.0.0 | 4 | Agent Layer — knowledge persistence |
-| 4.0.0 | 5 | Universal Analyzer |
-| 5.0.0 | 6 | Platform — dashboard + team features |
+|---------|-------|-------------|
+| 0.1.0 | 1 | `init` + `analyze` + `onboarding` + `doctor` — first public release |
+| 0.2.0 | 2 | `devmap map` |
+| 0.3.0 | 2 | `devmap explain` |
+| 0.4.0 | 2 | `devmap flow` |
+| 1.0.0 | 2 | Stable release — all Phase 2 commands ship and are production-ready |
+| 1.1.0 | 3 | Frontend SPA support (React / Vue / Svelte without framework routing) |
+| 2.0.0 | 4 | Multi-provider AI (OpenAI + Gemini + Ollama) |
+| 3.0.0 | 5 | Agent Layer — persistent context across sessions |
+| 4.0.0 | 6 | Universal Analyzer — multi-language support |
+| 5.0.0 | 7 | Platform — dashboard + team features |

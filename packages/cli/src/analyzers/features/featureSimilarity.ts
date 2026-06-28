@@ -387,9 +387,10 @@ export function fingerprintSimilarity(a: FeatureFingerprint, b: FeatureFingerpri
   );
 
   // tanpa nameSimilarity karena fingerprint tidak menyimpan nama
+  const { weights } = DEFAULT_SIMILARITY_CONFIG;
   return (
-    fileScore   * (WEIGHTS.fileOverlap / (1 - WEIGHTS.nameSimilarity)) +
-    termScore   * (WEIGHTS.termOverlap / (1 - WEIGHTS.nameSimilarity)) +
-    entityScore * (WEIGHTS.entityOverlap / (1 - WEIGHTS.nameSimilarity))
+    fileScore   * (weights.fileOverlap / (1 - weights.nameSimilarity)) +
+    termScore   * (weights.termOverlap / (1 - weights.nameSimilarity)) +
+    entityScore * (weights.entityOverlap / (1 - weights.nameSimilarity))
   );
 }

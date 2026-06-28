@@ -9,12 +9,12 @@ Branch: `hardening-merge`
 | 1. featureSimilarity.ts — Config + explainability | ✅ Done | Session 1 |
 | 2. featureDetector.ts — Entity files populate | ✅ Done | Session 1 |
 | 3. featureMerge.ts — Fingerprint + safety fixes | ✅ Done | Session 1 |
-| 4. projectMap.ts — Confidence boost fix | ⏳ Pending | Next session |
-| 5. featureDetector.ts — Signal fixes | ⏳ Pending | Next session |
-| 6. domainInference.ts — Medium confidence | ⏳ Pending | Next session |
-| 7. featureDetector.ts — Regex pre-compile | ⏳ Pending | Next session |
-| 8. Unit test baru (22 skenario) | ⏳ Pending | Next session |
-| 9. Regresi + type check | ⏳ Pending | Next session |
+| 4. projectMap.ts — Confidence boost fix | ✅ Done | Session 2 |
+| 5. featureDetector.ts — Signal fixes | ✅ Done | Session 2 |
+| 6. domainInference.ts — Medium confidence | ✅ Done | Session 2 |
+| 7. featureDetector.ts — Regex pre-compile | ✅ Done | Session 2 |
+| 8. Unit test baru (22 skenario) | ✅ Done | Session 2 |
+| 9. Regresi + type check | ✅ Done | Session 2 |
 
 ## Tujuan
 
@@ -204,39 +204,30 @@ Check: tidak ada duplicate features, confidence masuk akal, domain inference dap
 
 ---
 
-## Next Session — Continue from Step 4
+## Semua Selesai ✅
 
-### Context from Session 1
+Semua 9 steps telah selesai dalam 2 sesi.
 
-**Sudah selesai:**
-1. ✅ `featureSimilarity.ts` — Config extraction, explainability, `MAX_SEARCH_TERMS=8`
-   - Exports: `MAX_SEARCH_TERMS`, `FeatureSimilarityConfig`, `DEFAULT_SIMILARITY_CONFIG`, `SimilarityExplanation`, `computeSimilarityWithExplanation`
-   - `computeSimilarity`, `isSimilarFeature`, `findSimilarFeature` accept optional `config?`
-2. ✅ `featureDetector.ts` — Entity files populated
-   - `entityGraphToFeatures(entityGraph, files)` now accepts `files: ScannedFile[]`
-   - Entity features now have proper `files` + `evidence` arrays
-3. ✅ `featureMerge.ts` — Fingerprint integration + safety fixes
-   - `toFeatureIdentity` uses `buildFeatureFingerprint`
-   - `extractRelatedEntities` filters entity names properly
-   - `mergeFeatureData`: purpose/businessFlow smart fallback, entryPoints union, searchTerms cap at 8
+### Ringkasan Session 2 (ini)
 
-**Belum selesai (untuk next session):**
-4. `projectMap.ts` — Confidence boost quality gate (`attachFeatureEntryPoints`)
-5. `featureDetector.ts` — Signal fixes (PostHog dedup, importOnly flag)
-6. `domainInference.ts` — Include medium confidence features
-7. `featureDetector.ts` — Regex pre-compile
-8. Unit test baru — 22 skenario
-9. Regresi + type check
+| Step | Status |
+|------|--------|
+| 4. `projectMap.ts` — Confidence boost fix | ✅ `attachFeatureEntryPoints` now accepts `analyses` param; confidence boost requires at least 1 evidence file with `analysisConfidence: "high"` |
+| 5. `featureDetector.ts` — Signal fixes | ✅ Removed `"posthog"`, `"@posthog"` from Logging & Monitoring; replaced hardcoded `featureName === "AI Integration"` with `importOnly?: true` flag on signal type |
+| 6. `domainInference.ts` — Medium confidence | ✅ `buildDomainInferenceInput` now includes both `"high"` and `"medium"` confidence features |
+| 7. `featureDetector.ts` — Regex pre-compile | ✅ Added `regexCache` Map to cache compiled RegExp patterns per term |
+| 8. Unit test baru (22 skenario) | ✅ All 22 tests pass |
+| 9. Regresi + type check | ✅ Typecheck passes; 22 new tests + 120 existing tests pass (17 pre-existing failures unchanged) |
 
-**Start command:**
+### Catatan Pre-existing Failures
+
+17 test failures are pre-existing (agent navigation ordering, context builder eval, init DEVMAP.md content, framework detection in CI) — tidak terkait hardening ini.
+
+### Verification Commands
+
 ```bash
-# From devmap root:
-git checkout hardening-merge
-# Read current state:
-cat hardening-merge-plan.md
-# Run typecheck after each step:
-pnpm typecheck
-pnpm test
+pnpm test:types        # typecheck
+pnpm test:unit         # unit tests (termasuk 22 baru)
 ```
 
 ---

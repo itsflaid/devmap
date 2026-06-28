@@ -21,6 +21,7 @@ import type { FeatureInfo } from "./featureDetector.js";
 import {
   findSimilarFeature,
   type FeatureIdentity,
+  MAX_SEARCH_TERMS,
   DEFAULT_SIMILARITY_THRESHOLD,
 } from "./featureSimilarity.js";
 
@@ -31,11 +32,11 @@ import {
 export function toFeatureIdentity(feature: FeatureInfo): FeatureIdentity {
   return {
     name: feature.name,
-    files: feature.files,
-    searchTerms: feature.searchTerms,
-    // FeatureInfo tidak punya relatedEntities field, tapi searchTerms
-    // sudah include entity names dari entityGraphToFeatures — reuse itu.
-    relatedEntities: extractRelatedEntities(feature),
+    // Sort arrays deterministically agar fingerprint dan similarity
+    // comparison konsisten antar-run.
+    files: [...feature.files].sort(),
+    searchTerms: [...feature.searchTerms].sort(),
+    relatedEntities: extractRelatedEntities(feature).sort(),
     purpose: feature.purpose,
   };
 }
@@ -44,10 +45,14 @@ export function toFeatureIdentity(feature: FeatureInfo): FeatureIdentity {
  * extractRelatedEntities — derive entity names dari feature data.
  *
  * entityGraphToFeatures() inject entity name + owned/peer names ke searchTerms.
- * capabilitiesToFeatures() tidak inject entity names ke searchTerms by default —
- * tapi name pattern "X Management" biasanya mengandung entity name.
+ * capabilitiesToFeatures() juga inject entity names via cap.entities.
  *
- * Ini heuristic minimal, bukan perfect parser. Cukup buat similarity boost.
+ * Filter ketat: hanya entity name dari feature name pattern, bukan asal-asalan
+ * dari searchTerms (yang bisa berisi generic technical keywords).
+ *
+ * entityOverlap di similarity engine tetap dapat sinyal dari searchTerms
+ * melalui termOverlap — jadi entityOverlap khusus menangkap entity name
+ * yang eksplisit dari feature name "X Management".
  */
 function extractRelatedEntities(feature: FeatureInfo): string[] {
   const entities: string[] = [];
@@ -58,13 +63,11 @@ function extractRelatedEntities(feature: FeatureInfo): string[] {
     entities.push(nameMatch[1].trim());
   }
 
-  // Ambil terms yang kemungkinan entity name (Title Case, bukan generic keyword)
-  const genericKeywords = new Set([
-    "management", "crud", "system", "feature", "service",
-    "module", "handler", "api", "data", "info"
-  ]);
+  // Hanya ambil searchTerms yang eksplisit Title Case (entity names).
+  // searchTerms umumnya lowercase, jadi ini filter natural.
+  // Terms dari FEATURE_SIGNALS (technical keywords) tidak akan lulus.
   for (const term of feature.searchTerms) {
-    if (term.length > 3 && !genericKeywords.has(term.toLowerCase())) {
+    if (/^[A-Z]/.test(term)) {
       entities.push(term);
     }
   }
@@ -118,26 +121,49 @@ export function mergeIntoFeatureList(
  *
  * Rules:
  *   - name: existing wins (canonical first-seen)
- *   - purpose: existing wins (tidak perlu overwrite jika sudah ada)
+ *   - purpose: existing wins KECUALI existing adalah generic fallback
  *   - files: union (dedup)
  *   - evidence: union (dedup)
- *   - searchTerms: union (capped at 12 biar tidak bloat)
- *   - confidence: ambil yang lebih tinggi
- *   - entryPoints: existing wins (sudah di-rank)
- *   - businessFlow: existing wins kalau non-empty
+ *   - searchTerms: union (capped di MAX_SEARCH_TERMS)
+ *   - confidence: ambil yang lebih tinggi (jangan downgrade)
+ *   - entryPoints: union — domain feature bisa bawa entryPoints baru
+ *   - businessFlow: existing wins jika meaningful, fallback ke addition
  */
 export function mergeFeatureData(existing: FeatureInfo, addition: FeatureInfo): FeatureInfo {
+  const resolvedPurpose = isGenericPurpose(existing.purpose) && !isGenericPurpose(addition.purpose)
+    ? addition.purpose
+    : existing.purpose;
+
+  const resolvedBusinessFlow = existing.businessFlow.length > 0
+      && !isPlaceholderBusinessFlow(existing.businessFlow)
+    ? existing.businessFlow
+    : addition.businessFlow.length > 0
+      ? addition.businessFlow
+      : existing.businessFlow;
+
   return {
     ...existing,
+    purpose: resolvedPurpose,
     files: dedup([...existing.files, ...addition.files]),
     evidence: dedup([...existing.evidence, ...addition.evidence]),
-    searchTerms: dedup([...existing.searchTerms, ...addition.searchTerms]).slice(0, 12),
+    entryPoints: dedup([...existing.entryPoints, ...addition.entryPoints]),
+    searchTerms: dedup([...existing.searchTerms, ...addition.searchTerms]).slice(0, MAX_SEARCH_TERMS),
+    businessFlow: resolvedBusinessFlow,
     confidence: higherConfidence(existing.confidence, addition.confidence),
-    // entryPoints: existing wins — sudah di-rank dan dipilih dengan baik
-    // businessFlow: existing wins — kalau sudah ada, biarkan
-    // entryPoint: existing wins
-    // name, purpose: existing wins (canonical)
   };
+}
+
+function isGenericPurpose(purpose: string): boolean {
+  const lower = purpose.toLowerCase();
+  return (
+    /^identifies .+ capability/i.test(lower)
+    || /^manages .+ data and operations\.?$/i.test(lower)
+    || lower.length === 0
+  );
+}
+
+function isPlaceholderBusinessFlow(flow: string[]): boolean {
+  return flow.length === 1 && /^Identify files related to /i.test(flow[0]);
 }
 
 // ---------------------------------------------------------------------------

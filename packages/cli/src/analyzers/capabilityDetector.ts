@@ -56,7 +56,6 @@ export function detectCapabilities(
   const pageRoutes = routes.filter((r) => r.kind === "page");
 
   // --- CRUD detection ---
-  // Group routes by resource (base path segment) lalu cek method coverage
   const crudCapabilities = detectCrudCapabilities(apiRoutes, entityGraph);
   capabilities.push(...crudCapabilities);
 
@@ -64,7 +63,6 @@ export function detectCapabilities(
   const behavioral = detectBehavioralCapabilities(apiRoutes, pageRoutes, entityGraph);
   capabilities.push(...behavioral);
 
-  // Deduplicate kalau ada overlap
   return deduplicateCapabilities(capabilities);
 }
 
@@ -72,23 +70,10 @@ export function detectCapabilities(
 // CRUD detection
 // ---------------------------------------------------------------------------
 
-/**
- * detectCrudCapabilities — group API routes by resource, cek HTTP method coverage.
- *
- * Logic:
- *   /api/snippets         GET POST      → resource "snippet", partial CRUD
- *   /api/snippets/[id]    GET PUT DELETE → resource "snippet", full CRUD
- *
- *   Gabungkan methods dari semua routes ke resource yang sama.
- *   GET + (POST atau PUT) + DELETE = full CRUD → confidence "high"
- *   Hanya GET = read-only → confidence "medium"
- *   Hanya POST = write-only → confidence "medium"
- */
 function detectCrudCapabilities(
   apiRoutes: RouteInfo[],
   entityGraph: EntityGraph
 ): CapabilityInfo[] {
-  // Map: resourceName → { methods: Set, files: Set }
   const resourceMap = new Map<string, { methods: Set<string>; files: Set<string> }>();
 
   for (const route of apiRoutes) {
@@ -114,7 +99,6 @@ function detectCrudCapabilities(
     const hasWrite = methods.has("POST") || methods.has("PUT") || methods.has("PATCH");
     const hasDelete = methods.has("DELETE");
 
-    // Perlu minimal read+write atau write+delete buat dianggap CRUD meaningful
     if (!hasRead && !hasWrite) continue;
 
     const entityName = resolveEntityName(resource, entityGraph);
@@ -136,18 +120,10 @@ function detectCrudCapabilities(
 // Behavioral capabilities
 // ---------------------------------------------------------------------------
 
-/**
- * BEHAVIORAL_SIGNALS — map route patterns ke capability kinds.
- *
- * Ordered dari paling spesifik ke paling general.
- * Tiap signal: patterns di-test terhadap route.path, bukan file path.
- */
 const BEHAVIORAL_SIGNALS: Array<{
   kind: CapabilityKind;
   name: string;
-  // Test terhadap route path (/api/snippets/[id]/share)
   pathPatterns: RegExp[];
-  // Minimum routes yang match buat confidence "high" (default 1 = "medium")
   highConfidenceAt?: number;
 }> = [
   // Sharing
@@ -164,7 +140,7 @@ const BEHAVIORAL_SIGNALS: Array<{
     pathPatterns: [/\/(publish|unpublish|draft|drafts)(\/|$)/i],
     highConfidenceAt: 1
   },
-  // Collaboration — workspace + members
+  // Collaboration
   {
     kind: "collaboration",
     name: "Team Collaboration",
@@ -209,14 +185,17 @@ const BEHAVIORAL_SIGNALS: Array<{
     ],
     highConfidenceAt: 1
   },
-  // Real-time
+  // Real-time — only explicit transport-level signals.
+  // "event/events/subscribe" dihapus: terlalu generic.
+  // Calendar events, DOM events, subscription management semua bisa match
+  // padahal bukan real-time transport feature.
   {
     kind: "real-time",
     name: "Real-time Features",
     pathPatterns: [
       /\/(ws|websocket|socket)(\/|$)/i,
       /\/(live|stream|streaming)(\/|$)/i,
-      /\/(event|events|subscribe)(\/|$)/i,
+      /\/(sse|server-sent)(\/|$)/i,
     ],
     highConfidenceAt: 1
   },
@@ -255,7 +234,6 @@ function detectBehavioralCapabilities(
 
     if (matched.length === 0) continue;
 
-    // Extract entity names dari matched route paths
     const entities = [...new Set(
       matched
         .map((r) => extractResourceName(r.path))
@@ -282,16 +260,6 @@ function detectBehavioralCapabilities(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * extractResourceName — extract resource name dari route path.
- *
- * /api/snippets             → "snippet"
- * /api/snippets/[id]        → "snippet"
- * /api/snippets/[id]/share  → "snippet"
- * /api/workspaces/[id]/members → "workspace"
- *
- * Ambil segment non-dynamic pertama setelah "api" prefix.
- */
 function extractResourceName(path: string): string | null {
   const segments = path
     .split("/")
@@ -303,37 +271,26 @@ function extractResourceName(path: string): string | null {
 
   const segment = segments[0].toLowerCase();
 
-  // Skip terlalu pendek atau common non-resource segments
   if (segment.length <= 2) return null;
   if (NON_RESOURCE_SEGMENTS.has(segment)) return null;
 
   return segment;
 }
 
-/**
- * resolveEntityName — coba match resource name ke entity yang dikenal.
- *
- * "snippet" → cek entityGraph → ada "Snippet"? → return "Snippet"
- * "snippets" → singularize → "Snippet" → ada di graph? → return "Snippet"
- * "unknown-resource" → capitalize fallback → "Unknown-resource"
- */
 function resolveEntityName(resource: string, entityGraph: EntityGraph): string {
   const lower = resource.toLowerCase();
 
-  // Direct match (case-insensitive)
   const direct = entityGraph.entityNames.find(
     (name) => name.toLowerCase() === lower
   );
   if (direct) return direct;
 
-  // Singularized match
   const singular = singularize(lower);
   const singularMatch = entityGraph.entityNames.find(
     (name) => name.toLowerCase() === singular.toLowerCase()
   );
   if (singularMatch) return singularMatch;
 
-  // Fallback: capitalize
   return singular;
 }
 
@@ -365,7 +322,6 @@ function deduplicateCapabilities(capabilities: CapabilityInfo[]): CapabilityInfo
       continue;
     }
 
-    // Merge — gabungkan entities + evidence, ambil confidence tertinggi
     seen.set(cap.kind, {
       ...existing,
       entities: [...new Set([...existing.entities, ...cap.entities])],
@@ -385,8 +341,15 @@ function higherConfidence(
   return rank[a] >= rank[b] ? a : b;
 }
 
+// NON_RESOURCE_SEGMENTS — path segments yang bukan nama resource.
+//
+// "history" ditambahkan karena hampir selalu sub-resource dari entity lain
+// (conversation history, chat history) bukan resource standalone.
+// Kalau dibiarkan, route /conversation/[id]/history spawn "History Management"
+// atau trigger false positive real-time detection.
 const NON_RESOURCE_SEGMENTS = new Set([
   "auth", "oauth", "callback", "health",
   "ping", "status", "public", "internal",
   "static", "assets", "files", "me", "self",
+  "history",
 ]);

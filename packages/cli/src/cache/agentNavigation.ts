@@ -26,12 +26,23 @@ export async function writeAgentNavigationFiles(
   await mkdir(featureDirectory, { recursive: true });
   await removeStaleFeatureMaps(featureDirectory);
 
-  const featureIndexes = snapshot.features.map((feature) =>
+  // Dedup by id — safety net for features that generate the same id,
+  // e.g. "Checklist Item Management" and "checklist-item Management"
+  // both resolve to "checklist-item-management". First-seen wins.
+  const seenIds = new Set<string>();
+  const dedupedFeatures = snapshot.features.filter((feature) => {
+    const id = featureId(feature.name);
+    if (seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
+
+  const featureIndexes = dedupedFeatures.map((feature) =>
     createFeatureIndex(feature, snapshot)
   );
   const featurePaths: string[] = [];
 
-  for (const feature of snapshot.features) {
+  for (const feature of dedupedFeatures) {
     const id = featureId(feature.name);
     const path = join(featureDirectory, `${id}.json`);
     await writeJson(path, createFeatureMap(id, feature, snapshot));

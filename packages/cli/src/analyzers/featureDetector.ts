@@ -509,10 +509,6 @@ export function detectFeatures(
 // Capabilities with no resolvable entry points are dropped — they represent
 // route patterns detected without backing implementation files, which
 // produces low-quality features (empty criticalFiles, misleading names).
-//
-// Example: ChatMe's "Message Exchange" capability has entryPoints: [] because
-// Message is the core data model (notes), not a messaging feature. Dropping
-// it avoids surfacing a misleading feature with zero file evidence.
 // ---------------------------------------------------------------------------
 function capabilitiesToFeatures(capabilities: CapabilityInfo[]): Array<FeatureInfo | null> {
   return capabilities.map((cap) => {
@@ -581,9 +577,6 @@ function purposeFromCapability(cap: CapabilityInfo): string {
 //
 //   PEER       — many-to-many associations. Shown as "associates with X".
 //
-//   REFERENCED-BY — other entities holding FK to this entity.
-//                NOT included in purpose — belongs to the referencing entity.
-//
 // Infrastructure entities (auth provider internals, ORM bookkeeping) are
 // excluded entirely via INFRASTRUCTURE_ENTITY_NAMES.
 // ---------------------------------------------------------------------------
@@ -599,16 +592,11 @@ const TRUE_CHILD_SUFFIXES = /(?:Item|Entry|Detail|Line|Row|Part|Step|Variant|Opt
  *   1. Exactly ONE parent owns it via one-to-many (single exclusive owner)
  *   2. It has NO outgoing one-to-many of its own (leaf node)
  *      OR its name has a child-like suffix (Item, Entry, Detail, etc.)
- *
- * Rationale for condition 2:
- *   - ChecklistItem: single parent (Message), no children, suffix "Item" → true child ✅
- *   - Room: single parent (User) BUT owns Message[] → NOT true child, gets own feature ✅
- *   - Message: owned by User+Room (2 parents) → NOT true child, gets own feature ✅
  */
 function isTrueChildEntity(entityName: string, relations: RelationInfo[]): boolean {
   const parents = relations.filter((r) => r.to === entityName && r.kind === "one-to-many");
-  if (parents.length === 0) return false; // no parent = not a child
-  if (parents.length > 1) return false;   // multiple parents = shared entity
+  if (parents.length === 0) return false;
+  if (parents.length > 1) return false;
 
   const hasOwnChildren = relations.some(
     (r) => r.from === entityName && r.kind === "one-to-many"
@@ -623,7 +611,7 @@ function isTrueChildEntity(entityName: string, relations: RelationInfo[]): boole
 function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
   if (entityGraph.source === "empty") return [];
 
-  // Deduplicate relations across the graph (entities each hold their own slice)
+  // Deduplicate relations across the graph
   const relations: RelationInfo[] = [];
   const seenRelKeys = new Set<string>();
   for (const entity of entityGraph.entities) {
@@ -636,7 +624,6 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
     }
   }
 
-  // Build true child set using the heuristic
   const trueChildNames = new Set<string>(
     entityGraph.entities
       .map((e) => e.name)
@@ -652,13 +639,9 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
     : entityGraph.entities;
 
   for (const entity of meaningfulEntities.slice(0, 8)) {
-    // Skip true child entities — they appear inside their parent's purpose
     if (trueChildNames.has(entity.name)) continue;
-
-    // Skip known infrastructure entities — auth provider internals, ORM bookkeeping
     if (INFRASTRUCTURE_ENTITY_NAMES.has(entity.name)) continue;
 
-    // OWNED: non-infra, non-true-child entities this entity owns via one-to-many
     const ownedNames = relations
       .filter((r) => r.from === entity.name && r.kind === "one-to-many")
       .map((r) => r.to)
@@ -671,7 +654,6 @@ function entityGraphToFeatures(entityGraph: EntityGraph): FeatureInfo[] {
 
     const allOwned = [...new Set([...ownedNames, ...oneToOneOwned])];
 
-    // PEER: many-to-many associations — not ownership, just relationships
     const peerNames = relations
       .filter((r) =>
         r.kind === "many-to-many"
@@ -765,8 +747,27 @@ function createFeatureInfo(
   };
 }
 
+/**
+ * normalizeFeatureName — strip semua non-alphanumeric, lowercase.
+ *
+ * Dipakai di mergeFeature untuk deduplication yang toleran terhadap
+ * perbedaan separator dan capitalization.
+ *
+ * Contoh:
+ *   "Checklist Item Management" → "checklistitemmanagement"
+ *   "checklist-item Management" → "checklistitemmanagement"  ← sama → di-merge
+ *   "User Management"           → "usermanagement"
+ *   "user-management"           → "usermanagement"          ← sama → di-merge
+ */
+function normalizeFeatureName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
-  const existingIndex = features.findIndex((feature) => feature.name === addition.name);
+  const additionKey = normalizeFeatureName(addition.name);
+  const existingIndex = features.findIndex(
+    (feature) => normalizeFeatureName(feature.name) === additionKey
+  );
   if (existingIndex === -1) {
     features.push(addition);
     return;
@@ -854,9 +855,13 @@ function matchesSignal(
 }
 
 function matchesPathTerm(path: string, term: string): boolean {
-  // Short terms (≤3 chars) — whole-word match only
-  // Prevents "ai" matching "detail", "tailwind", "email"
-  if (term.length <= 3) {
+  // All terms ≤7 chars use word-boundary matching to prevent partial matches.
+  //
+  // ≤3 chars: "ai" must not match "detail", "tailwind", "email"
+  // 4-7 chars: "search" must not match "SearchSurah.tsx" (component name, not a path segment)
+  //            "upload" must not match "LoginUploadWidget.tsx"
+  // ≥8 chars: substring is fine — long terms are specific enough (e.g. "elasticsearch")
+  if (term.length <= 7) {
     return new RegExp(`(?:^|[/._-])${escapeRegex(term)}(?:[/._-]|$)`).test(path);
   }
   return path.includes(term);

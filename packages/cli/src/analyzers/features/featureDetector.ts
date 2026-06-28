@@ -1,11 +1,17 @@
-import type { FileAnalysis } from "./fileAnalysis.js";
-import type { DatabaseInfo } from "./databaseDetector.js";
-import type { ScannedFile } from "./fileScanner.js";
-import type { RouteInfo } from "./routeDetector.js";
-import type { EntityGraph, RelationInfo } from "./extractors/types.js";
-import type { CapabilityInfo } from "./capabilityDetector.js";
-import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "./fileRole.js";
-import { isArchitectureSource } from "./sourceScope.js";
+import type {
+  FileAnalysis,
+  ScannedFile,
+  EntityGraph,
+  RelationInfo,
+} from "../analysis/index.js";
+import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "../analysis/index.js";
+import type {
+  DatabaseInfo,
+  RouteInfo,
+  CapabilityInfo,
+} from "../detectors/index.js";
+import { isArchitectureSource } from "../graph/index.js";
+import { mergeIntoFeatureList } from "./featureMerge.js";
 
 export type FeatureInfo = {
   name: string;
@@ -748,46 +754,14 @@ function createFeatureInfo(
 }
 
 /**
- * normalizeFeatureName — strip semua non-alphanumeric, lowercase.
+ * mergeFeature — wrapper untuk backward compat internal usage.
+ * Delegasi ke similarity-based mergeIntoFeatureList dari featureMerge.ts.
  *
- * Dipakai di mergeFeature untuk deduplication yang toleran terhadap
- * perbedaan separator dan capitalization.
- *
- * Contoh:
- *   "Checklist Item Management" → "checklistitemmanagement"
- *   "checklist-item Management" → "checklistitemmanagement"  ← sama → di-merge
- *   "User Management"           → "usermanagement"
- *   "user-management"           → "usermanagement"          ← sama → di-merge
+ * Alasan tidak hapus function ini: masih dipanggil di beberapa tempat di file ini.
+ * mergeIntoFeatureList menggantikan logika lama yang pakai normalizeFeatureName.
  */
-function normalizeFeatureName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
-  const additionKey = normalizeFeatureName(addition.name);
-  const existingIndex = features.findIndex(
-    (feature) => normalizeFeatureName(feature.name) === additionKey
-  );
-  if (existingIndex === -1) {
-    features.push(addition);
-    return;
-  }
-  const existing = features[existingIndex];
-  features[existingIndex] = {
-    ...existing,
-    files: [...new Set([...existing.files, ...addition.files])],
-    evidence: [...new Set([...existing.evidence, ...addition.evidence])],
-    searchTerms: [...new Set([...existing.searchTerms, ...addition.searchTerms])].slice(0, 8),
-    confidence: mergeTwoConfidences(existing.confidence, addition.confidence)
-  };
-}
-
-function mergeTwoConfidences(
-  a: FeatureInfo["confidence"],
-  b: FeatureInfo["confidence"]
-): FeatureInfo["confidence"] {
-  const rank: Record<FeatureInfo["confidence"], number> = { high: 2, medium: 1, low: 0 };
-  return rank[a] >= rank[b] ? a : b;
+  mergeIntoFeatureList(features, addition);
 }
 
 // ---------------------------------------------------------------------------

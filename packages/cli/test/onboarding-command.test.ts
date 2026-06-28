@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { onboardingCommand } from "../src/commands/onboarding.js";
 import type { Prompt } from "../src/utils/prompt.js";

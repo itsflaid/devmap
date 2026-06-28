@@ -1,6 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import type { ProjectMap } from "../analyzers/projectMap.js";
+import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
 import { buildOnboardingModel } from "../onboarding/modelBuilder.js";
 import type { OnboardingLanguage, OnboardingModel, ReadingItem, FlowBlock } from "../onboarding/model.js";

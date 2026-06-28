@@ -1,5 +1,4 @@
-import type { FileAnalysis } from "./fileAnalysis.js";
-import type { ScannedFile } from "./fileScanner.js";
+import type { FileAnalysis, ScannedFile } from "../analysis/index.js";
 
 export type FileGraph = Record<string, string[]>;
 

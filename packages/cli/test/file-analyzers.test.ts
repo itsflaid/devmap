@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { analyzeFiles } from "../src/analyzers/analyzerRegistry.js";
-import type { ScannedFile } from "../src/analyzers/fileScanner.js";
+import { analyzeFiles } from "../src/analyzers/pipeline/analyzerRegistry.js";
+import type { ScannedFile } from "../src/analyzers/analysis/fileScanner.js";
 
 test("ts-morph analyzer extracts JavaScript and TypeScript structure", async () => {
   const file = createScannedFile("src/service.ts", [

@@ -7,7 +7,7 @@ import {
 import { buildAnalyzeMessages } from "../ai/prompts.js";
 import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
-import { createProjectMap } from "../analyzers/projectMap.js";
+import { createProjectMap } from "../analyzers/pipeline/index.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
 import { writeAgentNavigationFiles } from "../cache/agentNavigation.js";
 import { readConfig, type DevmapConfig } from "../utils/config.js";

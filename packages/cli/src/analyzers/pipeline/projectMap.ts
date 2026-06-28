@@ -1,36 +1,40 @@
-import { hashContent } from "../cache/fileHash.js";
+import { hashContent } from "../../cache/fileHash.js";
 import { analyzeFiles } from "./analyzerRegistry.js";
-import { detectDatabase, type DatabaseInfo } from "./databaseDetector.js";
-import { buildDependencyGraph, countReferences } from "./dependencyGraph.js";
-import { detectEntryPoints } from "./entryPoints.js";
+import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
+import {
+  detectDatabase, type DatabaseInfo,
+  detectFramework, detectFrameworks, type Framework,
+  detectRoutes, type RouteInfo,
+  detectExternalServices,
+  detectCapabilities, type CapabilityInfo,
+} from "../detectors/index.js";
+import {
+  buildDependencyGraph, countReferences,
+  detectEntryPoints,
+  isArchitectureSource,
+} from "../graph/index.js";
 import {
   authenticationFilePriority,
   detectAuthenticationSemanticRole,
   detectFeatures,
   orderAuthenticationFiles,
-  type FeatureInfo
-} from "./featureDetector.js";
-import type { ScannedFile } from "./fileScanner.js";
-import { scanFiles } from "./fileScanner.js";
+  mergeDomainFeatures,
+  type FeatureInfo,
+} from "../features/index.js";
 import {
-  detectFramework,
-  detectFrameworks,
-  type Framework
-} from "./frameworkDetector.js";
-import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
-import { detectRoutes, type RouteInfo } from "./routeDetector.js";
-import { detectExternalServices } from "./serviceDetector.js";
-import { isArchitectureSource } from "./sourceScope.js";
-import type { FileAnalysis, SymbolInfo } from "./fileAnalysis.js";
-import { extractEntities } from "./extractors/index.js";
-import { type EntityGraph } from "./extractors/types.js";
-import { detectCapabilities, type CapabilityInfo } from "./capabilityDetector.js";
+  scanFiles,
+  extractEntities,
+  type ScannedFile,
+  type EntityGraph,
+  type FileAnalysis,
+  type SymbolInfo,
+} from "../analysis/index.js";
 import {
   inferDomain,
   buildDomainInferenceInput,
   domainFeaturesToFeatureInfo,
-  type DomainInferenceResult
-} from "./domainInference.js";
+  type DomainInferenceResult,
+} from "../inference/index.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 
@@ -195,14 +199,12 @@ export async function createProjectMap(
     const result = await inferDomain(inferenceInput, callAI);
     if (result) {
       domain = result;
-      // Merge domain-specific features ke features list
+      // Merge domain-specific features ke features list.
+      // Pakai similarity engine — bukan name equality — sehingga
+      // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
+      // Canonical name (first-seen) dipertahankan oleh mergeDomainFeatures.
       const domainFeatures = domainFeaturesToFeatureInfo(result.domainFeatures);
-      for (const df of domainFeatures) {
-        // Hanya tambah kalau belum ada feature dengan nama sama
-        if (!features.some((f) => f.name.toLowerCase() === df.name.toLowerCase())) {
-          features.push(df);
-        }
-      }
+      mergeDomainFeatures(features, domainFeatures);
       features.sort((a, b) => a.name.localeCompare(b.name));
     }
   }

@@ -13,10 +13,8 @@ import type {
   SymbolInfo
 } from "./fileAnalysis.js";
 import type { ScannedFile } from "./fileScanner.js";
-import type { LanguagePreprocessor } from "./preprocessors/types.js";
-import { AstroPreprocessor } from "./preprocessors/astroPreprocessor.js";
-import { SveltePreprocessor } from "./preprocessors/sveltePreprocessor.js";
-import { VuePreprocessor } from "./preprocessors/vuePreprocessor.js";
+import { AstroPreprocessor, SveltePreprocessor, VuePreprocessor } from "./preprocessors/index.js";
+import type { LanguagePreprocessor } from "./preprocessors/index.js";
 
 // Native extensions — ts-morph parses these directly, no preprocessing needed.
 const NATIVE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);

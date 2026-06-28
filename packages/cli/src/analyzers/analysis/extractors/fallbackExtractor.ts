@@ -1,4 +1,4 @@
-import type { RouteInfo } from "../routeDetector.js";
+import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityInfo, IRouteFallbackExtractor } from "./types.js";
 
 // ---------------------------------------------------------------------------

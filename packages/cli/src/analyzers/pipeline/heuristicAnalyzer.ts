@@ -3,9 +3,9 @@ import type {
   FileAnalysis,
   FileAnalyzer,
   FunctionInfo,
-  SymbolInfo
-} from "./fileAnalysis.js";
-import type { ScannedFile } from "./fileScanner.js";
+  SymbolInfo,
+  ScannedFile,
+} from "../analysis/index.js";
 
 // TS/JS extensions are intentionally excluded here.
 // TsMorphAnalyzer handles .ts/.tsx/.js/.jsx with full AST accuracy (confidence: "high").

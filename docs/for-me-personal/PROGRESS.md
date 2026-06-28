@@ -1,6 +1,48 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-26
+Terakhir diperbarui: 2026-06-28
+
+## Update 2026-06-28
+
+### Analyzer Structural Refactor — Flat to Subdirectory Layout
+
+Memindahkan 30+ file dari `src/analyzers/` flat menjadi subdirektori berdasarkan
+tanggung jawab, tanpa mengubah satu baris logika analyzer.
+
+**Subdirektori baru:**
+
+- `pipeline/` — `projectMap.ts`, `analyzerRegistry.ts`, `filterEngine.ts`,
+  `featureMerge.ts`, `featureSimilarity.ts`, `entryPoints.ts`
+- `features/` — `featureDetector.ts`, `fileRole.ts`
+- `detectors/` — `frameworkDetector.ts`, `routeDetector.ts`,
+  `serviceDetector.ts`, `databaseDetector.ts`, `capabilityDetector.ts`
+- `analysis/` — `fileScanner.ts`, `fileAnalysis.ts`, `tsMorphAnalyzer.ts`,
+  `heuristicAnalyzer.ts`, `sourceScope.ts`
+- `graph/` — `dependencyGraph.ts`
+- `inference/` — `domainInference.ts`, `projectMetadata.ts`
+- `extractors/` — tetap (sudah ada)
+- `preprocessors/` — tetap (sudah ada)
+
+**Import path updates:**
+
+- `src/commands/analyze.ts` — `projectMap.ts` → `pipeline/projectMap.js`
+- `src/commands/doctor.ts` — 3 imports pointing to analyzers/* → new paths
+- `src/commands/onboarding.ts` — `projectMap.ts` → `pipeline/projectMap.js`
+- `src/cache/snapshot.ts` — `projectMap.ts` → `pipeline/projectMap.js`
+- `src/cache/agentNavigation.ts` — `projectMap.ts` → `pipeline/projectMap.js`
+- `src/onboarding/modelBuilder.ts` — `projectMap.ts` → `pipeline/projectMap.js`
+- `src/ai/contextBuilder.ts` — `analyzerRegistry.ts` → `pipeline/analyzerRegistry.js`
+- `src/ai/prompts.ts` — `analyzerRegistry.ts` → `pipeline/analyzerRegistry.js`
+- `src/ai/snapshotEnrichment.ts` — `projectMap.ts` → `pipeline/projectMap.js`
+- 13 test files — fixture imports and inline source paths updated
+
+**Verifikasi:**
+
+- `pnpm test:unit` — 98 pass, 17 fail (identik dengan pre-refactor)
+- `pnpm test:types` — lulus
+- Tidak ada test baru yang gagal akibat refactor
+
+---
 
 ## Update 2026-06-26
 

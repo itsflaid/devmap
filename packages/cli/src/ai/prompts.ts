@@ -1,4 +1,4 @@
-import type { ProjectMap } from "../analyzers/projectMap.js";
+import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import type { AiMessage } from "./types.js";
 
 export function buildAnalyzeMessages(snapshot: ProjectMap): AiMessage[] {

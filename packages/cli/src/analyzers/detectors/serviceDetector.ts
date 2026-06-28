@@ -1,5 +1,5 @@
-import type { ScannedFile } from "./fileScanner.js";
-import { isArchitectureSource } from "./sourceScope.js";
+import type { ScannedFile } from "../analysis/index.js";
+import { isArchitectureSource } from "../graph/index.js";
 
 const SERVICES: Array<[string[], string]> = [
   [["@prisma/client", "prisma"], "Prisma"],

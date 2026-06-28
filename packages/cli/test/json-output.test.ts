@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { analyzeCommand } from "../src/commands/analyze.js";
 import { configModelCommand } from "../src/commands/config.js";

@@ -4,16 +4,16 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { buildDependencyGraph, countReferences } from "../src/analyzers/dependencyGraph.js";
-import { scanFiles } from "../src/analyzers/fileScanner.js";
-import { shouldIgnorePath } from "../src/analyzers/filterEngine.js";
+import { buildDependencyGraph, countReferences } from "../src/analyzers/graph/dependencyGraph.js";
+import { scanFiles } from "../src/analyzers/analysis/fileScanner.js";
+import { shouldIgnorePath } from "../src/analyzers/analysis/filterEngine.js";
 import {
   detectFramework,
   detectFrameworks
-} from "../src/analyzers/frameworkDetector.js";
-import { detectFeatures } from "../src/analyzers/featureDetector.js";
-import { createProjectMap } from "../src/analyzers/projectMap.js";
-import { detectExternalServices } from "../src/analyzers/serviceDetector.js";
+} from "../src/analyzers/detectors/frameworkDetector.js";
+import { detectFeatures } from "../src/analyzers/features/featureDetector.js";
+import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
+import { detectExternalServices } from "../src/analyzers/detectors/serviceDetector.js";
 import {
   inspectSnapshot,
   isSnapshotStale,
@@ -295,7 +295,7 @@ test("structural feature flows describe behavior instead of repeating file lists
   const files = {
     "package.json": JSON.stringify({ name: "structural-flow-test" }),
     "src/index.ts": 'export { analyzeCommand } from "./commands/analyze.js";\n',
-    "src/commands/analyze.ts": 'import { createProjectMap } from "../analyzers/projectMap.js"; export async function analyzeCommand() { return createProjectMap(); }\n',
+    "src/commands/analyze.ts": 'import { createProjectMap } from "../analyzers/pipeline/projectMap.js"; export async function analyzeCommand() { return createProjectMap(); }\n',
     "src/analyzers/fileScanner.ts": "export async function scanFiles() { return []; }\n",
     "src/analyzers/analyzerRegistry.ts": "export async function analyzeFiles() { return {}; }\n",
     "src/analyzers/tsMorphAnalyzer.ts": "export class TsMorphAnalyzer {}\n",

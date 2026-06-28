@@ -1,4 +1,4 @@
-import type { ScannedFile } from "../fileScanner.js";
+import type { ScannedFile } from "../index.js";
 import type { EntityInfo, FieldInfo, RelationInfo, IEntityExtractor } from "./types.js";
 
 // ---------------------------------------------------------------------------

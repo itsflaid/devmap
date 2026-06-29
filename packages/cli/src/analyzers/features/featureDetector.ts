@@ -632,6 +632,7 @@ function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
       });
     })
     .map((f) => f.path)
+    .sort((a, b) => a.localeCompare(b))
     .slice(0, 5);
 }
 

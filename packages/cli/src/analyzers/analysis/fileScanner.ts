@@ -16,6 +16,7 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
 
   async function visit(directory: string): Promise<void> {
     const entries = await readdir(directory, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const entry of entries) {
       const absolutePath = join(directory, entry.name);

@@ -40,22 +40,22 @@ export const output = {
 
   step(message: string): void {
     if (isJsonOutput()) return;
-    console.log(`${color(">", "aqua")} ${message}`);
+    console.log(`${color("◆", "aqua")} ${message}`);
   },
 
   success(message: string): void {
     if (isJsonOutput()) return;
-    console.log(`${color("OK", "green")} ${message}`);
+    console.log(`${color("◆", "green")} ${message}`);
   },
 
   warning(message: string): void {
     if (isJsonOutput()) return;
-    console.log(`${color("WARN", "yellow")} ${message}`);
+    console.log(`${color("◆", "yellow")} ${message}`);
   },
 
   error(message: string): void {
     if (isJsonOutput()) return;
-    console.error(`${color("ERROR", "red")} ${message}`);
+    console.error(`${color("◆", "red")} ${message}`);
   },
 
   keyValue(key: string, value: string | number): void {
@@ -65,7 +65,7 @@ export const output = {
 
   item(value: string): void {
     if (isJsonOutput()) return;
-    console.log(`${color("•", "aqua")} ${value}`);
+    console.log(`${color("◆", "aqua")} ${value}`);
   },
 
   note(message: string): void {

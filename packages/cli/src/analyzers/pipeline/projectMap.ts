@@ -19,6 +19,7 @@ import {
   detectFeatures,
   orderAuthenticationFiles,
   mergeDomainFeatures,
+  classifyFileTier,
   type FeatureInfo,
 } from "../features/index.js";
 import {
@@ -294,6 +295,7 @@ function rankCriticalFiles(
     .filter((file) =>
       isArchitectureSource(file.path) && /\.[cm]?[jt]sx?$|\.prisma$/.test(file.path)
     )
+    .filter((file) => classifyFileTier(file.path) !== "excluded")
     .map((file) => {
       const referencedBy = references[file.path] ?? 0;
       const reasons: string[] = [];

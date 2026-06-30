@@ -3,10 +3,12 @@ export {
   detectAuthenticationSemanticRole,
   orderAuthenticationFiles,
   authenticationFilePriority,
+  classifyFileTier,
 } from "./featureDetector.js";
 export type {
   FeatureInfo,
   AuthSemanticRole,
+  FileTier,
 } from "./featureDetector.js";
 
 export {

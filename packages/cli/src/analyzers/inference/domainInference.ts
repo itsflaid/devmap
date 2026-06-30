@@ -1,6 +1,7 @@
 import type { EntityGraph } from "../analysis/index.js";
-import type { CapabilityInfo } from "../detectors/index.js";
+import type { CapabilityInfo, CapabilityKind } from "../detectors/index.js";
 import type { FeatureInfo } from "../features/index.js";
+import { classifyOwnershipTopology, type OwnershipPattern } from "./ownershipTopology.js";
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -35,6 +36,9 @@ export type DomainInferenceInput = {
   technicalFeatures: string[];   // feature names only
   routeCount: number;
   framework: string;
+  ownershipPattern: OwnershipPattern;
+  crossUserFields: string[];
+  absentCapabilities: string[];
 };
 
 // ---------------------------------------------------------------------------
@@ -59,7 +63,7 @@ type DomainInferenceCache = {
 
 function hashDomainInput(input: DomainInferenceInput): string {
   const stable = JSON.stringify({
-    // Sort semua array biar hash deterministic regardless of order
+    v: 2,
     entityNames: [...input.entityNames].sort(),
     relations: [...input.relations]
       .map((r) => `${r.from}:${r.kind}:${r.to}`)
@@ -68,6 +72,9 @@ function hashDomainInput(input: DomainInferenceInput): string {
     technicalFeatures: [...input.technicalFeatures].sort(),
     routeCount: input.routeCount,
     framework: input.framework,
+    ownershipPattern: input.ownershipPattern,
+    crossUserFields: [...input.crossUserFields].sort(),
+    absentCapabilities: [...input.absentCapabilities].sort(),
   });
   return createHash("sha256").update(stable).digest("hex").slice(0, 16);
 }
@@ -188,7 +195,10 @@ function buildDomainInferencePrompt(input: DomainInferenceInput): string {
     relations: input.relations.map((r) => `${r.from} ${r.kind} ${r.to}`),
     capabilities: input.capabilities,
     technicalFeatures: input.technicalFeatures,
-    routeCount: input.routeCount
+    routeCount: input.routeCount,
+    ownershipPattern: input.ownershipPattern,
+    crossUserFields: input.crossUserFields,
+    absentCapabilities: input.absentCapabilities,
   }, null, 2);
 
   return `You are analyzing a software project. Given this structural metadata, infer the project domain.
@@ -212,7 +222,8 @@ Respond with ONLY a JSON object (no markdown, no explanation):
 Rules:
 - domainFeatures: 3-6 features specific to this domain, not generic technical features
 - Do not include Authentication, Database, or other infrastructure as domainFeatures
-- Base everything on the metadata provided, not assumptions`;
+- Base everything on the metadata provided, not assumptions
+- Entity names alone (e.g. 'Message', 'Room', 'User') are NOT reliable signals of application domain. The same entity name can represent a chat message, an activity log, a personal note, or a comment — depending on ownership pattern, not naming. Use ownershipPattern and absentCapabilities as primary evidence: single_user_isolated strongly suggests a personal/private tool (notes, journal, tracker), not a multi-user communication platform. Only conclude 'chat' or 'messaging' domain if ownershipPattern is shared_access or direct_messaging, or detectedCapabilities includes collaboration/social/real-time.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -297,6 +308,11 @@ export function domainFeaturesToFeatureInfo(
 // Helper — build DomainInferenceInput dari projectMap data
 // ---------------------------------------------------------------------------
 
+const ALL_CAPABILITY_KINDS: CapabilityKind[] = [
+  "crud", "sharing", "collaboration", "discovery", "publishing",
+  "social", "file-management", "real-time", "search", "reporting",
+];
+
 export function buildDomainInferenceInput(
   entityGraph: EntityGraph,
   capabilities: CapabilityInfo[],
@@ -304,15 +320,26 @@ export function buildDomainInferenceInput(
   framework: string,
   routeCount: number
 ): DomainInferenceInput {
+  const detectedKinds = new Set(capabilities.map((c) => c.kind));
+  const absentCapabilities = ALL_CAPABILITY_KINDS.filter((k) => !detectedKinds.has(k));
+
+  const ownershipResult = classifyOwnershipTopology(
+    entityGraph,
+    entityGraph.relations
+  );
+
   return {
-    entityNames: entityGraph.entityNames.slice(0, 15), // cap buat hemat token
+    entityNames: entityGraph.entityNames.slice(0, 15),
     relations: entityGraph.relations.slice(0, 10),
-    capabilities: [...new Set(capabilities.map((c) => c.kind))],
+    capabilities: [...detectedKinds],
     technicalFeatures: features
       .filter((f) => f.confidence === "high" || f.confidence === "medium")
       .map((f) => f.name)
       .slice(0, 10),
     framework,
-    routeCount
+    routeCount,
+    ownershipPattern: ownershipResult.pattern,
+    crossUserFields: ownershipResult.crossUserFields.slice(0, 5),
+    absentCapabilities: absentCapabilities.slice(0, 8),
   };
 }

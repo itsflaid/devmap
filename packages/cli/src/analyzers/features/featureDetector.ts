@@ -32,6 +32,7 @@ const FEATURE_SIGNALS: Array<{
   terms: string[];
   purpose: string;
   importOnly?: true;
+  minimumDistinctFiles?: number;
 }> = [
   {
     name: "Authentication",
@@ -86,6 +87,7 @@ const FEATURE_SIGNALS: Array<{
   },
   {
     name: "Notifications",
+    minimumDistinctFiles: 2,
     terms: [
       "web-push", "pusher", "ably", "soketi", "firebase-messaging",
       "@firebase/messaging", "onesignal", "novu", "@novu",
@@ -104,6 +106,7 @@ const FEATURE_SIGNALS: Array<{
   },
   {
     name: "Search",
+    minimumDistinctFiles: 2,
     terms: [
       "meilisearch", "typesense", "algolia", "@algolia",
       "elasticsearch", "@elastic/elasticsearch",
@@ -152,6 +155,7 @@ const FEATURE_SIGNALS: Array<{
   },
   {
     name: "Analytics",
+    minimumDistinctFiles: 2,
     terms: [
       "posthog", "mixpanel", "@mixpanel", "amplitude",
       "google-analytics", "gtag", "plausible",
@@ -171,6 +175,7 @@ const FEATURE_SIGNALS: Array<{
   },
   {
     name: "CMS & Content",
+    minimumDistinctFiles: 2,
     terms: [
       "contentlayer", "@contentlayer", "sanity", "@sanity",
       "contentful", "strapi", "payload", "keystatic",
@@ -396,6 +401,28 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
 // ---------------------------------------------------------------------------
 const ENTRY_POINT_EXCLUDE_THRESHOLD = 90;
 
+export type FileTier = "primary" | "supporting" | "reference" | "excluded";
+
+export function classifyFileTier(path: string): FileTier {
+  const lower = path.toLowerCase();
+
+  if (/\/(prisma\/)?migrations?\//.test(lower)) return "excluded";
+  if (/\.sql$/.test(lower)) return "excluded";
+  if (/\/generated\//.test(lower) || /\.generated\./.test(lower)) return "excluded";
+  if (/\.(lock|log|map)$/.test(lower)) return "excluded";
+
+  if (/(^|\/)schema\.prisma$/.test(lower)) return "reference";
+  if (/\.(config|conf)\.[cm]?[jt]s$/.test(lower)) return "reference";
+
+  if (/\/(api|routes?)\//.test(lower)) return "primary";
+  if (/\.(service|usecase|action|route|handler)\.[cm]?[jt]sx?$/.test(lower)) return "primary";
+  if (/\/(hooks?|stores?)\//.test(lower)) return "primary";
+
+  if (/\.[cm]?[jt]sx?$/.test(lower)) return "supporting";
+
+  return "reference";
+}
+
 function scoreEntryPointRelevance(file: string, _context: string): number {
   const lower = file.toLowerCase();
 
@@ -480,6 +507,14 @@ export function detectFeatures(
       )
       .slice(0, 5);
 
+    const primaryEvidence = evidence.filter(
+      (f) => classifyFileTier(f) === "primary" || classifyFileTier(f) === "supporting"
+    );
+
+    if (signal.minimumDistinctFiles && primaryEvidence.length < signal.minimumDistinctFiles) {
+      continue;
+    }
+
     if (evidence.length > 0) {
       mergeFeature(features, createFeatureInfo(
         signal.name,
@@ -527,6 +562,10 @@ function capabilitiesToFeatures(capabilities: CapabilityInfo[]): Array<FeatureIn
 
     const entryPoints = scoredEvidence
       .filter((e) => e.score < ENTRY_POINT_EXCLUDE_THRESHOLD)
+      .filter((e) => {
+        const tier = classifyFileTier(e.file);
+        return tier === "primary" || tier === "supporting";
+      })
       .slice(0, 2)
       .map((e) => e.file);
 
@@ -615,11 +654,26 @@ function isTrueChildEntity(entityName: string, relations: RelationInfo[]): boole
   return false;
 }
 
+function entityFileTierScore(path: string): number {
+  if (/\.(prisma)$/.test(path)) return 50;
+  if (/\/(migrations?)\//.test(path)) return 100;
+  return 0;
+}
+
 function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
   const lowerName = entityName.toLowerCase();
   const nameSegments = splitNameToSegments(lowerName);
 
+  const EXCLUDED_EXTS = /\.(sql|lock|log)(\.[^/]+)?$/i;
+  const isNonSourceDoc = (p: string) =>
+    /\.md$/i.test(p) && !/\/docs\//.test(p.toLowerCase());
+
   return files
+    .filter((f) => isFeatureEvidenceFile(f.path))
+    .filter((f) => {
+      const lowerPath = f.path.toLowerCase();
+      return !EXCLUDED_EXTS.test(lowerPath) && !isNonSourceDoc(lowerPath);
+    })
     .filter((f) => {
       const lowerPath = f.path.toLowerCase();
       const pathSegments = lowerPath.split(/[/\\]/);
@@ -632,7 +686,11 @@ function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
       });
     })
     .map((f) => f.path)
-    .sort((a, b) => a.localeCompare(b))
+    .sort((a, b) => {
+      const tierDiff = entityFileTierScore(a) - entityFileTierScore(b);
+      if (tierDiff !== 0) return tierDiff;
+      return a.localeCompare(b);
+    })
     .slice(0, 5);
 }
 
@@ -710,14 +768,33 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
 
     const entityFiles = findEntityFiles(entity.name, files);
 
+    if (entityFiles.length === 0) continue;
+
+    const entryPoints = entityFiles
+      .map((file) => ({ file, score: scoreEntryPointRelevance(file, entity.name.toLowerCase()) }))
+      .sort((a, b) => a.score - b.score)
+      .filter((e) => e.score < ENTRY_POINT_EXCLUDE_THRESHOLD)
+      .filter((e) => {
+        const tier = classifyFileTier(e.file);
+        return tier === "primary" || tier === "supporting";
+      })
+      .slice(0, 2)
+      .map((e) => e.file);
+
+    let confidence: FeatureInfo["confidence"] = entityGraph.source === "prisma" ? "high" : "medium";
+    if (entityFiles.length === 1) {
+      const tier = classifyFileTier(entityFiles[0]);
+      if (tier === "reference") confidence = "low";
+    }
+
     features.push({
       name: `${entity.name} Management`,
       purpose,
       files: entityFiles,
-      entryPoints: [],
+      entryPoints,
       businessFlow: [],
       searchTerms,
-      confidence: entityGraph.source === "prisma" ? "high" : "medium",
+      confidence,
       evidence: entityFiles
     });
   }
@@ -771,6 +848,10 @@ function createFeatureInfo(
     .map((file) => ({ file, score: scoreEntryPointRelevance(file, name.toLowerCase()) }))
     .sort((a, b) => a.score - b.score)
     .filter((e) => e.score < ENTRY_POINT_EXCLUDE_THRESHOLD)
+    .filter((e) => {
+      const tier = classifyFileTier(e.file);
+      return tier === "primary" || tier === "supporting";
+    })
     .slice(0, 2)
     .map((e) => e.file);
 

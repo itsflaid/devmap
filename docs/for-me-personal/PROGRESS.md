@@ -1,6 +1,47 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-29
+Terakhir diperbarui: 2026-06-30
+
+## Update 2026-06-30
+
+### Feature Detection Quality Fixes — Complete
+
+Semua 5 bug dari `fixbug.md` telah diimplementasikan di branch `fix-feature-quality`.
+
+**Bug #1 — `findEntityFiles()` filter:**
+- Ditambahkan `.filter(f => isFeatureEvidenceFile(f.path))` sebagai first filter
+- Ditambahkan filter exclude non-source extension (`.sql`, `.lock`, `.log`, `.md` di luar `docs/`)
+- Ditambahkan `entityFileTierScore()` untuk sorting prioritas (source > prisma > excluded)
+
+**Bug #2 — `classifyFileTier()` invariant:**
+- Type `FileTier` dan function `classifyFileTier()` dibuat di `featureDetector.ts`
+- Filter `entryPoints` diterapkan di `createFeatureInfo()`, `capabilitiesToFeatures()`
+- Filter `criticalFiles` diterapkan di `rankCriticalFiles()` (projectMap.ts)
+
+**Bug #3 — `minimumDistinctFiles` guard:**
+- Field `minimumDistinctFiles` ditambahkan ke type `FEATURE_SIGNALS`
+- Set `minimumDistinctFiles: 2` untuk Search, Analytics, CMS & Content, Notifications
+- Evidence difilter by tier sebelum `minimumDistinctFiles` check
+
+**Bug #4 — Empty guard di `entityGraphToFeatures()`:**
+- Guard `if (entityFiles.length === 0) continue;` ditambahkan
+- `entryPoints` sekarang diisi menggunakan `scoreEntryPointRelevance()`
+- Confidence downgrade rule: 1 file + tier reference → `"low"`
+
+**Bug #5 — Domain inference fixes:**
+- File baru: `ownershipTopology.ts` dengan `classifyOwnershipTopology()`
+- `DomainInferenceInput` tipe diperluas: `ownershipPattern`, `crossUserFields`, `absentCapabilities`
+- Cache hash di-bump ke `v: 2` untuk mencegah stale cache collision
+- Prompt instruction diperbarui dengan aturan ownership-based domain inference
+
+**Verification:**
+```bash
+pnpm test:types        # typecheck — 0 errors
+pnpm test:unit         # 121 pass, 16 fail (pre-existing, unchanged)
+pnpm build             # tsc compile — 0 errors
+```
+
+---
 
 ## Update 2026-06-29
 

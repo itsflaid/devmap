@@ -82,7 +82,7 @@ test("onboarding --json emits guide metadata and markdown", async () => {
     assert.ok(Array.isArray(payload.features));
     assert.ok(Array.isArray(payload.startHere));
     assert.match(payload.markdown, /# json-onboarding/);
-    assert.match(payload.markdown, /## What This Is/);
+    assert.match(payload.markdown, /## What this is/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

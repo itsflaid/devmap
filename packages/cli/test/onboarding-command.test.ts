@@ -20,14 +20,14 @@ test("onboarding command renders a snapshot-based guide", async () => {
     const plainLogs = stripAnsi(logs);
 
     assert.match(plainLogs, /DevMap Onboarding/);
-    assert.match(plainLogs, /What This Is/);
+    assert.match(plainLogs, /What this is/);
     assert.match(plainLogs, /Snapshot is stale/);
-    assert.match(plainLogs, /This snapshot is stale/);
-    assert.match(plainLogs, /How It Works/);
-    assert.match(plainLogs, /What's Inside/);
-    assert.match(plainLogs, /Start Here/);
-    assert.match(plainLogs, /Key Flows/);
-    assert.match(plainLogs, /Go Deeper/);
+    assert.match(plainLogs, /stale — run.*--fresh/);
+    assert.match(plainLogs, /How it works/);
+    assert.match(plainLogs, /What's inside/);
+    assert.match(plainLogs, /Start here/);
+    assert.match(plainLogs, /Key flows/);
+    assert.match(plainLogs, /Go deeper/);
     assert.match(plainLogs, /app\/page\.tsx/);
     assert.match(plainLogs, /Authentication/);
     assert.match(plainLogs, /devmap explain/);
@@ -48,9 +48,9 @@ test("onboarding command writes ONBOARDING.md when requested", async () => {
 
     assert.match(stripAnsi(logs), /Wrote ONBOARDING\.md/);
     assert.match(content, /^# nextjs-fixture/m);
-    assert.match(content, /## What This Is/);
-    assert.match(content, /## How It Works/);
-    assert.match(content, /## Start Here/);
+    assert.match(content, /## What this is/);
+    assert.match(content, /## How it works/);
+    assert.match(content, /## Start here/);
     assert.match(content, /app\/page\.tsx/);
     assert.doesNotMatch(content, /score \d+/);
   } finally {
@@ -69,9 +69,9 @@ test("onboarding write can generate Indonesian markdown after language prompt", 
     assert.equal(prompt.closed, true);
     assert.match(prompt.questions.join("\n"), /Onboarding language/);
     assert.match(content, /^# nextjs-fixture/m);
-    assert.match(content, /## Apa Ini/);
-    assert.match(content, /## Isi/);
-    assert.match(content, /## Mulai dari Sini/);
+    assert.match(content, /## Tentang project ini/);
+    assert.match(content, /## Fitur yang ada/);
+    assert.match(content, /## Mulai dari sini/);
     assert.match(content, /Dibuat oleh DevMap/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

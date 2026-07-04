@@ -278,7 +278,7 @@ function normalizeOnboardingLanguage(value: string | undefined): OnboardingLangu
     return null;
   }
 
-  if (["id", "indo", "indonesia", "bahasa indonesia"].includes(normalized)) {
+  if (["id", "ind", "indo", "indonesia", "indonesian", "bahasa indonesia"].includes(normalized)) {
     return "id";
   }
   if (["en", "eng", "english", "inggris"].includes(normalized)) {

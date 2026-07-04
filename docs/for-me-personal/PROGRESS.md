@@ -1439,3 +1439,27 @@ Branch `update-onboarding-model` telah di-merge.
 - 4 json-output tests pass (1 fixed)
 - 16 pre-existing failures di test lain tidak terkait perubahan
 - Branch `update-onboarding-model` pushed (tanpa PR, sesuai instruksi)
+
+---
+
+## Update 2026-07-04 — Onboarding Fase 4-5: Tagline Audit + Bilingual Cleanup
+
+Branch: `update-onboarding-model` (lanjutan, tanpa branch baru)
+
+### Completed
+
+**Fase 4 — Audit `buildTagline()` di `modelBuilder.ts`:**
+- `buildTagline()` sekarang potong `domain.summary` ke kalimat pertama (`split(/\.\s+/)`), bukan dipakai mentah
+- Validasi tambahan: `snapshot.domain.summary.trim().length > 0` sebelum dipakai
+
+**Fase 5 — Bilingual Cleanup:**
+- `normalizeOnboardingLanguage()` sekarang accept `"ind"` dan `"indonesian"` sebagai alias Bahasa Indonesia
+- Hapus `KeyFlow` interface dari `model.ts` (dead code — sudah tidak di-import siapapun, renderer pakai `ProjectMap["flows"]` langsung)
+- Audit hardcoded English strings di `modelBuilder.ts` dan `onboarding.ts` — semua string output user sudah bilingual
+- Tidak ada import tidak terpakai yang tersisa
+
+**Verifikasi:**
+- 7 onboarding-specific tests pass (all)
+- 124/140 total tests pass (16 pre-existing failures tidak terkait)
+- TypeScript compile `tsc --noEmit` clean (0 error)
+

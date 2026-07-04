@@ -16,14 +16,6 @@ export interface ConceptualStep {
   step: string;
 }
 
-export interface KeyFlow {
-  name: string;
-  steps: Array<{
-    file: string;
-    what: string;
-  }>;
-}
-
 export interface OnboardingModel {
   language: OnboardingLanguage;
 

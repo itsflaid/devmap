@@ -26,8 +26,9 @@ export function buildOnboardingModel(
 }
 
 function buildTagline(snapshot: ProjectMap, language: OnboardingLanguage): string {
-  if (snapshot.domain?.summary) {
-    return snapshot.domain.summary;
+  if (snapshot.domain?.summary && snapshot.domain.summary.trim().length > 0) {
+    const firstSentence = snapshot.domain.summary.split(/\.\s+/)[0];
+    return firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`;
   }
 
   const ownershipHint = resolveOwnershipHint(snapshot, language);

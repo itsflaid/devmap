@@ -4,12 +4,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import type { ProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
-import type { OnboardingModel, ReadingItem } from "../src/onboarding/model.js";
 import { buildOnboardingModel } from "../src/onboarding/modelBuilder.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const nextFixture = join(testDirectory, "fixtures", "nextjs-project");
-const expressFixture = join(testDirectory, "fixtures", "express-project");
 
 test("buildOnboardingModel populates all required fields from a full snapshot", async () => {
   const snapshot = await createProjectMap(nextFixture);
@@ -18,51 +16,44 @@ test("buildOnboardingModel populates all required fields from a full snapshot", 
   assert.equal(typeof model.language, "string");
   assert.equal(model.language, "en");
 
-  // project meta
-  assert.equal(typeof model.project.name, "string");
-  assert.equal(typeof model.project.language, "string");
-  assert.equal(typeof model.project.framework, "string");
-  assert.equal(typeof model.project.packageManager, "string");
+  assert.equal(typeof model.projectName, "string");
+  assert.ok(model.projectName.length > 0);
 
-  // overview is a non-empty string
-  assert.equal(typeof model.overview, "string");
-  assert.ok(model.overview.length > 0);
+  assert.equal(typeof model.tagline, "string");
+  assert.ok(model.tagline.length > 0);
 
-  // mentalModel is a non-empty array
-  assert.ok(Array.isArray(model.mentalModel));
-  assert.ok(model.mentalModel.length > 0);
+  assert.equal(typeof model.stackLine, "string");
 
-  // mainConcepts is a non-empty array
-  assert.ok(Array.isArray(model.mainConcepts));
-  assert.ok(model.mainConcepts.length > 0);
+  assert.equal(typeof model.whatThisIs, "string");
+  assert.ok(model.whatThisIs.length > 0);
 
-  // importantAreas has reading items
-  assert.ok(Array.isArray(model.importantAreas));
-  assert.ok(model.importantAreas.length > 0);
+  assert.ok(Array.isArray(model.howItWorks));
+  assert.ok(model.howItWorks.length > 0);
+  for (const step of model.howItWorks) {
+    assert.equal(typeof step.step, "string");
+  }
 
-  // each reading item has the required fields
-  for (const item of model.importantAreas) {
+  assert.ok(Array.isArray(model.features));
+  for (const feature of model.features) {
+    assert.equal(typeof feature.name, "string");
+    assert.equal(typeof feature.what, "string");
+    assert.ok(feature.name.length > 0);
+  }
+
+  assert.ok(Array.isArray(model.startHere));
+  for (const item of model.startHere) {
     assert.equal(typeof item.path, "string");
-    assert.ok([1, 2, 3, 4].includes(item.priority));
-    assert.equal(typeof item.purpose, "string");
-    assert.equal(typeof item.why, "string");
+    assert.equal(typeof item.reason, "string");
+    assert.equal(typeof item.order, "number");
+    assert.ok(item.order >= 1);
+    assert.ok(item.path.length > 0);
   }
 
-  // keyFlows array
-  assert.ok(Array.isArray(model.keyFlows));
-  for (const flow of model.keyFlows) {
-    assert.equal(typeof flow.name, "string");
-    assert.equal(typeof flow.type, "string");
-    assert.ok(Array.isArray(flow.steps));
-  }
+  assert.equal(typeof model.generatedAt, "string");
+  assert.ok(model.generatedAt.length > 0);
 
-  // whereToStart is a non-empty array
-  assert.ok(Array.isArray(model.whereToStart));
-  assert.ok(model.whereToStart.length > 0);
-
-  // generatedBy footer
-  assert.equal(typeof model.generatedBy, "string");
-  assert.ok(model.generatedBy.length > 0);
+  assert.equal(typeof model.isStale, "boolean");
+  assert.equal(model.isStale, false);
 });
 
 test("buildOnboardingModel produces Indonesian when requested", async () => {
@@ -70,22 +61,24 @@ test("buildOnboardingModel produces Indonesian when requested", async () => {
   const model = buildOnboardingModel(snapshot, "id");
 
   assert.equal(model.language, "id");
-  assert.ok(model.overview.length > 0);
-  assert.ok(model.mentalModel.length > 0);
-  assert.ok(model.mainConcepts.length > 0);
-  assert.ok(model.whereToStart.length > 0);
-
-  // generatedBy footer is in Indonesian
-  assert.ok(model.generatedBy.includes("Dibuat oleh DevMap"));
+  assert.ok(model.tagline.length > 0);
+  assert.ok(model.whatThisIs.length > 0);
+  assert.ok(model.howItWorks.length > 0);
+  assert.ok(model.features.length > 0);
+  assert.ok(model.startHere.length > 0);
 });
 
-test("buildOnboardingModel importantAreas priorities are within valid range", async () => {
+test("buildOnboardingModel startHere items have valid order and readable paths", async () => {
   const snapshot = await createProjectMap(nextFixture);
   const model = buildOnboardingModel(snapshot, "en");
 
-  for (const item of model.importantAreas) {
-    assert.ok(item.priority >= 1 && item.priority <= 4,
-      `Item ${item.path} has invalid priority ${item.priority}`);
+  const orders = model.startHere.map((item) => item.order);
+  assert.deepEqual(orders, [...orders].sort((a, b) => a - b));
+
+  for (const item of model.startHere) {
+    assert.doesNotMatch(item.path, /\/prisma\/migrations?\//);
+    assert.doesNotMatch(item.path, /\/generated\//);
+    assert.doesNotMatch(item.path, /\.(lock|log|map|sql)$/);
   }
 });
 
@@ -110,6 +103,8 @@ test("buildOnboardingModel handles an empty snapshot gracefully", async () => {
       language: "unknown",
       packageManager: "npm",
       framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
       hasRootPackageJson: false,
       frameworks: [],
       isWorkspace: false,
@@ -131,13 +126,12 @@ test("buildOnboardingModel handles an empty snapshot gracefully", async () => {
 
   const model = buildOnboardingModel(minimalSnapshot, "en");
 
-  assert.equal(typeof model.overview, "string");
-  assert.ok(Array.isArray(model.mentalModel));
-  assert.ok(Array.isArray(model.mainConcepts));
-  assert.ok(Array.isArray(model.importantAreas));
-  assert.equal(model.importantAreas.length, 0);
-  assert.ok(Array.isArray(model.keyFlows));
-  assert.equal(model.keyFlows.length, 0);
-  assert.ok(Array.isArray(model.whereToStart));
-  assert.ok(model.whereToStart.length > 0);
+  assert.equal(typeof model.tagline, "string");
+  assert.equal(typeof model.whatThisIs, "string");
+  assert.ok(Array.isArray(model.howItWorks));
+  assert.ok(Array.isArray(model.features));
+  assert.equal(model.features.length, 0);
+  assert.ok(Array.isArray(model.startHere));
+  assert.equal(model.startHere.length, 0);
+  assert.equal(typeof model.isStale, "boolean");
 });

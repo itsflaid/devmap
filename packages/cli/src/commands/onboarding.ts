@@ -280,7 +280,7 @@ async function resolveOnboardingLanguage(options: OnboardingOptions): Promise<On
     return explicitLanguage;
   }
 
-  if (!options.write || options.json || (!options.prompt && !process.stdin.isTTY)) {
+  if (options.json || (!options.prompt && !process.stdin.isTTY)) {
     return "en";
   }
 

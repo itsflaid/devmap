@@ -22,7 +22,7 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
       const absolutePath = join(directory, entry.name);
       const relativePath = relative(projectRoot, absolutePath).replace(/\\/g, "/");
 
-      if (shouldIgnorePath(relativePath, entry.isDirectory())) {
+      if (shouldIgnorePath(relativePath, entry.isDirectory(), projectRoot)) {
         continue;
       }
 

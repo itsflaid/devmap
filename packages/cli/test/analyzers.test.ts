@@ -453,6 +453,37 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.stats.relevantFiles >= 5);
 });
 
+test("inferFilePurpose splits camelCase filenames into separate words", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-purpose-test-"));
+
+  try {
+    await mkdir(join(projectRoot, "src", "lib"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "purpose-test" }));
+    await writeFile(
+      join(projectRoot, "src", "lib", "dependencyGraph.ts"),
+      'export function buildDependencyGraph() {}\n'
+    );
+    await writeFile(
+      join(projectRoot, "src", "lib", "tsMorphAnalyzer.ts"),
+      'export class TsMorphAnalyzer {}\n'
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    const dgPurpose = projectMap.fileIndex["src/lib/dependencyGraph.ts"]?.purpose ?? "";
+    const tsPurpose = projectMap.fileIndex["src/lib/tsMorphAnalyzer.ts"]?.purpose ?? "";
+
+    const dgResponsibility = dgPurpose.replace(/^[^\s]+\s/, "");
+    const tsResponsibility = tsPurpose.replace(/^[^\s]+\s/, "");
+
+    assert.match(dgResponsibility, /dependency graph/i, "dependencyGraph should become 'dependency graph'");
+    assert.match(tsResponsibility, /ts morph analyzer/i, "tsMorphAnalyzer should become 'ts morph analyzer'");
+    assert.doesNotMatch(dgResponsibility, /dependencygraph/i, "no run-on 'dependencygraph'");
+    assert.doesNotMatch(tsResponsibility, /tsmorphanalyzer/i, "no run-on 'tsmorphanalyzer'");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 function createScannedFile(path: string, content: string) {
   return {
     path,

@@ -559,8 +559,8 @@ function inferFilePurpose(
     return undefined;
   }
 
-  const fileName = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "file";
-  const responsibility = splitSearchTerms(fileName).join(" ") || fileName;
+  const fileName = path.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "file";
+  const responsibility = splitSearchTerms(fileName).join(" ") || fileName.toLowerCase();
   const featureText = featureRefs.length > 0
     ? ` for ${featureRefs.slice(0, 2).join(" and ")}`
     : "";

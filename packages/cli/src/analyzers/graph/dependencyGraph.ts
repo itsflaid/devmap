@@ -67,10 +67,16 @@ function resolveImport(fromPath: string, specifier: string, localPaths: Set<stri
     `${normalized}.jsx`,
     `${normalized}.mjs`,
     `${normalized}.cjs`,
+    `${normalized}.vue`,
+    `${normalized}.svelte`,
+    `${normalized}.astro`,
     `${normalized}/index.ts`,
     `${normalized}/index.tsx`,
     `${normalized}/index.js`,
-    `${normalized}/index.jsx`
+    `${normalized}/index.jsx`,
+    `${normalized}/index.vue`,
+    `${normalized}/index.svelte`,
+    `${normalized}/index.astro`
   ];
 
   if (normalized.endsWith(".js")) {

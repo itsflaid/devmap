@@ -21,5 +21,5 @@ export function detectEntryPoints(graph: FileGraph): string[] {
 }
 
 function isSourceFile(path: string): boolean {
-  return /\.[cm]?[jt]sx?$/.test(path);
+  return /\.[cm]?[jt]sx?$|\.vue$|\.svelte$|\.astro$/.test(path);
 }

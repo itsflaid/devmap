@@ -293,7 +293,7 @@ function rankCriticalFiles(
 
   return files
     .filter((file) =>
-      isArchitectureSource(file.path) && /\.[cm]?[jt]sx?$|\.prisma$/.test(file.path)
+      isArchitectureSource(file.path) && /\.[cm]?[jt]sx?$|\.prisma$|\.vue$|\.svelte$|\.astro$/.test(file.path)
     )
     .filter((file) => classifyFileTier(file.path) !== "excluded")
     .map((file) => {

@@ -233,19 +233,43 @@ function renderKeyFlows(flows: ProjectMap["flows"], lang: OnboardingLanguage): s
   return lines;
 }
 
+// Set of actually-registered CLI commands from index.ts.
+// Add entries here when new commands ship so they appear in the onboarding guide.
+const AVAILABLE_COMMANDS = new Set([
+  "init",
+  "analyze",
+  "onboarding",
+  "config",
+  "doctor",
+]);
+
+type GoDeeperEntry = {
+  command: string;
+  args?: string;
+  en: string;
+  id: string;
+};
+
+const GO_DEEPER_ENTRIES: GoDeeperEntry[] = [
+  { command: "analyze", args: "<target>", en: "analyze project structure and generate a static map", id: "analisis struktur proyek dan hasilkan peta statis" },
+  { command: "doctor", en: "diagnose DevMap setup issues", id: "diagnosis masalah pengaturan DevMap" },
+  { command: "config", args: "model <model>", en: "set a model override or restore automatic routing", id: "atur override model atau routing otomatis" },
+  { command: "init", en: "initialize DevMap configuration", id: "inisialisasi konfigurasi DevMap" },
+  { command: "explain", args: "<file>", en: "understand what a specific file does", id: "pahami apa yang dilakukan file tertentu" },
+  { command: "map", en: "see the full dependency graph", id: "lihat graph dependency lengkap" },
+  { command: "flow", en: "trace a request end-to-end", id: "trace request dari awal sampai akhir" },
+];
+
 function renderGoDeeper(lang: OnboardingLanguage): string[] {
-  if (lang === "id") {
-    return [
-      "- `devmap explain <file>` — pahami apa yang dilakukan file tertentu",
-      "- `devmap map` — lihat graph dependency lengkap",
-      "- `devmap flow` — trace request dari awal sampai akhir",
-    ];
-  }
-  return [
-    "- `devmap explain <file>` — understand what a specific file does",
-    "- `devmap map` — see the full dependency graph",
-    "- `devmap flow` — trace a request end-to-end",
-  ];
+  return GO_DEEPER_ENTRIES
+    .filter(entry => AVAILABLE_COMMANDS.has(entry.command))
+    .map(entry => {
+      const cmd = entry.args
+        ? `devmap ${entry.command} ${entry.args}`
+        : `devmap ${entry.command}`;
+      const desc = lang === "id" ? entry.id : entry.en;
+      return `- \`${cmd}\` — ${desc}`;
+    });
 }
 
 // ── Language resolution ───────────────────────────────────────────────────────

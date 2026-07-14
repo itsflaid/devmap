@@ -180,6 +180,26 @@ test("dependency graph resolves TypeScript imports using .js specifiers", async 
   assert.equal(references["lib/db.ts"], 1);
 });
 
+test("classifyFileScope prioritises cli directory over config filename", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-cli-config-test-"));
+
+  try {
+    await mkdir(join(projectRoot, "commands"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "cli-config-test" }));
+    await writeFile(
+      join(projectRoot, "commands", "config.ts"),
+      'import { Command } from "commander";\nexport function configCommand() {}\n'
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    const entry = projectMap.fileIndex["commands/config.ts"];
+    assert.ok(entry, "commands/config.ts should appear in fileIndex");
+    assert.equal(entry.scope, "cli", "commands/config.ts should be classified as cli, not config");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("service detector only reports dependencies that are actually present", async () => {
   const nextServices = detectExternalServices(await scanFiles(nextFixture));
   const expressServices = detectExternalServices(await scanFiles(expressFixture));

@@ -433,8 +433,8 @@ function classifyFileScope(
   if (/(^|\/)(server|app|main|index)\.[cm]?[jt]sx?$/.test(path) && imports.some((specifier) => /routes?|controllers?|api/.test(specifier))) return "api";
   if (/(^|\/)(views?|pages?|components?|screens?|templates?|layouts?)\//.test(path)) return "ui";
   if (/(^|\/)(models?|entities|repositories|schemas?|migrations?|database|db|prisma)\//.test(path)) return "database";
-  if (/(^|\/)(config|configs|settings|env)\//.test(path) || /(^|[.-])(config|settings|env)\./.test(name)) return "config";
   if (/(^|\/)(commands?|cli|bin|scripts?|console)\//.test(path)) return "cli";
+  if (/(^|\/)(config|configs|settings|env)\//.test(path) || /(^|[.-])(config|settings|env)\./.test(name)) return "config";
   if (/(^|\/)(lib|libs|shared|utils?|helpers?|services?)\//.test(path)) return "service";
   if (/\b(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/.test(exportedSymbols.join(" "))) return "api";
   if (/\b(Component|View|Page|Layout|Screen)\b/i.test(exportedSymbols.join(" "))) return "ui";

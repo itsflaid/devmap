@@ -72,6 +72,14 @@ test("scanner ignores package manager lockfiles", () => {
   }
 });
 
+test("filterEngine excludes minified .js and .ts files", () => {
+  assert.equal(shouldIgnorePath("public/vendor/jquery.min.js", false), true);
+  assert.equal(shouldIgnorePath("vendor/lib.min.ts", false), true);
+  assert.equal(shouldIgnorePath("src/valid.min.ts", false), true);
+  assert.equal(shouldIgnorePath("src/app.ts", false), false);
+  assert.equal(shouldIgnorePath("src/component.js", false), false);
+});
+
 test("framework detector recognizes Next.js and Express fixtures", async () => {
   const nextFiles = await scanFiles(nextFixture);
   const expressFiles = await scanFiles(expressFixture);
@@ -178,6 +186,26 @@ test("dependency graph resolves TypeScript imports using .js specifiers", async 
   assert.deepEqual(graph["lib/auth.ts"], ["lib/db.ts"]);
   assert.equal(references["lib/auth.ts"], 2);
   assert.equal(references["lib/db.ts"], 1);
+});
+
+test("classifyFileScope prioritises cli directory over config filename", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-cli-config-test-"));
+
+  try {
+    await mkdir(join(projectRoot, "commands"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "cli-config-test" }));
+    await writeFile(
+      join(projectRoot, "commands", "config.ts"),
+      'import { Command } from "commander";\nexport function configCommand() {}\n'
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    const entry = projectMap.fileIndex["commands/config.ts"];
+    assert.ok(entry, "commands/config.ts should appear in fileIndex");
+    assert.equal(entry.scope, "cli", "commands/config.ts should be classified as cli, not config");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 });
 
 test("service detector only reports dependencies that are actually present", async () => {
@@ -431,6 +459,37 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.onboarding.recommendedPath.includes("app/page.tsx"));
   assert.ok(projectMap.onboarding.recommendedPath.includes("lib/auth.ts"));
   assert.ok(projectMap.stats.relevantFiles >= 5);
+});
+
+test("inferFilePurpose splits camelCase filenames into separate words", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-purpose-test-"));
+
+  try {
+    await mkdir(join(projectRoot, "src", "lib"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "purpose-test" }));
+    await writeFile(
+      join(projectRoot, "src", "lib", "dependencyGraph.ts"),
+      'export function buildDependencyGraph() {}\n'
+    );
+    await writeFile(
+      join(projectRoot, "src", "lib", "tsMorphAnalyzer.ts"),
+      'export class TsMorphAnalyzer {}\n'
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    const dgPurpose = projectMap.fileIndex["src/lib/dependencyGraph.ts"]?.purpose ?? "";
+    const tsPurpose = projectMap.fileIndex["src/lib/tsMorphAnalyzer.ts"]?.purpose ?? "";
+
+    const dgResponsibility = dgPurpose.replace(/^[^\s]+\s/, "");
+    const tsResponsibility = tsPurpose.replace(/^[^\s]+\s/, "");
+
+    assert.match(dgResponsibility, /dependency graph/i, "dependencyGraph should become 'dependency graph'");
+    assert.match(tsResponsibility, /ts morph analyzer/i, "tsMorphAnalyzer should become 'ts morph analyzer'");
+    assert.doesNotMatch(dgResponsibility, /dependencygraph/i, "no run-on 'dependencygraph'");
+    assert.doesNotMatch(tsResponsibility, /tsmorphanalyzer/i, "no run-on 'tsmorphanalyzer'");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 });
 
 function createScannedFile(path: string, content: string) {

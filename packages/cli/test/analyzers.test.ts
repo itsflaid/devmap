@@ -72,6 +72,14 @@ test("scanner ignores package manager lockfiles", () => {
   }
 });
 
+test("filterEngine excludes minified .js and .ts files", () => {
+  assert.equal(shouldIgnorePath("public/vendor/jquery.min.js", false), true);
+  assert.equal(shouldIgnorePath("vendor/lib.min.ts", false), true);
+  assert.equal(shouldIgnorePath("src/valid.min.ts", false), true);
+  assert.equal(shouldIgnorePath("src/app.ts", false), false);
+  assert.equal(shouldIgnorePath("src/component.js", false), false);
+});
+
 test("framework detector recognizes Next.js and Express fixtures", async () => {
   const nextFiles = await scanFiles(nextFixture);
   const expressFiles = await scanFiles(expressFixture);

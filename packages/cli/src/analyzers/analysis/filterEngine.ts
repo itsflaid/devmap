@@ -50,7 +50,7 @@ export function shouldIgnorePath(path: string, isDirectory: boolean): boolean {
     return true;
   }
 
-  if (path.includes("public/assets/") || path.endsWith(".min.ts")) {
+  if (path.includes("public/assets/") || path.endsWith(".min.js") || path.endsWith(".min.ts")) {
     return true;
   }
 

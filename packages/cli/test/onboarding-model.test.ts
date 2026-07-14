@@ -282,6 +282,388 @@ test("buildCriticalFileReason returns fallback for generic critical file", async
   assert.match(startItem.reason, /important file/i);
 });
 
+test("buildHowItWorks produces CLI flow for node-cli project type", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test-cli",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "node-cli",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [{ name: "CLI Commands", purpose: "Handles CLI commands" }],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const steps = model.howItWorks.map((s) => s.step).join(" ");
+  assert.match(steps, /runs a command/);
+  assert.match(steps, /Available commands include/);
+});
+
+test("buildHowItWorks produces auth web app flow when auth + routes present", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "nextjs" as const,
+    project: {
+      name: "test-auth",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "nextjs",
+      projectType: "webapp",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [{ path: "/login", file: "app/login/page.tsx", method: "GET" }],
+    apiRoutes: [{ path: "/api/auth", file: "app/api/auth/route.ts", method: "POST" }],
+    externalServices: [],
+    features: [{ name: "Authentication", purpose: "Manages user login" }],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {},
+    entityGraph: { entityNames: ["Project", "Task"] }
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const steps = model.howItWorks.map((s) => s.step).join(" ");
+  assert.match(steps, /User logs in/);
+  assert.match(steps, /creates or manages/);
+});
+
+test("buildHowItWorks produces public web app flow when routes present without auth", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "express" as const,
+    project: {
+      name: "test-public",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "express",
+      projectType: "webapp",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [{ path: "/", file: "src/index.ts", method: "GET" }],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const steps = model.howItWorks.map((s) => s.step).join(" ");
+  assert.match(steps, /opens a page/);
+  assert.match(steps, /processes the request/);
+});
+
+test("buildHowItWorks produces generic flow when no CLI, auth, or routes", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test-generic",
+      root: "",
+      language: "python",
+      packageManager: "pip",
+      framework: "unknown",
+      projectType: "library",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const steps = model.howItWorks.map((s) => s.step).join(" ");
+  assert.match(steps, /starts from the main entry point/);
+  assert.match(steps, /Modules and dependencies/);
+});
+
+test("buildTagline uses domain summary when present", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {},
+    domain: { summary: "eCommerce platform for managing inventory and orders. Built with modern tooling." }
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  assert.match(model.tagline, /eCommerce platform/);
+});
+
+test("buildTagline uses ownership hint and primary feature when no domain summary", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [{ name: "AI Integration", purpose: "Integrates AI services" }],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {},
+    capabilities: []
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  assert.match(model.tagline, /personal/i);
+  assert.match(model.tagline, /ai integration/);
+});
+
+test("buildTagline uses ownership hint with collaborative capabilities", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [{ name: "Authentication", purpose: "Manages login" }],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {},
+    capabilities: [{ kind: "sharing" as const }]
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  assert.match(model.tagline, /collaborative/i);
+  assert.match(model.tagline, /authentication/);
+});
+
+test("buildTagline falls back to bare name when no domain, hint, or feature", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "devmap",
+      root: "",
+      language: "typescript",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  assert.match(model.tagline, /devmap/);
+});
+
 test("buildOnboardingModel handles an empty snapshot gracefully", async () => {
   const minimalSnapshot: ProjectMap = {
     version: "1",

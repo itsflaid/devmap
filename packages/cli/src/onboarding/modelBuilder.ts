@@ -409,7 +409,7 @@ function buildCriticalFileReason(
 ): string {
   const reasons = critical.reasons;
 
-  if (reasons.includes("execution bonus")) {
+  if (reasons.includes("core execution responsibility")) {
     return language === "id"
       ? "File ini dijalankan pertama kali saat project start"
       : "This file runs first when the project starts";

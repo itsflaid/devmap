@@ -82,6 +82,206 @@ test("buildOnboardingModel startHere items have valid order and readable paths",
   }
 });
 
+test("buildCriticalFileReason returns execution reason for core execution responsibility (en)", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "unknown",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [
+      { path: "src/engine.ts", referencedBy: 3, score: 20, reasons: ["core execution responsibility"] }
+    ],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const startItem = model.startHere.find((item) => item.path === "src/engine.ts");
+  assert.ok(startItem, "critical file should appear in startHere");
+  assert.equal(startItem.reason, "This file runs first when the project starts");
+});
+
+test("buildCriticalFileReason returns execution reason for core execution responsibility (id)", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "unknown",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [
+      { path: "src/engine.ts", referencedBy: 3, score: 20, reasons: ["core execution responsibility"] }
+    ],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "id");
+  const startItem = model.startHere.find((item) => item.path === "src/engine.ts");
+  assert.ok(startItem, "critical file should appear in startHere");
+  assert.equal(startItem.reason, "File ini dijalankan pertama kali saat project start");
+});
+
+test("buildCriticalFileReason returns concern reason for core project concern", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "unknown",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [
+      { path: "src/db.ts", referencedBy: 2, score: 10, reasons: ["core project concern"] }
+    ],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const startItem = model.startHere.find((item) => item.path === "src/db.ts");
+  assert.ok(startItem, "critical file should appear in startHere");
+  assert.equal(startItem.reason, "Core project concern — many other parts depend on this");
+});
+
+test("buildCriticalFileReason returns fallback for generic critical file", async () => {
+  const snapshot: ProjectMap = {
+    version: "1",
+    generatedAt: new Date().toISOString(),
+    agentInstructions: {
+      navigationPolicy: "index-first",
+      defaultMode: "feature-map-first",
+      maxInitialFiles: 3,
+      missingSnapshotAction: "run-devmap-analyze",
+      staleSnapshotAction: "run-devmap-analyze-fresh",
+      fallbackRule: ""
+    },
+    fingerprint: "",
+    projectRoot: "",
+    framework: "unknown" as const,
+    project: {
+      name: "test",
+      root: "",
+      language: "unknown",
+      packageManager: "npm",
+      framework: "unknown",
+      projectType: "unknown",
+      workspaceType: "single-package",
+      hasRootPackageJson: false,
+      frameworks: [],
+      isWorkspace: false,
+      workspaces: []
+    },
+    stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
+    entryPoints: [],
+    criticalFiles: [
+      { path: "src/util.ts", referencedBy: 2, score: 5, reasons: [] }
+    ],
+    routes: [],
+    apiRoutes: [],
+    externalServices: [],
+    features: [],
+    flows: [],
+    onboarding: { recommendedPath: [] },
+    changeImpact: {},
+    dependencies: {},
+    fileIndex: {}
+  };
+
+  const model = buildOnboardingModel(snapshot, "en");
+  const startItem = model.startHere.find((item) => item.path === "src/util.ts");
+  assert.ok(startItem, "critical file should appear in startHere");
+  assert.match(startItem.reason, /important file/i);
+});
+
 test("buildOnboardingModel handles an empty snapshot gracefully", async () => {
   const minimalSnapshot: ProjectMap = {
     version: "1",

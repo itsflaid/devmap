@@ -1,3 +1,4 @@
+import { REASON_TAGS } from "../analyzers/pipeline/reasonTags.js";
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import type {
   OnboardingLanguage,
@@ -409,12 +410,12 @@ function buildCriticalFileReason(
 ): string {
   const reasons = critical.reasons;
 
-  if (reasons.includes("core execution responsibility")) {
+  if (reasons.includes(REASON_TAGS.CORE_EXECUTION_RESPONSIBILITY)) {
     return language === "id"
       ? "File ini dijalankan pertama kali saat project start"
       : "This file runs first when the project starts";
   }
-  if (reasons.includes("core project concern")) {
+  if (reasons.includes(REASON_TAGS.CORE_PROJECT_CONCERN)) {
     return language === "id"
       ? "Concern inti project — banyak bagian lain bergantung ke sini"
       : "Core project concern — many other parts depend on this";

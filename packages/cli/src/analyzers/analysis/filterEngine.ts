@@ -6,11 +6,20 @@ const IGNORED_DIRECTORIES = new Set([
   ".next",
   ".turbo",
   ".vercel",
+  ".astro",
+  ".svelte-kit",
+  ".nuxt",
+  ".output",
+  ".cache",
+  ".yarn",
   "build",
   "coverage",
   "dist",
   "node_modules",
-  "out"
+  "out",
+  "venv",
+  ".venv",
+  "__pycache__"
 ]);
 
 const IGNORED_EXTENSIONS = new Set([
@@ -24,7 +33,16 @@ const IGNORED_EXTENSIONS = new Set([
   ".webp",
   ".ico",
   ".pdf",
-  ".zip"
+  ".zip",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".eot",
+  ".mp4",
+  ".mov",
+  ".mp3",
+  ".wav",
+  ".wasm"
 ]);
 
 const IGNORED_FILES = new Set([

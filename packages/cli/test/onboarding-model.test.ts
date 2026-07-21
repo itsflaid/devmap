@@ -105,10 +105,7 @@ test("buildCriticalFileReason returns execution reason for core execution respon
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -123,6 +120,7 @@ test("buildCriticalFileReason returns execution reason for core execution respon
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -155,10 +153,7 @@ test("buildCriticalFileReason returns execution reason for core execution respon
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -173,6 +168,7 @@ test("buildCriticalFileReason returns execution reason for core execution respon
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -205,10 +201,7 @@ test("buildCriticalFileReason returns concern reason for core project concern", 
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -223,6 +216,7 @@ test("buildCriticalFileReason returns concern reason for core project concern", 
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -255,10 +249,7 @@ test("buildCriticalFileReason returns fallback for generic critical file", async
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -273,6 +264,7 @@ test("buildCriticalFileReason returns fallback for generic critical file", async
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -305,10 +297,7 @@ test("buildHowItWorks produces CLI flow for node-cli project type", async () => 
       framework: "unknown",
       projectType: "node-cli",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -316,11 +305,12 @@ test("buildHowItWorks produces CLI flow for node-cli project type", async () => 
     routes: [],
     apiRoutes: [],
     externalServices: [],
-    features: [{ name: "CLI Commands", purpose: "Handles CLI commands" }],
+    features: [{ name: "CLI Commands", purpose: "Handles CLI commands", files: [], entryPoints: [], businessFlow: [], searchTerms: [], confidence: "high" as const, evidence: [] }],
     flows: [],
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -351,26 +341,24 @@ test("buildHowItWorks produces auth web app flow when auth + routes present", as
       language: "typescript",
       packageManager: "npm",
       framework: "nextjs",
-      projectType: "webapp",
+      projectType: "web-app",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
     criticalFiles: [],
-    routes: [{ path: "/login", file: "app/login/page.tsx", method: "GET" }],
-    apiRoutes: [{ path: "/api/auth", file: "app/api/auth/route.ts", method: "POST" }],
+    routes: [{ path: "/login", file: "app/login/page.tsx", kind: "page", methods: ["GET"] }],
+    apiRoutes: [{ path: "/api/auth", file: "app/api/auth/route.ts", kind: "api", methods: ["POST"] }],
     externalServices: [],
-    features: [{ name: "Authentication", purpose: "Manages user login" }],
+    features: [{ name: "Authentication", purpose: "Manages user login", files: [], entryPoints: [], businessFlow: [], searchTerms: [], confidence: "high" as const, evidence: [] }],
     flows: [],
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {},
-    entityGraph: { entityNames: ["Project", "Task"] }
+    entityGraph: { entities: [], relations: [], entityNames: ["Project", "Task"], source: "empty" as const }
   };
 
   const model = buildOnboardingModel(snapshot, "en");
@@ -400,17 +388,14 @@ test("buildHowItWorks produces public web app flow when routes present without a
       language: "typescript",
       packageManager: "npm",
       framework: "express",
-      projectType: "webapp",
+      projectType: "web-app",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
     criticalFiles: [],
-    routes: [{ path: "/", file: "src/index.ts", method: "GET" }],
+    routes: [{ path: "/", file: "src/index.ts", kind: "page", methods: ["GET"] }],
     apiRoutes: [],
     externalServices: [],
     features: [],
@@ -418,6 +403,7 @@ test("buildHowItWorks produces public web app flow when routes present without a
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -445,15 +431,12 @@ test("buildHowItWorks produces generic flow when no CLI, auth, or routes", async
     project: {
       name: "test-generic",
       root: "",
-      language: "python",
-      packageManager: "pip",
+      language: "unknown",
+      packageManager: "unknown",
       framework: "unknown",
       projectType: "library",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -466,6 +449,7 @@ test("buildHowItWorks produces generic flow when no CLI, auth, or routes", async
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 
@@ -498,10 +482,7 @@ test("buildTagline uses domain summary when present", async () => {
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -514,8 +495,9 @@ test("buildTagline uses domain summary when present", async () => {
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {},
-    domain: { summary: "eCommerce platform for managing inventory and orders. Built with modern tooling." }
+    domain: { domain: "", summary: "eCommerce platform for managing inventory and orders. Built with modern tooling.", domainFeatures: [], confidence: 0, model: "", tokensUsed: 0 }
   };
 
   const model = buildOnboardingModel(snapshot, "en");
@@ -545,10 +527,7 @@ test("buildTagline uses ownership hint and primary feature when no domain summar
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -556,11 +535,12 @@ test("buildTagline uses ownership hint and primary feature when no domain summar
     routes: [],
     apiRoutes: [],
     externalServices: [],
-    features: [{ name: "AI Integration", purpose: "Integrates AI services" }],
+    features: [{ name: "AI Integration", purpose: "Integrates AI services", files: [], entryPoints: [], businessFlow: [], searchTerms: [], confidence: "high" as const, evidence: [] }],
     flows: [],
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {},
     capabilities: []
   };
@@ -593,10 +573,7 @@ test("buildTagline uses ownership hint with collaborative capabilities", async (
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -604,13 +581,14 @@ test("buildTagline uses ownership hint with collaborative capabilities", async (
     routes: [],
     apiRoutes: [],
     externalServices: [],
-    features: [{ name: "Authentication", purpose: "Manages login" }],
+    features: [{ name: "Authentication", purpose: "Manages login", files: [], entryPoints: [], businessFlow: [], searchTerms: [], confidence: "high" as const, evidence: [] }],
     flows: [],
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {},
-    capabilities: [{ kind: "sharing" as const }]
+    capabilities: [{ kind: "sharing" as const, name: "", entities: [], evidence: [], confidence: "high" as const }]
   };
 
   const model = buildOnboardingModel(snapshot, "en");
@@ -641,10 +619,7 @@ test("buildTagline falls back to bare name when no domain, hint, or feature", as
       framework: "unknown",
       projectType: "unknown",
       workspaceType: "single-package",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -657,6 +632,7 @@ test("buildTagline falls back to bare name when no domain, hint, or feature", as
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 

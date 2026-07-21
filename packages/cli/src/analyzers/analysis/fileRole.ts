@@ -151,8 +151,8 @@ function isConfigPath(path: string, filename: string, ext: string): boolean {
     // *.config.ts / *.config.js
     /\.(config)\.[cm]?[jt]sx?$/.test(filename)
     // src/config/ folder
-    || /(^|\/)src\/configs?\/(\/|$)/.test(path)
-    || /(^|\/)configs?\/(\/|$)/.test(path)
+    || /(^|\/)src\/configs?(\/|$)/.test(path)
+    || /(^|\/)configs?(\/|$)/.test(path)
     // env files
     || /^\.env(\.|$)/.test(filename)
   );
@@ -174,9 +174,9 @@ function isLandingUIPath(path: string, filename: string, ext: string): boolean {
 
 function isCLIPath(path: string): boolean {
   return (
-    /(^|\/)src\/commands?\/(\/|$)/.test(path)
-    || /(^|\/)commands?\/(\/|$)/.test(path)
-    || /(^|\/)bin\/(\/|$)/.test(path)
+    /(^|\/)src\/commands?(\/|$)/.test(path)
+    || /(^|\/)commands?(\/|$)/.test(path)
+    || /(^|\/)bin(\/|$)/.test(path)
     // CLI entry point
     || /(^|\/)src\/cli\.[cm]?[jt]s$/.test(path)
     || /(^|\/)src\/main\.[cm]?[jt]s$/.test(path)
@@ -191,10 +191,10 @@ function isAPIHandlerPath(path: string, filename: string): boolean {
     || /\/pages\/api\//.test(path)
     // Express/Fastify/Hono router files
     || /(^|\/)src\/(routes?|routers?)(\/|$)/.test(path)
-    || /(^|\/)routes?\/(\/|$)/.test(path)
+    || /(^|\/)routes?(\/|$)/.test(path)
     // Controllers (MVC pattern)
     || /(^|\/)src\/(controllers?)(\/|$)/.test(path)
-    || /(^|\/)controllers?\/(\/|$)/.test(path)
+    || /(^|\/)controllers?(\/|$)/.test(path)
     || /\.(controller)\.[cm]?[jt]sx?$/.test(filename)
     // Named handler files
     || /\.(handler|router)\.[cm]?[jt]sx?$/.test(filename)
@@ -204,12 +204,12 @@ function isAPIHandlerPath(path: string, filename: string): boolean {
 function isServicePath(path: string, filename: string): boolean {
   return (
     /(^|\/)src\/(services?|usecases?|use-cases?|domain|application)(\/|$)/.test(path)
-    || /(^|\/)services?\/(\/|$)/.test(path)
-    || /(^|\/)usecases?\/(\/|$)/.test(path)
+    || /(^|\/)services?(\/|$)/.test(path)
+    || /(^|\/)usecases?(\/|$)/.test(path)
     || /\.(service)\.[cm]?[jt]sx?$/.test(filename)
     || /\.(usecase|use-case)\.[cm]?[jt]sx?$/.test(filename)
     // Action files (Next.js server actions)
-    || /(^|\/)src\/actions?\/(\/|$)/.test(path)
+    || /(^|\/)src\/actions?(\/|$)/.test(path)
     || /\.(action)\.[cm]?[jt]sx?$/.test(filename)
   );
 }
@@ -228,11 +228,11 @@ function isMiddlewarePath(path: string, filename: string): boolean {
 function isRepositoryPath(path: string, filename: string): boolean {
   return (
     /(^|\/)src\/(repositories?|repos?|daos?|data-access)(\/|$)/.test(path)
-    || /(^|\/)repositories?\/(\/|$)/.test(path)
+    || /(^|\/)repositories?(\/|$)/.test(path)
     || /\.(repository|repo)\.[cm]?[jt]sx?$/.test(filename)
     // Prisma / DB client files
     || /(^|\/)src\/lib\/(prisma|db|database)\.[cm]?[jt]sx?$/.test(path)
-    || /(^|\/)src\/(db|database)\/(\/|$)/.test(path)
+    || /(^|\/)src\/(db|database)(\/|$)/.test(path)
     // Drizzle schema files
     || /(^|\/)src\/db\/schema\.[cm]?[jt]sx?$/.test(path)
   );
@@ -246,9 +246,9 @@ function isUIComponentPath(path: string, filename: string, ext: string): boolean
   // This runs last among UI checks so it acts as a broad catch-all for UI files.
   return (
     /(^|\/)src\/(components?|ui|widgets?)(\/|$)/.test(path)
-    || /(^|\/)components?\/(\/|$)/.test(path)
+    || /(^|\/)components?(\/|$)/.test(path)
     || /(^|\/)src\/(pages?|views?|screens?)(\/|$)/.test(path)
-    || /(^|\/)pages?\/(\/|$)/.test(path)
+    || /(^|\/)pages?(\/|$)/.test(path)
     || /(^|\/)app\/.*\/(page|layout|loading|error|not-found)\.[cm]?[jt]sx?$/.test(path)
     // Catch-all: any .tsx/.jsx/.vue/.svelte not caught above
     || UI_EXTS.has(ext)
@@ -257,8 +257,8 @@ function isUIComponentPath(path: string, filename: string, ext: string): boolean
 
 function isAIIntegrationPath(path: string, filename: string): boolean {
   return (
-    /(^|\/)src\/ai\/(\/|$)/.test(path)
-    || /(^|\/)ai\/(\/|$)/.test(path)
+    /(^|\/)src\/ai(\/|$)/.test(path)
+    || /(^|\/)ai(\/|$)/.test(path)
     || /(^|\/)src\/lib\/(openai|groq|anthropic|gemini|langchain|ai)\.[cm]?[jt]sx?$/.test(path)
     // "models?" intentionally excluded — src/models/ almost always means
     // database/domain models, not AI models. Use src/llm/ or src/ai/ instead.

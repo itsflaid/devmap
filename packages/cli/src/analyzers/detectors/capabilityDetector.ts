@@ -319,7 +319,7 @@ function resolveEntityName(resource: string, entityGraph: EntityGraph): string {
   );
   if (singularMatch) return singularMatch;
 
-  return singular;
+  return singular.length === 0 ? singular : singular[0].toUpperCase() + singular.slice(1);
 }
 
 function singularize(word: string): string {
@@ -370,7 +370,7 @@ const NON_RESOURCE_SEGMENTS = new Set([
   "auth", "oauth", "callback", "health",
   "ping", "status", "public", "internal",
   "static", "assets", "files", "me", "self",
-  "history",
+  "history", "session", "sessions",
   // tambahan: common Next.js/UI page paths yang bukan API resource
   "dashboard", "settings", "profile", "search",
 ]);

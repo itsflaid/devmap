@@ -1,6 +1,6 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-06-30
+Terakhir diperbarui: 2026-07-03
 
 ## Update 2026-06-30
 
@@ -1400,3 +1400,66 @@ Verifikasi:
 ```powershell
 pnpm --filter devmap exec tsx --test test/analyzers.test.ts test/context-builder.test.ts
 ```
+
+---
+
+## Update 2026-07-03 — Onboarding Fase 2: Rombak OnboardingModel + modelBuilder.ts
+
+### Completed
+Branch `update-onboarding-model` telah di-merge.
+
+**Perubahan `model.ts`:**
+- Hapus 3 tipe lama: `ReadingItem`, `FlowStep`, `FlowBlock`
+- Hapus `OnboardingModel` field lama: `project` block, `overview`, `mentalModel`, `mainConcepts`, `importantAreas`, `keyFlows`, `whereToStart`, `generatedBy`
+- Tambah 4 tipe baru: `StartHereItem`, `FeatureSummary`, `ConceptualStep`, `KeyFlow`
+- `OnboardingModel` baru: `language`, `projectName`, `tagline`, `stackLine`, `whatThisIs`, `howItWorks`, `features`, `startHere`, `generatedAt`, `isStale`
+
+**Perubahan `modelBuilder.ts` (506 → ~470 baris):**
+- Hapus 6 builder lama + 10 helpers
+- Implementasi baru sesuai spec:
+  - `buildTagline()` — domain-first, fallback ownership + feature, framework + feature, name fallback
+  - `resolveOwnershipHint()` — AI ownershipPattern atau capability-based
+  - `buildStackLine()` — max 5 items dengan separator " · "
+  - `buildWhatThisIs()` — 2-4 kalimat prose domain (user POV)
+  - `buildHowItWorks()` — dispatcher: CLI / auth web / public web / generic (user sebagai subjek)
+  - `buildFeatureSummaries()` — 1 kalimat per feature, filter boilerplate
+  - `buildStartHere()` — ordered reading list, filter non-readable files
+  - Helpers baru: `resolveOwnershipHint`, `buildFeatureWhat`, `isBoilerplatePurpose`, `buildCriticalFileReason`, `isReadableSourceFile`, `capitalize`
+
+**Perubahan `onboarding.ts` (416 → ~230 baris):**
+- `buildOnboardingMarkdown()` render section baru: tagline/stack → What This Is → How It Works → What's Inside → Start Here → Key Flows → Go Deeper
+- `KeyFlow[]` dibangun dari `snapshot.flows` langsung di renderer (tidak lewat model)
+- "Go Deeper" statik (3 command links), tidak bergantung snapshot
+- `runOnboarding()` inject `model.isStale = stale`
+- `OnboardingGuide` type disederhanakan (hapus `project`, `overview`, `agentInstructions`, `entryPoints`, `criticalFiles`, dll)
+- Hapus: `renderReadingAreasFromModel()`, `renderKeyFlowsFromModel()`, `getLabels()`, `OnboardingLabels`
+
+**Verifikasi:**
+- 11 onboarding tests pass
+- 4 json-output tests pass (1 fixed)
+- 16 pre-existing failures di test lain tidak terkait perubahan
+- Branch `update-onboarding-model` pushed (tanpa PR, sesuai instruksi)
+
+---
+
+## Update 2026-07-04 — Onboarding Fase 4-5: Tagline Audit + Bilingual Cleanup
+
+Branch: `update-onboarding-model` (lanjutan, tanpa branch baru)
+
+### Completed
+
+**Fase 4 — Audit `buildTagline()` di `modelBuilder.ts`:**
+- `buildTagline()` sekarang potong `domain.summary` ke kalimat pertama (`split(/\.\s+/)`), bukan dipakai mentah
+- Validasi tambahan: `snapshot.domain.summary.trim().length > 0` sebelum dipakai
+
+**Fase 5 — Bilingual Cleanup:**
+- `normalizeOnboardingLanguage()` sekarang accept `"ind"` dan `"indonesian"` sebagai alias Bahasa Indonesia
+- Hapus `KeyFlow` interface dari `model.ts` (dead code — sudah tidak di-import siapapun, renderer pakai `ProjectMap["flows"]` langsung)
+- Audit hardcoded English strings di `modelBuilder.ts` dan `onboarding.ts` — semua string output user sudah bilingual
+- Tidak ada import tidak terpakai yang tersisa
+
+**Verifikasi:**
+- 7 onboarding-specific tests pass (all)
+- 124/140 total tests pass (16 pre-existing failures tidak terkait)
+- TypeScript compile `tsc --noEmit` clean (0 error)
+

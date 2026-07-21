@@ -1,39 +1,33 @@
 export type OnboardingLanguage = "en" | "id";
 
-export interface ReadingItem {
+export interface StartHereItem {
   path: string;
-  priority: 1 | 2 | 3 | 4;
-  purpose: string;
-  why: string;
+  reason: string;
+  order: number;
 }
 
-export interface FlowStep {
-  label: string;
-  purpose?: string;
-}
-
-export interface FlowBlock {
+export interface FeatureSummary {
   name: string;
-  type: string;
-  entryPoint: string | null;
-  steps: FlowStep[];
+  what: string;
+  entryFile?: string;
+}
+
+export interface ConceptualStep {
+  step: string;
 }
 
 export interface OnboardingModel {
   language: OnboardingLanguage;
 
-  project: {
-    name: string;
-    language: string | null;
-    framework: string | null;
-    packageManager: string | null;
-  };
+  projectName: string;
+  tagline: string;
+  stackLine: string;
 
-  overview: string;
-  mentalModel: string[];
-  mainConcepts: string[];
-  importantAreas: ReadingItem[];
-  keyFlows: FlowBlock[];
-  whereToStart: string[];
-  generatedBy: string;
+  whatThisIs: string;
+  howItWorks: ConceptualStep[];
+  features: FeatureSummary[];
+  startHere: StartHereItem[];
+
+  generatedAt: string;
+  isStale: boolean;
 }

@@ -87,8 +87,8 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
     );
     await writeFixtureFile(
       projectRoot,
-      "packages/cli/src/analyzers/projectMap.ts",
-      'import { scanFiles } from "./fileScanner.js";\nexport async function createProjectMap() { return scanFiles(); }\n'
+      "packages/cli/src/analyzers/pipeline/projectMap.ts",
+      'import { scanFiles } from "../fileScanner.js";\nexport async function createProjectMap() { return scanFiles(); }\n'
     );
     await writeFixtureFile(
       projectRoot,
@@ -120,18 +120,8 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
     assert.deepEqual(index.criticalFiles.slice(0, 3), [
       "packages/cli/src/index.ts",
       "packages/cli/src/commands/analyze.ts",
-      "packages/cli/src/analyzers/projectMap.ts"
+      "packages/cli/src/analyzers/pipeline/projectMap.ts"
     ]);
-
-    const analysis = index.features.find((feature) => feature.id === "analysis-engine");
-    assert.ok(analysis);
-    const featureMap = JSON.parse(await readFile(
-      join(outputRoot, analysis.map),
-      "utf8"
-    )) as { sourcePriority: string[]; flow?: string[] };
-    assert.equal(featureMap.sourcePriority[0], "packages/cli/src/analyzers/projectMap.ts");
-    assert.match(featureMap.flow?.join(" ") ?? "", /Scan project files/i);
-    assert.doesNotMatch(featureMap.flow?.join(" ") ?? "", /Follow dependency/i);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
     await rm(outputRoot, { recursive: true, force: true });

@@ -1,4 +1,5 @@
 import { hashContent } from "../../cache/fileHash.js";
+import { REASON_TAGS } from "./reasonTags.js";
 import { analyzeFiles } from "./analyzerRegistry.js";
 import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
 import {
@@ -133,6 +134,9 @@ export type ProjectMap = {
   }>;
   warnings?: string[];
   dependencies: Record<string, string[]>;
+  /** Resolved file-to-file import graph (project-relative paths). Distinct from
+   *  `dependencies`, which holds package.json npm dependency names. */
+  fileGraph: Record<string, string[]>;
   ai?: {
     architecture: string;
     model: string;
@@ -256,8 +260,9 @@ export async function createProjectMap(
       recommendedPath: buildOnboardingPath(files, entryPoints, criticalFiles, fileIndex)
     },
     changeImpact: buildChangeImpact(fileIndex, features, flows, graph),
-    warnings: detectAnalysisWarnings(files),
+    warnings: detectAnalysisWarnings(files, entryPoints, criticalFiles, features),
     dependencies: readPackageDependencies(files),
+    fileGraph: graph,
     fileIndex
   };
 }
@@ -293,7 +298,7 @@ function rankCriticalFiles(
 
   return files
     .filter((file) =>
-      isArchitectureSource(file.path) && /\.[cm]?[jt]sx?$|\.prisma$/.test(file.path)
+      isArchitectureSource(file.path) && /\.[cm]?[jt]sx?$|\.prisma$|\.vue$|\.svelte$|\.astro$/.test(file.path)
     )
     .filter((file) => classifyFileTier(file.path) !== "excluded")
     .map((file) => {
@@ -313,7 +318,7 @@ function rankCriticalFiles(
       const executionBonus = calculateExecutionResponsibilityBonus(file.path);
       if (executionBonus > 0) {
         score += executionBonus;
-        reasons.push("core execution responsibility");
+        reasons.push(REASON_TAGS.CORE_EXECUTION_RESPONSIBILITY);
       }
 
       if (/(^|\/)(types?|constants?)\.[cm]?[jt]sx?$/.test(file.path)) {
@@ -322,13 +327,13 @@ function rankCriticalFiles(
 
       if (/(^|\/)(auth|session|db|database|middleware|schema|config)([./-]|$)/i.test(file.path)) {
         score += 3;
-        reasons.push("core project concern");
+        reasons.push(REASON_TAGS.CORE_PROJECT_CONCERN);
       }
 
       const semanticBonus = calculateCriticalSemanticBonus(file, analyses[file.path]);
       if (semanticBonus > 0) {
         score += semanticBonus;
-        reasons.push("semantic feature anchor");
+        reasons.push(REASON_TAGS.SEMANTIC_FEATURE_ANCHOR);
       }
 
       if (/(^|\/)(page|layout|route|server|app|main|index)\.[cm]?[jt]sx?$/.test(file.path)) {
@@ -433,8 +438,8 @@ function classifyFileScope(
   if (/(^|\/)(server|app|main|index)\.[cm]?[jt]sx?$/.test(path) && imports.some((specifier) => /routes?|controllers?|api/.test(specifier))) return "api";
   if (/(^|\/)(views?|pages?|components?|screens?|templates?|layouts?)\//.test(path)) return "ui";
   if (/(^|\/)(models?|entities|repositories|schemas?|migrations?|database|db|prisma)\//.test(path)) return "database";
-  if (/(^|\/)(config|configs|settings|env)\//.test(path) || /(^|[.-])(config|settings|env)\./.test(name)) return "config";
   if (/(^|\/)(commands?|cli|bin|scripts?|console)\//.test(path)) return "cli";
+  if (/(^|\/)(config|configs|settings|env)\//.test(path) || /(^|[.-])(config|settings|env)\./.test(name)) return "config";
   if (/(^|\/)(lib|libs|shared|utils?|helpers?|services?)\//.test(path)) return "service";
   if (/\b(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/.test(exportedSymbols.join(" "))) return "api";
   if (/\b(Component|View|Page|Layout|Screen)\b/i.test(exportedSymbols.join(" "))) return "ui";
@@ -559,8 +564,8 @@ function inferFilePurpose(
     return undefined;
   }
 
-  const fileName = normalized.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "file";
-  const responsibility = splitSearchTerms(fileName).join(" ") || fileName;
+  const fileName = path.split("/").at(-1)?.replace(/\.[^.]+$/, "") ?? "file";
+  const responsibility = splitSearchTerms(fileName).join(" ") || fileName.toLowerCase();
   const featureText = featureRefs.length > 0
     ? ` for ${featureRefs.slice(0, 2).join(" and ")}`
     : "";
@@ -683,7 +688,7 @@ function buildFeatureBusinessFlow(
   featureFiles: string[]
 ): string[] {
   const structuralFlow = buildStructuralFeatureFlow(featureName, Object.keys(graph));
-  if (structuralFlow.length > 0) {
+  if (structuralFlow.length >= 3) {
     return structuralFlow;
   }
 
@@ -726,6 +731,8 @@ function buildFeatureBusinessFlow(
 function buildStructuralFeatureFlow(featureName: string, files: string[]): string[] {
   const find = (...patterns: RegExp[]) =>
     files.find((file) => patterns.some((p) => p.test(file.toLowerCase())));
+  const findAll = (...patterns: RegExp[]) =>
+    files.filter((file) => patterns.some((p) => p.test(file.toLowerCase())));
 
   const steps: Array<[string, string | undefined]> = [];
 
@@ -773,7 +780,7 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     steps.push(
       ["Build context", find(/\/(context|contextbuilder)\.[cm]?[jt]s$/)],
       ["Construct prompt", find(/\/(prompt|prompts)\.[cm]?[jt]s$/)],
-      ["Call AI provider", find(/\/(openai|groq|anthropic|gemini|provider)\.[cm]?[jt]s$/)],
+      ["Call AI provider", findAll(/\/(openai|groq|openrouter|anthropic|gemini|provider)\.[cm]?[jt]s$/).join(" and ") || undefined],
       ["Process completion", find(/\/(completion|response|stream)\.[cm]?[jt]s$/)],
     );
   }
@@ -1079,20 +1086,38 @@ function isVagueSearchTerm(term: string): boolean {
   ]).has(term);
 }
 
-function detectAnalysisWarnings(files: ScannedFile[]): string[] {
+function detectAnalysisWarnings(
+  files: ScannedFile[],
+  entryPoints: string[],
+  criticalFiles: ProjectMap["criticalFiles"],
+  features: FeatureInfo[]
+): string[] {
+  const warnings: string[] = [];
+
+  if (entryPoints.length === 0) {
+    warnings.push("No entry points detected. The project structure may not be fully recognized.");
+  }
+
+  if (criticalFiles.length === 0) {
+    warnings.push("No critical files detected. Dependency analysis may be incomplete.");
+  }
+
+  if (features.length === 0) {
+    warnings.push("No features detected. Feature-based navigation may be unavailable.");
+  }
+
   const packageJson = files.find((file) => file.path === "package.json");
   if (!packageJson) {
-    return [];
+    return warnings;
   }
 
   try {
     JSON.parse(packageJson.content);
-    return [];
   } catch {
-    return [
-      "package.json could not be parsed. Dependency-based detection may be incomplete."
-    ];
+    warnings.push("package.json could not be parsed. Dependency-based detection may be incomplete.");
   }
+
+  return warnings;
 }
 
 function splitSearchTerms(value: string): string[] {

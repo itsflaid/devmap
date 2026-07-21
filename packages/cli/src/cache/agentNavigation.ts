@@ -155,19 +155,54 @@ function selectIndexCriticalFiles(snapshot: ProjectMap): string[] {
     candidates.add(critical.path);
   }
 
+  const entryDistance = computeEntryDistance(snapshot);
+
   return [...candidates]
     .filter((path) => {
       const metadata = snapshot.fileIndex[path];
       return metadata && metadata.scope !== "docs" && metadata.scope !== "test";
     })
     .sort((left, right) =>
-      calculateStartHereScore(right, snapshot) - calculateStartHereScore(left, snapshot)
+      calculateStartHereScore(right, snapshot, entryDistance) - calculateStartHereScore(left, snapshot, entryDistance)
       || left.localeCompare(right)
     )
     .slice(0, 8);
 }
 
-function calculateStartHereScore(path: string, snapshot: ProjectMap): number {
+// BFS distance from the nearest entry point over the resolved dependency graph.
+// Without this, calculateStartHereScore had no way to prefer "the file the
+// entry point calls directly" over "some file three imports deeper" — both
+// only differed by generic importance, which doesn't track call-graph order.
+function computeEntryDistance(snapshot: ProjectMap): Map<string, number> {
+  const distance = new Map<string, number>();
+  const queue: string[] = [];
+
+  for (const entry of snapshot.entryPoints) {
+    if (!distance.has(entry)) {
+      distance.set(entry, 0);
+      queue.push(entry);
+    }
+  }
+
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    const currentDistance = distance.get(current) ?? 0;
+    for (const dependency of snapshot.fileGraph[current] ?? []) {
+      if (!distance.has(dependency)) {
+        distance.set(dependency, currentDistance + 1);
+        queue.push(dependency);
+      }
+    }
+  }
+
+  return distance;
+}
+
+function calculateStartHereScore(
+  path: string,
+  snapshot: ProjectMap,
+  entryDistance: Map<string, number>
+): number {
   const metadata = snapshot.fileIndex[path];
   const entryIndex = snapshot.entryPoints.indexOf(path);
   const flowOwnership = snapshot.flows.filter((flow) =>
@@ -178,10 +213,13 @@ function calculateStartHereScore(path: string, snapshot: ProjectMap): number {
   ).length;
   const commandBonus = metadata?.scope === "cli" ? 500 : 0;
   const commandPathBonus = /(^|\/)commands?\//.test(path) ? 300 : 0;
+  const distance = entryDistance.get(path);
+  const entryProximityBonus = distance === undefined ? 0 : Math.max(0, 200 - distance * 60);
 
   return (entryIndex >= 0 ? 1_000_000 - entryIndex * 10_000 : 0)
     + commandBonus
     + commandPathBonus
+    + entryProximityBonus
     + flowOwnership * 120
     + featureOwnership * 100
     + (metadata?.featureRefs.length ?? 0) * 40

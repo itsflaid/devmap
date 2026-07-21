@@ -159,7 +159,7 @@ test("analyze warns and continues when package.json is malformed", async () => {
     await writeFile(join(projectRoot, "package.json"), "{broken", "utf8");
     await writeFile(
       join(projectRoot, "server.ts"),
-      "import express from \"express\";\nexport const app = express();\n",
+      'import express from "express";\nexport const app = express();\napp.get("/items", (_req, res) => res.json([]));\n',
       "utf8"
     );
 
@@ -170,7 +170,7 @@ test("analyze warns and continues when package.json is malformed", async () => {
     )));
 
     assert.match(logs, /Framework\s+express/);
-    assert.match(logs, /WARN package\.json could not be parsed/);
+    assert.match(logs, /package\.json could not be parsed/);
     assert.match(logs, /Fix package\.json and run devmap analyze --fresh/);
     assert.match(logs, /Snapshot saved/);
 

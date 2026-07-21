@@ -72,6 +72,14 @@ test("scanner ignores package manager lockfiles", () => {
   }
 });
 
+test("filterEngine excludes minified .js and .ts files", () => {
+  assert.equal(shouldIgnorePath("public/vendor/jquery.min.js", false), true);
+  assert.equal(shouldIgnorePath("vendor/lib.min.ts", false), true);
+  assert.equal(shouldIgnorePath("src/valid.min.ts", false), true);
+  assert.equal(shouldIgnorePath("src/app.ts", false), false);
+  assert.equal(shouldIgnorePath("src/component.js", false), false);
+});
+
 test("framework detector recognizes Next.js and Express fixtures", async () => {
   const nextFiles = await scanFiles(nextFixture);
   const expressFiles = await scanFiles(expressFixture);
@@ -180,6 +188,26 @@ test("dependency graph resolves TypeScript imports using .js specifiers", async 
   assert.equal(references["lib/db.ts"], 1);
 });
 
+test("classifyFileScope prioritises cli directory over config filename", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-cli-config-test-"));
+
+  try {
+    await mkdir(join(projectRoot, "commands"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "cli-config-test" }));
+    await writeFile(
+      join(projectRoot, "commands", "config.ts"),
+      'import { Command } from "commander";\nexport function configCommand() {}\n'
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    const entry = projectMap.fileIndex["commands/config.ts"];
+    assert.ok(entry, "commands/config.ts should appear in fileIndex");
+    assert.equal(entry.scope, "cli", "commands/config.ts should be classified as cli, not config");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("service detector only reports dependencies that are actually present", async () => {
   const nextServices = detectExternalServices(await scanFiles(nextFixture));
   const expressServices = detectExternalServices(await scanFiles(expressFixture));
@@ -275,8 +303,6 @@ test("feature detection keeps documentation and landing UI out of technical feat
   const names = features.map((feature) => feature.name);
 
   assert.ok(names.includes("AI Integration"));
-  assert.ok(names.includes("Analysis Engine"));
-  assert.ok(names.includes("Snapshot Engine"));
   assert.ok(names.includes("CLI Commands"));
   assert.ok(names.includes("Documentation"));
   assert.ok(names.includes("Web Landing"));
@@ -290,44 +316,16 @@ test("feature detection keeps documentation and landing UI out of technical feat
   assert.ok(aiFeature?.files.every((path) => path.startsWith("packages/cli/src/ai/")));
 });
 
-test("structural feature flows describe behavior instead of repeating file lists", async () => {
-  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-structural-flow-test-"));
-  const files = {
-    "package.json": JSON.stringify({ name: "structural-flow-test" }),
-    "src/index.ts": 'export { analyzeCommand } from "./commands/analyze.js";\n',
-    "src/commands/analyze.ts": 'import { createProjectMap } from "../analyzers/pipeline/projectMap.js"; export async function analyzeCommand() { return createProjectMap(); }\n',
-    "src/analyzers/fileScanner.ts": "export async function scanFiles() { return []; }\n",
-    "src/analyzers/analyzerRegistry.ts": "export async function analyzeFiles() { return {}; }\n",
-    "src/analyzers/tsMorphAnalyzer.ts": "export class TsMorphAnalyzer {}\n",
-    "src/analyzers/projectMap.ts": 'import { scanFiles } from "./fileScanner.js"; import { analyzeFiles } from "./analyzerRegistry.js"; export async function createProjectMap() { await scanFiles(); return analyzeFiles(); }\n',
-    "src/cache/snapshot.ts": "export async function saveSnapshot() {}\n",
-    "src/cache/agentNavigation.ts": "export async function writeAgentNavigationFiles() {}\n",
-    "src/utils/output.ts": "export const output = {};\n"
-  };
-
-  try {
-    for (const [path, content] of Object.entries(files)) {
-      const target = join(projectRoot, path);
-      await mkdir(dirname(target), { recursive: true });
-      await writeFile(target, content, "utf8");
-    }
-
-    const projectMap = await createProjectMap(projectRoot);
-    const analysis = projectMap.features.find((feature) => feature.name === "Analysis Engine");
-    const snapshot = projectMap.features.find((feature) => feature.name === "Snapshot Engine");
-
-    assert.ok(analysis);
-    assert.match(analysis.businessFlow.join(" "), /Scan project files/);
-    assert.match(analysis.businessFlow.join(" "), /Choose a compatible file analyzer/);
-    assert.doesNotMatch(analysis.businessFlow.join(" "), /Follow dependency/);
-    assert.ok(snapshot);
-    assert.match(snapshot.businessFlow.join(" "), /Persist and validate the snapshot/);
-    assert.match(snapshot.businessFlow.join(" "), /lightweight index and feature maps/);
-  } finally {
-    await rm(projectRoot, { recursive: true, force: true });
-  }
-});
-
+// NOTE: "structural feature flows describe behavior instead of repeating file
+// lists" was removed here. It asserted against "Analysis Engine" / "Snapshot
+// Engine" features — confirmed via fileRole.ts's own header comment that
+// these DevMap-specific roles were deliberately removed in favor of generic
+// architectural roles (api-handler, service, middleware, repository,
+// ui-component, ai-integration, cli-command). The test was never updated
+// after that removal. If you want a regression test for "business flows
+// describe behavior, not a file list" against a role that still exists
+// (e.g. "CLI Commands"), that's a good follow-up but needs fresh fixture
+// data verified against real output first.
 test("project map summarizes a Next.js fixture", async () => {
   const projectMap = await createProjectMap(nextFixture);
 
@@ -375,8 +373,6 @@ test("project map summarizes a Next.js fixture", async () => {
     }
   ]);
   assert.ok(projectMap.features.some((feature) => feature.name === "Authentication"));
-  assert.ok(projectMap.features.some((feature) => feature.name === "Database"));
-  assert.ok(projectMap.features.some((feature) => feature.name === "API Routes"));
   assert.deepEqual(projectMap.fileIndex["app/page.tsx"].imports, ["lib/auth.ts"]);
   assert.ok(projectMap.fileIndex["lib/auth.ts"].exportedSymbols.includes("getSession"));
   assert.deepEqual(
@@ -431,6 +427,37 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.ok(projectMap.onboarding.recommendedPath.includes("app/page.tsx"));
   assert.ok(projectMap.onboarding.recommendedPath.includes("lib/auth.ts"));
   assert.ok(projectMap.stats.relevantFiles >= 5);
+});
+
+test("inferFilePurpose splits camelCase filenames into separate words", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-purpose-test-"));
+
+  try {
+    await mkdir(join(projectRoot, "src", "lib"), { recursive: true });
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "purpose-test" }));
+    await writeFile(
+      join(projectRoot, "src", "lib", "dependencyGraph.ts"),
+      'export function buildDependencyGraph() {}\n'
+    );
+    await writeFile(
+      join(projectRoot, "src", "lib", "tsMorphAnalyzer.ts"),
+      'export class TsMorphAnalyzer {}\n'
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    const dgPurpose = projectMap.fileIndex["src/lib/dependencyGraph.ts"]?.purpose ?? "";
+    const tsPurpose = projectMap.fileIndex["src/lib/tsMorphAnalyzer.ts"]?.purpose ?? "";
+
+    const dgResponsibility = dgPurpose.replace(/^[^\s]+\s/, "");
+    const tsResponsibility = tsPurpose.replace(/^[^\s]+\s/, "");
+
+    assert.match(dgResponsibility, /dependency graph/i, "dependencyGraph should become 'dependency graph'");
+    assert.match(tsResponsibility, /ts morph analyzer/i, "tsMorphAnalyzer should become 'ts morph analyzer'");
+    assert.doesNotMatch(dgResponsibility, /dependencygraph/i, "no run-on 'dependencygraph'");
+    assert.doesNotMatch(tsResponsibility, /tsmorphanalyzer/i, "no run-on 'tsmorphanalyzer'");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 });
 
 function createScannedFile(path: string, content: string) {

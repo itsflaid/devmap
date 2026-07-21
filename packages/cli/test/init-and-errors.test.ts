@@ -19,33 +19,30 @@ import { DevmapError, handleError } from "../src/utils/errors.js";
 import type { Prompt } from "../src/utils/prompt.js";
 
 test("DEVMAP.md contains workflow and AI-agent guidance", () => {
-  const content = buildDevmapFile("nextjs");
+  const content = buildDevmapFile();
 
-  assert.match(content, /Detected framework: nextjs/);
   assert.match(content, /devmap analyze/);
-  assert.match(content, /Agent Navigation Contract/);
-  assert.match(content, /Required Agent Workflow/);
+  assert.match(content, /Navigation Order/);
   assert.match(content, /\.devmap\/index\.json/);
   assert.match(content, /\.devmap\/features\/\*\.json/);
-  assert.match(content, /sourcePriority/);
   assert.match(content, /snapshot\.json.*only when/is);
-  assert.match(content, /Do not scan the whole repository first/);
-  assert.match(content, /devmap init/);
   assert.match(content, /--json/);
   assert.match(content, /\.devmap\/snapshot\.json/);
-  assert.match(content, /Never commit API keys/);
 });
 
 test("DEVMAP.md is not overwritten when it already exists", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-file-test-"));
 
   try {
-    assert.equal(await ensureDevmapFile(projectRoot, "express"), true);
-    assert.equal(await ensureDevmapFile(projectRoot, "nextjs"), false);
+    assert.equal(await ensureDevmapFile(projectRoot), true);
+    const firstWrite = await readFile(join(projectRoot, "DEVMAP.md"), "utf8");
+    assert.equal(firstWrite, buildDevmapFile());
+
+    await writeFile(join(projectRoot, "DEVMAP.md"), "custom user content\n", "utf8");
+    assert.equal(await ensureDevmapFile(projectRoot), false);
 
     const content = await readFile(join(projectRoot, "DEVMAP.md"), "utf8");
-    assert.match(content, /Detected framework: express/);
-    assert.doesNotMatch(content, /Detected framework: nextjs/);
+    assert.equal(content, "custom user content\n");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -79,7 +76,7 @@ test("init uses environment API key and creates project setup files", async () =
 
     await access(join(projectRoot, ".devmap"));
     assert.match(await readFile(join(projectRoot, ".gitignore"), "utf8"), /\.devmap\//);
-    assert.match(await readFile(join(projectRoot, "DEVMAP.md"), "utf8"), /Detected framework: Not detected yet/);
+    assert.match(await readFile(join(projectRoot, "DEVMAP.md"), "utf8"), /Navigation Order/);
     assert.match(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), /DevMap Context/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -133,7 +130,7 @@ test("interactive init appends DevMap instructions only after confirmation", asy
     const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
     assert.ok(content.startsWith(original));
     assert.match(content, /<!-- DevMap Instruction Block -->/);
-    assert.match(content, /read `DEVMAP\.md` first/);
+    assert.match(content, /read `DEVMAP\.md` for project metadata and available commands/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

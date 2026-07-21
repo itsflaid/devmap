@@ -57,7 +57,7 @@ test("ts-morph analyzer extracts JavaScript and TypeScript structure", async () 
   );
 });
 
-test("registry keeps heuristic analysis for non-JS source files", async () => {
+test("registry uses ts-morph's script-block preprocessor for .vue source files", async () => {
   const file = createScannedFile("src/App.vue", [
     "<script setup>",
     'import Header from "./Header.vue";',
@@ -67,8 +67,8 @@ test("registry keeps heuristic analysis for non-JS source files", async () => {
 
   const analysis = (await analyzeFiles([file]))[file.path];
 
-  assert.equal(analysis.analyzer, "heuristic");
-  assert.equal(analysis.confidence, "medium");
+  assert.equal(analysis.analyzer, "ts-morph");
+  assert.equal(analysis.confidence, "high");
   assert.deepEqual(analysis.imports, ["./Header.vue"]);
   assert.deepEqual(analysis.exports, ["pageTitle"]);
 });

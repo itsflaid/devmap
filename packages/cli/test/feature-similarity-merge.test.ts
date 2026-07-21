@@ -90,7 +90,7 @@ test("computeSimilarity — empty vs data returns partial score", () => {
 });
 
 test("findSimilarFeature — empty list returns null", () => {
-  const result = findSimilarFeature(makeIdentity({ name: "Test" }), []);
+  const result = findSimilarFeature([], makeIdentity({ name: "Test" }));
   assert.equal(result, null);
 });
 

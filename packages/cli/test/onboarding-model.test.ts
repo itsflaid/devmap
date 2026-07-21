@@ -110,10 +110,9 @@ test("buildOnboardingModel handles an empty snapshot gracefully", async () => {
       language: "unknown",
       packageManager: "npm",
       framework: "unknown",
-      hasRootPackageJson: false,
       frameworks: [],
-      isWorkspace: false,
-      workspaces: []
+      projectType: "unknown",
+      workspaceType: "single-package"
     },
     stats: { totalFiles: 0, relevantFiles: 0, totalLines: 0 },
     entryPoints: [],
@@ -126,6 +125,7 @@ test("buildOnboardingModel handles an empty snapshot gracefully", async () => {
     onboarding: { recommendedPath: [] },
     changeImpact: {},
     dependencies: {},
+    fileGraph: {},
     fileIndex: {}
   };
 

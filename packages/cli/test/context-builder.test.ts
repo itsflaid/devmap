@@ -267,9 +267,13 @@ test("context builder enforces file limits and rejects paths outside the project
 
     const snapshot = await createProjectMap(projectRoot);
     snapshot.fileIndex["../outside-secret.ts"] = {
+      analyzer: "",
+      analysisConfidence: "high",
       hash: "unsafe",
       imports: [],
       exportedSymbols: ["secret"],
+      symbols: [],
+      topFunctions: [],
       lines: 1,
       scope: "unknown",
       featureRefs: [],
@@ -318,8 +322,8 @@ test("context builder returns low confidence with no files when nothing matches"
   try {
     const snapshot = await createProjectMap(projectRoot);
     snapshot.criticalFiles = [
-      { path: "src/auth.test.ts", score: 20, reasons: ["fixture critical file"] },
-      { path: "src/auth.ts", score: 10, reasons: ["production critical file"] }
+      { path: "src/auth.test.ts", referencedBy: 0, score: 20, reasons: ["fixture critical file"] },
+      { path: "src/auth.ts", referencedBy: 0, score: 10, reasons: ["production critical file"] }
     ];
     const context = await buildQuestionContext(
       projectRoot,
@@ -420,6 +424,7 @@ test("context builder uses feature searchTerms and featureRefs for retrieval", a
       purpose: "Identifies workspace membership behavior.",
       files: ["src/member.ts"],
       entryPoints: [],
+      businessFlow: [],
       searchTerms: ["invitation"],
       confidence: "high",
       evidence: ["src/member.ts"]

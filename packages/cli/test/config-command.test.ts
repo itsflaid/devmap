@@ -3,22 +3,24 @@ import test from "node:test";
 import { configModelCommand } from "../src/commands/config.js";
 import type { DevmapConfig } from "../src/utils/config.js";
 
+function persist<T>(ref: { value: T | null }) {
+  return async (config: T) => { ref.value = config; };
+}
+
 test("config model updates the model while preserving Groq credentials", async () => {
   const current: DevmapConfig = {
     provider: "groq",
     apiKey: "gsk_fixture",
     model: "auto"
   };
-  let saved: DevmapConfig | null = null;
+  const saved: { value: DevmapConfig | null } = { value: null };
 
   await configModelCommand("openai/gpt-oss-120b", {
     loadConfig: async () => current,
-    persistConfig: async (config) => {
-      saved = config;
-    }
+    persistConfig: persist(saved)
   });
 
-  assert.deepEqual(saved, {
+  assert.deepEqual(saved.value, {
     provider: "groq",
     apiKey: "gsk_fixture",
     model: "openai/gpt-oss-120b"
@@ -31,16 +33,15 @@ test("config model accepts auto to restore command-based routing", async () => {
     apiKey: "gsk_fixture",
     model: "openai/gpt-oss-120b"
   };
-  let saved: DevmapConfig | null = null;
+  const saved: { value: DevmapConfig | null } = { value: null };
 
   await configModelCommand("auto", {
     loadConfig: async () => current,
-    persistConfig: async (config) => {
-      saved = config;
-    }
+    persistConfig: persist(saved)
   });
 
-  assert.equal(saved?.model, "auto");
+  assert.ok(saved.value);
+  assert.equal(saved.value.model, "auto");
 });
 
 test("config model requires an existing initialized config", async () => {
@@ -60,7 +61,7 @@ test("config model requires an existing initialized config", async () => {
 });
 
 test("config model auto explains OpenRouter free routing", async () => {
-  let saved: DevmapConfig | null = null;
+  const saved: { value: DevmapConfig | null } = { value: null };
   const logs: string[] = [];
   const originalLog = console.log;
   console.log = (...values: unknown[]) => logs.push(values.join(" "));
@@ -72,12 +73,11 @@ test("config model auto explains OpenRouter free routing", async () => {
         apiKey: "sk-or-fixture",
         model: "qwen/qwen3-coder"
       }),
-      persistConfig: async (config) => {
-        saved = config;
-      }
+      persistConfig: persist(saved)
     });
 
-    assert.equal(saved?.model, "auto");
+    assert.ok(saved.value);
+    assert.equal(saved.value.model, "auto");
     assert.match(logs.join("\n"), /openrouter\/free/i);
   } finally {
     console.log = originalLog;

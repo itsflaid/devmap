@@ -299,7 +299,7 @@ test("feature detection keeps documentation and landing UI out of technical feat
     )
   ];
 
-  const features = detectFeatures(files, []);
+  const features = detectFeatures(files, {}, []);
   const names = features.map((feature) => feature.name);
 
   assert.ok(names.includes("AI Integration"));
@@ -612,9 +612,13 @@ test("snapshot inspection rejects invalid fileIndex entries", async () => {
   try {
     const snapshot = await createProjectMap(nextFixture);
     snapshot.fileIndex["app/page.tsx"] = {
+      analyzer: "",
+      analysisConfidence: "high",
       hash: "fixture",
       imports: undefined as unknown as string[],
       exportedSymbols: [],
+      symbols: [],
+      topFunctions: [],
       lines: 1,
       scope: "ui",
       featureRefs: [],

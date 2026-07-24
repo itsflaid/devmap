@@ -24,6 +24,8 @@ export type MapOptions = {
   json?: boolean;
   projectRoot?: string;
   target?: string;
+  depth?: number;
+  all?: boolean;
 };
 
 export type MapResult = {
@@ -69,10 +71,10 @@ async function runMap(
   const resolved = resolveMapTarget(snapshot, target);
 
   const built = resolved.mode === "file"
-    ? buildFileMap(snapshot, resolved.value)
+    ? buildFileMap(snapshot, resolved.value, options.depth)
     : resolved.mode === "feature"
-      ? buildFeatureMap(snapshot, resolved.value)
-      : buildProjectMap(snapshot);
+      ? buildFeatureMap(snapshot, resolved.value, options.depth)
+      : buildProjectMap(snapshot, options.all);
 
   const slug = slugifyMapName(resolved.value);
   const mapsDir = join(projectRoot, ".devmap", "maps");
@@ -140,12 +142,13 @@ function resolveMapTarget(snapshot: ProjectMap, target: string | undefined): Res
 
 function buildFileMap(
   snapshot: ProjectMap,
-  path: string
+  path: string,
+  depth?: number
 ): { markdown: string; mermaid: string } {
   const reverseGraph = buildReverseGraph(snapshot.fileGraph);
 
-  const usesTree = buildBoundedTree(snapshot.fileGraph, path, USES_DEPTH);
-  const usedByTree = buildBoundedTree(reverseGraph, path, USED_BY_DEPTH);
+  const usesTree = buildBoundedTree(snapshot.fileGraph, path, depth ?? USES_DEPTH);
+  const usedByTree = buildBoundedTree(reverseGraph, path, depth ?? USED_BY_DEPTH);
 
   const mermaidEdges: MermaidEdge[] = [
     ...collectEdgesFromTree(path, usesTree, "forward"),
@@ -187,7 +190,8 @@ function collectEdgesFromTree(
 
 function buildFeatureMap(
   snapshot: ProjectMap,
-  name: string
+  name: string,
+  depth?: number
 ): { markdown: string; mermaid: string } {
   const feature = snapshot.features.find((candidate) => candidate.name === name);
   if (!feature) {
@@ -199,7 +203,7 @@ function buildFeatureMap(
   const root = feature.entryPoint ?? feature.files[0];
 
   const internalTree = root
-    ? buildBoundedTree(snapshot.fileGraph, root, 4, {
+    ? buildBoundedTree(snapshot.fileGraph, root, depth ?? 4, {
         filter: (path) => featureFiles.has(path)
       })
     : { path: name, children: [], isCycle: false };
@@ -260,7 +264,11 @@ function collectTreePaths(node: MapTreeNode, into: Set<string>): void {
   }
 }
 
-function buildProjectMap(snapshot: ProjectMap): { markdown: string; mermaid: string } {
+function buildProjectMap(snapshot: ProjectMap, all?: boolean): { markdown: string; mermaid: string } {
+  if (all) {
+    return buildFullProjectDump(snapshot);
+  }
+
   const features = snapshot.features;
   const fileToFeature = new Map<string, string>();
   for (const feature of features) {
@@ -318,6 +326,36 @@ function buildProjectMap(snapshot: ProjectMap): { markdown: string; mermaid: str
 
   return {
     markdown: buildMapMarkdown({ title: "Project", sections, mermaid: renderMermaid(mermaidEdges) }),
+    mermaid: renderMermaid(mermaidEdges)
+  };
+}
+
+function buildFullProjectDump(snapshot: ProjectMap): { markdown: string; mermaid: string } {
+  const files = Object.keys(snapshot.fileGraph).sort();
+  const mermaidEdges: MermaidEdge[] = [];
+  const lines: string[] = [];
+
+  for (const file of files) {
+    const dependencies = snapshot.fileGraph[file] ?? [];
+    lines.push(dependencies.length > 0
+      ? `  - ${file} → ${dependencies.join(", ")}`
+      : `  - ${file}`);
+    for (const dependency of dependencies) {
+      mermaidEdges.push({ from: file, to: dependency });
+    }
+  }
+
+  return {
+    markdown: buildMapMarkdown({
+      title: "Project (full)",
+      sections: [
+        {
+          heading: "All files",
+          body: lines.length > 0 ? lines.join("\n") : "(no files scanned)"
+        }
+      ],
+      mermaid: renderMermaid(mermaidEdges)
+    }),
     mermaid: renderMermaid(mermaidEdges)
   };
 }

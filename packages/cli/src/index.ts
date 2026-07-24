@@ -51,8 +51,14 @@ program
   .command("map")
   .description("Map dependencies: full project, one feature, or one file")
   .argument("[target]", "feature name or file path — omit for a full project map")
+  .option("--depth <n>", "override traversal depth for file/feature mode", (value) => Number.parseInt(value, 10))
+  .option("--all", "project mode: full file-level dump instead of the curated feature view")
   .option("--json", "output machine-readable JSON")
-  .action((target, options) => mapCommand(target, { json: options.json }));
+  .action((target, options) => mapCommand(target, {
+    json: options.json,
+    depth: options.depth,
+    all: options.all
+  }));
 
 const configCommand = program
   .command("config")

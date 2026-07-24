@@ -141,6 +141,42 @@ test("map with no target produces a curated, feature-clustered project view", as
   }
 });
 
+test("map <file> --depth 1 shows fewer hops than the default", async () => {
+  const projectRoot = await projectFromFixture(nextFixture);
+
+  try {
+    const shallow = stripAnsi(
+      await captureOutput(() => mapCommand("app/api/session/route.ts", { projectRoot, depth: 1 }))
+    );
+    assert.match(shallow, /lib\/auth\.ts/);
+    assert.doesNotMatch(shallow, /lib\/db\.ts/);
+
+    const deeper = stripAnsi(
+      await captureOutput(() => mapCommand("app/api/session/route.ts", { projectRoot, depth: 2 }))
+    );
+    assert.match(deeper, /lib\/db\.ts/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("map --all dumps every file instead of the curated feature view", async () => {
+  const projectRoot = await projectFromFixture(nextFixture);
+
+  try {
+    const logs = stripAnsi(
+      await captureOutput(() => mapCommand(undefined, { projectRoot, all: true }))
+    );
+
+    assert.match(logs, /All files/);
+    assert.match(logs, /lib\/auth\.ts/);
+    assert.match(logs, /lib\/db\.ts/);
+    assert.doesNotMatch(logs, /Coverage/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("map <file> stays terminating on an import cycle instead of recursing forever", async () => {
   const fixtureRoot = await mkdtemp(join(tmpdir(), "devmap-map-cycle-fixture-"));
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-map-cycle-project-"));

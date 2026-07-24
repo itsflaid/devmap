@@ -38,19 +38,27 @@ export function buildBoundedTree(
   graph: FileGraph,
   root: string,
   maxDepth: number,
-  ancestors: string[] = [root]
+  options: { ancestors?: string[]; filter?: (path: string) => boolean } = {}
 ): MapTreeNode {
+  const ancestors = options.ancestors ?? [root];
+
   if (maxDepth <= 0) {
     return { path: root, children: [], isCycle: false };
   }
 
   const children: MapTreeNode[] = [];
   for (const next of graph[root] ?? []) {
+    if (options.filter && !options.filter(next)) continue;
     if (ancestors.includes(next)) {
       children.push({ path: next, children: [], isCycle: true });
       continue;
     }
-    children.push(buildBoundedTree(graph, next, maxDepth - 1, [...ancestors, next]));
+    children.push(
+      buildBoundedTree(graph, next, maxDepth - 1, {
+        ancestors: [...ancestors, next],
+        filter: options.filter
+      })
+    );
   }
 
   return { path: root, children, isCycle: false };

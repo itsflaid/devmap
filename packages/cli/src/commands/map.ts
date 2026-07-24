@@ -10,6 +10,7 @@ import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
 import { DevmapError } from "../utils/errors.js";
 import {
   buildMapMarkdown,
+  renderFlatList,
   renderMermaid,
   renderTree,
   type MermaidEdge
@@ -185,17 +186,78 @@ function collectEdgesFromTree(
 }
 
 function buildFeatureMap(
-  _snapshot: ProjectMap,
+  snapshot: ProjectMap,
   name: string
 ): { markdown: string; mermaid: string } {
-  // Phase 3.
+  const feature = snapshot.features.find((candidate) => candidate.name === name);
+  if (!feature) {
+    throw new DevmapError(`Feature "${name}" not found in the current snapshot.`);
+  }
+
+  const featureFiles = new Set(feature.files);
+  const reverseGraph = buildReverseGraph(snapshot.fileGraph);
+  const root = feature.entryPoint ?? feature.files[0];
+
+  const internalTree = root
+    ? buildBoundedTree(snapshot.fileGraph, root, 4, {
+        filter: (path) => featureFiles.has(path)
+      })
+    : { path: name, children: [], isCycle: false };
+
+  const reached = new Set<string>();
+  if (root) collectTreePaths(internalTree, reached);
+  const unreached = feature.files.filter((path) => path !== root && !reached.has(path));
+
+  const externalDependencies = new Set<string>();
+  const dependencyEdges: MermaidEdge[] = [];
+  for (const file of feature.files) {
+    for (const dependency of snapshot.fileGraph[file] ?? []) {
+      if (!featureFiles.has(dependency)) {
+        externalDependencies.add(dependency);
+        dependencyEdges.push({ from: file, to: dependency });
+      }
+    }
+  }
+
+  const externalDependents = new Set<string>();
+  const dependentEdges: MermaidEdge[] = [];
+  for (const file of feature.files) {
+    for (const dependent of reverseGraph[file] ?? []) {
+      if (!featureFiles.has(dependent)) {
+        externalDependents.add(dependent);
+        dependentEdges.push({ from: dependent, to: file });
+      }
+    }
+  }
+
+  const internalEdges = root ? collectEdgesFromTree(root, internalTree, "forward") : [];
+  const mermaidEdges = [...internalEdges, ...dependencyEdges, ...dependentEdges];
+
+  const sections = [
+    {
+      heading: "Internal structure",
+      body: root ? `${root}\n${renderTree(internalTree)}` : renderTree(internalTree)
+    }
+  ];
+  if (unreached.length > 0) {
+    sections.push({ heading: "Other files in this feature", body: renderFlatList(unreached) });
+  }
+  sections.push(
+    { heading: "Depends on (outside this feature)", body: renderFlatList([...externalDependencies]) },
+    { heading: "Used by (outside this feature)", body: renderFlatList([...externalDependents]) }
+  );
+
   return {
-    markdown: buildMapMarkdown({
-      title: name,
-      sections: [{ heading: "Status", body: "Feature-level mapping lands in Phase 3." }]
-    }),
-    mermaid: "graph LR"
+    markdown: buildMapMarkdown({ title: name, sections, mermaid: renderMermaid(mermaidEdges) }),
+    mermaid: renderMermaid(mermaidEdges)
   };
+}
+
+function collectTreePaths(node: MapTreeNode, into: Set<string>): void {
+  into.add(node.path);
+  if (!node.isCycle) {
+    for (const child of node.children) collectTreePaths(child, into);
+  }
 }
 
 function buildProjectMap(_snapshot: ProjectMap): { markdown: string; mermaid: string } {

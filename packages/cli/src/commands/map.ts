@@ -260,14 +260,65 @@ function collectTreePaths(node: MapTreeNode, into: Set<string>): void {
   }
 }
 
-function buildProjectMap(_snapshot: ProjectMap): { markdown: string; mermaid: string } {
-  // Phase 4.
+function buildProjectMap(snapshot: ProjectMap): { markdown: string; mermaid: string } {
+  const features = snapshot.features;
+  const fileToFeature = new Map<string, string>();
+  for (const feature of features) {
+    for (const file of feature.files) {
+      if (!fileToFeature.has(file)) fileToFeature.set(file, feature.name);
+    }
+  }
+
+  const featureSummaries = features.map(
+    (feature) => `${feature.name} (${feature.files.length} file${feature.files.length === 1 ? "" : "s"})`
+  );
+
+  const crossFeatureEdgeKeys = new Set<string>();
+  const mermaidEdges: MermaidEdge[] = [];
+  for (const feature of features) {
+    for (const file of feature.files) {
+      for (const dependency of snapshot.fileGraph[file] ?? []) {
+        const dependencyFeature = fileToFeature.get(dependency);
+        if (dependencyFeature && dependencyFeature !== feature.name) {
+          const key = `${feature.name}=>${dependencyFeature}`;
+          if (!crossFeatureEdgeKeys.has(key)) {
+            crossFeatureEdgeKeys.add(key);
+            mermaidEdges.push({ from: feature.name, to: dependencyFeature });
+          }
+        }
+      }
+    }
+  }
+
+  const relationshipLines = [...crossFeatureEdgeKeys].map((key) => {
+    const [from, to] = key.split("=>");
+    return `  - ${from} → ${to}`;
+  });
+
+  const totalFiles = Object.keys(snapshot.fileIndex).length;
+  const mappedFiles = fileToFeature.size;
+  const coverageNote = totalFiles > 0
+    ? `${mappedFiles} of ${totalFiles} files belong to a detected feature. The rest (config, infra, tests, etc.) aren't shown here — use "devmap map <file>" for any specific file.`
+    : "(no files scanned)";
+
+  const sections = [
+    {
+      heading: "Features",
+      body: featureSummaries.length > 0 ? renderFlatList(featureSummaries) : "(none detected)"
+    },
+    {
+      heading: "Feature relationships",
+      body: relationshipLines.length > 0
+        ? relationshipLines.join("\n")
+        : "(no cross-feature dependencies detected)"
+    },
+    { heading: "Entry points", body: renderFlatList(snapshot.entryPoints) },
+    { heading: "Coverage", body: coverageNote }
+  ];
+
   return {
-    markdown: buildMapMarkdown({
-      title: "Project",
-      sections: [{ heading: "Status", body: "Curated project-level mapping lands in Phase 4." }]
-    }),
-    mermaid: "graph LR"
+    markdown: buildMapMarkdown({ title: "Project", sections, mermaid: renderMermaid(mermaidEdges) }),
+    mermaid: renderMermaid(mermaidEdges)
   };
 }
 

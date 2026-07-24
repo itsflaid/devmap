@@ -36,19 +36,19 @@
 
 **Commands:**
 
-### ⭐ `devmap onboarding` — HIGH PRIORITY
-Polish existing implementation. Current output is too generic.
+### ✅ `devmap onboarding`
+Rebuilt (Jul 2026). Current output is snapshot-derived, not generic.
 
 Core question it answers:
 > Where should I start reading this project?
 
-Target output sections:
-1. What This Project Does
-2. Mental Model
-3. Key Concepts
-4. Important Areas to Understand
-5. Key Flows
-6. Where to Start (ordered reading path with explanation)
+Actual output sections (model: `tagline`, `stackLine`, `whatThisIs`, `howItWorks`, `features`, `startHere`):
+1. What this is (tagline + 2-4 sentence prose)
+2. How it works (conceptual steps)
+3. What's inside (feature summaries)
+4. Start here (ordered reading path with reasons)
+5. Key flows
+6. Go deeper (available commands)
 
 Rules:
 - Derives reading path from snapshot, not generic advice
@@ -58,19 +58,21 @@ Rules:
 
 ---
 
-### ⭐ `devmap map [feature/file?]`
-Core question it answers:
+### ✅ `devmap map [feature/file?]`
+Shipped. Core question it answers:
 > This file/feature — what does it connect to, and how?
 
 ```bash
-devmap map                    # full project dependency map
-devmap map authentication     # map one feature
-devmap map src/lib/auth.ts    # map one file
+devmap map                    # curated, feature-clustered project map
+devmap map authentication     # map one feature (internal structure + external boundary)
+devmap map src/lib/auth.ts    # map one file (uses + used by)
 ```
 
 Output: text dependency tree + `.devmap/maps/[name].md` + `.devmap/maps/[name].mermaid`
 
 Differentiator from `flow`: map = spatial (who connects to whom), flow = temporal (what happens in order).
+
+No AI call — pure traversal of the snapshot's `fileGraph`/`features`, already computed by `analyze`.
 
 ---
 

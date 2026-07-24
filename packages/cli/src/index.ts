@@ -4,6 +4,7 @@ import { analyzeCommand } from "./commands/analyze.js";
 import { configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { initCommand } from "./commands/init.js";
+import { mapCommand } from "./commands/map.js";
 import { onboardingCommand } from "./commands/onboarding.js";
 import { printHelp } from "./utils/help.js";
 import { printWelcome } from "./utils/welcome.js";
@@ -45,6 +46,13 @@ program
     write: options.write,
     json: options.json
   }));
+
+program
+  .command("map")
+  .description("Map dependencies: full project, one feature, or one file")
+  .argument("[target]", "feature name or file path — omit for a full project map")
+  .option("--json", "output machine-readable JSON")
+  .action((target, options) => mapCommand(target, { json: options.json }));
 
 const configCommand = program
   .command("config")

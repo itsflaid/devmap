@@ -9,7 +9,13 @@ export type EntityInfo = {
   name: string;
   fields: FieldInfo[];
   relations: RelationInfo[];
-  source: "prisma" | "route-hint";
+  source: "prisma" | "sql" | "route-hint";
+  /** Files this entity was actually found in — set when the source has no
+   *  reliable filename/path convention to fall back on (e.g. a "verses"
+   *  table referenced inside src/routes/quran.ts has no file named verse.ts
+   *  for the generic name-matching fallback to find). When present, this
+   *  takes priority over that fallback. */
+  sourceFiles?: string[];
 };
 
 export type FieldInfo = {
@@ -32,7 +38,7 @@ export type EntityGraph = {
   /** Flat list of entity names — shortcut buat featureDetector & capabilityDetector */
   entityNames: string[];
   /** Where entities came from — consumers dapat tau seberapa reliable data ini */
-  source: "prisma" | "route-hint" | "empty";
+  source: "prisma" | "sql" | "route-hint" | "empty";
 };
 
 // ---------------------------------------------------------------------------

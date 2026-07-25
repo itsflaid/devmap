@@ -10,6 +10,8 @@ import type {
   RouteInfo,
   CapabilityInfo,
 } from "../detectors/index.js";
+import { detectFrontendPageFeatures } from "../detectors/index.js";
+import type { FileGraph } from "../graph/dependencyGraph.js";
 import { isArchitectureSource } from "../graph/index.js";
 import { mergeIntoFeatureList } from "./featureMerge.js";
 
@@ -456,7 +458,8 @@ export function detectFeatures(
   routes: RouteInfo[],
   database?: DatabaseInfo,
   entityGraph?: EntityGraph,
-  capabilities?: CapabilityInfo[]
+  capabilities?: CapabilityInfo[],
+  fileGraph?: FileGraph
 ): FeatureInfo[] {
   const features: FeatureInfo[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
@@ -537,6 +540,12 @@ export function detectFeatures(
 
   if (entityGraph && entityGraph.entityNames.length > 0) {
     for (const feature of entityGraphToFeatures(entityGraph, scopedFiles)) {
+      mergeFeature(features, feature);
+    }
+  }
+
+  if (fileGraph) {
+    for (const feature of detectFrontendPageFeatures(routes, fileGraph)) {
       mergeFeature(features, feature);
     }
   }
@@ -766,7 +775,7 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
       "management", "crud"
     ].filter((v, i, arr) => arr.indexOf(v) === i);
 
-    const entityFiles = findEntityFiles(entity.name, files);
+    const entityFiles = entity.sourceFiles ?? findEntityFiles(entity.name, files);
 
     if (entityFiles.length === 0) continue;
 

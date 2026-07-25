@@ -2,6 +2,7 @@ import type { ScannedFile } from "../index.js";
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityGraph, EntityInfo, IEntityExtractor, RelationInfo } from "./types.js";
 import { PrismaExtractor } from "./prismaExtractor.js";
+import { SQLExtractor } from "./sqlExtractor.js";
 import { RouteFallbackExtractor } from "./fallbackExtractor.js";
 
 // ---------------------------------------------------------------------------
@@ -19,14 +20,16 @@ import { RouteFallbackExtractor } from "./fallbackExtractor.js";
  *   2. [future] Drizzle  → import { DrizzleExtractor } from "./drizzleExtractor.js"
  *   3. [future] TypeORM  → import { TypeORMExtractor } from "./typeormExtractor.js"
  *   4. [future] Mongoose → import { MongooseExtractor } from "./mongooseExtractor.js"
- *   5. [future] SQL      → import { SQLExtractor } from "./sqlExtractor.js"
+ *   5. SQL       — raw pg/mysql2/better-sqlite3, table names as pseudo-entities
+ *                  (no field/relation data — lowest confidence of the schema sources,
+ *                  stays last so any ORM extractor above gets first refusal)
  */
 const EXTRACTORS: IEntityExtractor[] = [
   new PrismaExtractor(),
   // new DrizzleExtractor(),
   // new TypeORMExtractor(),
   // new MongooseExtractor(),
-  // new SQLExtractor(),
+  new SQLExtractor(),
 ];
 
 const ROUTE_FALLBACK = new RouteFallbackExtractor();

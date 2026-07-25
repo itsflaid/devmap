@@ -55,7 +55,7 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
   extract(routes: RouteInfo[]): EntityInfo[] {
     const entityNames = new Set<string>();
 
-    for (const route of routes) {
+    for (const route of routes.filter((r) => r.kind === "api")) {
       const segments = route.path.split("/").filter(Boolean);
 
       for (const segment of segments) {
@@ -93,7 +93,7 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
  * "workspaces" → "Workspace"
  * "media"      → "Media"  (irregular, tidak diubah)
  */
-function singularize(word: string): string {
+export function singularize(word: string): string {
   const lower = word.toLowerCase();
 
   // Irregular — cek duluan sebelum suffix rules
@@ -105,9 +105,15 @@ function singularize(word: string): string {
   if (lower.endsWith("ies")) {
     return capitalize(lower.slice(0, -3) + "y");
   }
-  // "statuses" → "status", "addresses" → "address", "churches" → "church"
-  if (lower.endsWith("sses") || lower.endsWith("xes") || lower.endsWith("ches") || lower.endsWith("ses")) {
+  // "addresses" → "address", "churches" → "church", "boxes" → "box"
+  // (stem itself ends in a hard consonant cluster that takes "-es")
+  if (lower.endsWith("sses") || lower.endsWith("xes") || lower.endsWith("ches") || lower.endsWith("shes")) {
     return capitalize(lower.slice(0, -2));
+  }
+  // "verses" → "verse", "houses" → "house", "cases" → "case", "responses" → "response"
+  // (singular already ends in a silent "e" before the "s" — plural just adds "s", not "es")
+  if (lower.endsWith("ses")) {
+    return capitalize(lower.slice(0, -1));
   }
   // "workspaces", "snippets", "collections" — trailing -s yang umum
   if (lower.endsWith("s") && !lower.endsWith("ss")) {

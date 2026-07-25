@@ -55,7 +55,7 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
   extract(routes: RouteInfo[]): EntityInfo[] {
     const entityNames = new Set<string>();
 
-    for (const route of routes) {
+    for (const route of routes.filter((r) => r.kind === "api")) {
       const segments = route.path.split("/").filter(Boolean);
 
       for (const segment of segments) {

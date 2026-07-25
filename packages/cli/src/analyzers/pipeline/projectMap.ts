@@ -184,7 +184,7 @@ export async function createProjectMap(
 
   // Step 3: Detect features — consume entityGraph + capabilities
   const features = attachFeatureEntryPoints(
-    detectFeatures(files, analyses, routes, database, entityGraph, capabilities),
+    detectFeatures(files, analyses, routes, database, entityGraph, capabilities, graph),
     routes,
     entryPoints,
     graph,

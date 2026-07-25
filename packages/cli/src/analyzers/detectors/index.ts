@@ -32,3 +32,7 @@ export type {
   CapabilityKind,
   CapabilityInfo,
 } from "./capabilityDetector.js";
+
+export {
+  detectFrontendPageFeatures,
+} from "./frontendFeatureDetector.js";

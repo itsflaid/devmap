@@ -3,8 +3,8 @@ import { theme } from "./output.js";
 const commands = [
   ["init", "Initialize DevMap configuration"],
   ["analyze", "Analyze project structure"],
-  ["ask <question>", "Ask about your codebase"],
   ["onboarding", "Generate project onboarding guide"],
+  ["map [target]", "Map dependencies: project, feature, or file"],
   ["config model", "Set model override or automatic routing"],
   ["doctor", "Diagnose DevMap setup"]
 ] as const;

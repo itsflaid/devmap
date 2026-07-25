@@ -13,3 +13,12 @@ export {
 export {
   isArchitectureSource,
 } from "./sourceScope.js";
+
+export {
+  buildReverseGraph,
+  buildBoundedTree,
+  collectNodesWithinDepth,
+} from "./dependencyMap.js";
+export type {
+  MapTreeNode,
+} from "./dependencyMap.js";

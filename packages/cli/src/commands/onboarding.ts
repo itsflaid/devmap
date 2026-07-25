@@ -241,6 +241,7 @@ const AVAILABLE_COMMANDS = new Set([
   "onboarding",
   "config",
   "doctor",
+  "map",
 ]);
 
 type GoDeeperEntry = {

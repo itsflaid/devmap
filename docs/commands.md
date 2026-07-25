@@ -273,12 +273,12 @@ devmap onboarding --json
 
 ### Output Sections
 
-1. What This Project Does
-2. Mental Model
-3. Main Concepts
-4. Important Areas to Understand
-5. Key Flows
-6. Where to Start
+1. What this is (tagline + prose)
+2. How it works
+3. What's inside (features)
+4. Start here (ordered reading path)
+5. Key flows
+6. Go deeper (available commands)
 
 ### Rules
 
@@ -294,6 +294,56 @@ devmap onboarding --json
 * Keep `--json` non-interactive; never prompt in machine-readable mode
 * Default generated onboarding language is English; use `--language id` for
   Bahasa Indonesia
+
+---
+
+## `devmap map`
+
+Generate a dependency map: full project, one feature, or one file.
+
+### Purpose
+
+`devmap map` turns `.devmap/snapshot.json`'s already-computed dependency
+graph and feature list into a navigable map. It should help answer:
+
+> This file/feature — what does it connect to, and how?
+
+Unlike `devmap onboarding`, this never calls AI — it's a pure traversal of
+data `devmap analyze` already produced.
+
+### Usage
+
+```bash
+devmap map                    # curated, feature-clustered project view
+devmap map authentication     # one feature (match is case-insensitive)
+devmap map src/lib/auth.ts    # one file (exact path or unambiguous suffix)
+devmap map auth.ts            # suffix match — resolves if only one file matches
+devmap map --json
+```
+
+### Responsibilities
+
+* Read `.devmap/snapshot.json`
+* Resolve the target as a feature name, then an exact file path, then an
+  unambiguous filename suffix, in that order
+* File mode: show what the file uses (2 hops) and what uses it (1 hop),
+  both directions, cycle-safe
+* Feature mode: show internal structure rooted at the feature's entry
+  point (restricted to the feature's own files), plus what it depends on
+  and is depended on by outside itself
+* Project mode (no target): cluster by feature, show cross-feature
+  dependencies and a file-coverage note — not a raw full-file dump
+* Print a text tree plus a Mermaid diagram in the terminal
+* Write `.devmap/maps/[name].md` and `.devmap/maps/[name].mermaid`
+* Warn when the snapshot is stale
+* Emit one structured JSON document when `--json` is passed
+
+### Rules
+
+* Never expand a cycle in the tree — mark it `(cycle)` instead of recursing
+* An ambiguous suffix match is an error with the candidate list, not a guess
+* Project mode stays curated by default; it does not attempt a full
+  file-level dump of large projects
 
 ---
 

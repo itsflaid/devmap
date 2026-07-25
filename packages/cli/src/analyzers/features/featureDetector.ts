@@ -766,7 +766,7 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
       "management", "crud"
     ].filter((v, i, arr) => arr.indexOf(v) === i);
 
-    const entityFiles = findEntityFiles(entity.name, files);
+    const entityFiles = entity.sourceFiles ?? findEntityFiles(entity.name, files);
 
     if (entityFiles.length === 0) continue;
 

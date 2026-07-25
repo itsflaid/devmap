@@ -30,6 +30,21 @@ const DATABASE_SIGNALS: Array<{
     provider: "Supabase",
     dependencies: ["@supabase/supabase-js"],
     paths: [/(^|\/)supabase\//]
+  },
+  {
+    provider: "PostgreSQL (raw SQL)",
+    dependencies: ["pg", "pg-promise"],
+    paths: []
+  },
+  {
+    provider: "MySQL (raw SQL)",
+    dependencies: ["mysql2", "mysql"],
+    paths: []
+  },
+  {
+    provider: "SQLite (raw SQL)",
+    dependencies: ["better-sqlite3", "sqlite3"],
+    paths: []
   }
 ];
 

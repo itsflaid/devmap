@@ -35,4 +35,5 @@ export type {
 
 export {
   detectFrontendPageFeatures,
+  detectClientRouteFeatures,
 } from "./frontendFeatureDetector.js";

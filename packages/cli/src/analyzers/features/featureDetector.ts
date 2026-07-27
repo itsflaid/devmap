@@ -10,7 +10,7 @@ import type {
   RouteInfo,
   CapabilityInfo,
 } from "../detectors/index.js";
-import { detectFrontendPageFeatures } from "../detectors/index.js";
+import { detectFrontendPageFeatures, detectClientRouteFeatures } from "../detectors/index.js";
 import type { FileGraph } from "../graph/dependencyGraph.js";
 import { isArchitectureSource } from "../graph/index.js";
 import { mergeIntoFeatureList } from "./featureMerge.js";
@@ -546,6 +546,9 @@ export function detectFeatures(
 
   if (fileGraph) {
     for (const feature of detectFrontendPageFeatures(routes, fileGraph)) {
+      mergeFeature(features, feature);
+    }
+    for (const feature of detectClientRouteFeatures(scopedFiles, fileGraph)) {
       mergeFeature(features, feature);
     }
   }

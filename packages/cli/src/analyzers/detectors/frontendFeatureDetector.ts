@@ -1,4 +1,5 @@
 import type { RouteInfo } from "./routeDetector.js";
+import type { ScannedFile } from "../analysis/index.js";
 import type { FileGraph } from "../graph/dependencyGraph.js";
 import { buildReverseGraph } from "../graph/index.js";
 import { singularize } from "../analysis/extractors/fallbackExtractor.js";
@@ -93,13 +94,119 @@ function groupBySegment(pageRoutes: RouteInfo[]): Map<string, RouteInfo[]> {
   return bySegment;
 }
 
+// ---------------------------------------------------------------------------
+// React Router (client-side routing)
+// ---------------------------------------------------------------------------
+
+/**
+ * Matches the common ways a path gets paired with a component reference in
+ * React Router — JSX `<Route path="..." element={<Foo />} />` / `component={Foo}`,
+ * and object/data-router configs `{ path: "...", element: <Foo /> }` /
+ * `{ path: "...", Component: Foo }`. Not a JSX/AST parser — same "common
+ * conventions, not full coverage" approach as the SQL table-name extraction.
+ * Assumes `path` appears before the element/component reference, which is
+ * the idiomatic order in real code; reversed ordering is a known v1 miss.
+ */
+const CLIENT_ROUTE_PATTERNS = [
+  /<Route\s+[^>]*?path=["'`]([^"'`]+)["'`][^>]*?element=\{<(\w+)/g,
+  /<Route\s+[^>]*?path=["'`]([^"'`]+)["'`][^>]*?component=\{?(\w+)/g,
+  /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?element:\s*<(\w+)/g,
+  /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?Component:\s*(\w+)/g,
+];
+
+type ClientRoute = { path: string; component: string; definedIn: string };
+
+function findClientRoutes(files: ScannedFile[]): ClientRoute[] {
+  const routes: ClientRoute[] = [];
+
+  for (const file of files) {
+    for (const pattern of CLIENT_ROUTE_PATTERNS) {
+      pattern.lastIndex = 0;
+      let match = pattern.exec(file.content);
+      while (match) {
+        routes.push({ path: match[1], component: match[2], definedIn: file.path });
+        match = pattern.exec(file.content);
+      }
+    }
+  }
+
+  return routes;
+}
+
+/**
+ * A route only gives an identifier ("QuranPage"), not a file. Resolve it by
+ * checking what the defining file actually imports — the dependency graph
+ * already has that edge, so this is a lookup, not new import resolution.
+ */
+function resolveRouteComponentFile(route: ClientRoute, fileGraph: FileGraph): string | undefined {
+  const imported = fileGraph[route.definedIn] ?? [];
+  const target = route.component.toLowerCase();
+
+  return imported.find((file) => {
+    const stem = file.slice(file.lastIndexOf("/") + 1).replace(/\.[^/.]+$/, "");
+    return stem.toLowerCase() === target;
+  });
+}
+
+/**
+ * detectClientRouteFeatures — same purpose and output shape as
+ * detectFrontendPageFeatures, for SPAs with no file-based routing (Vite +
+ * React Router). Route paths come from parsing route definitions instead of
+ * folder conventions; ownership uses the exact same reverse-graph rule.
+ */
+export function detectClientRouteFeatures(
+  files: ScannedFile[],
+  fileGraph: FileGraph
+): FeatureInfo[] {
+  const routes = findClientRoutes(files);
+  if (routes.length === 0) return [];
+
+  const bySegment = new Map<string, string[]>();
+  for (const route of routes) {
+    const segments = route.path.split("/").filter(Boolean);
+    const topSegment = segments[0];
+    if (!topSegment || topSegment.startsWith(":") || topSegment.startsWith("*")) continue;
+    if (NON_FEATURE_PAGE_SEGMENTS.has(topSegment.toLowerCase())) continue;
+
+    const resolvedFile = resolveRouteComponentFile(route, fileGraph);
+    if (!resolvedFile) continue;
+
+    const seeds = bySegment.get(topSegment) ?? [];
+    if (!seeds.includes(resolvedFile)) seeds.push(resolvedFile);
+    bySegment.set(topSegment, seeds);
+  }
+
+  const reverseGraph = buildReverseGraph(fileGraph);
+  const features: FeatureInfo[] = [];
+
+  for (const [segment, seedFiles] of bySegment) {
+    if (seedFiles.length === 0) continue;
+    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph);
+    const name = singularize(segment);
+
+    features.push({
+      name,
+      purpose: `Client-side route${seedFiles.length > 1 ? "s" : ""} under "${segment}".`,
+      files: ownedFiles,
+      entryPoint: seedFiles[0],
+      entryPoints: seedFiles.slice(0, 2),
+      businessFlow: [],
+      searchTerms: [...new Set([segment.toLowerCase(), name.toLowerCase()])],
+      confidence: "medium",
+      evidence: ownedFiles
+    });
+  }
+
+  return features;
+}
+
 /**
  * collectOwnedFiles — seed files plus every file reachable from them whose
- * *every* referrer is also within that reachable set. A component imported
- * by this page and nothing else is "owned"; a component also imported by a
- * different page or feature is shared and stays out — false-negative
- * (feature looks smaller than it is) over false-positive (feature claims a
- * shared file it doesn't really own).
+ * *every* referrer is also within that reachable set. A component (or
+ * store, or any other file) imported by this route/page and nothing else is
+ * "owned"; a file also imported by a different page or feature is shared
+ * and stays out — false-negative (feature looks smaller than it is) over
+ * false-positive (feature claims a shared file it doesn't really own).
  */
 function collectOwnedFiles(
   seedFiles: string[],

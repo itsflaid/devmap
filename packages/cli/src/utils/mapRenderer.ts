@@ -7,35 +7,49 @@ import type { MapTreeNode } from "../analyzers/graph/dependencyMap.js";
  */
 export function renderTree(node: MapTreeNode, prefix = ""): string {
   const lines: string[] = [];
-  renderTreeLines(node.children, prefix, lines);
+  renderTreeLines(node, prefix, lines);
   return lines.length > 0 ? lines.join("\n") : "(no connections found)";
 }
 
 function renderTreeLines(
-  children: MapTreeNode[],
+  node: MapTreeNode,
   prefix: string,
   lines: string[]
 ): void {
+  const { children, truncatedCount } = node;
+  const hasMore = Boolean(truncatedCount);
+
   children.forEach((child, index) => {
-    const isLast = index === children.length - 1;
+    const isLast = index === children.length - 1 && !hasMore;
     const branch = isLast ? "└── " : "├── ";
     const nextPrefix = prefix + (isLast ? "    " : "│   ");
     const suffix = child.isCycle ? " (cycle)" : "";
 
     lines.push(`${prefix}${branch}${child.path}${suffix}`);
     if (!child.isCycle) {
-      renderTreeLines(child.children, nextPrefix, lines);
+      renderTreeLines(child, nextPrefix, lines);
     }
   });
+
+  if (hasMore) {
+    lines.push(`${prefix}└── … +${truncatedCount} more (truncated for readability — pass --all to see everything)`);
+  }
 }
 
 /**
  * renderFlatList — simple bullet list for cases (feature/project mode) where
  * a flat "these files are involved" view reads better than a nested tree.
  */
-export function renderFlatList(paths: string[]): string {
+export function renderFlatList(paths: string[], options: { cap?: number } = {}): string {
   if (paths.length === 0) return "(none)";
-  return paths.map((path) => `  - ${path}`).join("\n");
+  const cap = options.cap ?? Infinity;
+  const shown = paths.slice(0, cap);
+  const lines = shown.map((path) => `  - ${path}`);
+  const omitted = paths.length - shown.length;
+  if (omitted > 0) {
+    lines.push(`  - … +${omitted} more (truncated for readability — pass --all to see everything)`);
+  }
+  return lines.join("\n");
 }
 
 export type MermaidEdge = { from: string; to: string };

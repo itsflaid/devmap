@@ -18,6 +18,7 @@ export {
   buildReverseGraph,
   buildBoundedTree,
   collectNodesWithinDepth,
+  DEFAULT_MAX_CHILDREN,
 } from "./dependencyMap.js";
 export type {
   MapTreeNode,

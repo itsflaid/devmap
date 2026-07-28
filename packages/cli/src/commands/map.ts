@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import {
   buildBoundedTree,
   buildReverseGraph,
+  DEFAULT_MAX_CHILDREN,
   type MapTreeNode
 } from "../analyzers/graph/index.js";
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
@@ -71,9 +72,9 @@ async function runMap(
   const resolved = resolveMapTarget(snapshot, target);
 
   const built = resolved.mode === "file"
-    ? buildFileMap(snapshot, resolved.value, options.depth)
+    ? buildFileMap(snapshot, resolved.value, options.depth, options.all)
     : resolved.mode === "feature"
-      ? buildFeatureMap(snapshot, resolved.value, options.depth)
+      ? buildFeatureMap(snapshot, resolved.value, options.depth, options.all)
       : buildProjectMap(snapshot, options.all);
 
   const slug = slugifyMapName(resolved.value);
@@ -143,12 +144,14 @@ function resolveMapTarget(snapshot: ProjectMap, target: string | undefined): Res
 function buildFileMap(
   snapshot: ProjectMap,
   path: string,
-  depth?: number
+  depth?: number,
+  all?: boolean
 ): { markdown: string; mermaid: string } {
   const reverseGraph = buildReverseGraph(snapshot.fileGraph);
+  const maxChildren = all ? Infinity : DEFAULT_MAX_CHILDREN;
 
-  const usesTree = buildBoundedTree(snapshot.fileGraph, path, depth ?? USES_DEPTH);
-  const usedByTree = buildBoundedTree(reverseGraph, path, depth ?? USED_BY_DEPTH);
+  const usesTree = buildBoundedTree(snapshot.fileGraph, path, depth ?? USES_DEPTH, { maxChildren });
+  const usedByTree = buildBoundedTree(reverseGraph, path, depth ?? USED_BY_DEPTH, { maxChildren });
 
   const mermaidEdges: MermaidEdge[] = [
     ...collectEdgesFromTree(path, usesTree, "forward"),
@@ -191,7 +194,8 @@ function collectEdgesFromTree(
 function buildFeatureMap(
   snapshot: ProjectMap,
   name: string,
-  depth?: number
+  depth?: number,
+  all?: boolean
 ): { markdown: string; mermaid: string } {
   const feature = snapshot.features.find((candidate) => candidate.name === name);
   if (!feature) {
@@ -201,10 +205,13 @@ function buildFeatureMap(
   const featureFiles = new Set(feature.files);
   const reverseGraph = buildReverseGraph(snapshot.fileGraph);
   const root = feature.entryPoint ?? feature.files[0];
+  const maxChildren = all ? Infinity : DEFAULT_MAX_CHILDREN;
+  const listCap = all ? Infinity : DEFAULT_MAX_CHILDREN;
 
   const internalTree = root
     ? buildBoundedTree(snapshot.fileGraph, root, depth ?? 4, {
-        filter: (path) => featureFiles.has(path)
+        filter: (path) => featureFiles.has(path),
+        maxChildren
       })
     : { path: name, children: [], isCycle: false };
 
@@ -213,24 +220,40 @@ function buildFeatureMap(
   const unreached = feature.files.filter((path) => path !== root && !reached.has(path));
 
   const externalDependencies = new Set<string>();
-  const dependencyEdges: MermaidEdge[] = [];
   for (const file of feature.files) {
     for (const dependency of snapshot.fileGraph[file] ?? []) {
-      if (!featureFiles.has(dependency)) {
-        externalDependencies.add(dependency);
-        dependencyEdges.push({ from: file, to: dependency });
-      }
+      if (!featureFiles.has(dependency)) externalDependencies.add(dependency);
     }
   }
 
   const externalDependents = new Set<string>();
+  for (const file of feature.files) {
+    for (const dependent of reverseGraph[file] ?? []) {
+      if (!featureFiles.has(dependent)) externalDependents.add(dependent);
+    }
+  }
+
+  // Cap which files are actually drawn as edges to match the (possibly
+  // truncated) flat lists below — otherwise the mermaid diagram could still
+  // balloon even after the text list is capped.
+  const shownDependencies = Number.isFinite(listCap)
+    ? new Set([...externalDependencies].slice(0, listCap))
+    : externalDependencies;
+  const shownDependents = Number.isFinite(listCap)
+    ? new Set([...externalDependents].slice(0, listCap))
+    : externalDependents;
+
+  const dependencyEdges: MermaidEdge[] = [];
+  for (const file of feature.files) {
+    for (const dependency of snapshot.fileGraph[file] ?? []) {
+      if (shownDependencies.has(dependency)) dependencyEdges.push({ from: file, to: dependency });
+    }
+  }
+
   const dependentEdges: MermaidEdge[] = [];
   for (const file of feature.files) {
     for (const dependent of reverseGraph[file] ?? []) {
-      if (!featureFiles.has(dependent)) {
-        externalDependents.add(dependent);
-        dependentEdges.push({ from: dependent, to: file });
-      }
+      if (shownDependents.has(dependent)) dependentEdges.push({ from: dependent, to: file });
     }
   }
 
@@ -244,11 +267,20 @@ function buildFeatureMap(
     }
   ];
   if (unreached.length > 0) {
-    sections.push({ heading: "Other files in this feature", body: renderFlatList(unreached) });
+    sections.push({
+      heading: "Other files in this feature",
+      body: renderFlatList(unreached, { cap: listCap })
+    });
   }
   sections.push(
-    { heading: "Depends on (outside this feature)", body: renderFlatList([...externalDependencies]) },
-    { heading: "Used by (outside this feature)", body: renderFlatList([...externalDependents]) }
+    {
+      heading: "Depends on (outside this feature)",
+      body: renderFlatList([...externalDependencies], { cap: listCap })
+    },
+    {
+      heading: "Used by (outside this feature)",
+      body: renderFlatList([...externalDependents], { cap: listCap })
+    }
   );
 
   return {

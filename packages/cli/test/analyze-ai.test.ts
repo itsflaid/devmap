@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   DEFAULT_AI_FALLBACKS,
@@ -14,6 +15,9 @@ import type {
 } from "../src/ai/types.js";
 import { inspectSnapshot } from "../src/cache/snapshot.js";
 import { analyzeCommand } from "../src/commands/analyze.js";
+
+const testDirectory = dirname(fileURLToPath(import.meta.url));
+const nextFixture = join(testDirectory, "fixtures", "nextjs-project");
 
 test("analyze stores and reuses AI architecture interpretation", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-analyze-ai-"));
@@ -376,6 +380,63 @@ test("analyze writes lightweight agent navigation alongside the snapshot", async
     assert.equal(index.snapshot.path, ".devmap/snapshot.json");
     assert.match(index.agentInstructions, /feature map/);
     assert.equal(snapshot.fileIndex["index.ts"]?.analyzer, "ts-morph");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("domain inference is cached across unchanged runs, not repeated", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-domain-cache-test-"));
+  await cp(nextFixture, projectRoot, { recursive: true });
+  await rm(join(projectRoot, ".devmap"), { recursive: true, force: true });
+
+  let domainInferenceCalls = 0;
+  let architectureCalls = 0;
+
+  const client: AiClient = {
+    async complete(request) {
+      const content = request.messages?.[0]?.content ?? "";
+      if (/infer the project domain/.test(content)) {
+        domainInferenceCalls++;
+      } else {
+        architectureCalls++;
+      }
+      return {
+        content: JSON.stringify({
+          domain: "Test Domain",
+          summary: "A test app for verification.",
+          ownershipPattern: "single_user_isolated",
+          crossUserFields: []
+        }),
+        model: request.model,
+        usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 }
+      };
+    },
+    async stream(request, onDelta) {
+      onDelta("## Overview\ntest");
+      return { content: "## Overview\ntest", model: request.model };
+    }
+  };
+
+  const deps = {
+    loadConfig: async () => ({ provider: "groq" as const, apiKey: "gsk_fixture", model: "auto" }),
+    createAiClient: () => client
+  };
+
+  try {
+    await analyzeCommand(projectRoot, { json: true }, deps);
+    assert.equal(domainInferenceCalls, 1, "first run should call domain inference once");
+
+    await analyzeCommand(projectRoot, { json: true }, deps);
+    assert.equal(
+      domainInferenceCalls,
+      1,
+      "second run on an unchanged project must reuse the domain cache, not call the AI again"
+    );
+
+    const cacheRaw = await readFile(join(projectRoot, ".devmap", "domain-cache.json"), "utf8");
+    const cache = JSON.parse(cacheRaw);
+    assert.ok(cache.inputHash, "domain-cache.json should have been written with an inputHash");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

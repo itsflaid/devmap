@@ -72,6 +72,25 @@ test("scanner ignores package manager lockfiles", () => {
   }
 });
 
+test("scanFiles returns a stable order across repeated runs", async () => {
+  const runs = await Promise.all(
+    Array.from({ length: 5 }, () => scanFiles(nextFixture))
+  );
+
+  const orders = runs.map((files) => files.map((f) => f.path));
+
+  for (const order of orders.slice(1)) {
+    assert.deepEqual(order, orders[0]);
+  }
+});
+
+test("scanFiles returns results sorted alphabetically by path", async () => {
+  const files = await scanFiles(nextFixture);
+  const paths = files.map((f) => f.path);
+  const sorted = [...paths].sort((a, b) => a.localeCompare(b));
+  assert.deepEqual(paths, sorted);
+});
+
 test("filterEngine excludes minified .js and .ts files", () => {
   assert.equal(shouldIgnorePath("public/vendor/jquery.min.js", false), true);
   assert.equal(shouldIgnorePath("vendor/lib.min.ts", false), true);

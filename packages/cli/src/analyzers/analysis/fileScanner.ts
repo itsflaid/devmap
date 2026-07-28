@@ -54,5 +54,10 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
   }
 
   await visit(projectRoot);
-  return files;
+
+  // visit() recurses concurrently (pLimit), so files.push() order depends on
+  // I/O completion timing, not directory structure. Sort here so every
+  // downstream consumer (fileIndex ordering, onboarding path ties, etc.)
+  // gets a stable, reproducible order across runs on an unchanged project.
+  return files.sort((a, b) => a.path.localeCompare(b.path));
 }

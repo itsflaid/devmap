@@ -25,7 +25,18 @@ export type MapTreeNode = {
   children: MapTreeNode[];
   /** true if this node closes a cycle back to an ancestor already shown above it */
   isCycle: boolean;
+  /** number of additional direct children that exist but were cut off by maxChildren */
+  truncatedCount?: number;
 };
+
+/**
+ * Default cap on direct children shown per node. Hub files (a shared
+ * types.ts, utils.ts, a common UI component) can have very high fan-in —
+ * without a cap, a single "used by" tree (or the mermaid diagram built from
+ * it) can balloon to hundreds of lines/nodes and become unreadable. Pass
+ * `maxChildren: Infinity` (wired to the `--all` flag) to bypass this.
+ */
+export const DEFAULT_MAX_CHILDREN = 25;
 
 /**
  * buildBoundedTree — walk a graph outward from `root` up to `maxDepth` hops,
@@ -38,17 +49,23 @@ export function buildBoundedTree(
   graph: FileGraph,
   root: string,
   maxDepth: number,
-  options: { ancestors?: string[]; filter?: (path: string) => boolean } = {}
+  options: { ancestors?: string[]; filter?: (path: string) => boolean; maxChildren?: number } = {}
 ): MapTreeNode {
   const ancestors = options.ancestors ?? [root];
+  const maxChildren = options.maxChildren ?? DEFAULT_MAX_CHILDREN;
 
   if (maxDepth <= 0) {
     return { path: root, children: [], isCycle: false };
   }
 
+  const candidates = (graph[root] ?? []).filter(
+    (next) => !options.filter || options.filter(next)
+  );
+  const shown = candidates.slice(0, maxChildren);
+  const truncatedCount = candidates.length - shown.length;
+
   const children: MapTreeNode[] = [];
-  for (const next of graph[root] ?? []) {
-    if (options.filter && !options.filter(next)) continue;
+  for (const next of shown) {
     if (ancestors.includes(next)) {
       children.push({ path: next, children: [], isCycle: true });
       continue;
@@ -56,12 +73,18 @@ export function buildBoundedTree(
     children.push(
       buildBoundedTree(graph, next, maxDepth - 1, {
         ancestors: [...ancestors, next],
-        filter: options.filter
+        filter: options.filter,
+        maxChildren
       })
     );
   }
 
-  return { path: root, children, isCycle: false };
+  return {
+    path: root,
+    children,
+    isCycle: false,
+    ...(truncatedCount > 0 ? { truncatedCount } : {})
+  };
 }
 
 /**

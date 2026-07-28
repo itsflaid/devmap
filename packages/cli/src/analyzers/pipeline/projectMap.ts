@@ -202,7 +202,7 @@ export async function createProjectMap(
       framework,
       routes.length
     );
-    const result = await inferDomain(inferenceInput, callAI);
+    const result = await inferDomain(inferenceInput, callAI, projectRoot);
     if (result) {
       domain = result;
       // Merge domain-specific features ke features list.

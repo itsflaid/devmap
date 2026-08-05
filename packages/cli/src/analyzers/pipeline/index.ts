@@ -2,6 +2,9 @@ export {
   SNAPSHOT_SCHEMA_VERSION,
   createProjectMap,
   createProjectFingerprint,
+  generateFeatureFlows,
+  generateRequestFlows,
+  renderMermaidFlow,
 } from "./projectMap.js";
 export type {
   FileScope,

@@ -12,11 +12,11 @@ const outputItems = [
 
 <section id="onboarding" class="landing-section onboarding-section">
   <h2 class="onboarding-section__title">
-    New to a codebase? Know where to start in minutes.
+    <span class="onboarding-section__accent">New to a codebase?</span> Know where to start in minutes.
   </h2>
 
   <p class="onboarding-section__intro">
-    devmap onboarding answers the one question every developer asks when
+    <span class="onboarding-section__accent">devmap</span> onboarding answers the one question every developer asks when
     joining an unfamiliar project:
   </p>
 
@@ -45,6 +45,10 @@ const outputItems = [
     line-height: 1.15;
     letter-spacing: -0.02em;
     font-weight: 700;
+  }
+
+  .onboarding-section__accent {
+    color: var(--color-aqua);
   }
 
   .onboarding-section__intro {

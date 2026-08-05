@@ -1182,6 +1182,39 @@ Preview:
 pnpm preview:web
 ```
 
+### Landing Page Redesign — Spec 03
+
+Verifikasi landing page editorial calm (branch `landing-page`):
+
+```powershell
+pnpm build:web
+pnpm dev:web
+```
+
+Expected:
+
+- `astro check` menghasilkan 0 error, 0 warning, dan 0 hint;
+- `astro build` sukses tanpa broken asset (logo `logo-devmap.png` belum ada,
+  jadi hanya `<img>` dengan `alt=""` di header/footer dan tidak break build);
+- screenshot di 375px dan 1440px untuk semua section, bukan hanya Hero
+  (Edge headless):
+  ```powershell
+  & "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless=new --disable-gpu --screenshot="C:\Users\Hype G12\AppData\Local\Temp\opencode\hero-375.png" --window-size=375,1400 http://localhost:4321
+  ```
+- tidak ada horizontal scrollbar di 375px, index list Hero tidak wrap aneh
+  dan garis vertikal tetap sejajar dengan dots;
+- tidak ada em dash (`—`) di `apps/web/src`:
+  ```powershell
+  (Select-String -Path "apps\web\src\**\*" -Pattern "—" -Recurse).Count
+  ```
+- `devmap ask` tidak muncul di `apps/web/src`;
+- `coming soon` / `phase 2` tidak muncul di FeaturesSection dan
+  OnboardingSection;
+- `:focus-visible` outline aqua muncul saat tab navigation header + kedua
+  tombol CTA (tidak ke-override);
+- `prefers-reduced-motion: reduce` menghapus stagger animasi Hero, konten
+  tetap fully visible.
+
 ---
 
 ## Checklist Sebelum Commit

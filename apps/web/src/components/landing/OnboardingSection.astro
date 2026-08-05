@@ -1,36 +1,106 @@
 ---
-// Onboarding output and roadmap data.
+
+const outputItems = [
+  "Prioritized reading list with estimated time per file",
+  "Recommended learning path optimized for understanding",
+  "Feature map, which files own which features",
+  "Modification guide, where to start when changing anything",
+  "Safe areas, caution areas, critical areas",
+  "Estimated time to productive contribution",
+];
 ---
 
 <section id="onboarding" class="landing-section onboarding-section">
-  <!--
-    ONBOARDING SECTION
+  <h2 class="onboarding-section__title">
+    New to a codebase? Know where to start in minutes.
+  </h2>
 
-    Headline:
-    "New to a codebase? Know where to start in minutes."
+  <p class="onboarding-section__intro">
+    devmap onboarding answers the one question every developer asks when
+    joining an unfamiliar project:
+  </p>
 
-    Copy:
-    "devmap onboarding answers the one question every developer asks
-    when joining an unfamiliar project:
+  <p class="onboarding-section__quote">"Where do I even begin?"</p>
 
-    'Where do I even begin?'"
-
-    Output yang ditampilkan:
-    - Prioritized reading list with estimated time per file
-    - Recommended learning path optimized for understanding
-    - Feature map - which files own which features
-    - Modification guide - where to start when changing anything
-    - Safe areas, caution areas, critical areas
-    - Estimated time to productive contribution
-
-    Status:
-    (Live feature. No "coming soon" framing.)
-
-    Pesan inti:
-    Developer baru langsung mengetahui harus mulai membaca dan mengubah dari mana.
-  -->
+  <div class="onboarding-section__panel">
+    {outputItems.map((item) => (
+      <div class="onboarding-row">
+        <span class="onboarding-row__dot" aria-hidden="true"></span>
+        <p class="onboarding-row__text">{item}</p>
+      </div>
+    ))}
+  </div>
 </section>
 
 <style>
-  /* Onboarding section styles. */
+  .onboarding-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .onboarding-section__title {
+    max-width: 40rem;
+    margin: 0 auto 1.25rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .onboarding-section__intro {
+    max-width: 34rem;
+    margin: 0 auto 0.5rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .onboarding-section__quote {
+    margin: 0 0 2.25rem;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--color-text);
+  }
+
+  .onboarding-section__panel {
+    max-width: 46rem;
+    margin: 0 auto;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg-soft);
+    text-align: left;
+  }
+
+  .onboarding-row {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.9375rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .onboarding-row:last-child {
+    border-bottom: none;
+  }
+
+  .onboarding-row__dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--color-border-strong);
+  }
+
+  .onboarding-row__text {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 640px) {
+    .onboarding-row {
+      padding: 0.875rem 1.125rem;
+    }
+  }
 </style>

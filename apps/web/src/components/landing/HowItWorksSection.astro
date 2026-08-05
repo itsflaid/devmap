@@ -1,43 +1,100 @@
 ---
-// Command steps and workflow data.
+
+const steps = [
+  {
+    number: "01",
+    command: "devmap init",
+    description: "Connect your AI provider. Done in 30 seconds.",
+  },
+  {
+    number: "02",
+    command: "devmap analyze",
+    description:
+      "Scans your project with static analysis. Framework, routes, dependencies, entry points, critical files. No token waste, no guessing.",
+  },
+  {
+    number: "03",
+    command: 'devmap explain "how does auth work?"',
+    description:
+      "Get a targeted answer instantly. Reads the snapshot, not your entire codebase.",
+  },
+];
 ---
 
 <section id="how-it-works" class="landing-section how-it-works-section">
-  <!--
-    HOW IT WORKS SECTION
+  <h2 class="how-it-works-section__title">
+    Three commands. Full understanding.
+  </h2>
 
-    Headline:
-    "Three commands. Full understanding."
-
-    Step 01:
-    Command:
-    "devmap init"
-
-    Description:
-    "Connect your AI provider. Done in 30 seconds."
-
-    Step 02:
-    Command:
-    "devmap analyze"
-
-    Description:
-    "Scans your project with static analysis.
-    Framework, routes, dependencies, entry points, critical files.
-    No token waste, no guessing."
-
-    Step 03:
-    Command:
-    'devmap explain "how does auth work?"'
-
-    Description:
-    "Get a targeted answer instantly.
-    Reads the snapshot, not your entire codebase."
-
-    Pesan inti:
-    Tiga command untuk mendapatkan pemahaman penuh tentang project.
-  -->
+  <div class="how-it-works-section__steps">
+    {steps.map((step) => (
+      <div class="how-step">
+        <span class="how-step__number">{step.number}</span>
+        <code class="how-step__command">{step.command}</code>
+        <p class="how-step__description">{step.description}</p>
+      </div>
+    ))}
+  </div>
 </section>
 
 <style>
-  /* How it works section styles. */
+  .how-it-works-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .how-it-works-section__title {
+    margin: 0 0 3rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .how-it-works-section__steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 58rem;
+    margin: 0 auto;
+  }
+
+  .how-step {
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    text-align: left;
+  }
+
+  .how-step__number {
+    display: block;
+    margin-bottom: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text-subtle);
+  }
+
+  .how-step__command {
+    display: inline-block;
+    padding: 0.4em 0.7em;
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text);
+  }
+
+  .how-step__description {
+    margin: 1rem 0 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 820px) {
+    .how-it-works-section__steps {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

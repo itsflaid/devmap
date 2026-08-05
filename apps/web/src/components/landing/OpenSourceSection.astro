@@ -1,29 +1,78 @@
 ---
-// Open-source links and support actions.
+
+const supportLinks = [
+  { label: "Ko-fi", href: "https://ko-fi.com/itsflaid" },
+  { label: "GitHub Sponsors", href: "https://github.com/sponsors/itsflaid" },
+];
 ---
 
 <section id="open-source" class="landing-section open-source-section">
-  <!--
-    OPEN SOURCE SECTION
+  <h2 class="open-source-section__title">Free. Open Source. Forever.</h2>
 
-    Headline:
-    "Free. Open Source. Forever."
+  <p class="open-source-section__copy">
+    DevMap is MIT licensed and free to use. No subscription. No account
+    required. No DevMap servers involved.
+  </p>
 
-    Copy:
-    "DevMap is MIT licensed and free to use.
-    No subscription. No account required. No DevMap servers involved.
+  <p class="open-source-section__copy open-source-section__copy--last">
+    If DevMap saves you time, consider supporting development.
+  </p>
 
-    If DevMap saves you time, consider supporting development."
-
-    CTA:
-    - Ko-fi
-    - GitHub Sponsors
-
-    Pesan inti:
-    DevMap gratis selamanya dan dukungan terhadap pengembangan bersifat opsional.
-  -->
+  <div class="open-source-section__links">
+    {supportLinks.map((link) => (
+      <a class="open-source-section__link" href={link.href}>
+        {link.label} →
+      </a>
+    ))}
+  </div>
 </section>
 
 <style>
-  /* Open-source section styles. */
+  .open-source-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .open-source-section__title {
+    margin: 0 0 1.25rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .open-source-section__copy {
+    max-width: 34rem;
+    margin: 0 auto 0.75rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .open-source-section__copy--last {
+    margin-bottom: 2rem;
+  }
+
+  .open-source-section__links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .open-source-section__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid transparent;
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+
+  .open-source-section__link:hover {
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
 </style>

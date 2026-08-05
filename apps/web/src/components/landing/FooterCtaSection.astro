@@ -1,26 +1,53 @@
 ---
-// Install command and CTA interactions.
----
 
 <section id="get-started" class="landing-section footer-cta-section">
-  <!--
-    FOOTER CTA SECTION
+  <h2 class="footer-cta-section__title">
+    Start understanding your codebase today.
+  </h2>
 
-    Headline:
-    "Start understanding your codebase today."
+  <p class="footer-cta-section__subtext">
+    Works with Next.js and Express out of the box. More frameworks coming
+    soon.
+  </p>
 
-    Subtext:
-    "Works with Next.js and Express out of the box.
-    More frameworks coming soon."
-
-    Primary CTA / install command:
-    "npm install -g devmap"
-
-    Secondary CTA:
-    "Read the Docs"
-  -->
+  <div class="footer-cta-section__actions">
+    <button type="button" class="cta-primary">
+      <span class="cta-prompt" aria-hidden="true">$</span>
+      npm install -g devmap
+    </button>
+    <a class="cta-secondary" href="https://github.com/itsflaid/devmap#readme">
+      Read the Docs
+    </a>
+  </div>
 </section>
 
 <style>
-  /* Footer CTA section styles. */
+  .footer-cta-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .footer-cta-section__title {
+    margin: 0 0 1rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .footer-cta-section__subtext {
+    max-width: 34rem;
+    margin: 0 auto 2rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .footer-cta-section__actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
 </style>

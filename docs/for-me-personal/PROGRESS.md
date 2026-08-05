@@ -4,6 +4,59 @@ Terakhir diperbarui: 2026-08-05
 
 ## Update 2026-08-05
 
+### Landing Page Redesign — Spec 03 (branch `landing-page`)
+
+Mengarahkan ulang landing page dari dark-navy + neon + terminal-chrome ke
+arah editorial calm (Linear/Resend/Vercel): satu warna accent (aqua `#2ee6d6`)
+dipakai sangat hemat, satu motion moment per section, dan konten produk nyata
+sebagai material visual.
+
+**Token & sistem desain:**
+
+- `global.css`: `:root` diganti total (bg `#0a0d11`, surface `#10151b`,
+  border white 0.08/0.16, text `#eef1f4`, aqua `#2ee6d6` + `--color-aqua-soft`,
+  font Inter + JetBrains Mono). `::selection` memakai aqua. Ditambahkan rule
+  `:focus-visible` global.
+- Class CTA bersama ditambahkan di `global.css` (`.cta-primary`, `.cta-secondary`)
+  agar tombol install di Hero dan FooterCta selalu identik.
+- `BaseLayout.astro`: font Google dari Geist diganti ke Inter + JetBrains Mono.
+
+**Section yang diimplementasikan:**
+
+- `SiteHeader`: hapus meta "CLI Context Layer", layout brand-kiri/nav-kanan,
+  token baru, wordmark `dev` + `map` (map aqua).
+- `HeroSection`: hapus typing effect, tab snapshot, cursor glow, dan grid.
+  Copy final dari preview editorial (eyebrow, H1 "Analyze once. Reuse context
+  everywhere.", CTA install, meta line MIT). Diagram SVG rusak diganti
+  **vertical structural index list** (flex timeline, dot critical aqua, garis
+  `--color-border-strong`), header `devmap analyze`, caption "One snapshot.
+  Reused by every question after this." Animasi reveal stagger via
+  IntersectionObserver, default state fully visible, skip penuh saat
+  `prefers-reduced-motion`.
+- `Problem`: sequence agent-focused (01/02/03), bridge baru, tanpa aqua.
+- `HowItWorks`: step 03 `devmap explain` (bukan `devmap ask` yang sudah dihapus).
+- `Features`: 6 kartu baru (Language Aware di-drop), kartu 4 = DEVMAP.md.
+- `AiAgents`: flow dipecah jadi dua baris (init → DEVMAP.md, analyze →
+  .devmap/snapshot.json), list compatible plain text.
+- `Comparison`: tabel tanpa styling "winner".
+- `Onboarding`: status "Phase 2" dihapus, tampil sebagai live feature.
+- `OpenSource` / `FooterCta` / `SiteFooter`: treatment tenang, CTA install
+  identik dengan Hero.
+
+**Keputusan penting:**
+
+- `devmap explain` diperlakukan sebagai sudah rilis di seluruh copy landing
+  (sedang dibangun di Spec 02).
+- `devmap ask` tidak muncul di mana pun.
+- Logo di-reserve sebagai `apps/web/public/logo-devmap.png` (PNG, bukan SVG),
+  direferensi via `<img src="/logo-devmap.png">` di header dan footer. Slot
+  kosong sampai Fadil drop file aslinya.
+- Hard rule: tanpa em dash (`—`) di seluruh `apps/web/src`, satu headline per
+  section, numbering 01/02/03 hanya di Problem & How It Works, accent budget
+  satu per section.
+
+---
+
 ### `devmap flow` Command — Spec 01 (branch `command-flow`)
 
 Menambahkan `devmap flow [target] [--all] [--json]` — view temporal

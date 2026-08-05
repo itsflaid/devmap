@@ -1,63 +1,122 @@
 ---
-// Comparison table rows and values.
+
+const metrics = [
+  { metric: "Understand structure", without: "Hours", with: "Minutes" },
+  { metric: "AI agent accuracy", without: "Guess-based", with: "Analysis-based" },
+  { metric: "Token usage per query", without: "High", with: "Low" },
+  { metric: "Context per session", without: "Rebuilt", with: "Cached snapshot" },
+  { metric: "Onboarding new dev", without: "Days", with: "Minutes" },
+  { metric: "Works across AI tools", without: "Manual re-explain", with: "One snapshot" },
+];
 ---
 
 <section id="comparison" class="landing-section comparison-section">
-  <!--
-    COMPARISON SECTION
+  <h2 class="comparison-section__title">DevMap vs. Going in blind</h2>
 
-    Headline:
-    "DevMap vs. Going in blind"
-
-    Comparison table:
-
-    Metric:
-    "Understand structure"
-    Without DevMap:
-    "Hours"
-    With DevMap:
-    "Minutes"
-
-    Metric:
-    "AI agent accuracy"
-    Without DevMap:
-    "Guess-based"
-    With DevMap:
-    "Analysis-based"
-
-    Metric:
-    "Token usage per query"
-    Without DevMap:
-    "High"
-    With DevMap:
-    "Low"
-
-    Metric:
-    "Context per session"
-    Without DevMap:
-    "Rebuilt"
-    With DevMap:
-    "Cached snapshot"
-
-    Metric:
-    "Onboarding new dev"
-    Without DevMap:
-    "Days"
-    With DevMap:
-    "Minutes"
-
-    Metric:
-    "Works across AI tools"
-    Without DevMap:
-    "Manual re-explain"
-    With DevMap:
-    "One snapshot"
-
-    Pesan inti:
-    Bandingkan hasil kerja dengan DevMap terhadap workflow tanpa project context.
-  -->
+  <div class="comparison-section__table-wrap">
+    <table class="comparison-table">
+      <thead>
+        <tr>
+          <th scope="col" class="comparison-table__metric-head"></th>
+          <th scope="col" class="comparison-table__head">Without DevMap</th>
+          <th scope="col" class="comparison-table__head">With DevMap</th>
+        </tr>
+      </thead>
+      <tbody>
+        {metrics.map((row) => (
+          <tr>
+            <th scope="row" class="comparison-table__metric">
+              {row.metric}
+            </th>
+            <td class="comparison-table__without">{row.without}</td>
+            <td class="comparison-table__with">{row.with}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <style>
-  /* Comparison section styles. */
+  .comparison-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .comparison-section__title {
+    margin: 0 0 3rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .comparison-section__table-wrap {
+    max-width: 52rem;
+    margin: 0 auto;
+    overflow-x: auto;
+  }
+
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.9375rem;
+  }
+
+  .comparison-table__head {
+    padding: 0 1.25rem 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+
+  .comparison-table__metric-head {
+    padding: 0 1.25rem 0.875rem;
+  }
+
+  .comparison-table th,
+  .comparison-table td {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .comparison-table tbody tr:last-child th,
+  .comparison-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .comparison-table__metric {
+    padding: 1rem 1.25rem;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .comparison-table__without {
+    padding: 1rem 1.25rem;
+    color: var(--color-text-subtle);
+  }
+
+  .comparison-table__with {
+    padding: 1rem 1.25rem;
+    color: var(--color-text);
+  }
+
+  @media (max-width: 640px) {
+    .comparison-table {
+      font-size: 0.8125rem;
+    }
+
+    .comparison-table__metric,
+    .comparison-table__without,
+    .comparison-table__with {
+      padding: 0.875rem 0.75rem;
+    }
+
+    .comparison-table__head {
+      padding: 0 0.75rem 0.75rem;
+    }
+  }
 </style>

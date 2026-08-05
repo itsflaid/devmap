@@ -1,335 +1,298 @@
 ---
-const snapshotSections = [
-  {
-    id: "project",
-    label: "Project",
-    title: "Project Overview",
-    stats: ["Next.js", "TypeScript", "pnpm", "247 files", "18 routes", "6 features"],
-    tree: ["app/", "├─ dashboard", "├─ api", "├─ auth", "└─ settings"],
-    chips: ["Authentication", "Database", "AI Integration", "File Upload"],
-  },
-  {
-    id: "routes",
-    label: "Routes",
-    title: "Routes & APIs",
-    stats: ["Next.js", "TypeScript", "pnpm", "247 files", "18 routes", "6 features"],
-    tree: ["routes/", "├─ /", "├─ /dashboard", "├─ /auth/login", "└─ /api/workspaces"],
-    chips: ["App Router", "API Routes", "Middleware", "Layouts"],
-  },
-  {
-    id: "critical",
-    label: "Critical",
-    title: "Critical Files",
-    stats: ["Next.js", "TypeScript", "pnpm", "247 files", "18 routes", "6 features"],
-    tree: ["critical/", "├─ lib/auth.ts", "├─ lib/db.ts", "├─ prisma/schema.prisma", "└─ middleware.ts"],
-    chips: ["Auth Core", "Database", "Routing", "Security"],
-  },
-  {
-    id: "features",
-    label: "Features",
-    title: "Feature Evidence",
-    stats: ["Next.js", "TypeScript", "pnpm", "247 files", "18 routes", "6 features"],
-    tree: ["features/", "├─ authentication", "├─ database", "├─ ai integration", "└─ file upload"],
-    chips: ["Authentication", "Database", "AI Integration", "Upload"],
-  },
-  {
-    id: "index",
-    label: "File Index",
-    title: "File Index",
-    stats: ["Next.js", "TypeScript", "pnpm", "247 files", "18 routes", "6 features"],
-    tree: ["index/", "├─ app/**/*.tsx", "├─ lib/**/*.ts", "├─ components/**/*.tsx", "└─ prisma/schema.prisma"],
-    chips: ["Search Terms", "Purpose", "Scope", "Ownership"],
-  },
-];
 
-const typingTexts = [
-  "Every codebase needs a map.",
-  "Stop rebuilding context.",
-  "Understand any codebase.",
-  "Generate reusable context.",
-  "Built for developers and AI agents.",
+const indexRows = [
+  {
+    path: "lib/auth.ts",
+    reason: "critical · referenced by 4 files",
+    critical: true,
+  },
+  {
+    path: "lib/db.ts",
+    reason: "data access layer",
+    critical: false,
+  },
+  {
+    path: "app/api/session/route.ts",
+    reason: "entry point",
+    critical: false,
+  },
+  {
+    path: "prisma/schema.prisma",
+    reason: "schema source",
+    critical: false,
+  },
 ];
 ---
 
-<section
-  id="hero"
-  class="relative flex min-h-screen items-center overflow-hidden bg-[#02080f] px-6 pt-20 pb-16 text-white lg:pt-24"
->
-  <div class="hero-grid" aria-hidden="true"></div>
+<section id="hero" class="hero">
+  <div class="hero__inner">
+    <p class="hero__eyebrow">
+      <span class="hero__eyebrow-dot" aria-hidden="true"></span>
+      Open source · Local-first CLI
+    </p>
 
-  <div class="relative z-10 mx-auto grid h-full w-full max-w-7xl items-center gap-16 lg:grid-cols-[0.9fr_1.1fr]">
-    <div class="max-w-2xl">
-      <div class="mb-5 inline-flex rounded-full border border-cyan-400/20 bg-cyan-400/[0.04] px-4 py-2 font-mono text-xs font-bold uppercase text-[#2EE6D6]">
-        devmap scan
-      </div>
+    <h1 class="hero__title">
+      Analyze once.<br />
+      Reuse context <span class="hero__title-accent">everywhere.</span>
+    </h1>
 
-      <h1 class="min-h-[130px] max-w-xl text-5xl font-bold leading-tight tracking-tight md:min-h-[170px] md:text-7xl">
-        <span id="typing-text" class="typing-text"></span>
-        <span class="typing-cursor">|</span>
-      </h1>
+    <p class="hero__subhead">
+      devmap scans your project once, routes, dependencies, entry points,
+      critical files, into a structured snapshot, so you stop re-explaining
+      your codebase to every AI agent, every session.
+    </p>
 
-      <p class="mt-6 max-w-xl text-base leading-8 text-slate-400 md:text-lg">
-        DevMap scans routes, dependencies, entry points, critical files, and feature evidence into one reusable snapshot before you or your AI agent touch the code.
-      </p>
-
-      <div class="mt-8 flex flex-wrap gap-3">
-        <button class="rounded-xl bg-[#2EE6D6] px-5 py-3 font-mono text-sm font-bold text-[#02100f] transition hover:-translate-y-0.5">
-          $ npm install -g devmap
-        </button>
-
-        <a
-          href="https://github.com/itsflaid/devmap"
-          class="rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 font-mono text-sm font-bold text-white transition hover:-translate-y-0.5 hover:border-cyan-400/30"
-        >
-          View on GitHub
-        </a>
-      </div>
-
-      <div class="mt-6 flex flex-wrap gap-2">
-        {["Open Source", "MIT License", "Local First", "Agent Ready"].map((item) => (
-          <span class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-slate-400">
-            {item}
-          </span>
-        ))}
-      </div>
+    <div class="hero__cta-row">
+      <button type="button" class="cta-primary">
+        <span class="cta-prompt" aria-hidden="true">$</span>
+        npm install -g devmap
+      </button>
+      <a class="cta-secondary" href="https://github.com/itsflaid/devmap">
+        View on GitHub →
+      </a>
     </div>
 
-    <div
-      data-snapshot-panel
-      class="relative w-full max-w-[760px] justify-self-end overflow-hidden rounded-2xl border border-cyan-400/15 bg-[#07131f]/90 shadow-2xl shadow-black/40"
-    >
-      <div class="relative z-10 flex items-center justify-between border-b border-white/10 bg-black/20 px-5 py-3 font-mono text-xs">
-        <div class="flex items-center gap-2">
-          <span class="h-2.5 w-2.5 rounded-full border border-white/20"></span>
-          <span class="h-2.5 w-2.5 rounded-full border border-white/20"></span>
-          <span class="h-2.5 w-2.5 rounded-full border border-white/20"></span>
-        </div>
-        <span class="text-white">.devmap/snapshot.json</span>
-        <span class="text-[#2EE6D6]">analyzed ✓</span>
+    <p class="hero__meta-line">
+      MIT licensed. No account or API key required to start.
+    </p>
+
+    <div class="index-panel">
+      <div class="index-panel__header">
+        <span class="index-panel__cmd">devmap analyze</span>
       </div>
 
-      <div class="relative z-10 flex gap-2 overflow-x-auto border-b border-white/10 px-5 py-3">
-        {snapshotSections.map((section, index) => (
-          <button
-            type="button"
-            data-snapshot-tab={index}
-            class:list={[
-              "snapshot-tab whitespace-nowrap rounded-full border px-3 py-1 font-mono text-xs transition",
-              index === 0
-                ? "is-active border-cyan-400/30 bg-cyan-400/[0.08] text-[#2EE6D6]"
-                : "border-white/10 bg-white/[0.02] text-slate-500 hover:text-slate-300",
-            ]}
-          >
-            {section.label}
-          </button>
+      <div class="index-list">
+        {indexRows.map((row) => (
+          <div class="index-row">
+            <div class="index-row__rail">
+              <span
+                class:list={[
+                  "index-row__dot",
+                  { "index-row__dot--critical": row.critical },
+                ]}
+                aria-hidden="true"
+              ></span>
+              <span class="index-row__line" aria-hidden="true"></span>
+            </div>
+            <div class="index-row__content">
+              <div class="index-row__path">{row.path}</div>
+              <div class="index-row__reason">{row.reason}</div>
+            </div>
+          </div>
         ))}
       </div>
 
-      <div class="relative z-10 space-y-4 p-5">
-        <section>
-          <div class="flex items-center justify-between gap-4">
-            <p data-title class="font-mono text-xs font-bold uppercase tracking-wide text-[#2EE6D6]">
-              {snapshotSections[0].title}
-            </p>
-            <span class="rounded-full border border-cyan-400/20 px-3 py-1 font-mono text-xs text-[#2EE6D6]">
-              reusable context
-            </span>
-          </div>
-
-          <div data-stats class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-            {snapshotSections[0].stats.map((item) => (
-              <div class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 font-mono text-sm text-white">
-                {item}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section class="grid gap-4 md:grid-cols-[1.18fr_0.82fr]">
-          <div class="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p class="font-mono text-xs font-bold uppercase text-slate-500">File Map</p>
-            <pre data-tree class="mt-3 overflow-hidden font-mono text-sm leading-7 text-slate-300">{snapshotSections[0].tree.join("\n")}</pre>
-          </div>
-
-          <div class="rounded-xl border border-white/10 bg-black/20 p-4">
-            <p class="font-mono text-xs font-bold uppercase text-slate-500">Detected</p>
-            <div data-chips class="mt-3 flex flex-wrap gap-2">
-              {snapshotSections[0].chips.map((item) => (
-                <span class="rounded-full border border-cyan-400/20 bg-cyan-400/[0.04] px-3 py-1 font-mono text-xs text-[#2EE6D6]">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
+      <p class="index-panel__caption">
+        One snapshot. Reused by every question after this.
+      </p>
     </div>
   </div>
 </section>
 
-<script is:inline define:vars={{ snapshotSections, typingTexts }}>
-  const typingEl = document.getElementById("typing-text");
+<script>
+  const prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  if (typingEl) {
-    typingEl.textContent = "";
-    typingEl.style.visibility = "visible";
+  if (!prefersReducedMotion) {
+    const rows = document.querySelectorAll<HTMLElement>(".index-row");
 
-    let textIndex = 0;
-    let charIndex = 0;
-    let deleting = false;
-
-    const typeLoop = () => {
-      const current = typingTexts[textIndex];
-
-      if (!deleting) {
-        typingEl.textContent = current.slice(0, charIndex++);
-
-        if (charIndex > current.length) {
-          deleting = true;
-          setTimeout(typeLoop, 1700);
-          return;
-        }
-      } else {
-        typingEl.textContent = current.slice(0, charIndex--);
-
-        if (charIndex < 0) {
-          deleting = false;
-          textIndex = (textIndex + 1) % typingTexts.length;
-        }
-      }
-
-      setTimeout(typeLoop, deleting ? 28 : 62);
-    };
-
-    typeLoop();
-  }
-
-  const panel = document.querySelector("[data-snapshot-panel]");
-
-  if (panel) {
-    const tabs = Array.from(panel.querySelectorAll("[data-snapshot-tab]"));
-    const title = panel.querySelector("[data-title]");
-    const stats = panel.querySelector("[data-stats]");
-    const tree = panel.querySelector("[data-tree]");
-    const chips = panel.querySelector("[data-chips]");
-
-    let activeIndex = 0;
-    let timer;
-
-    const render = (index) => {
-      const section = snapshotSections[index];
-      activeIndex = index;
-
-      tabs.forEach((tab, tabIndex) => {
-        const active = tabIndex === index;
-
-        tab.classList.toggle("border-cyan-400/30", active);
-        tab.classList.toggle("bg-cyan-400/[0.08]", active);
-        tab.classList.toggle("text-[#2EE6D6]", active);
-
-        tab.classList.toggle("border-white/10", !active);
-        tab.classList.toggle("bg-white/[0.02]", !active);
-        tab.classList.toggle("text-slate-500", !active);
+    if (rows.length && "IntersectionObserver" in window) {
+      rows.forEach((row) => {
+        row.style.opacity = "0";
+        row.style.transform = "translateY(10px)";
       });
 
-      title.textContent = section.title;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry, index) => {
+            if (entry.isIntersecting) {
+              const row = entry.target as HTMLElement;
+              setTimeout(() => {
+                row.style.opacity = "1";
+                row.style.transform = "none";
+              }, index * 90);
+              observer.unobserve(row);
+            }
+          });
+        },
+        { threshold: 0.2 }
+      );
 
-      stats.innerHTML = section.stats
-        .map((item) => `<div class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 font-mono text-sm text-white">${item}</div>`)
-        .join("");
-
-      tree.textContent = section.tree.join("\n");
-
-      chips.innerHTML = section.chips
-        .map((item) => `<span class="rounded-full border border-cyan-400/20 bg-cyan-400/[0.04] px-3 py-1 font-mono text-xs text-[#2EE6D6]">${item}</span>`)
-        .join("");
-    };
-
-    const start = () => {
-      window.clearInterval(timer);
-      timer = window.setInterval(() => {
-        render((activeIndex + 1) % snapshotSections.length);
-      }, 3200);
-    };
-
-    panel.addEventListener("mousemove", (event) => {
-      const rect = panel.getBoundingClientRect();
-      const x = (event.clientX - rect.left) / rect.width;
-      const y = (event.clientY - rect.top) / rect.height;
-
-      panel.style.setProperty("--mx", `${x}`);
-      panel.style.setProperty("--my", `${y}`);
-    });
-
-    tabs.forEach((tab, index) => {
-      tab.addEventListener("click", () => {
-        render(index);
-        start();
-      });
-    });
-
-    start();
+      rows.forEach((row) => observer.observe(row));
+    }
   }
 </script>
 
 <style>
-  .hero-grid {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background: #02080f;
+  .hero {
+    padding: 6rem 0 4.5rem;
+  }
+
+  .hero__inner {
+    width: min(100% - (var(--page-padding) * 2), 65rem);
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  .hero__eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-aqua);
+  }
+
+  .hero__title {
+    margin: 0 0 1.25rem;
+    font-size: clamp(2.25rem, 5vw, 3.5rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .hero__title-accent {
+    color: var(--color-aqua);
+  }
+
+  .hero__subhead {
+    max-width: 34rem;
+    margin: 0 auto 2.25rem;
+    font-size: clamp(1rem, 2vw, 1.125rem);
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  .hero__cta-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .hero__meta-line {
+    margin: 0 0 4.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+    color: var(--color-text-subtle);
+  }
+
+  .index-panel {
     overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg-soft);
+    text-align: left;
   }
 
-  .hero-grid::before {
-    position: absolute;
-    inset: 0;
-    content: "";
-    background:
-      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-    background-size: 50px 50px;
-    mask-image: radial-gradient(circle at center, black 45%, transparent 75%);
+  .index-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--color-border);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-subtle);
   }
 
-  .typing-text {
-    visibility: hidden;
+  .index-panel__cmd {
+    color: var(--color-text-muted);
   }
 
-  .typing-cursor {
-    color: #2ee6d6;
-    animation: blink 1s infinite;
+  .index-list {
+    padding: 1.75rem 1.5rem 0.5rem;
   }
 
-  @keyframes blink {
-    0%,
-    49% {
-      opacity: 1;
+  .index-row {
+    display: flex;
+    gap: 1rem;
+    opacity: 1;
+    transform: none;
+    transition: opacity 500ms ease, transform 500ms ease;
+  }
+
+  .index-row__rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 10px;
+  }
+
+  .index-row__dot {
+    width: 9px;
+    height: 9px;
+    flex-shrink: 0;
+    margin-top: 5px;
+    border-radius: 50%;
+    background: var(--color-border-strong);
+  }
+
+  .index-row__dot--critical {
+    background: var(--color-aqua);
+    box-shadow: 0 0 0 3px var(--color-aqua-soft);
+  }
+
+  .index-row__line {
+    flex: 1;
+    width: 1px;
+    margin: 4px 0;
+    background: var(--color-border-strong);
+  }
+
+  .index-row__content {
+    padding-bottom: 1.625rem;
+  }
+
+  .index-row:last-child .index-row__content {
+    padding-bottom: 0.25rem;
+  }
+
+  .index-row:last-child .index-row__line {
+    display: none;
+  }
+
+  .index-row__path {
+    margin-bottom: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.84375rem;
+    color: var(--color-text);
+  }
+
+  .index-row__reason {
+    font-size: 0.8125rem;
+    color: var(--color-text-subtle);
+  }
+
+  .index-panel__caption {
+    margin: 0.25rem 0 0;
+    padding: 0.875rem 1.5rem 1.25rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 640px) {
+    .hero {
+      padding: 3.5rem 0 3rem;
     }
 
-    50%,
-    100% {
-      opacity: 0;
-    }
-  }
-
-  [data-snapshot-panel]::before {
-    position: absolute;
-    inset: 0;
-    content: "";
-    background: radial-gradient(
-      380px circle at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
-      rgba(46, 230, 214, 0.12),
-      transparent 70%
-    );
-    pointer-events: none;
-  }
-
-  @media (max-width: 1023px) {
-    #hero {
-      min-height: auto;
-      padding-top: 6rem;
-      padding-bottom: 6rem;
+    .hero__meta-line {
+      margin-bottom: 3rem;
     }
   }
 </style>

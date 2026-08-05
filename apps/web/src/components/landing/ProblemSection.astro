@@ -1,34 +1,98 @@
 ---
-// Problem cards and section data.
+
+const painPoints = [
+  {
+    number: "01",
+    text: "You point your AI agent at an unfamiliar codebase.",
+  },
+  {
+    number: "02",
+    text: "It reads dozens of files trying to piece the architecture together, burning tokens and time.",
+  },
+  {
+    number: "03",
+    text: "It still gets it wrong, and starts over from zero next session.",
+  },
+];
 ---
 
 <section id="problem" class="landing-section problem-section">
-  <!--
-    PROBLEM SECTION
+  <h2 class="problem-section__title">
+    Modern AI writes code faster than you can <span class="problem-section__accent">understand</span> it.
+  </h2>
 
-    Headline:
-    "Modern AI writes code faster than you can understand it."
+  <div class="problem-section__cards">
+    {painPoints.map((point) => (
+      <div class="problem-card">
+        <span class="problem-card__number">{point.number}</span>
+        <p class="problem-card__text">{point.text}</p>
+      </div>
+    ))}
+  </div>
 
-    Pain point 01:
-    "You cloned a repo with 200 files.
-    Where do you even start?"
-
-    Pain point 02:
-    "You asked your AI agent to fix a bug.
-    It explored 40 files and still got the context wrong."
-
-    Pain point 03:
-    "You onboarded to a new project.
-    Three days later, you're still figuring out the architecture."
-
-    Bridge:
-    "DevMap solves all three."
-
-    Pesan inti:
-    AI menulis kode lebih cepat daripada developer dapat memahaminya.
-  -->
+  <p class="problem-section__bridge">
+    devmap fixes this: analyze once, reuse the map every session after.
+  </p>
 </section>
 
 <style>
-  /* Problem section styles. */
+  .problem-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .problem-section__title {
+    max-width: 40rem;
+    margin: 0 auto 3rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .problem-section__accent {
+    color: var(--color-aqua);
+  }
+
+  .problem-section__cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 58rem;
+    margin: 0 auto;
+  }
+
+  .problem-card {
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    text-align: left;
+  }
+
+  .problem-card__number {
+    display: block;
+    margin-bottom: 0.875rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text-subtle);
+  }
+
+  .problem-card__text {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  .problem-section__bridge {
+    margin: 2.5rem 0 0;
+    font-size: 1rem;
+    color: var(--color-text);
+  }
+
+  @media (max-width: 820px) {
+    .problem-section__cards {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

@@ -1,44 +1,139 @@
 ---
-// AI agent compatibility and context-flow data.
+
+const flows = [
+  { command: "devmap init", output: "DEVMAP.md" },
+  { command: "devmap analyze", output: ".devmap/snapshot.json" },
+];
+
+const compatibleTools = [
+  "Claude Code",
+  "Codex",
+  "Gemini CLI",
+  "Cursor",
+  "Copilot",
+];
 ---
 
 <section id="ai-agents" class="landing-section ai-agents-section">
-  <!--
-    FOR AI AGENTS SECTION
+  <h2 class="ai-agents-section__title">
+    Your AI agent is only as good as its <span class="ai-agents-section__accent">context</span>.
+  </h2>
 
-    Headline:
-    "Your AI agent is only as good as its context."
+  <p class="ai-agents-section__copy">
+    Without DevMap, your AI agent explores your codebase blindly, opening
+    files one by one, guessing what matters, rebuilding context from scratch
+    every session.
+  </p>
 
-    Copy:
-    "Without DevMap, your AI agent explores your codebase blindly -
-    opening files one by one, guessing what matters, rebuilding
-    context from scratch every session.
+  <p class="ai-agents-section__copy">
+    With DevMap, your agent gets a ready-made project map. Framework, entry
+    points, critical files, data flow, all structured, all accurate, all
+    generated from static analysis.
+  </p>
 
-    With DevMap, your agent gets a ready-made project map.
-    Framework, entry points, critical files, data flow - all structured,
-    all accurate, all generated from static analysis."
+  <div class="ai-agents-section__flow">
+    {flows.map((flow) => (
+      <div class="ai-flow-row">
+        <code class="ai-flow-row__command">{flow.command}</code>
+        <span class="ai-flow-row__arrow" aria-hidden="true">→</span>
+        <code class="ai-flow-row__output">{flow.output}</code>
+      </div>
+    ))}
+  </div>
 
-    Command flow:
-    "devmap analyze
-    -> generates .devmap/snapshot.json
-    -> generates DEVMAP.md"
+  <p class="ai-agents-section__closing">
+    Your AI agent reads the map. Not the entire codebase. Faster execution.
+    Lower token usage. Better results.
+  </p>
 
-    Closing copy:
-    "Your AI agent reads the map. Not the entire codebase.
-    Faster execution. Lower token usage. Better results."
-
-    Compatible with:
-    - Claude Code
-    - OpenAI Codex
-    - Gemini CLI
-    - Cursor
-    - GitHub Copilot
-
-    Pesan inti:
-    AI agent membutuhkan peta project, bukan eksplorasi codebase secara buta.
-  -->
+  <p class="ai-agents-section__compatible">
+    Compatible with: {compatibleTools.join(", ")}
+  </p>
 </section>
 
 <style>
-  /* AI agents section styles. */
+  .ai-agents-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .ai-agents-section__title {
+    margin: 0 auto 1.25rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    max-width: 40rem;
+  }
+
+  .ai-agents-section__accent {
+    color: var(--color-aqua);
+  }
+
+  .ai-agents-section__copy {
+    max-width: 36rem;
+    margin: 0 auto 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--color-text-muted);
+  }
+
+  .ai-agents-section__copy:last-of-type {
+    margin-bottom: 2.25rem;
+  }
+
+  .ai-agents-section__flow {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    background: var(--color-bg-soft);
+  }
+
+  .ai-flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+  }
+
+  .ai-flow-row__command,
+  .ai-flow-row__output {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+  }
+
+  .ai-flow-row__command {
+    color: var(--color-text);
+  }
+
+  .ai-flow-row__arrow {
+    color: var(--color-text-subtle);
+  }
+
+  .ai-flow-row__output {
+    color: var(--color-text-muted);
+  }
+
+  .ai-agents-section__closing {
+    margin: 2.25rem auto 0;
+    max-width: 36rem;
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    color: var(--color-text);
+  }
+
+  .ai-agents-section__compatible {
+    margin: 1.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--color-text-subtle);
+  }
+
+  @media (max-width: 640px) {
+    .ai-agents-section__flow {
+      align-items: center;
+    }
+  }
 </style>

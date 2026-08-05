@@ -1,53 +1,99 @@
 ---
-// Feature card data and section interactions.
+
+const features = [
+  {
+    label: "Static Analysis First",
+    copy: "80% static, 20% AI. One analyze pass extracts structure, routes, dependencies, and critical files without burning tokens. Every command after this, map, flow, explain, reads from that same snapshot instead of re-scanning your project.",
+  },
+  {
+    label: "Map & Flow",
+    copy: "See the shape of your project with devmap map, or trace exactly how one feature works end to end with devmap flow. Structural and temporal views of the same codebase.",
+  },
+  {
+    label: "Ask Anything, Instantly",
+    copy: "devmap explain answers a targeted question about a file, feature, or function directly, without re-analyzing the whole project.",
+  },
+  {
+    label: "Built for AI Agents",
+    copy: "Auto-generates DEVMAP.md, a portable context file your AI agent reads before touching your codebase.",
+  },
+  {
+    label: "Onboarding Guide",
+    copy: "Reading list, learning path, and modification guide for a new codebase. Productive in minutes, not days.",
+  },
+  {
+    label: "Fully Local & Private",
+    copy: "Your API key stays on your machine. Your code never touches devmap's servers, connections go directly to your AI provider.",
+  },
+];
 ---
 
 <section id="features" class="landing-section features-section">
-  <!--
-    FEATURES SECTION
+  <h2 class="features-section__title">
+    Everything you need to <span class="features-section__accent">understand</span> code faster.
+  </h2>
 
-    Headline:
-    "Everything you need to understand code faster."
-
-    Feature 01 - Static Analysis First:
-    "80% static analysis, 20% AI.
-    DevMap extracts project structure without burning tokens.
-    AI only interprets the result."
-
-    Feature 02 - Project Snapshot:
-    "One analysis. Reused everywhere.
-    devmap ask never re-analyzes unless the snapshot is missing.
-    Your context is always ready."
-
-    Feature 03 - Built for AI Agents:
-    "DevMap generates DEVMAP.md - a portable context file
-    any AI agent can read before touching your codebase.
-    No more blind exploration."
-
-    Feature 04 - Onboarding Guide:
-    Badge:
-    "Coming Soon"
-
-    Copy:
-    "Not just architecture explanation.
-    A prioritized reading list, learning path, and modification guide
-    so new developers become productive in minutes, not days."
-
-    Feature 05 - Language Aware:
-    "Ask in Bahasa Indonesia, get answers in Bahasa Indonesia.
-    Ask in English, get answers in English.
-    DevMap follows you."
-
-    Feature 06 - Fully Local & Private:
-    "Your API key stays on your machine.
-    Your code never touches DevMap servers.
-    Direct connection from you to your AI provider."
-
-    Pesan inti:
-    Static analysis terlebih dahulu, AI digunakan untuk interpretasi.
-  -->
+  <div class="features-section__grid">
+    {features.map((feature) => (
+      <div class="feature-card">
+        <span class="feature-card__label">{feature.label}</span>
+        <p class="feature-card__copy">{feature.copy}</p>
+      </div>
+    ))}
+  </div>
 </section>
 
 <style>
-  /* Features section styles. */
+  .features-section {
+    padding: var(--section-spacing) 0;
+    text-align: center;
+  }
+
+  .features-section__title {
+    margin: 0 0 3rem;
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  .features-section__accent {
+    color: var(--color-aqua);
+  }
+
+  .features-section__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    max-width: 65rem;
+    margin: 0 auto;
+  }
+
+  .feature-card {
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
+    text-align: left;
+  }
+
+  .feature-card__label {
+    display: block;
+    margin-bottom: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--color-text);
+  }
+
+  .feature-card__copy {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  @media (max-width: 900px) {
+    .features-section__grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

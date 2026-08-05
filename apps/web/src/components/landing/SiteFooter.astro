@@ -1,25 +1,132 @@
 ---
-// Footer links and project metadata.
+
+const footerLinks = [
+  { label: "GitHub", href: "https://github.com/itsflaid/devmap" },
+  { label: "Documentation", href: "https://github.com/itsflaid/devmap#readme" },
+];
 ---
 
 <footer class="site-footer">
-  <!--
-    SITE FOOTER
+  <div class="site-footer__inner">
+    <div class="site-footer__top">
+      <div class="site-footer__brand">
+        <span class="site-footer__wordmark">
+          <img src="/logo-devmap.png" alt="" width="24" height="24" />
+          <span class="site-footer__wordmark-text">
+            dev<span class="site-footer__wordmark-accent">map</span>
+          </span>
+        </span>
+        <p class="site-footer__description">
+          AI-powered CLI to understand any codebase in minutes. The context
+          layer between developers, AI agents, and unfamiliar code.
+        </p>
+      </div>
 
-    Repo description:
-    "AI-powered CLI to understand any codebase in minutes.
-    The context layer between developers, AI agents, and unfamiliar code."
+      <div class="site-footer__links">
+        {footerLinks.map((link) => (
+          <a class="site-footer__link" href={link.href}>
+            {link.label}
+          </a>
+        ))}
+      </div>
+    </div>
 
-    Suggested content:
-    - DevMap logo and short description
-    - GitHub repository link
-    - Documentation link
-    - MIT License
-    - Open source status
-    - Project credit
-  -->
+    <div class="site-footer__bottom">
+      <span>© 2026 DevMap · MIT License · Open source</span>
+      <span>Built by itsflaid</span>
+    </div>
+  </div>
 </footer>
 
 <style>
-  /* Footer styles. */
+  .site-footer {
+    border-top: 1px solid var(--color-border);
+    padding: 3rem 0 2.5rem;
+  }
+
+  .site-footer__inner {
+    width: min(100% - (var(--page-padding) * 2), var(--page-max-width));
+    margin-inline: auto;
+  }
+
+  .site-footer__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+
+  .site-footer__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.875rem;
+    max-width: 28rem;
+  }
+
+  .site-footer__wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .site-footer__wordmark-text {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .site-footer__wordmark-accent {
+    color: var(--color-aqua);
+  }
+
+  .site-footer__description {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  .site-footer__links {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .site-footer__link {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    transition: color 150ms ease;
+  }
+
+  .site-footer__link:hover {
+    color: var(--color-text);
+  }
+
+  .site-footer__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.75rem;
+    color: var(--color-text-subtle);
+  }
+
+  @media (max-width: 640px) {
+    .site-footer__top {
+      flex-direction: column;
+    }
+
+    .site-footer__bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+  }
 </style>

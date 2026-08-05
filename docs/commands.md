@@ -289,7 +289,7 @@ devmap onboarding --json
 * Avoid raw metadata dumps such as scores, import counts, and exported symbol
   lists in human onboarding output
 * Keep the guide useful without requiring an AI call
-* Treat `devmap flow` and full docs generation as future commands
+* Treat full docs generation as a future command
 * Include snapshot freshness and agent navigation policy in JSON output
 * Keep `--json` non-interactive; never prompt in machine-readable mode
 * Default generated onboarding language is English; use `--language id` for
@@ -344,6 +344,58 @@ devmap map --json
 * An ambiguous suffix match is an error with the candidate list, not a guess
 * Project mode stays curated by default; it does not attempt a full
   file-level dump of large projects
+
+---
+
+## `devmap flow`
+
+Trace how a feature or API route works end to end.
+
+### Purpose
+
+`devmap flow` renders the temporal view of a codebase — the ordered
+"what happens in what order" — complementing `devmap map`'s spatial view.
+It should help answer:
+
+> How does this feature work from start to finish?
+
+### Usage
+
+```bash
+devmap flow                    # curated top flows from the snapshot
+devmap flow --all              # uncapped: also medium-confidence features and non-API routes
+devmap flow authentication     # one specific flow (match is case-insensitive)
+devmap flow --json
+```
+
+### Responsibilities
+
+* Read `.devmap/snapshot.json`
+* Default (no `--all`): render `snapshot.flows` exactly as computed by
+  `devmap analyze` — no re-ranking, no re-scan of disk
+* `--all`: rebuild the flow set from the snapshot's `features`, `routes`,
+  `fileIndex`, and `fileGraph` with lower-confidence features and non-API
+  routes included and no caps — still no re-scan and no re-run of `analyze`
+* Resolve the target against flow names (exact, then a unique partial
+  match; ambiguous or unknown targets are errors with a hint)
+* Per flow, write `.devmap/flows/[name].md` and
+  `.devmap/flows/[name].mermaid`
+* Optional AI narration: when a provider API key is configured, turn the
+  already-verified step list into one short flowing paragraph per flow.
+  Falls back to the plain step list for that flow only if the call fails
+* Print a short index of flows written (name + purpose) when no target and
+  more than one flow is written
+* Warn when the snapshot is stale
+* Emit one structured JSON document when `--json` is passed
+
+### Rules
+
+* Default view stays curated — `snapshot.flows` is already the capped set;
+  `--all` is the only way to reveal the larger pool
+* Narration never re-reads source files — it only sends the structured
+  step list, so the AI call stays small
+* A failed narration on one flow never aborts the whole command
+* Never call AI when no API key is configured — print a single note instead
 
 ---
 
@@ -531,7 +583,6 @@ They are not part of the current MVP command scope.
 | ----------------- | ------------------------------------------- |
 | `devmap features` | Detect implemented project features         |
 | `devmap explain`  | Explain folders, modules, and architecture  |
-| `devmap flow`     | Explain system flows as narrative steps     |
 | `devmap docs`     | Generate project documentation              |
 | `devmap deadcode` | Detect unused files, exports, and functions |
 | `devmap report`   | Generate project health report              |

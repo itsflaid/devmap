@@ -12,7 +12,7 @@ import {
   OPENROUTER_FREE_MODEL
 } from "./openrouter.js";
 
-export type AiTask = "analyze";
+export type AiTask = "analyze" | "flowNarration";
 export type ProviderInspection = { reachable: true; modelAvailable: boolean };
 
 export function createAiClient(config: DevmapConfig): AiClient {

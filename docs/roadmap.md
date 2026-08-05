@@ -92,13 +92,13 @@ Requires AI — but targeted (one file/feature at a time, not whole codebase).
 
 ---
 
-### ⭐ `devmap flow [target?]`
-Core question it answers:
+### ✅ `devmap flow [target?]`
+Shipped. Core question it answers:
 > How does this feature work from start to finish?
 
 ```bash
-devmap flow                   # top 5 most critical flows (curated default)
-devmap flow --all             # all detected flows
+devmap flow                   # curated top flows from the snapshot
+devmap flow --all             # all detected flows (uncapped: medium-confidence features + non-API routes)
 devmap flow authentication    # specific feature flow
 devmap flow /api/snippets     # specific route flow
 ```
@@ -108,6 +108,10 @@ Output per flow:
 - `.devmap/flows/[name].mermaid` — Mermaid diagram
 
 `devmap flow` without target = curated top flows, not a dump. Use `--all` for complete output.
+
+Optional AI pass turns each already-verified step list into one short flowing
+paragraph (`flowNarration` task); without a configured API key the static step
+list is used as-is.
 
 ---
 
@@ -132,8 +136,8 @@ Output per flow:
 ```
 1. devmap onboarding (polish)
 2. devmap map
-3. devmap explain
-4. devmap flow
+3. devmap flow
+4. devmap explain
 ```
 
 **Deliverable:** Developer can clone any fullstack JS/TS project, run DevMap, and understand its structure in under 10 minutes without reading every file.

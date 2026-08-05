@@ -1,6 +1,52 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-07-03
+Terakhir diperbarui: 2026-08-05
+
+## Update 2026-08-05
+
+### `devmap flow` Command — Spec 01 (branch `command-flow`)
+
+Menambahkan `devmap flow [target] [--all] [--json]` — view temporal
+"how does this feature work end-to-end" yang melengkapi view spatial
+`devmap map`.
+
+**Fitur:**
+
+- Default: render `snapshot.flows` apa adanya — set tersebut sudah di-curate
+  pada saat `analyze` (feature flows high-confidence cap 3 + request flows API
+  cap 5). Tidak ada re-ranking.
+- `--all`: rebuild flow set lebih besar dari snapshot (features/routes/
+  fileIndex/fileGraph) tanpa scan ulang disk dan tanpa re-run analyze.
+  `generateFeatureFlows`/`generateRequestFlows` di-export dengan opsi
+  backward compatible (`limit`, `minConfidence`, `includeAllRouteKinds`).
+  `renderMermaidFlow` juga di-export agar flow.ts reuse langsung.
+- Narration AI opsional (`AiTask = "flowNarration"`): satu paragraf pendek
+  per flow dari structured step list (bukan re-read source file). Fallback
+  ke plain step list per-flow kalau satu call gagal, tidak menghentikan
+  command. Tanpa API key → satu note "not configured" sekali per invocation.
+- Output: `.devmap/flows/<slug>.md` + `.devmap/flows/<slug>.mermaid`,
+  index terminal (name + purpose) ketika multi-flow tanpa target,
+  JSON `FlowResult` saat `--json`.
+- Target resolution mirip `resolveMapTarget`: exact → partial unik →
+  DevmapError dengan daftar known flows / hint "matches multiple flows".
+- `slugifyMapName` dipindah dari `map.ts` ke shared `utils/slug.ts`.
+
+**File:**
+
+- New: `packages/cli/src/commands/flow.ts`, `packages/cli/src/utils/slug.ts`,
+  `packages/cli/test/flow-command.test.ts`.
+- Modified: `analyzers/pipeline/projectMap.ts`, `analyzers/pipeline/index.ts`,
+  `commands/map.ts`, `ai/provider.ts`, `ai/groq.ts`, `ai/prompts.ts`,
+  `src/index.ts`, `docs/commands.md`, `docs/roadmap.md`,
+  `docs/generated-files.md`.
+
+**Verification:**
+
+- `pnpm test:unit` dan `pnpm test:types` — lihat TEST.md untuk angka terkini.
+- Runtime verification di fixture nextjs/express/react dengan `dist` build —
+  langkah dan hasil aktual ada di TEST.md.
+
+---
 
 ## Update 2026-06-30
 

@@ -850,17 +850,21 @@ function generateMinimalFlows(
   ];
 }
 
-function generateFeatureFlows(
+export function generateFeatureFlows(
   features: FeatureInfo[],
-  fileIndex: Record<string, FileIndexEntry>
+  fileIndex: Record<string, FileIndexEntry>,
+  options: { limit?: number; minConfidence?: "high" | "medium" } = {}
 ): FlowInfo[] {
+  const limit = options.limit ?? 3;
+  const minConfidence = options.minConfidence ?? "high";
+
   return features
     .filter((feature) =>
-      feature.confidence === "high"
+      feature.confidence === minConfidence
       && feature.businessFlow.length > 1
       && !feature.businessFlow.some((step) => /^Identify files related to /i.test(step))
     )
-    .slice(0, 3)
+    .slice(0, limit)
     .map((feature) => {
       const candidateFiles = [...new Set([
         ...(feature.entryPoint ? [feature.entryPoint] : []),
@@ -882,19 +886,23 @@ function generateFeatureFlows(
         ...(feature.entryPoint ? { entryPoint: feature.entryPoint } : {}),
         steps,
         ...(steps.length > 3 ? { mermaid: renderMermaidFlow(steps) } : {}),
-        confidence: "high" as const
+        confidence: feature.confidence === "high" ? "high" as const : "medium" as const
       };
     });
 }
 
-function generateRequestFlows(
+export function generateRequestFlows(
   routes: RouteInfo[],
   fileIndex: Record<string, FileIndexEntry>,
-  graph: Record<string, string[]>
+  graph: Record<string, string[]>,
+  options: { limit?: number; includeAllRouteKinds?: boolean } = {}
 ): FlowInfo[] {
+  const limit = options.limit ?? 5;
+  const includeAllRouteKinds = options.includeAllRouteKinds ?? false;
+
   return routes
-    .filter((route) => route.kind === "api")
-    .slice(0, 5)
+    .filter((route) => route.kind === "api" || includeAllRouteKinds)
+    .slice(0, limit)
     .map((route) => {
       const files = collectFlowFiles(route.file, graph, fileIndex);
       const steps = files.map((file, index) => ({
@@ -1038,7 +1046,7 @@ function renderFlowStepLabel(
   return `${prefix} ${file}${symbolText}`;
 }
 
-function renderMermaidFlow(steps: FlowInfo["steps"]): string {
+export function renderMermaidFlow(steps: FlowInfo["steps"]): string {
   const lines = ["graph TD"];
   steps.forEach((step, index) => {
     const node = `S${index + 1}`;

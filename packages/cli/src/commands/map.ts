@@ -9,6 +9,7 @@ import {
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
 import { DevmapError } from "../utils/errors.js";
+import { slugifyMapName } from "../utils/slug.js";
 import {
   buildMapMarkdown,
   renderFlatList,
@@ -390,12 +391,4 @@ function buildFullProjectDump(snapshot: ProjectMap): { markdown: string; mermaid
     }),
     mermaid: renderMermaid(mermaidEdges)
   };
-}
-
-function slugifyMapName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/\.[a-z0-9]+$/i, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "map";
 }

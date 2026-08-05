@@ -1,6 +1,6 @@
 # Catatan Debugging DevMap
 
-Terakhir diperbarui: 2026-06-18
+Terakhir diperbarui: 2026-08-05
 
 Dokumen ini menyimpan masalah teknis yang pernah ditemukan selama development
 DevMap. Tujuannya supaya penyebab, solusi, dan cara verifikasinya tidak perlu
@@ -1281,6 +1281,45 @@ Analyze DevNote menghasilkan 35 routes terdeteksi dengan benar:
 Regex dengan `^` anchor assume path dimulai dari project root. Monorepo
 dengan workspace packages (`apps/web/`, `packages/cli/`) melanggar asumsi
 ini. Gunakan `(?:^|\/)` untuk pattern yang harus berlaku di semua level path.
+
+---
+
+## 24. Test `flow --json` Tidak Sengaja Memanggil AI Live
+
+**Tanggal:** 2026-08-05
+**Status:** Selesai
+
+### Gejala
+
+Test `flow-command.test.ts` yang seharusnya "tanpa AI" gagal di dua tempat:
+note "AI flow narration is not configured" tidak muncul, dan `--json`
+mengembalikan `narrated: true` padahal test mengharapkan `false`.
+
+### Akar Masalah
+
+Mesin development memiliki config global nyata di `~/.devmap/config.json`
+dengan API key valid. Test yang memanggil `flowCommand` tanpa dependency
+`loadConfig` jatuh ke `readConfig` asli, sehingga flow membaca key tersebut
+dan menjalankan narration AI live (memakai quota + membuat output tidak
+deterministik).
+
+### Solusi
+
+Semua test tanpa AI wajib inject dependency:
+`flowCommand(target, options, { loadConfig: async () => null })`. Test
+narration tetap inject fake `createAiClient` seperti pola `analyze-ai.test.ts`.
+
+### Verifikasi
+
+`pnpm --filter devmap exec tsx --test test/flow-command.test.ts` — 10/10 pass,
+tidak ada request AI live yang tersisa.
+
+### Pelajaran
+
+Test command yang membaca config global harus selalu inject `loadConfig`.
+Config nyata di `~/.devmap/config.json` adalah lingkungan luar yang tidak
+boleh mengubah hasil test. Hal yang sama berlaku untuk `map`/command lain
+yang membaca config.
 
 ---
 

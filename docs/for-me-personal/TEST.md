@@ -267,6 +267,56 @@ Jika confidence rendah, jawaban seharusnya mengatakan tidak ada strong match,
 tidak menampilkan `Asking Groq`, dan tidak menyebut file random sebagai sumber
 pasti.
 
+## Flow Command
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/flow-command.test.ts
+```
+
+Coverage:
+
+- default run (tanpa AI): note "AI flow narration is not configured" muncul
+  sekali, index terminal, file `.devmap/flows/*.md` + `*.mermaid` ter-tulis,
+  markdown berisi Purpose + Steps + mermaid block valid tanpa narration;
+- `--all` menghasilkan count >= default dan memasukkan route non-API
+  (page route) yang tidak muncul di default;
+- target exact case-insensitive; target unknown → DevmapError dengan hint
+  known flows; target ambigu → DevmapError "matches multiple flows";
+- `--json` menghasilkan satu dokumen `FlowResult` yang valid;
+- narration success dengan fake `createAiClient` (model = `DEFAULT_AI_MODELS.flowNarration`,
+  fallback = `DEFAULT_AI_FALLBACKS.flowNarration`, `maxCompletionTokens: 400`,
+  section "How it works" di markdown);
+- narration failure dengan fake client yang melempar `DevmapError` → warning,
+  `narrated: false`, command tetap menyelesaikan semua flow.
+
+Catatan: semua test tanpa AI wajib inject `loadConfig: async () => null`
+karena mesin dev punya config global dengan API key nyata — tanpa itu test
+akan memanggil AI live.
+
+Manual source-mode check dari fixture (dengan home terisolasi supaya key
+nyata tidak terbaca):
+
+```powershell
+pnpm --filter devmap exec tsx --test test/flow-command.test.ts
+pnpm build:cli
+$oldProfile = $env:USERPROFILE
+$env:USERPROFILE = Join-Path $env:TEMP "devmap-flow-test-home"
+node packages\cli\dist\index.js analyze --fresh --project-root packages/cli/test/fixtures/nextjs-project
+node packages\cli\dist\index.js flow packages/cli/test/fixtures/nextjs-project
+node packages\cli\dist\index.js flow --all packages/cli/test/fixtures/nextjs-project
+$env:USERPROFILE = $oldProfile
+```
+
+Expected:
+
+- `flow` default menulis flows ter-curate dari snapshot (tanpa AI note hanya
+  jika config tidak terbaca);
+- `flow --all` menulis set yang lebih besar (termasuk page route);
+- target yang tidak dikenal gagal dengan daftar known flows dan exit code 1;
+- `flow --json` output dapat di-parse langsung.
+
 ## Model Routing And Override
 
 Focused automated test:

@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { analyzeCommand } from "./commands/analyze.js";
 import { configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { flowCommand } from "./commands/flow.js";
 import { initCommand } from "./commands/init.js";
 import { mapCommand } from "./commands/map.js";
 import { onboardingCommand } from "./commands/onboarding.js";
@@ -59,6 +60,14 @@ program
     depth: options.depth,
     all: options.all
   }));
+
+program
+  .command("flow")
+  .description("Trace how a feature or API route works end to end")
+  .argument("[target]", "feature or flow name — omit for curated top flows")
+  .option("--all", "include lower-confidence features and non-API routes, uncapped")
+  .option("--json", "output machine-readable JSON")
+  .action((target, options) => flowCommand(target, { json: options.json, all: options.all }));
 
 const configCommand = program
   .command("config")

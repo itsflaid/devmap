@@ -11,8 +11,10 @@ const footerLinks = [
     <div class="site-footer__top">
       <div class="site-footer__brand">
         <span class="site-footer__wordmark">
-          <img src="/logo-devmap.png" alt="" width="18" height="18" />
-          dev<span class="site-footer__wordmark-accent">map</span>
+          <img src="/logo-devmap.png" alt="" width="24" height="24" />
+          <span class="site-footer__wordmark-text">
+            dev<span class="site-footer__wordmark-accent">map</span>
+          </span>
         </span>
         <p class="site-footer__description">
           AI-powered CLI to understand any codebase in minutes. The context
@@ -65,11 +67,16 @@ const footerLinks = [
   .site-footer__wordmark {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.625rem;
     font-family: var(--font-mono);
     font-size: 0.9375rem;
     font-weight: 600;
     letter-spacing: -0.01em;
+  }
+
+  .site-footer__wordmark-text {
+    display: inline-flex;
+    align-items: center;
   }
 
   .site-footer__wordmark-accent {

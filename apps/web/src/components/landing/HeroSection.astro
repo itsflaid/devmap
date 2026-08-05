@@ -95,7 +95,7 @@ const indexRows = [
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (!prefersReducedMotion) {
-    const rows = document.querySelectorAll(".index-row");
+    const rows = document.querySelectorAll<HTMLElement>(".index-row");
 
     if (rows.length && "IntersectionObserver" in window) {
       rows.forEach((row) => {
@@ -107,7 +107,7 @@ const indexRows = [
         (entries) => {
           entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
-              const row = entry.target;
+              const row = entry.target as HTMLElement;
               setTimeout(() => {
                 row.style.opacity = "1";
                 row.style.transform = "none";

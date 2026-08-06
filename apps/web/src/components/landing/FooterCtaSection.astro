@@ -57,7 +57,11 @@
     gsap.set(fadeUpTargets, { opacity: 0, y: 16 });
 
     const tl = gsap.timeline({
-      scrollTrigger: { trigger: section, start: "top 80%", once: true },
+      scrollTrigger: {
+        trigger: section,
+        start: "top 80%",
+        toggleActions: "play none none reverse",
+      },
     });
 
     if (title) tl.to(title, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" });
@@ -86,10 +90,10 @@
     if (commandEl && commandText) {
       tl.addLabel("type", "-=0.15");
       const charDuration = 0.032;
-      commandText.split("").forEach((char, i) => {
+      commandText.split("").forEach((_, i) => {
         tl.call(
           () => {
-            commandEl.textContent += char;
+            commandEl.textContent = commandText.slice(0, i + 1);
           },
           undefined,
           `type+=${(i * charDuration).toFixed(3)}`

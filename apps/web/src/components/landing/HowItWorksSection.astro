@@ -87,7 +87,11 @@ const steps = [
       gsap.set(connectors, { opacity: 0, scale: 0.4 });
 
       const tl = gsap.timeline({
-        scrollTrigger: { trigger: section, start: "top 78%", once: true },
+        scrollTrigger: {
+          trigger: section,
+          start: "top 78%",
+          toggleActions: "play none none reverse",
+        },
       });
 
       sequence.forEach((el, index) => {

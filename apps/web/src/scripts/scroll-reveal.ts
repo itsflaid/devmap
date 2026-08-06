@@ -61,7 +61,7 @@ export function revealOnScroll(
     scrollTrigger: {
       trigger: container,
       start,
-      once: true,
+      toggleActions: "play none none reverse",
     },
   });
 }

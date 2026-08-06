@@ -83,10 +83,6 @@ const commands = [
   <div class="commands-section__track">
     <div class="commands-section__stage">
       <div class="commands-section__header">
-        <p class="commands-section__eyebrow">
-          <span class="commands-section__eyebrow-dot" aria-hidden="true"></span>
-          The CLI
-        </p>
         <h2 class="commands-section__title">
           Ask your codebase. The right
           <span class="commands-section__accent">command</span> answers.
@@ -228,7 +224,7 @@ const commands = [
 
       ScrollTrigger.create({
         trigger: ".commands-section__track",
-        start: "top top+=96",
+        start: "top top+=75",
         end: "bottom bottom",
         pin: ".commands-section__stage",
         scrub: 1,
@@ -289,24 +285,6 @@ const commands = [
     margin-inline: auto;
   }
 
-  .commands-section__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0 0 1rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
-  }
-
-  .commands-section__eyebrow-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--color-aqua);
-  }
 
   .commands-section__title {
     max-width: 40rem;

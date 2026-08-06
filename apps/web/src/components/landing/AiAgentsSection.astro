@@ -89,7 +89,11 @@ const compatibleTools = [
     gsap.set(flowBox, { opacity: 0, y: 20 });
 
     const tl = gsap.timeline({
-      scrollTrigger: { trigger: section, start: "top 78%", once: true },
+      scrollTrigger: {
+        trigger: section,
+        start: "top 78%",
+        toggleActions: "play none none reverse",
+      },
     });
 
     tl.to(flowBox, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" });

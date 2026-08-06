@@ -64,7 +64,11 @@ const metrics = [
       gsap.set(rows, { opacity: 0, y: 18 });
 
       const tl = gsap.timeline({
-        scrollTrigger: { trigger: section, start: "top 78%", once: true },
+        scrollTrigger: {
+          trigger: section,
+          start: "top 78%",
+          toggleActions: "play none none reverse",
+        },
       });
 
       rows.forEach((row, index) => {

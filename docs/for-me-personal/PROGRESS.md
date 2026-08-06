@@ -1,6 +1,96 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-05
+Terakhir diperbarui: 2026-08-06
+
+## Update 2026-08-06
+
+### update3.md — Docs Page `/docs` (branch `landing-page`)
+
+**Halaman docs satu halaman** dengan sidebar kiri (sticky, active section
+highlight saat scroll) dan konten di kanan, memakai token yang sama dengan
+landing (tanpa warna/font baru).
+
+- `content.config.ts` baru: content collection `docs` (Astro 5 glob loader
+  di `src/content/docs`, schema `title` string). Catatan: lokasi file
+  `src/content.config.ts` (bukan `src/content/config.ts`) sesuai Astro 5.
+- `content/docs/overview.md`: isi `devmap-docs-content.md` verbatim (file
+  sumber sudah dihapus setelah disalin, sesuai instruksi user) + frontmatter.
+  Tiga penambahan spec sudah termasuk di dalam sumbernya: contoh `--write`
+  pada `devmap explain`, contoh `--local` + penjelasan pada `config model`,
+  dan baris `.devmap/config.local.json` di tabel Generated files.
+- `pages/docs.astro`: `getEntry("docs", "overview")` + `render()` (API
+  Astro 5, bukan `entry.render()`), grid desktop `240px 1fr` gap 48px,
+  konten max-width 720px, padding-top menyesuaikan fixed header 4rem.
+- `components/docs/DocsSidebar.astro` + `SidebarList.astro` (rekursif):
+  tree depth-2/depth-3 dari `headings` yang sebenarnya (bukan array manual,
+  sehingga tidak drift saat markdown diedit). Teks heading dibersihkan dari
+  backtick. Href memakai slug asli dari Astro.
+- IntersectionObserver (rootMargin band sepertiga atas viewport) toggle
+  class `.active` di sidebar desktop + mobile. Tanpa JS default netral.
+- Mobile <760px: sidebar jadi `<details class="docs-mobile-toc">` sticky di
+  top 4rem, max-height 60vh list, klik link menutup panel, chevron rotate
+  via CSS `details[open]`.
+- `SiteHeader.astro`: nav hamburger (2 span bar → X), `.site-header__links`
+  jadi dropdown panel absolute saat `.is-open`, tutup via Escape / klik link,
+  transition dimatikan saat `prefers-reduced-motion: reduce`. Link "Docs"
+  (href `/docs`) ditambahkan ke navigationItems.
+- `styles/docs-prose.css`: prose tokens landing (text muted, mono inline
+  code surface+border, fenced block bg-soft, tabel plain border, hr border).
+  Shiki override via CSS: `.astro-code, .astro-code span` dipaksa
+  `var(--color-text)` + transparent background, komentar italic jadi
+  `--color-text-subtle` (tidak menyentuh astro.config).
+- Build: `astro check` 0 error/warning/hint, 2 page (/, /docs) built.
+  Serve test: `/` dan `/docs` 200. Sidebar memuat 8 top-level sections
+  (Quick Start + 1-7) + 6 sub-item command di bawah "4. Command reference".
+  Screenshot visual belum bisa dibuat oleh agent (tidak ada browser tool) —
+  checklist visual update3 point 2-10 perlu konfirmasi manual.
+
+---
+
+## Update 2026-08-06
+
+### update1.md — Ask Your Codebase + Per-Project Model Override (branch `landing-page`)
+
+**Part A — landing page "Ask Your Codebase" section:**
+
+- Installed `gsap ^3.15.0` dan `lenis ^1.3.26` di `apps/web`.
+- `src/scripts/lenis-init.ts`: global Lenis + GSAP ScrollTrigger wiring,
+  dengan guard `prefers-reduced-motion` (skip Lenis animasi scroll,
+  ScrollTrigger tidak dibuat).
+- `BaseLayout.astro`: import script lenis-init sebelum `</body>`.
+- `CommandsSection.astro` baru: section scroll-driven desktop palette
+  (GSAP pin/scrub), 7 baris command (init, analyze, onboarding, map, flow,
+  explain, doctor) dengan fase typing/select/preview, static cards untuk
+  mobile/reduced-motion. Data command via `#commands-data` JSON
+  (`is:inline`), provenance REAL/MOCK/CONSTRUCTED via frontmatter comments.
+- `index.astro`: `<CommandsSection />` disisipkan antara AiAgents dan
+  Onboarding, komentar PAGE STRUCTURE dinomori ulang.
+- `ComparisonSection.astro`: tabel metrics diganti 5 baris persis update1
+  (structure found / what gets sent to AI / context per session / starting
+  new session / works across AI tools).
+- `pnpm --filter @devmap/web build` lulus 0 error; chunk ScrollTrigger +
+  lenis terkonfirmasi di dist.
+
+**Part B — per-project model override (`.devmap/config.local.json`):**
+
+- `utils/config.ts`: `LocalDevmapConfig`, `getLocalConfigPath`,
+  `readLocalConfig` (abaikan `apiKey`/`provider` + warning sekali),
+  `writeLocalConfig`, `resolveEffectiveConfig(projectRoot)` dengan
+  `ConfigReaders` injection untuk test. `DevmapConfig`/`readConfig`/
+  `writeConfig`/`getConfigPath` tidak diubah.
+- `commands/analyze.ts` + `commands/flow.ts`: call site penentu model AI
+  pindah dari `readConfig()` ke `resolveEffectiveConfig(projectRoot)`.
+- `commands/config.ts` + `index.ts`: flag `--local` di `config model`.
+  `provider`/`apiKey` tetap global-only, tidak ada `--local` di tempat lain.
+- `commands/doctor.ts`: output model aktif kini berlabel sumbernya:
+  `model: qwen/qwen3.6-27b (project override)` vs `model: auto (global)`.
+- Test baru `config-local.test.ts` (6 kasus) + tambahan di
+  `doctor.test.ts`, `analyze-ai.test.ts`, `flow-command.test.ts`.
+- Verification: `pnpm --filter devmap test:unit` → 199 pass / 0 fail;
+  `pnpm --filter devmap test:types` → 0 error.
+- docs/commands.md diperbarui (config model --local, doctor model source).
+
+---
 
 ## Update 2026-08-05
 

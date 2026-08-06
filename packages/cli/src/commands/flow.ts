@@ -15,7 +15,7 @@ import {
   type ProjectMap
 } from "../analyzers/pipeline/index.js";
 import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
-import { readConfig, type DevmapConfig } from "../utils/config.js";
+import { resolveEffectiveConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { buildMapMarkdown } from "../utils/mapRenderer.js";
 import { output, withJsonOutput } from "../utils/output.js";
@@ -90,7 +90,8 @@ async function runFlow(
     : snapshot.flows;
   const resolved = resolveFlowTarget(flows, target);
 
-  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const loadConfig = dependencies.loadConfig
+    ?? (() => resolveEffectiveConfig(projectRoot));
   const config = await loadConfig();
   let client: AiClient | undefined;
   let routing: { model: string; fallbackModels: readonly string[] } | undefined;

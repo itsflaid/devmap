@@ -71,6 +71,37 @@ Expected:
 - OpenRouter setup tetap memakai prompt model text dengan default
   `openrouter/free`.
 
+## Per-Project Model Override (`config model --local`)
+
+Focused automated tests:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/config-local.test.ts test/doctor.test.ts test/analyze-ai.test.ts test/flow-command.test.ts
+```
+
+Expected:
+
+- `devmap config model <name> --local` di dalam fixture menulis
+  `.devmap/config.local.json` yang isinya cuma field `model`.
+- `devmap analyze` / `devmap flow` di fixture memakai model dari local
+  override (semua AiCompletionRequest ber-model `local-override-model`).
+- Di luar fixture (tanpa local config) tetap memakai model global.
+- `devmap doctor` menampilkan `Model ... (project override)` saat local
+  override aktif dan `(global)` saat tidak; model yang di-inspek adalah
+  model local override.
+- Menambahkan `apiKey`/`provider` manual ke `.devmap/config.local.json`
+  diabaikan dan memunculkan warning persis sekali:
+  `config.local.json only supports "model", ...`.
+- `pnpm --filter devmap test:unit` → 199 pass / 0 fail;
+  `pnpm --filter devmap test:types` → 0 error.
+
+Full suite:
+
+```powershell
+pnpm --filter devmap test:unit
+pnpm --filter devmap test:types
+```
+
 ## Mixed Workspace Snapshot Accuracy
 
 Jalankan static analyze pada root DevMap dengan config AI terisolasi:
@@ -1214,6 +1245,51 @@ Expected:
   tombol CTA (tidak ke-override);
 - `prefers-reduced-motion: reduce` menghapus stagger animasi Hero, konten
   tetap fully visible.
+
+### Docs Page — Spec 04
+
+Build + serve:
+
+```powershell
+pnpm build:web
+pnpm dev:web
+```
+
+Expected (automated/static):
+
+- `astro check` menghasilkan 0 error, 0 warning, 0 hint;
+- `astro build` membuat 2 route: `/index.html` dan `/docs/index.html`;
+- `/docs` mengembalikan 200 dan berisi sidebar `.docs-sidebar` + konten
+  `#quick-start`;
+- sidebar memuat 8 top-level sections (Quick Start, 1-7) + 6 sub-item
+  command di bawah "4. Command reference";
+- fenced code block dirender via Shiki (`pre.astro-code github-dark`)
+  tapi warna token di-override ke off-white oleh `docs-prose.css`
+  (`.astro-code, .astro-code span { color: var(--color-text) !important;
+  background: transparent !important; }`);
+- header punya link `Docs` (href `/docs`) dan hamburger
+  (`.site-header__toggle`, `aria-expanded`, `aria-controls`);
+- CSS mobile TOC ada: `max-height: 60vh`, sticky `top: 4rem`, chevron
+  rotate `details[open]`.
+
+Expected (manual/visual, belum bisa dilakukan agent tanpa browser tool):
+
+- screenshot `/docs` 1440px dan 375px;
+- active sidebar link ikut berubah saat scroll (IntersectionObserver);
+- <760px: sidebar jadi `<details>` collapsed, konten full-width;
+- <760px: hamburger membuka dropdown 6 link, ikon jadi X, `aria-expanded`
+  flip, klik link menutup, Escape menutup;
+- <760px di `/docs`: bar "Contents" tetap sticky saat scroll, list scroll
+  internal, klik link menutup panel;
+- `prefers-reduced-motion: reduce` skip transisi hamburger dan TOC
+  (DevTools emulation);
+- scroll anchor tidak tertutup header (h2/h3 `scroll-margin-top`).
+
+Screenshot Edge headless (1440px):
+
+```powershell
+& "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --headless=new --disable-gpu --screenshot="C:\Users\Hype G12\AppData\Local\Temp\opencode\docs-1440.png" --window-size=1440,1000 http://localhost:4321/docs
+```
 
 ---
 

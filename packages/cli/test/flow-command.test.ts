@@ -16,6 +16,7 @@ import type {
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { flowCommand } from "../src/commands/flow.js";
+import { resolveEffectiveConfig } from "../src/utils/config.js";
 import { DevmapError } from "../src/utils/errors.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
@@ -249,6 +250,49 @@ test("flow narrates each flow via the flowNarration routing when AI is configure
     );
     assert.match(markdown, /## How it works/);
     assert.match(markdown, /This flow starts at the session route/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("flow uses a project-local model override for narration", async () => {
+  const projectRoot = await projectFromFixture(nextFixture);
+  const requests: AiCompletionRequest[] = [];
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      requests.push(request);
+      return {
+        content: "This flow starts at the session route and moves through auth.",
+        model: request.model
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, ".devmap", "config.local.json"),
+      JSON.stringify({ model: "local-override-model" }),
+      "utf8"
+    );
+    const localConfig = await resolveEffectiveConfig(projectRoot, {
+      readGlobal: async () => ({
+        provider: "groq" as const,
+        apiKey: "gsk_fixture",
+        model: "auto"
+      })
+    });
+
+    await captureOutput(() => flowCommand(
+      "authentication",
+      { projectRoot, json: true },
+      {
+        loadConfig: async () => localConfig,
+        createAiClient: () => client
+      }
+    ));
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0]?.model, "local-override-model");
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

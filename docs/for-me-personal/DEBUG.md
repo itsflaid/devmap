@@ -1323,6 +1323,53 @@ yang membaca config.
 
 ---
 
+## 25. TypeScript Gagal Narrowing `HTMLElement | null` di Closure `renderOutput`
+
+**Tanggal:** 2026-08-06
+**Status:** Selesai
+
+### Gejala
+
+`CommandsSection.astro` (bagian palette GSAP) tidak bisa di-build: TypeScript
+menolak pemanggilan metode di dalam closure `renderOutput` pada objek DOM yang
+di-capture dari luar closure. Error intinya adalah null-narrowing yang hilang
+di dalam fungsi callback.
+
+### Akar Masalah
+
+Astro menulis inline script dalam blok `<script>` dengan tipe yang di-infer
+ketat. Saat sebuah elemen diambil lewat `querySelector` di scope luar lalu
+dipakai di dalam closure async/callback, TS tidak lagi mempercayai hasil
+narrowing `!` yang sudah dilakukan di scope luar, karena elemen bisa berubah
+null di antara eksekusi. Menulis `output!.textContent = ...` di dalam closure
+masih gagal karena narrowing tidak "stick" ke dalam fungsi.
+
+### Solusi
+
+Capture ke variabel lokal bertipe eksplisit tepat sebelum closure:
+
+```ts
+const outputEl = output as HTMLElement;
+// di dalam renderOutput: outputEl.textContent = ...
+```
+
+Alias lokal bertipe `HTMLElement` (bukan `HTMLElement | null`) dianggap
+konstan oleh TS, sehingga pemakaian di dalam closure aman tanpa assertion
+berulang.
+
+### Verifikasi
+
+`pnpm --filter @devmap/web build` lulus 0 error; `#commands-data` JSON dan
+chunk `ScrollTrigger`+lenis terlihat di `dist/index.html`.
+
+### Pelajaran
+
+Jangan re-narrowing elemen DOM di dalam closure pada script Astro strict;
+buat alias lokal bertipe non-null sekali di scope luar. Hal yang sama berlaku
+untuk element references yang dipakai dari `onClick`/observer callback.
+
+---
+
 ## Checklist Saat Menambahkan Debug Baru
 
 Tambahkan catatan baru ketika:

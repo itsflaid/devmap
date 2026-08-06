@@ -17,3 +17,49 @@ const { items } = Astro.props;
     </li>
   ))}
 </ul>
+
+<style>
+  /*
+    These rules live here (not in DocsSidebar.astro) on purpose: Astro
+    scopes styles per-file, so a <style> block in the parent never
+    reaches elements rendered by this child component. That mismatch
+    was why the sidebar rendered with raw browser defaults.
+
+    --docs-link-padding / --docs-link-nested-indent let an ancestor
+    (e.g. the mobile dropdown wrapper in DocsSidebar.astro) override
+    spacing for its variant, since CSS custom properties inherit
+    through the real DOM regardless of Astro's scoping.
+  */
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    margin: 0;
+  }
+
+  a {
+    display: block;
+    padding: var(--docs-link-padding, 0.3125rem 0 0.3125rem 0.75rem);
+    border-inline-start: 2px solid transparent;
+    font-size: 0.84375rem;
+    color: var(--color-text-muted);
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+
+  a:hover {
+    color: var(--color-text);
+  }
+
+  a.active {
+    border-inline-start-color: var(--color-aqua);
+    color: var(--color-text);
+  }
+
+  li li a {
+    padding-inline-start: var(--docs-link-nested-indent, 1.75rem);
+    font-size: 0.78125rem;
+  }
+</style>

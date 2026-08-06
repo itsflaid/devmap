@@ -80,46 +80,48 @@ const commands = [
 ---
 
 <section id="commands" class="commands-section">
-  <div class="commands-section__header">
-    <p class="commands-section__eyebrow">
-      <span class="commands-section__eyebrow-dot" aria-hidden="true"></span>
-      The CLI
-    </p>
-    <h2 class="commands-section__title">
-      Ask your codebase. The right
-      <span class="commands-section__accent">command</span> answers.
-    </h2>
-  </div>
-
   <div class="commands-section__track">
-    <div class="command-palette" role="region" aria-label="DevMap command examples">
-      <div class="command-palette__input">
-        <svg
-          class="command-palette__search"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          aria-hidden="true"
-        >
-          <circle cx="7" cy="7" r="4.5"></circle>
-          <line x1="10.5" y1="10.5" x2="13.5" y2="13.5"></line>
-        </svg>
-        <span class="command-palette__typed" data-typed aria-hidden="true"></span>
-        <span class="command-palette__caret" aria-hidden="true"></span>
+    <div class="commands-section__stage">
+      <div class="commands-section__header">
+        <p class="commands-section__eyebrow">
+          <span class="commands-section__eyebrow-dot" aria-hidden="true"></span>
+          The CLI
+        </p>
+        <h2 class="commands-section__title">
+          Ask your codebase. The right
+          <span class="commands-section__accent">command</span> answers.
+        </h2>
       </div>
 
-      <ul class="command-palette__results">
-        {commands.map((entry, index) => (
-          <li class="command-palette__row" data-row={index}>
-            <code class="command-palette__row-command">{entry.command}</code>
-            <span class="command-palette__row-arrow" aria-hidden="true">→</span>
-          </li>
-        ))}
-      </ul>
+      <div class="command-palette" role="region" aria-label="DevMap command examples">
+        <div class="command-palette__input">
+          <svg
+            class="command-palette__search"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            aria-hidden="true"
+          >
+            <circle cx="7" cy="7" r="4.5"></circle>
+            <line x1="10.5" y1="10.5" x2="13.5" y2="13.5"></line>
+          </svg>
+          <span class="command-palette__typed" data-typed aria-hidden="true"></span>
+          <span class="command-palette__caret" aria-hidden="true"></span>
+        </div>
 
-      <div class="command-palette__output" data-output aria-hidden="true"></div>
-      <p class="command-palette__question" data-question aria-hidden="true"></p>
+        <ul class="command-palette__results">
+          {commands.map((entry, index) => (
+            <li class="command-palette__row" data-row={index}>
+              <code class="command-palette__row-command">{entry.command}</code>
+              <span class="command-palette__row-arrow" aria-hidden="true">→</span>
+            </li>
+          ))}
+        </ul>
+
+        <div class="command-palette__output" data-output aria-hidden="true"></div>
+        <p class="command-palette__question" data-question aria-hidden="true"></p>
+      </div>
     </div>
 
     <script type="application/json" id="commands-data" is:inline set:html={JSON.stringify(commands)}></script>
@@ -226,9 +228,9 @@ const commands = [
 
       ScrollTrigger.create({
         trigger: ".commands-section__track",
-        start: "top top",
+        start: "top top+=96",
         end: "bottom bottom",
-        pin: ".command-palette",
+        pin: ".commands-section__stage",
         scrub: 1,
         onUpdate(self) {
           const totalSteps = commandsData.length;

@@ -32,6 +32,23 @@ const outputItems = [
   </div>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".onboarding-section");
+
+  revealOnScroll(
+    section,
+    ".onboarding-section__title, .onboarding-section__intro, .onboarding-section__quote",
+    { y: 14, stagger: 0.1 }
+  );
+  revealOnScroll(section, ".onboarding-row", {
+    y: 18,
+    stagger: 0.06,
+    start: "top 80%",
+  });
+</script>
+
 <style>
   .onboarding-section {
     padding: var(--section-spacing) 0;

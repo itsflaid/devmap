@@ -21,6 +21,24 @@
   </div>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".footer-cta-section");
+
+  revealOnScroll(section, ".footer-cta-section__title", { y: 18 });
+  revealOnScroll(section, ".footer-cta-section__subtext", {
+    y: 14,
+    start: "top 85%",
+    delay: 0.08,
+  });
+  revealOnScroll(section, ".footer-cta-section__actions > *", {
+    y: 14,
+    stagger: 0.1,
+    start: "top 82%",
+  });
+</script>
+
 <style>
   .footer-cta-section {
     padding: var(--section-spacing) 0;

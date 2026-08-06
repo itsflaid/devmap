@@ -27,6 +27,23 @@ const supportLinks = [
   </div>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".open-source-section");
+
+  revealOnScroll(
+    section,
+    ".open-source-section__title, .open-source-section__copy",
+    { y: 14, stagger: 0.1 }
+  );
+  revealOnScroll(section, ".open-source-section__link", {
+    y: 12,
+    stagger: 0.1,
+    start: "top 80%",
+  });
+</script>
+
 <style>
   .open-source-section {
     padding: var(--section-spacing) 0;

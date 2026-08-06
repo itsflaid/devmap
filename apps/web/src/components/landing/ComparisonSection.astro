@@ -36,6 +36,19 @@ const metrics = [
   </div>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".comparison-section");
+
+  revealOnScroll(section, ".comparison-section__title", { y: 16 });
+  revealOnScroll(section, ".comparison-table tbody tr", {
+    y: 18,
+    stagger: 0.08,
+    start: "top 80%",
+  });
+</script>
+
 <style>
   .comparison-section {
     padding: var(--section-spacing) 0;

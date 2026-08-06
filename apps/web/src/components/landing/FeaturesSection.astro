@@ -43,6 +43,19 @@ const features = [
   </div>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".features-section");
+
+  revealOnScroll(section, ".features-section__title", { y: 16 });
+  revealOnScroll(section, ".feature-card", {
+    y: 24,
+    stagger: 0.06,
+    start: "top 82%",
+  });
+</script>
+
 <style>
   .features-section {
     padding: var(--section-spacing) 0;

@@ -4,6 +4,44 @@ Terakhir diperbarui: 2026-08-06
 
 ## Update 2026-08-06
 
+### update.md — Fix GSAP Commands, Reveal Animations, Docs Sidebar & Navbar (branch `fix/commands-reveal-docs-nav`)
+
+Diterapkan dari update.md ke `apps/web`, tiap bagian di-commit terpisah
+(update.md sendiri tidak di-commit dan sudah dihapus; update2.md tidak
+disentuh).
+
+- `src/scripts/scroll-reveal.ts` baru: utility `revealOnScroll(container,
+  selector, options)` — gsap fade+slide, guard `prefers-reduced-motion`,
+  `scrollTrigger.once`. Dipakai oleh 8 section landing.
+- 8 section landing ditambah `<script>` reveal (Problem, HowItWorks,
+  Features, AiAgents, Comparison, Onboarding, OpenSource, FooterCta).
+- `AiAgentsSection.astro` sekaligus fix overflow mobile: flow pakai
+  `box-sizing: border-box` + `max-width: 100%`, row `flex-wrap: wrap`,
+  command/output `min-width: 0` + `overflow-wrap: anywhere`.
+- `CommandsSection.astro` fix bug utama: header + palette dibungkus
+  `.commands-section__stage` di dalam `.commands-section__track`; GSAP pin
+  pindah dari `.command-palette` ke `.commands-section__stage`, start
+  `"top top+=96"` — header ikut scroll menjauh, palette tetap pin.
+- `SidebarList.astro` fix bug utama sidebar docs unstyled: style `ul/li/a`
+  (termasuk `a.active`, nested `li li a`) dipindah ke scoped style di
+  komponen ini sendiri (style di parent tidak menembus scoping Astro).
+  Padding pakai custom props `--docs-link-padding` /
+  `--docs-link-nested-indent` agar bisa di-override dari ancestor.
+- `DocsSidebar.astro`: style link dihapus (sudah pindah ke SidebarList),
+  `.docs-mobile-toc__list` menambahkan override custom props
+  `--docs-link-padding: 0.625rem 1rem; --docs-link-nested-indent: 2rem`.
+- `SiteHeader.astro` redesign 3 zona: grid `auto 1fr auto` (brand | links |
+  actions) desktop, `.site-header__menu` `display: contents`, actions berisi
+  tombol Docs (`/docs`) + GitHub. Mobile: menu jadi dropdown panel full-width.
+  Href nav item tetap `/#problem` dst. (prefix `/` dipertahankan agar tetap
+  berfungsi dari halaman `/docs`).
+- Verifikasi: `pnpm build:web` (`astro check` + `astro build`) lulus, lihat
+  TEST.md untuk detail.
+
+---
+
+## Update 2026-08-06
+
 ### update3.md — Docs Page `/docs` (branch `landing-page`)
 
 **Halaman docs satu halaman** dengan sidebar kiri (sticky, active section

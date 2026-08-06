@@ -35,6 +35,24 @@ const painPoints = [
   </p>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".problem-section");
+
+  revealOnScroll(section, ".problem-section__title", { y: 16 });
+  revealOnScroll(section, ".problem-card", {
+    y: 26,
+    stagger: 0.12,
+    start: "top 82%",
+  });
+  revealOnScroll(section, ".problem-section__bridge", {
+    y: 12,
+    start: "top 78%",
+    delay: 0.15,
+  });
+</script>
+
 <style>
   .problem-section {
     padding: var(--section-spacing) 0;

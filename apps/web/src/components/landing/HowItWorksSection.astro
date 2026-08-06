@@ -37,6 +37,19 @@ const steps = [
   </div>
 </section>
 
+<script>
+  import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  const section = document.querySelector<HTMLElement>(".how-it-works-section");
+
+  revealOnScroll(section, ".how-it-works-section__title", { y: 16 });
+  revealOnScroll(section, ".how-step", {
+    y: 26,
+    stagger: 0.12,
+    start: "top 82%",
+  });
+</script>
+
 <style>
   .how-it-works-section {
     padding: var(--section-spacing) 0;

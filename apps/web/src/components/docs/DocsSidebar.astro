@@ -104,40 +104,6 @@ const tree = buildTree(headings);
     overflow-y: auto;
   }
 
-  .docs-sidebar ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .docs-sidebar li {
-    margin: 0;
-  }
-
-  .docs-sidebar a {
-    display: block;
-    padding: 0.3125rem 0;
-    border-inline-start: 2px solid transparent;
-    padding-inline-start: 0.75rem;
-    font-size: 0.84375rem;
-    color: var(--color-text-muted);
-    transition: color 150ms ease, border-color 150ms ease;
-  }
-
-  .docs-sidebar a:hover {
-    color: var(--color-text);
-  }
-
-  .docs-sidebar a.active {
-    border-inline-start-color: var(--color-aqua);
-    color: var(--color-text);
-  }
-
-  .docs-sidebar li li a {
-    padding-inline-start: 1.75rem;
-    font-size: 0.78125rem;
-  }
-
   .docs-mobile-toc-wrap {
     display: none;
   }
@@ -193,35 +159,12 @@ const tree = buildTree(headings);
       max-height: 60vh;
       overflow-y: auto;
       border-top: 1px solid var(--color-border);
-    }
-
-    .docs-mobile-toc__list ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .docs-mobile-toc__list li {
-      margin: 0;
-    }
-
-    .docs-mobile-toc__list a {
-      display: block;
-      padding: 0.625rem 1rem;
-      border-inline-start: 2px solid transparent;
-      font-size: 0.84375rem;
-      color: var(--color-text-muted);
-    }
-
-    .docs-mobile-toc__list a:hover,
-    .docs-mobile-toc__list a.active {
-      border-inline-start-color: var(--color-aqua);
-      color: var(--color-text);
-    }
-
-    .docs-mobile-toc__list li li a {
-      padding-inline-start: 2rem;
-      font-size: 0.78125rem;
+      /* Bigger, thumb-friendly tap targets for the dropdown variant.
+         These inherit into SidebarList's <a> elements via normal CSS
+         custom-property inheritance — unlike plain selectors, that
+         works across Astro's component scoping boundary. */
+      --docs-link-padding: 0.625rem 1rem;
+      --docs-link-nested-indent: 2rem;
     }
   }
 </style>

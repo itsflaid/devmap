@@ -1,0 +1,695 @@
+{
+  "version": "1",
+  "generatedAt": "2026-08-06T22:09:20.277Z",
+  "agentInstructions": {
+    "navigationPolicy": "index-first",
+    "defaultMode": "feature-map-first",
+    "maxInitialFiles": 3,
+    "missingSnapshotAction": "run-devmap-analyze",
+    "staleSnapshotAction": "run-devmap-analyze-fresh",
+    "fallbackRule": "Read snapshot.json only when index.json and feature maps are insufficient; inspect extra source only when exact implementation is required."
+  },
+  "fingerprint": "3b5683b9e8dfe4ed2c667f35eaaef1a2",
+  "projectRoot": "/home/claude/sample-nextjs-app",
+  "framework": "nextjs",
+  "project": {
+    "name": "sample-todo-app",
+    "root": "/home/claude/sample-nextjs-app",
+    "framework": "nextjs",
+    "frameworks": [
+      "nextjs"
+    ],
+    "language": "typescript",
+    "packageManager": "unknown",
+    "projectType": "web-app",
+    "workspaceType": "single-package"
+  },
+  "stats": {
+    "totalFiles": 9,
+    "relevantFiles": 9,
+    "totalLines": 117
+  },
+  "entryPoints": [
+    "app/api/todos/route.ts",
+    "app/layout.tsx",
+    "app/page.tsx",
+    "app/todos/page.tsx"
+  ],
+  "criticalFiles": [
+    {
+      "path": "app/api/todos/route.ts",
+      "referencedBy": 0,
+      "score": 14,
+      "reasons": [
+        "application entry point",
+        "framework convention"
+      ]
+    },
+    {
+      "path": "app/layout.tsx",
+      "referencedBy": 0,
+      "score": 14,
+      "reasons": [
+        "application entry point",
+        "framework convention"
+      ]
+    },
+    {
+      "path": "app/page.tsx",
+      "referencedBy": 0,
+      "score": 14,
+      "reasons": [
+        "application entry point",
+        "framework convention"
+      ]
+    },
+    {
+      "path": "app/todos/page.tsx",
+      "referencedBy": 0,
+      "score": 14,
+      "reasons": [
+        "application entry point",
+        "framework convention"
+      ]
+    },
+    {
+      "path": "lib/db.ts",
+      "referencedBy": 0,
+      "score": 3,
+      "reasons": [
+        "core project concern"
+      ]
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "referencedBy": 0,
+      "score": 3,
+      "reasons": [
+        "core project concern"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "file": "app/page.tsx",
+      "kind": "page"
+    },
+    {
+      "path": "/api/todos",
+      "file": "app/api/todos/route.ts",
+      "kind": "api",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    },
+    {
+      "path": "/todos",
+      "file": "app/todos/page.tsx",
+      "kind": "page"
+    }
+  ],
+  "apiRoutes": [
+    {
+      "path": "/api/todos",
+      "file": "app/api/todos/route.ts",
+      "kind": "api",
+      "methods": [
+        "GET",
+        "POST"
+      ]
+    }
+  ],
+  "externalServices": [
+    "Prisma"
+  ],
+  "database": {
+    "provider": "Prisma",
+    "files": [
+      "prisma/schema.prisma"
+    ]
+  },
+  "features": [
+    {
+      "name": "Todo",
+      "purpose": "Frontend page under \"todos\".",
+      "files": [
+        "app/todos/page.tsx"
+      ],
+      "entryPoint": "app/todos/page.tsx",
+      "entryPoints": [
+        "app/todos/page.tsx"
+      ],
+      "businessFlow": [
+        "Start at app/todos/page.tsx."
+      ],
+      "searchTerms": [
+        "todos",
+        "todo"
+      ],
+      "confidence": "high",
+      "evidence": [
+        "app/todos/page.tsx"
+      ]
+    },
+    {
+      "name": "Todo Management",
+      "purpose": "Handles create, read, update, and delete operations for Todo.",
+      "files": [
+        "app/api/todos/route.ts"
+      ],
+      "entryPoints": [
+        "app/api/todos/route.ts"
+      ],
+      "businessFlow": [
+        "Start at app/api/todos/route.ts."
+      ],
+      "searchTerms": [
+        "crud",
+        "todo"
+      ],
+      "confidence": "high",
+      "evidence": [
+        "app/api/todos/route.ts"
+      ],
+      "entryPoint": "app/api/todos/route.ts"
+    }
+  ],
+  "entityGraph": {
+    "entities": [
+      {
+        "name": "User",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "email",
+            "type": "String",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "todos",
+            "type": "Todo",
+            "isRelation": true,
+            "isList": true,
+            "isOptional": false
+          }
+        ],
+        "relations": [
+          {
+            "from": "User",
+            "to": "Todo",
+            "kind": "one-to-many"
+          }
+        ],
+        "source": "prisma"
+      },
+      {
+        "name": "Todo",
+        "fields": [
+          {
+            "name": "id",
+            "type": "String",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "title",
+            "type": "String",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "done",
+            "type": "Boolean",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "userId",
+            "type": "String",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "user",
+            "type": "User",
+            "isRelation": true,
+            "isList": false,
+            "isOptional": false
+          },
+          {
+            "name": "createdAt",
+            "type": "DateTime",
+            "isRelation": false,
+            "isList": false,
+            "isOptional": false
+          }
+        ],
+        "relations": [
+          {
+            "from": "User",
+            "to": "Todo",
+            "kind": "one-to-many"
+          }
+        ],
+        "source": "prisma"
+      }
+    ],
+    "relations": [
+      {
+        "from": "User",
+        "to": "Todo",
+        "kind": "one-to-many"
+      },
+      {
+        "from": "Todo",
+        "to": "User",
+        "kind": "one-to-one"
+      }
+    ],
+    "entityNames": [
+      "User",
+      "Todo"
+    ],
+    "source": "prisma"
+  },
+  "capabilities": [
+    {
+      "kind": "crud",
+      "name": "Todo Management",
+      "entities": [
+        "Todo"
+      ],
+      "evidence": [
+        "app/api/todos/route.ts"
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "flows": [
+    {
+      "name": "Request /api/todos",
+      "purpose": "Shows the main files involved in the /api/todos request path.",
+      "type": "request",
+      "entryPoint": "app/api/todos/route.ts",
+      "steps": [
+        {
+          "label": "Start with app/api/todos/route.ts (GET, POST)",
+          "file": "app/api/todos/route.ts",
+          "purpose": "app/api/todos/route.ts implements route api responsibilities for Todo Management."
+        }
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "onboarding": {
+    "recommendedPath": [
+      "package.json",
+      "app/api/todos/route.ts",
+      "app/layout.tsx",
+      "app/page.tsx",
+      "app/todos/page.tsx",
+      "lib/db.ts",
+      "prisma/schema.prisma",
+      "components/TodoList.tsx",
+      "lib/todos.ts"
+    ]
+  },
+  "changeImpact": {
+    "app/api/todos/route.ts": {
+      "impacts": [
+        "Request /api/todos",
+        "Todo Management"
+      ],
+      "dependents": []
+    },
+    "app/todos/page.tsx": {
+      "impacts": [
+        "Todo"
+      ],
+      "dependents": []
+    }
+  },
+  "warnings": [],
+  "dependencies": {
+    "dependencies": [
+      "@prisma/client",
+      "next",
+      "react",
+      "react-dom"
+    ],
+    "devDependencies": [
+      "prisma",
+      "typescript"
+    ]
+  },
+  "fileGraph": {
+    "app/api/todos/route.ts": [],
+    "app/layout.tsx": [],
+    "app/page.tsx": [],
+    "app/todos/page.tsx": [],
+    "components/TodoList.tsx": [],
+    "lib/db.ts": [],
+    "lib/todos.ts": [],
+    "package.json": [],
+    "prisma/schema.prisma": []
+  },
+  "fileIndex": {
+    "app/api/todos/route.ts": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "806305a03677da19afb52bbe6de9777c",
+      "imports": [],
+      "exportedSymbols": [
+        "GET",
+        "POST"
+      ],
+      "symbols": [
+        {
+          "name": "GET",
+          "kind": "function",
+          "line": 4,
+          "exported": true,
+          "async": true
+        },
+        {
+          "name": "POST",
+          "kind": "function",
+          "line": 9,
+          "exported": true,
+          "async": true
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "GET",
+          "kind": "function",
+          "line": 4,
+          "exported": true,
+          "async": true
+        },
+        {
+          "name": "POST",
+          "kind": "function",
+          "line": 9,
+          "exported": true,
+          "async": true
+        }
+      ],
+      "lines": 14,
+      "purpose": "app/api/todos/route.ts implements route api responsibilities for Todo Management.",
+      "scope": "api",
+      "featureRefs": [
+        "Todo Management"
+      ],
+      "searchTerms": [
+        "api",
+        "todos",
+        "route",
+        "ts",
+        "get",
+        "post",
+        "todo",
+        "management"
+      ],
+      "importance": 100
+    },
+    "app/layout.tsx": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "0718048dc7ff74c330da5c0a7bcd89b6",
+      "imports": [],
+      "exportedSymbols": [
+        "default"
+      ],
+      "symbols": [
+        {
+          "name": "RootLayout",
+          "kind": "function",
+          "line": 1,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "RootLayout",
+          "kind": "function",
+          "line": 1,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "lines": 8,
+      "scope": "unknown",
+      "featureRefs": [],
+      "searchTerms": [
+        "layout",
+        "tsx",
+        "default",
+        "root"
+      ],
+      "importance": 95
+    },
+    "app/page.tsx": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "2d4d4dba35bab560aa521110120e6d0c",
+      "imports": [],
+      "exportedSymbols": [
+        "default"
+      ],
+      "symbols": [
+        {
+          "name": "HomePage",
+          "kind": "function",
+          "line": 3,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "HomePage",
+          "kind": "function",
+          "line": 3,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "lines": 11,
+      "scope": "unknown",
+      "featureRefs": [],
+      "searchTerms": [
+        "tsx",
+        "default",
+        "home"
+      ],
+      "importance": 95
+    },
+    "app/todos/page.tsx": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "e479cbc5882224205a2e28e604dab851",
+      "imports": [],
+      "exportedSymbols": [
+        "default"
+      ],
+      "symbols": [
+        {
+          "name": "TodosPage",
+          "kind": "function",
+          "line": 3,
+          "exported": true,
+          "async": true
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "TodosPage",
+          "kind": "function",
+          "line": 3,
+          "exported": true,
+          "async": true
+        }
+      ],
+      "lines": 13,
+      "purpose": "app/todos/page.tsx implements page project responsibilities for Todo.",
+      "scope": "unknown",
+      "featureRefs": [
+        "Todo"
+      ],
+      "searchTerms": [
+        "todos",
+        "tsx",
+        "default",
+        "todo"
+      ],
+      "importance": 100
+    },
+    "components/TodoList.tsx": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "ef6048da88f9cdaf5faa90aba574cb87",
+      "imports": [],
+      "exportedSymbols": [
+        "TodoList"
+      ],
+      "symbols": [
+        {
+          "name": "TodoList",
+          "kind": "function",
+          "line": 5,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "TodoList",
+          "kind": "function",
+          "line": 5,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "lines": 22,
+      "purpose": "components/TodoList.tsx implements todo list ui responsibilities.",
+      "scope": "ui",
+      "featureRefs": [],
+      "searchTerms": [
+        "components",
+        "todo",
+        "list",
+        "tsx",
+        "ui"
+      ],
+      "importance": 0
+    },
+    "lib/db.ts": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "6df716f1b9dee6cf181114928ecee505",
+      "imports": [],
+      "exportedSymbols": [
+        "prisma"
+      ],
+      "symbols": [
+        {
+          "name": "prisma",
+          "kind": "const",
+          "line": 3,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "prisma",
+          "kind": "const",
+          "line": 3,
+          "exported": true,
+          "async": false
+        }
+      ],
+      "lines": 4,
+      "purpose": "lib/db.ts implements db service responsibilities.",
+      "scope": "service",
+      "featureRefs": [],
+      "searchTerms": [
+        "lib",
+        "db",
+        "ts",
+        "prisma"
+      ],
+      "importance": 15
+    },
+    "lib/todos.ts": {
+      "analyzer": "ts-morph",
+      "analysisConfidence": "high",
+      "hash": "25d103ddd47ebc83d5c448e2e5721015",
+      "imports": [],
+      "exportedSymbols": [
+        "getTodos"
+      ],
+      "symbols": [
+        {
+          "name": "getTodos",
+          "kind": "function",
+          "line": 3,
+          "exported": true,
+          "async": true
+        }
+      ],
+      "topFunctions": [
+        {
+          "name": "getTodos",
+          "kind": "function",
+          "line": 3,
+          "exported": true,
+          "async": true
+        }
+      ],
+      "lines": 6,
+      "purpose": "lib/todos.ts implements todos service responsibilities.",
+      "scope": "service",
+      "featureRefs": [],
+      "searchTerms": [
+        "lib",
+        "todos",
+        "ts",
+        "get"
+      ],
+      "importance": 0
+    },
+    "package.json": {
+      "analyzer": "fallback",
+      "analysisConfidence": "low",
+      "hash": "5365d033513fe1b0a45772d50d672825",
+      "imports": [],
+      "exportedSymbols": [],
+      "symbols": [],
+      "topFunctions": [],
+      "lines": 15,
+      "scope": "unknown",
+      "featureRefs": [],
+      "searchTerms": [
+        "package",
+        "json"
+      ],
+      "importance": 0
+    },
+    "prisma/schema.prisma": {
+      "analyzer": "fallback",
+      "analysisConfidence": "low",
+      "hash": "616f6fa048dfb50fb16399ed2f2867c4",
+      "imports": [],
+      "exportedSymbols": [],
+      "symbols": [],
+      "topFunctions": [],
+      "lines": 24,
+      "purpose": "prisma/schema.prisma implements schema database responsibilities.",
+      "scope": "database",
+      "featureRefs": [],
+      "searchTerms": [
+        "prisma",
+        "schema",
+        "database"
+      ],
+      "importance": 15
+    }
+  }
+}

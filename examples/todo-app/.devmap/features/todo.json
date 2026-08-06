@@ -1,0 +1,25 @@
+{
+  "id": "todo",
+  "name": "Todo",
+  "summary": "Frontend page under \"todos\".",
+  "entryPoints": [
+    "app/todos/page.tsx"
+  ],
+  "criticalFiles": [
+    "app/todos/page.tsx"
+  ],
+  "relatedFiles": [
+    {
+      "path": "app/todos/page.tsx",
+      "role": "app/todos/page.tsx implements page project responsibilities for Todo."
+    }
+  ],
+  "keywords": [
+    "todos",
+    "todo"
+  ],
+  "sourcePriority": [
+    "app/todos/page.tsx"
+  ],
+  "confidence": "high"
+}

@@ -1,0 +1,25 @@
+{
+  "id": "todo-management",
+  "name": "Todo Management",
+  "summary": "Handles create, read, update, and delete operations for Todo.",
+  "entryPoints": [
+    "app/api/todos/route.ts"
+  ],
+  "criticalFiles": [
+    "app/api/todos/route.ts"
+  ],
+  "relatedFiles": [
+    {
+      "path": "app/api/todos/route.ts",
+      "role": "app/api/todos/route.ts implements route api responsibilities for Todo Management."
+    }
+  ],
+  "keywords": [
+    "crud",
+    "todo"
+  ],
+  "sourcePriority": [
+    "app/api/todos/route.ts"
+  ],
+  "confidence": "high"
+}

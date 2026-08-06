@@ -1,0 +1,62 @@
+{
+  "project": {
+    "name": "sample-todo-app",
+    "framework": "nextjs",
+    "frameworks": [
+      "nextjs"
+    ],
+    "language": "typescript",
+    "packageManager": "unknown",
+    "projectType": "web-app",
+    "workspaceType": "single-package",
+    "summary": "sample-todo-app is a TypeScript project containing a web application. Main capabilities: Todo, Todo Management."
+  },
+  "generatedAt": "2026-08-06T22:09:20.277Z",
+  "entryPoints": [
+    "app/api/todos/route.ts",
+    "app/layout.tsx",
+    "app/page.tsx",
+    "app/todos/page.tsx"
+  ],
+  "criticalFiles": [
+    "app/api/todos/route.ts",
+    "app/layout.tsx",
+    "app/page.tsx",
+    "app/todos/page.tsx",
+    "lib/db.ts",
+    "prisma/schema.prisma"
+  ],
+  "features": [
+    {
+      "id": "todo",
+      "name": "Todo",
+      "summary": "Frontend page under \"todos\".",
+      "keywords": [
+        "todos",
+        "todo"
+      ],
+      "criticalFiles": [
+        "app/todos/page.tsx"
+      ],
+      "map": ".devmap/features/todo.json"
+    },
+    {
+      "id": "todo-management",
+      "name": "Todo Management",
+      "summary": "Handles create, read, update, and delete operations for Todo.",
+      "keywords": [
+        "crud",
+        "todo"
+      ],
+      "criticalFiles": [
+        "app/api/todos/route.ts"
+      ],
+      "map": ".devmap/features/todo-management.json"
+    }
+  ],
+  "snapshot": {
+    "path": ".devmap/snapshot.json",
+    "usage": "last_resort_or_web_ai_copy_context"
+  },
+  "agentInstructions": "Read this file first. Pick the relevant feature by keywords, open its feature map, then inspect only source files listed in sourcePriority. Do not read snapshot.json unless index.json and feature maps are insufficient."
+}

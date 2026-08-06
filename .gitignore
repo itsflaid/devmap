@@ -13,4 +13,8 @@ dist/
 !packages/cli/test/fixtures/nextjs-project/node_modules/
 !packages/cli/test/fixtures/nextjs-project/node_modules/ignored/
 !packages/cli/test/fixtures/nextjs-project/node_modules/ignored/index.js
+
+# The example project commits its generated .devmap/ so visitors can browse it on GitHub.
+!examples/todo-app/.devmap/
+!examples/todo-app/.devmap/**
 *.tsbuildinfo

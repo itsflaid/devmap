@@ -120,9 +120,11 @@
 
 .docs-prose table {
   width: 100%;
+  max-width: 100%;
   margin: 0 0 1.125rem;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: fixed;
 }
 
 .docs-prose th {
@@ -144,6 +146,7 @@
   line-height: 1.6;
   color: var(--color-text-muted);
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .docs-prose tr:last-child td {
@@ -151,7 +154,7 @@
 }
 
 .docs-prose td code {
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .docs-prose hr {

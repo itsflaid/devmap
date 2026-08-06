@@ -27,27 +27,89 @@ const steps = [
   </h2>
 
   <div class="how-it-works-section__steps">
-    {steps.map((step) => (
-      <div class="how-step">
-        <span class="how-step__number">{step.number}</span>
-        <code class="how-step__command">{step.command}</code>
-        <p class="how-step__description">{step.description}</p>
-      </div>
+    {steps.map((step, index) => (
+      <>
+        {index > 0 && (
+          <div class="how-step-connector" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M4 12h14M13 6l6 6-6 6"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              ></path>
+            </svg>
+          </div>
+        )}
+        <div class="how-step">
+          <span class="how-step__number">{step.number}</span>
+          <code class="how-step__command">{step.command}</code>
+          <p class="how-step__description">{step.description}</p>
+        </div>
+      </>
     ))}
   </div>
 </section>
 
 <script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
   import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const section = document.querySelector<HTMLElement>(".how-it-works-section");
 
   revealOnScroll(section, ".how-it-works-section__title", { y: 16 });
-  revealOnScroll(section, ".how-step", {
-    y: 26,
-    stagger: 0.12,
-    start: "top 82%",
-  });
+
+  // Bespoke "pipeline" animation instead of the shared stagger-reveal:
+  // steps and connector arrows are interleaved in one timeline, in DOM
+  // order, so it reads left-to-right as the process actually forming
+  // (step -> arrow -> step -> arrow -> step) rather than everything
+  // just fading up together.
+  if (section && !prefersReducedMotion) {
+    const sequence = Array.from(
+      section.querySelectorAll<HTMLElement>(".how-step, .how-step-connector")
+    );
+
+    if (sequence.length) {
+      const steps = sequence.filter((el) => el.classList.contains("how-step"));
+      const connectors = sequence.filter((el) =>
+        el.classList.contains("how-step-connector")
+      );
+
+      gsap.set(steps, { opacity: 0, y: 26 });
+      gsap.set(connectors, { opacity: 0, scale: 0.4 });
+
+      const tl = gsap.timeline({
+        scrollTrigger: { trigger: section, start: "top 78%", once: true },
+      });
+
+      sequence.forEach((el, index) => {
+        const isConnector = el.classList.contains("how-step-connector");
+        const position = index === 0 ? undefined : "-=0.25";
+
+        if (isConnector) {
+          tl.to(
+            el,
+            { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2)" },
+            position
+          );
+        } else {
+          tl.to(
+            el,
+            { opacity: 1, y: 0, duration: 0.55, ease: "power2.out" },
+            position
+          );
+        }
+      });
+    }
+  }
 </script>
 
 <style>
@@ -70,10 +132,24 @@ const steps = [
 
   .how-it-works-section__steps {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    max-width: 58rem;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    align-items: stretch;
+    gap: 0.5rem;
+    max-width: 62rem;
     margin: 0 auto;
+  }
+
+  .how-step-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    color: var(--color-border-strong);
+  }
+
+  .how-step-connector svg {
+    width: 22px;
+    height: 22px;
   }
 
   .how-step {
@@ -112,6 +188,10 @@ const steps = [
   @media (max-width: 820px) {
     .how-it-works-section__steps {
       grid-template-columns: 1fr;
+    }
+
+    .how-step-connector {
+      display: none;
     }
   }
 </style>

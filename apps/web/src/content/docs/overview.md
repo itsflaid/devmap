@@ -1,8 +1,8 @@
 ---
-title: "DevMap Docs"
+title: "Devmap Docs"
 ---
 
-# DevMap Docs
+# Devmap Docs
 
 ## Quick Start
 

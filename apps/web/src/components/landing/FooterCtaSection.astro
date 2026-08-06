@@ -11,9 +11,9 @@
   </p>
 
   <div class="footer-cta-section__actions">
-    <button type="button" class="cta-primary">
+    <button type="button" class="cta-primary" aria-label="npm install -g devmap">
       <span class="cta-prompt" aria-hidden="true">$</span>
-      npm install -g devmap
+      <span class="cta-primary__command" aria-hidden="true">npm install -g devmap</span><span class="cta-primary__caret" aria-hidden="true"></span>
     </button>
     <a class="cta-secondary" href="https://github.com/itsflaid/devmap#readme">
       Read the Docs
@@ -22,21 +22,81 @@
 </section>
 
 <script>
-  import { revealOnScroll } from "../../scripts/scroll-reveal";
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const section = document.querySelector<HTMLElement>(".footer-cta-section");
+  const title = section?.querySelector<HTMLElement>(".footer-cta-section__title");
+  const subtext = section?.querySelector<HTMLElement>(
+    ".footer-cta-section__subtext"
+  );
+  const primaryButton = section?.querySelector<HTMLElement>(".cta-primary");
+  const secondaryLink = section?.querySelector<HTMLElement>(".cta-secondary");
+  const commandEl = section?.querySelector<HTMLElement>(
+    ".cta-primary__command"
+  );
+  const commandText = commandEl?.textContent?.trim() ?? "";
 
-  revealOnScroll(section, ".footer-cta-section__title", { y: 18 });
-  revealOnScroll(section, ".footer-cta-section__subtext", {
-    y: 14,
-    start: "top 85%",
-    delay: 0.08,
-  });
-  revealOnScroll(section, ".footer-cta-section__actions > *", {
-    y: 14,
-    stagger: 0.1,
-    start: "top 82%",
-  });
+  // Bespoke closing-moment animation: the CTA button is dressed as a
+  // terminal prompt ($ npm install -g devmap), so instead of the shared
+  // fade-up reveal, its command is actually typed out character by
+  // character once it scrolls into view — a small callback to the CLI
+  // theme right at the end of the page.
+  if (section && !prefersReducedMotion) {
+    if (commandEl) commandEl.textContent = "";
+
+    const fadeUpTargets = [title, subtext, primaryButton, secondaryLink].filter(
+      (el): el is HTMLElement => Boolean(el)
+    );
+    gsap.set(fadeUpTargets, { opacity: 0, y: 16 });
+
+    const tl = gsap.timeline({
+      scrollTrigger: { trigger: section, start: "top 80%", once: true },
+    });
+
+    if (title) tl.to(title, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" });
+    if (subtext) {
+      tl.to(
+        subtext,
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        "-=0.35"
+      );
+    }
+    if (primaryButton) {
+      tl.to(
+        primaryButton,
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        "-=0.25"
+      );
+    }
+    if (secondaryLink) {
+      tl.to(
+        secondaryLink,
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        "-=0.35"
+      );
+    }
+
+    if (commandEl && commandText) {
+      tl.addLabel("type", "-=0.15");
+      const charDuration = 0.032;
+      commandText.split("").forEach((char, i) => {
+        tl.call(
+          () => {
+            commandEl.textContent += char;
+          },
+          undefined,
+          `type+=${(i * charDuration).toFixed(3)}`
+        );
+      });
+    }
+  }
 </script>
 
 <style>
@@ -67,5 +127,27 @@
     justify-content: center;
     flex-wrap: wrap;
     gap: 1rem;
+  }
+
+  .cta-primary__caret {
+    display: inline-block;
+    width: 1px;
+    height: 1em;
+    margin-inline-start: 2px;
+    vertical-align: -0.15em;
+    background: currentColor;
+    animation: cta-caret-blink 1s steps(1, start) infinite;
+  }
+
+  @keyframes cta-caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta-primary__caret {
+      animation: none;
+    }
   }
 </style>

@@ -52,7 +52,15 @@ const compatibleTools = [
 </section>
 
 <script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
   import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const section = document.querySelector<HTMLElement>(".ai-agents-section");
 
@@ -62,15 +70,70 @@ const compatibleTools = [
     stagger: 0.12,
     start: "top 82%",
   });
-  revealOnScroll(section, ".ai-agents-section__flow", {
-    y: 20,
-    start: "top 78%",
-  });
   revealOnScroll(
     section,
     ".ai-agents-section__closing, .ai-agents-section__compatible",
     { y: 14, stagger: 0.1, start: "top 75%" }
   );
+
+  // The flow box gets its own sequenced animation instead of the shared
+  // fade-up reveal: command slides in, the arrow "pings", then the
+  // output pops in — reading like the command is actually resolving
+  // live rather than the row just fading into place.
+  const flowBox = section?.querySelector<HTMLElement>(".ai-agents-section__flow");
+  const flowRows = flowBox
+    ? Array.from(flowBox.querySelectorAll<HTMLElement>(".ai-flow-row"))
+    : [];
+
+  if (flowBox && !prefersReducedMotion) {
+    gsap.set(flowBox, { opacity: 0, y: 20 });
+
+    const tl = gsap.timeline({
+      scrollTrigger: { trigger: section, start: "top 78%", once: true },
+    });
+
+    tl.to(flowBox, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" });
+
+    flowRows.forEach((row, index) => {
+      const command = row.querySelector<HTMLElement>(".ai-flow-row__command");
+      const arrow = row.querySelector<HTMLElement>(".ai-flow-row__arrow");
+      const output = row.querySelector<HTMLElement>(".ai-flow-row__output");
+      const parts = [command, arrow, output].filter(
+        (el): el is HTMLElement => Boolean(el)
+      );
+
+      if (!parts.length) return;
+
+      gsap.set(parts, { opacity: 0 });
+      if (command) gsap.set(command, { x: -8 });
+      if (arrow) gsap.set(arrow, { scale: 0.5 });
+      if (output) gsap.set(output, { scale: 0.85 });
+
+      const entryPosition = index === 0 ? "-=0.15" : "-=0.1";
+
+      if (command) {
+        tl.to(
+          command,
+          { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" },
+          entryPosition
+        );
+      }
+      if (arrow) {
+        tl.to(
+          arrow,
+          { opacity: 1, scale: 1.25, duration: 0.2, ease: "power1.out" },
+          "-=0.1"
+        ).to(arrow, { scale: 1, duration: 0.15, ease: "power1.inOut" });
+      }
+      if (output) {
+        tl.to(
+          output,
+          { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2)" },
+          "-=0.05"
+        );
+      }
+    });
+  }
 </script>
 
 <style>

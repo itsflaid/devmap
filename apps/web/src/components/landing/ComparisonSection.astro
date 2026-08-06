@@ -37,16 +37,59 @@ const metrics = [
 </section>
 
 <script>
+  import { gsap } from "gsap";
+  import { ScrollTrigger } from "gsap/ScrollTrigger";
   import { revealOnScroll } from "../../scripts/scroll-reveal";
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const prefersReducedMotion =
+    window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const section = document.querySelector<HTMLElement>(".comparison-section");
 
   revealOnScroll(section, ".comparison-section__title", { y: 16 });
-  revealOnScroll(section, ".comparison-table tbody tr", {
-    y: 18,
-    stagger: 0.08,
-    start: "top 80%",
-  });
+
+  // Bespoke reveal instead of the shared stagger: each row fades up as
+  // usual, but the "With DevMap" cell also gets an aqua accent border
+  // that draws in right after — so the winning column visibly "lights
+  // up" row by row instead of both columns just appearing identically.
+  if (section && !prefersReducedMotion) {
+    const rows = Array.from(
+      section.querySelectorAll<HTMLElement>(".comparison-table tbody tr")
+    );
+
+    if (rows.length) {
+      gsap.set(rows, { opacity: 0, y: 18 });
+
+      const tl = gsap.timeline({
+        scrollTrigger: { trigger: section, start: "top 78%", once: true },
+      });
+
+      rows.forEach((row, index) => {
+        const withCell = row.querySelector<HTMLElement>(
+          ".comparison-table__with"
+        );
+        if (withCell) gsap.set(withCell, { borderInlineStartColor: "transparent" });
+
+        const position = index === 0 ? undefined : "-=0.32";
+        tl.to(
+          row,
+          { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" },
+          position
+        );
+
+        if (withCell) {
+          tl.to(
+            withCell,
+            { borderInlineStartColor: "#2ee6d6", duration: 0.35, ease: "power1.out" },
+            "-=0.15"
+          );
+        }
+      });
+    }
+  }
 </script>
 
 <style>
@@ -113,6 +156,7 @@ const metrics = [
 
   .comparison-table__with {
     padding: 1rem 1.25rem;
+    border-inline-start: 2px solid transparent;
     color: var(--color-text);
   }
 

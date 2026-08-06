@@ -1,0 +1,19 @@
+---
+import SidebarList from "./SidebarList.astro";
+import type { SidebarItem } from "./sidebarTypes";
+
+interface Props {
+  items: SidebarItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<ul>
+  {items.map((item) => (
+    <li>
+      <a href={`#${item.slug}`}>{item.text}</a>
+      {item.children.length > 0 && <SidebarList items={item.children} />}
+    </li>
+  ))}
+</ul>

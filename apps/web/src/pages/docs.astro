@@ -1,0 +1,45 @@
+---
+import { getEntry, render } from "astro:content";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import DocsSidebar from "../components/docs/DocsSidebar.astro";
+import SiteFooter from "../components/landing/SiteFooter.astro";
+import SiteHeader from "../components/landing/SiteHeader.astro";
+import "../styles/docs-prose.css";
+
+const entry = await getEntry("docs", "overview");
+if (!entry) throw new Error("docs/overview.md entry not found");
+const { Content, headings } = await render(entry);
+---
+
+<BaseLayout title={entry.data.title}>
+  <SiteHeader />
+  <div class="docs-page">
+    <aside class="docs-sidebar-slot">
+      <DocsSidebar headings={headings} />
+    </aside>
+    <main class="docs-content docs-prose">
+      <Content />
+    </main>
+  </div>
+  <SiteFooter />
+</BaseLayout>
+
+<style>
+  .docs-page {
+    width: min(100% - (var(--page-padding) * 2), var(--page-max-width));
+    margin-inline: auto;
+    padding-block: calc(4rem + 3rem) 4rem;
+  }
+
+  @media (min-width: 760px) {
+    .docs-page {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 48px;
+    }
+
+    .docs-content {
+      max-width: 720px;
+    }
+  }
+</style>

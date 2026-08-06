@@ -23,6 +23,57 @@ devmap analyze
 
 ---
 
+## Supported frameworks
+
+DevMap detects your stack from `package.json` first (highest confidence),
+and falls back to file-structure heuristics only when that's missing or
+incomplete.
+
+**Full support** — framework detection *and* route mapping:
+- Next.js (App Router and Pages Router)
+- Express
+
+**Detected, no route mapping yet** — DevMap recognizes the framework and
+indexes files/dependencies, but doesn't map routes for it:
+- React (Create React App, Vite)
+- Astro
+
+**Databases & ORMs** — detected via dependency + schema/config file:
+- Prisma, Drizzle, Mongoose, Supabase
+- Raw SQL: PostgreSQL (`pg`), MySQL (`mysql2`), SQLite (`better-sqlite3`)
+
+**Anything else** (NestJS, Vue, Laravel, Django, Go, ...): DevMap still
+scans your files, dependencies, and import graph — you just won't get
+framework-specific route detection. `analyze` will report the framework
+as `unknown` rather than guessing wrong.
+
+Don't see your framework? [Open an issue](https://github.com/itsflaid/devmap/issues) —
+route detectors are the easiest part of the codebase to extend.
+
+## Privacy & data
+
+**Without an API key configured:** DevMap runs 100% locally. Zero network
+calls. `init`, `map`, and `doctor` never send project data — `map` never
+touches the network; `init` only validates your key against the provider's
+API, `doctor` only checks connectivity.
+
+**With an API key configured**, here's exactly what leaves your machine,
+command by command:
+
+| Command | Sends to your AI provider | Sends raw source code? |
+|---|---|---|
+| `analyze` | File paths, export/import names, feature references — structural metadata only | No |
+| `flow` | The traced step list (files + purpose labels), for narration | No |
+| `explain <target>` | The specific file or feature you asked about | Yes — just that one target |
+| `onboarding` | Nothing — pure static analysis (reads the snapshot locally) | No |
+| `init`, `map`, `doctor` | Nothing project-related | No |
+
+Your whole codebase is never bulk-uploaded to generate the snapshot —
+only `explain` sends actual file contents, and only for the single
+file or feature you named in the command.
+
+---
+
 ## 1. Setup — `devmap init`
 
 Run once per machine/project.
@@ -69,6 +120,31 @@ Recommended reading order for agents (also written into `DEVMAP.md` / `AGENTS.md
 ```
 
 Works with Claude Code, OpenAI Codex, Gemini CLI, Cursor, GitHub Copilot, and any agent that can read files or consume `--json` output.
+
+---
+
+## Why not just point my AI agent at the repo?
+
+Fair question — most coding agents can already read your repo directly.
+A few reasons teams still run `devmap analyze` first:
+
+- **Reusable across sessions and tools.** The snapshot is a file on disk.
+  Every new agent session — or a teammate's session, or a different
+  agent entirely — starts from it instead of re-exploring the repo cold.
+- **Provider-agnostic.** The snapshot isn't tied to one vendor's
+  indexing. Switch agents or providers and the context comes with you.
+- **Deterministic.** Static analysis produces the same structural map
+  every time. An agent re-exploring a repo from scratch can come back
+  with a slightly different picture session to session.
+- **Works without AI at all.** `devmap map` and `devmap analyze` (no key
+  configured) are pure static analysis — useful on their own, with or
+  without an agent in the loop.
+- **Cheaper cold starts.** An agent exploring a large repo blind burns
+  tokens just finding its footing. DevMap computes that once; every
+  session after reads the answer instead of re-deriving it.
+
+None of this replaces your agent — DevMap hands it a map instead of a
+blank page.
 
 ---
 
@@ -174,3 +250,82 @@ Straight from `devmap doctor`'s real checks:
 - **Snapshot missing or corrupt** → `devmap analyze --fresh`
 - **Model unavailable** → `devmap init` or `devmap config model <model-id>`
 - **Node version unsupported** → upgrade to Node 18+
+
+---
+
+## See it in action
+
+A small Next.js + Prisma app — a todos API route, a page, one component:
+
+```
+$ devmap analyze
+
+DevMap Analyze
+────────────────────────────────────────────────────────
+◆ Scanning ~/sample-todo-app
+Project              sample-todo-app
+Framework            nextjs
+Language             typescript
+Files                9
+Lines                117
+
+Entry Points
+────────────────────────────────────────────────────────
+◆ app/api/todos/route.ts
+◆ app/layout.tsx
+◆ app/page.tsx
+◆ app/todos/page.tsx
+
+Routes
+────────────────────────────────────────────────────────
+◆ / -> app/page.tsx
+◆ /api/todos -> app/api/todos/route.ts
+◆ /todos -> app/todos/page.tsx
+
+Database
+────────────────────────────────────────────────────────
+◆ Prisma
+
+Features
+────────────────────────────────────────────────────────
+◆ Todo
+◆ Todo Management
+
+◆ Snapshot saved to .devmap/snapshot.json
+◆ Agent navigation saved to .devmap/index.json and .devmap/features/
+AI architecture interpretation is not configured. Run devmap init to enable it.
+```
+
+That produces a 15 KB `snapshot.json`. The routes and database sections
+are pulled straight from it:
+
+```json
+{
+  "framework": "nextjs",
+  "routes": [
+    { "path": "/", "file": "app/page.tsx", "kind": "page" },
+    {
+      "path": "/api/todos",
+      "file": "app/api/todos/route.ts",
+      "kind": "api",
+      "methods": ["GET", "POST"]
+    },
+    { "path": "/todos", "file": "app/todos/page.tsx", "kind": "page" }
+  ],
+  "database": {
+    "provider": "Prisma",
+    "files": ["prisma/schema.prisma"]
+  },
+  "features": [
+    {
+      "name": "Todo Management",
+      "purpose": "Handles create, read, update, and delete operations for Todo.",
+      "files": ["app/api/todos/route.ts"],
+      "confidence": "high"
+    }
+  ]
+}
+```
+
+No API key was set for this run — everything above is pure static
+analysis. [Browse the full snapshot and try it yourself](https://github.com/itsflaid/devmap/tree/main/examples/todo-app).

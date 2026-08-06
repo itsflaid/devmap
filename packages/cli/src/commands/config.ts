@@ -1,12 +1,16 @@
+import { resolve } from "node:path";
 import {
   readConfig,
   writeConfig,
+  writeLocalConfig,
   type DevmapConfig
 } from "../utils/config.js";
 import { output, withJsonOutput } from "../utils/output.js";
 
 export type ConfigDependencies = {
   json?: boolean;
+  local?: boolean;
+  projectRoot?: string;
   loadConfig?: () => Promise<DevmapConfig | null>;
   persistConfig?: (config: DevmapConfig) => Promise<void>;
 };
@@ -46,6 +50,26 @@ async function updateModel(
       status: "error",
       error: "DevMap is not configured yet.",
       hint: "Run devmap init before changing the model."
+    };
+  }
+
+  if (dependencies.local) {
+    const projectRoot = resolve(dependencies.projectRoot ?? process.cwd());
+    await writeLocalConfig(projectRoot, { model: selectedModel });
+
+    output.success(
+      `Project model override set to ${selectedModel} (.devmap/config.local.json).`
+    );
+
+    return {
+      status: "ok",
+      scope: "local",
+      provider: config.provider,
+      model: selectedModel,
+      automaticRouting: selectedModel === "auto",
+      ...(selectedModel === "auto" && config.provider === "openrouter"
+        ? { resolvedModel: "openrouter/free" }
+        : {})
     };
   }
 

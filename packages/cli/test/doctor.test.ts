@@ -7,6 +7,7 @@ import test from "node:test";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { doctorCommand } from "../src/commands/doctor.js";
+import { getLocalConfigPath } from "../src/utils/config.js";
 
 test("doctor reports project, provider, model, and snapshot diagnostics", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-test-"));
@@ -99,6 +100,44 @@ test("doctor skips network diagnostics when config is missing", async () => {
     assert.match(logs, /Provider\s+not configured/);
     assert.match(logs, /Snapshot\s+missing/);
     assert.match(logs, /Run devmap init/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("doctor reports the project override source and inspects the local model", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-local-test-"));
+  let inspectedModel = "";
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "doctor-local-fixture" }),
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "server.ts"), "export const app = true;\n", "utf8");
+    await saveSnapshot(projectRoot, await createProjectMap(projectRoot));
+    await writeFile(
+      getLocalConfigPath(projectRoot),
+      JSON.stringify({ model: "local-override-model" }),
+      "utf8"
+    );
+
+    const logs = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => ({
+        provider: "groq",
+        apiKey: "gsk_fixture",
+        model: "auto"
+      }),
+      inspectProvider: async (_apiKey, model, _provider) => {
+        inspectedModel = model;
+        return { reachable: true, modelAvailable: true };
+      }
+    }));
+
+    assert.equal(inspectedModel, "local-override-model");
+    assert.match(logs, /Model\s+local-override-model \(project override\)/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

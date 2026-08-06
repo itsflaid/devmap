@@ -1,12 +1,11 @@
 ---
 
 const metrics = [
-  { metric: "Understand structure", without: "Hours", with: "Minutes" },
-  { metric: "AI agent accuracy", without: "Guess-based", with: "Analysis-based" },
-  { metric: "Token usage per query", without: "High", with: "Low" },
-  { metric: "Context per session", without: "Rebuilt", with: "Cached snapshot" },
-  { metric: "Onboarding new dev", without: "Days", with: "Minutes" },
-  { metric: "Works across AI tools", without: "Manual re-explain", with: "One snapshot" },
+  { metric: "How structure is found", without: "Agent infers by reading code, live", with: "Static analysis (AST), computed once" },
+  { metric: "What gets sent to AI", without: "Whatever the agent decides to read", with: "Curated index + feature map, not full source" },
+  { metric: "Context per session", without: "Rebuilt from scratch", with: "Cached snapshot, reused" },
+  { metric: "Starting a new session", without: "No starting point", with: "Ordered reading path, with reasons" },
+  { metric: "Works across AI tools", without: "Re-explained per tool", with: "One snapshot, every agent" },
 ];
 ---
 

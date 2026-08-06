@@ -12,7 +12,12 @@ import {
 } from "../analyzers/detectors/index.js";
 import { detectProjectMetadata } from "../analyzers/pipeline/index.js";
 import { inspectSnapshot } from "../cache/snapshot.js";
-import { readConfig, type DevmapConfig } from "../utils/config.js";
+import {
+  readConfig,
+  readLocalConfig,
+  type DevmapConfig,
+  type LocalDevmapConfig
+} from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { output, withJsonOutput } from "../utils/output.js";
 import { DEVMAP_VERSION } from "../utils/packageMetadata.js";
@@ -23,6 +28,7 @@ export type DoctorDependencies = {
   json?: boolean;
   projectRoot?: string;
   loadConfig?: () => Promise<DevmapConfig | null>;
+  loadLocalConfig?: (projectRoot: string) => Promise<LocalDevmapConfig | null>;
   inspectProvider?: (
     apiKey: string,
     model: string,
@@ -48,20 +54,28 @@ async function runDoctor(
 ): Promise<Record<string, unknown>> {
   const projectRoot = resolve(dependencies.projectRoot ?? process.cwd());
   const loadConfig = dependencies.loadConfig ?? readConfig;
+  const loadLocalConfig = dependencies.loadLocalConfig ?? readLocalConfig;
   const inspectProvider = dependencies.inspectProvider
     ?? ((apiKey: string, model: string, provider: DevmapConfig["provider"]) => (
       inspectAiProvider(provider, apiKey, model)
     ));
-  const [config, snapshotResult, files] = await Promise.all([
+  const [config, localConfig, snapshotResult, files] = await Promise.all([
     loadConfig(),
+    loadLocalConfig(projectRoot),
     inspectSnapshot(projectRoot),
     scanFiles(projectRoot)
   ]);
   const framework = detectFramework(files);
   const frameworks = detectFrameworks(files);
   const project = detectProjectMetadata(projectRoot, framework, files, frameworks);
-  const selectedModel = config
-    ? resolveAiRouting(config, "analyze").model
+  const modelSource = config && localConfig?.model
+    ? "project override"
+    : "global";
+  const effectiveConfig = config && localConfig?.model
+    ? { ...config, model: localConfig.model }
+    : config;
+  const selectedModel = effectiveConfig
+    ? resolveAiRouting(effectiveConfig, "analyze").model
     : undefined;
   const issues: string[] = [];
   const nodeSupported = readNodeMajor(process.version) >= MINIMUM_NODE_MAJOR;
@@ -87,7 +101,10 @@ async function runDoctor(
   } else if (!config.apiKey || !selectedModel) {
     issues.push("Run devmap init again to configure the selected provider.");
     output.keyValue("API key", "missing");
-    output.keyValue("Model", selectedModel ?? "not configured");
+    modelStatus = selectedModel
+      ? describeModel(selectedModel, modelSource)
+      : "not configured";
+    output.keyValue("Model", modelStatus);
     apiKeyStatus = "missing";
   } else {
     try {
@@ -98,8 +115,8 @@ async function runDoctor(
       );
       apiKeyStatus = provider.reachable ? "valid" : "unreachable";
       modelStatus = provider.modelAvailable
-        ? selectedModel
-        : `unavailable: ${selectedModel}`;
+        ? describeModel(selectedModel, modelSource)
+        : describeModel(`unavailable: ${selectedModel}`, modelSource);
       output.keyValue("API key", apiKeyStatus);
       output.keyValue("Model", modelStatus);
 
@@ -111,9 +128,9 @@ async function runDoctor(
         ? error.message
         : "Provider diagnostics failed.";
       output.keyValue("API key", "invalid or unreachable");
-      output.keyValue("Model", selectedModel);
+      modelStatus = describeModel(selectedModel, modelSource);
+      output.keyValue("Model", modelStatus);
       apiKeyStatus = "invalid or unreachable";
-      modelStatus = selectedModel;
       issues.push(message);
     }
   }
@@ -159,4 +176,8 @@ async function runDoctor(
 function readNodeMajor(version: string): number {
   const match = version.match(/^v?(\d+)/);
   return match ? Number(match[1]) : 0;
+}
+
+function describeModel(model: string, source: string): string {
+  return `${model} (${source})`;
 }

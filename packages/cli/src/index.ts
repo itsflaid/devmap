@@ -77,8 +77,12 @@ configCommand
   .command("model")
   .description("Set a model override or restore automatic routing")
   .argument("<model>", "Groq model ID or auto")
+  .option("--local", "write a project-local override to .devmap/config.local.json")
   .option("--json", "output machine-readable JSON")
-  .action((model, options) => configModelCommand(model, { json: options.json }));
+  .action((model, options) => configModelCommand(model, {
+    json: options.json,
+    local: options.local
+  }));
 
 program
   .command("doctor")

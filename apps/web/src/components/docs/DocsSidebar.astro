@@ -1,0 +1,227 @@
+---
+import type { MarkdownHeading } from "astro";
+import SidebarList from "./SidebarList.astro";
+import type { SidebarItem } from "./sidebarTypes";
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+
+const { headings } = Astro.props;
+
+function cleanText(value: string): string {
+  return value.replace(/`/g, "").trim();
+}
+
+function buildTree(items: MarkdownHeading[]): SidebarItem[] {
+  const tree: SidebarItem[] = [];
+  let current: SidebarItem | null = null;
+
+  for (const heading of items) {
+    if (heading.depth === 2) {
+      current = {
+        slug: heading.slug,
+        text: cleanText(heading.text),
+        children: []
+      };
+      tree.push(current);
+    } else if (heading.depth === 3 && current) {
+      current.children.push({
+        slug: heading.slug,
+        text: cleanText(heading.text),
+        children: []
+      });
+    }
+  }
+
+  return tree;
+}
+
+const tree = buildTree(headings);
+---
+
+<nav class="docs-sidebar" aria-label="Docs sections">
+  <SidebarList items={tree} />
+</nav>
+
+<div class="docs-mobile-toc-wrap">
+  <details class="docs-mobile-toc">
+    <summary>
+      Contents
+      <span class="chevron" aria-hidden="true"></span>
+    </summary>
+    <nav class="docs-mobile-toc__list" aria-label="Docs sections">
+      <SidebarList items={tree} />
+    </nav>
+  </details>
+</div>
+
+<script>
+  const content = document.querySelector<HTMLElement>(".docs-content");
+
+  const links = new Map<string, HTMLAnchorElement>();
+  document.querySelectorAll<HTMLAnchorElement>(".docs-sidebar a, .docs-mobile-toc__list a")
+    .forEach((link) => {
+      const hash = link.getAttribute("href");
+      if (hash) links.set(hash, link);
+    });
+
+  if (content && "IntersectionObserver" in window) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const link = links.get(`#${entry.target.id}`);
+            if (link) {
+              document.querySelectorAll(".docs-sidebar a.active, .docs-mobile-toc__list a.active")
+                .forEach((active) => active.classList.remove("active"));
+              link.classList.add("active");
+            }
+          }
+        }
+      },
+      { rootMargin: "-20% 0px -70% 0px", threshold: 0 }
+    );
+
+    content.querySelectorAll("h2, h3").forEach((heading) => observer.observe(heading));
+  }
+
+  const details = document.querySelector<HTMLDetailsElement>(".docs-mobile-toc");
+  if (details) {
+    const mobileList = document.querySelector<HTMLElement>(".docs-mobile-toc__list");
+    mobileList?.addEventListener("click", (event) => {
+      const link = (event.target as HTMLElement).closest("a");
+      if (link) details.open = false;
+    });
+  }
+</script>
+
+<style>
+  .docs-sidebar {
+    position: sticky;
+    top: calc(4rem + 1.5rem);
+    max-height: calc(100vh - 4rem - 3rem);
+    overflow-y: auto;
+  }
+
+  .docs-sidebar ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .docs-sidebar li {
+    margin: 0;
+  }
+
+  .docs-sidebar a {
+    display: block;
+    padding: 0.3125rem 0;
+    border-inline-start: 2px solid transparent;
+    padding-inline-start: 0.75rem;
+    font-size: 0.84375rem;
+    color: var(--color-text-muted);
+    transition: color 150ms ease, border-color 150ms ease;
+  }
+
+  .docs-sidebar a:hover {
+    color: var(--color-text);
+  }
+
+  .docs-sidebar a.active {
+    border-inline-start-color: var(--color-aqua);
+    color: var(--color-text);
+  }
+
+  .docs-sidebar li li a {
+    padding-inline-start: 1.75rem;
+    font-size: 0.78125rem;
+  }
+
+  .docs-mobile-toc-wrap {
+    display: none;
+  }
+
+  @media (max-width: 760px) {
+    .docs-sidebar {
+      display: none;
+    }
+
+    .docs-mobile-toc-wrap {
+      position: sticky;
+      top: 4rem;
+      z-index: 40;
+      display: block;
+      margin-block-end: 1.5rem;
+    }
+
+    .docs-mobile-toc {
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      background: var(--color-bg-soft);
+    }
+
+    .docs-mobile-toc summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.875rem 1rem;
+      cursor: pointer;
+      font-size: 0.84375rem;
+      color: var(--color-text);
+      list-style: none;
+    }
+
+    .docs-mobile-toc summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .docs-mobile-toc .chevron {
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid var(--color-text-muted);
+      border-bottom: 2px solid var(--color-text-muted);
+      transform: rotate(45deg) translateY(-2px);
+      transition: transform 200ms ease;
+    }
+
+    .docs-mobile-toc[open] .chevron {
+      transform: rotate(225deg);
+    }
+
+    .docs-mobile-toc__list {
+      max-height: 60vh;
+      overflow-y: auto;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .docs-mobile-toc__list ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .docs-mobile-toc__list li {
+      margin: 0;
+    }
+
+    .docs-mobile-toc__list a {
+      display: block;
+      padding: 0.625rem 1rem;
+      border-inline-start: 2px solid transparent;
+      font-size: 0.84375rem;
+      color: var(--color-text-muted);
+    }
+
+    .docs-mobile-toc__list a:hover,
+    .docs-mobile-toc__list a.active {
+      border-inline-start-color: var(--color-aqua);
+      color: var(--color-text);
+    }
+
+    .docs-mobile-toc__list li li a {
+      padding-inline-start: 2rem;
+      font-size: 0.78125rem;
+    }
+  }
+</style>

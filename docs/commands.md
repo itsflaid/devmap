@@ -420,7 +420,8 @@ devmap doctor
 * Package manager
 * Provider configuration
 * API key status
-* Selected model
+* Selected model, annotated with its source: `(project override)` when a
+  `.devmap/config.local.json` model is active, `(global)` otherwise
 * Snapshot status
 * Project detection
 * OS/platform
@@ -482,11 +483,20 @@ Set a global model override for AI-powered commands.
 devmap config model llama-3.1-8b-instant
 devmap config model openai/gpt-oss-120b
 devmap config model auto
+devmap config model llama-3.1-8b-instant --local
 ```
 
 `auto` restores command-based routing:
 
 * `analyze` uses `openai/gpt-oss-20b`
+
+`--local` writes `.devmap/config.local.json` in the current project instead of
+the global `~/.devmap/config.json`. Only `model` can be set locally: provider
+and API key always stay global and are never read from the project config.
+Existing local model overrides are used by `analyze`, `flow`, and reported by
+`doctor` as `(project override)`. Without a local override, commands use the
+global model (reported as `(global)`). `.devmap/` is gitignored, so local
+overrides are never committed.
 
 For Groq, `devmap init` lists available models after API-key validation. Pick a
 model with the arrow keys and press Enter. The selected model is stored in the

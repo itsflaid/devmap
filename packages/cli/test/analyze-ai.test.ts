@@ -15,6 +15,7 @@ import type {
 } from "../src/ai/types.js";
 import { inspectSnapshot } from "../src/cache/snapshot.js";
 import { analyzeCommand } from "../src/commands/analyze.js";
+import { resolveEffectiveConfig } from "../src/utils/config.js";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const nextFixture = join(testDirectory, "fixtures", "nextjs-project");
@@ -437,6 +438,65 @@ test("domain inference is cached across unchanged runs, not repeated", async () 
     const cacheRaw = await readFile(join(projectRoot, ".devmap", "domain-cache.json"), "utf8");
     const cache = JSON.parse(cacheRaw);
     assert.ok(cache.inputHash, "domain-cache.json should have been written with an inputHash");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("analyze uses a project-local model override when present", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-analyze-local-"));
+  const requests: AiCompletionRequest[] = [];
+  const client: AiClient = {
+    async complete(request): Promise<AiCompletionResult> {
+      requests.push(request);
+      return {
+        content: "## Overview\n\nThis project exposes a **TypeScript** entry point.",
+        model: request.model,
+        usage: { promptTokens: 80, completionTokens: 15, totalTokens: 95 }
+      };
+    }
+  };
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "analyze-local-fixture" }),
+      "utf8"
+    );
+    await writeFile(
+      join(projectRoot, "index.ts"),
+      "export function start() { return true; }\n",
+      "utf8"
+    );
+    await mkdir(join(projectRoot, ".devmap"), { recursive: true });
+    await writeFile(
+      join(projectRoot, ".devmap", "config.local.json"),
+      JSON.stringify({ model: "local-override-model" }),
+      "utf8"
+    );
+
+    const localProjectRoot = projectRoot;
+    const localConfig = await resolveEffectiveConfig(localProjectRoot, {
+      readGlobal: async () => ({
+        provider: "groq" as const,
+        apiKey: "gsk_fixture",
+        model: "auto"
+      })
+    });
+
+    await captureOutput(() => analyzeCommand(
+      projectRoot,
+      { fresh: true },
+      {
+        loadConfig: async () => localConfig,
+        createAiClient: () => client
+      }
+    ));
+
+    assert.ok(requests.length >= 1);
+    for (const request of requests) {
+      assert.equal(request.model, "local-override-model");
+    }
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

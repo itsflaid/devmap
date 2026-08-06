@@ -10,7 +10,7 @@ import type { AiClient } from "../ai/types.js";
 import { createProjectMap } from "../analyzers/pipeline/index.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
 import { writeAgentNavigationFiles } from "../cache/agentNavigation.js";
-import { readConfig, type DevmapConfig } from "../utils/config.js";
+import { resolveEffectiveConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { output, withJsonOutput } from "../utils/output.js";
 
@@ -53,7 +53,7 @@ async function runAnalyze(
   // Build callAI wrapper — dipakai oleh domain inference (Step 5) di createProjectMap.
   // Dibuat di sini biar analyze command yang kontrol config + client lifecycle,
   // sementara projectMap tetap decoupled dari AI provider specifics.
-  const callAI = await buildCallAI(dependencies);
+  const callAI = await buildCallAI(projectRoot, dependencies);
 
   let snapshot = await createProjectMap(projectRoot, callAI);
   const previous = options.fresh ? { status: "missing" as const } : await inspectSnapshot(projectRoot);
@@ -70,7 +70,7 @@ async function runAnalyze(
     );
   }
 
-  snapshot = await enrichSnapshot(snapshot, options, dependencies);
+  snapshot = await enrichSnapshot(snapshot, projectRoot, options, dependencies);
   await saveSnapshot(projectRoot, snapshot);
   await writeAgentNavigationFiles(projectRoot, snapshot);
   printSnapshot(snapshot);
@@ -86,10 +86,12 @@ async function runAnalyze(
 
 async function enrichSnapshot(
   snapshot: Awaited<ReturnType<typeof createProjectMap>>,
+  projectRoot: string,
   options: AnalyzeOptions,
   dependencies: AnalyzeDependencies
 ): Promise<Awaited<ReturnType<typeof createProjectMap>>> {
-  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const loadConfig = dependencies.loadConfig
+    ?? (() => resolveEffectiveConfig(projectRoot));
   const config = await loadConfig();
   if (!config?.apiKey) {
     return snapshot;
@@ -125,9 +127,11 @@ async function enrichSnapshot(
  * system prompt tambahan di sini.
  */
 async function buildCallAI(
+  projectRoot: string,
   dependencies: AnalyzeDependencies
 ): Promise<((prompt: string) => Promise<string>) | undefined> {
-  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const loadConfig = dependencies.loadConfig
+    ?? (() => resolveEffectiveConfig(projectRoot));
   const config = await loadConfig();
 
   if (!config?.apiKey) return undefined;
@@ -214,7 +218,8 @@ async function printOrGenerateInterpretation(
     return snapshot;
   }
 
-  const loadConfig = dependencies.loadConfig ?? readConfig;
+  const loadConfig = dependencies.loadConfig
+    ?? (() => resolveEffectiveConfig(projectRoot));
   const config = await loadConfig();
   if (!config?.apiKey) {
     output.note("AI architecture interpretation is not configured. Run devmap init to enable it.");

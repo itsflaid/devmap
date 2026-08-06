@@ -4,7 +4,8 @@ const navigationItems = [
   { href: "#how-it-works", label: "How It Works" },
   { href: "#features", label: "Features" },
   { href: "#ai-agents", label: "AI Agents" },
-  { href: "#comparison", label: "Comparison" }
+  { href: "#comparison", label: "Comparison" },
+  { href: "/docs", label: "Docs" }
 ];
 ---
 
@@ -17,13 +18,48 @@ const navigationItems = [
       </span>
     </a>
 
-    <div class="site-header__links">
+    <button
+      class="site-header__toggle"
+      aria-expanded="false"
+      aria-controls="site-header-links"
+      aria-label="Menu"
+      type="button"
+    >
+      <span class="site-header__toggle-bar"></span>
+      <span class="site-header__toggle-bar"></span>
+    </button>
+
+    <div class="site-header__links" id="site-header-links">
       {navigationItems.map((item) => (
         <a href={item.href}>{item.label}</a>
       ))}
     </div>
   </nav>
 </header>
+
+<script>
+  const nav = document.querySelector<HTMLElement>(".site-header__nav");
+  const toggle = document.querySelector<HTMLButtonElement>(".site-header__toggle");
+
+  if (nav && toggle) {
+    const close = () => {
+      nav.classList.remove("is-open");
+      toggle.setAttribute("aria-expanded", "false");
+    };
+
+    toggle.addEventListener("click", () => {
+      const open = nav.classList.toggle("is-open");
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+
+    nav.querySelectorAll<HTMLAnchorElement>(".site-header__links a")
+      .forEach((link) => link.addEventListener("click", close));
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") close();
+    });
+  }
+</script>
 
 <style>
   .site-header {
@@ -81,18 +117,75 @@ const navigationItems = [
     color: var(--color-text);
   }
 
+  .site-header__toggle {
+    display: none;
+  }
+
   @media (max-width: 760px) {
-    .site-header__nav {
+    .site-header__toggle {
+      display: flex;
       flex-direction: column;
+      align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      padding-block: 0.75rem;
+      width: 2.5rem;
+      height: 2.5rem;
+      padding: 0;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .site-header__toggle-bar {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: var(--color-text);
+      transition: transform 200ms ease;
+    }
+
+    .site-header__toggle-bar + .site-header__toggle-bar {
+      margin-top: 5px;
+    }
+
+    .site-header__nav.is-open .site-header__toggle-bar:first-child {
+      transform: translateY(3.5px) rotate(45deg);
+    }
+
+    .site-header__nav.is-open .site-header__toggle-bar:last-child {
+      transform: translateY(-3.5px) rotate(-45deg);
     }
 
     .site-header__links {
-      flex-wrap: wrap;
-      justify-content: center;
-      row-gap: 0.5rem;
+      position: absolute;
+      inset-inline: 0;
+      top: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      max-height: 0;
+      overflow: hidden;
+      gap: 0;
+      background: var(--color-bg-soft);
+      border-top: 1px solid var(--color-border);
+      transition: max-height 250ms ease;
+    }
+
+    .site-header__nav.is-open .site-header__links {
+      max-height: 24rem;
+    }
+
+    .site-header__links a {
+      display: block;
+      padding: 0.875rem var(--page-padding);
+      border-block-end: 1px solid var(--color-border);
+      font-size: 0.9375rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-header__toggle-bar,
+    .site-header__links {
+      transition: none;
     }
   }
 </style>

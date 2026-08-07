@@ -16,6 +16,7 @@ const MAX_RATE_LIMIT_RETRIES = 3;
 export const DEFAULT_AI_MODELS = {
   analyze: "openai/gpt-oss-20b",
   flowNarration: "openai/gpt-oss-20b",
+  explain: "openai/gpt-oss-20b",
   fallback: "openai/gpt-oss-20b"
 } as const;
 
@@ -27,6 +28,11 @@ export const DEFAULT_AI_FALLBACKS = {
   ],
   flowNarration: [
     "qwen/qwen3.6-27b",
+    "llama-3.1-8b-instant"
+  ],
+  explain: [
+    "qwen/qwen3.6-27b",
+    "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant"
   ]
 } as const;

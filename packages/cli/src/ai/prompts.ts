@@ -1,4 +1,5 @@
 import type { FlowInfo, ProjectMap } from "../analyzers/pipeline/index.js";
+import type { QuestionContext } from "./contextBuilder.js";
 import type { AiMessage } from "./types.js";
 
 export function buildAnalyzeMessages(snapshot: ProjectMap): AiMessage[] {
@@ -59,6 +60,40 @@ export function buildFlowNarrationMessages(flow: FlowInfo): AiMessage[] {
     {
       role: "user",
       content: ["Narrate this flow:", JSON.stringify(flowData, null, 2)].join("\n\n")
+    }
+  ];
+}
+
+export function buildExplainMessages(
+  targetLabel: string,
+  context: QuestionContext
+): AiMessage[] {
+  const payload = context.files.map(f => ({
+    path: f.path,
+    purpose: f.purpose,
+    exports: f.exports,
+    reasons: f.reasons,
+    content: f.content
+  }));
+
+  return [
+    {
+      role: "system",
+      content: [
+        "You are DevMap, a codebase architecture interpreter.",
+        "Explain only what is shown in the provided file excerpts below.",
+        "Do not invent behavior, files, or dependencies not shown.",
+        "Cover: what it does, what calls/imports it, what it depends on, why it matters if that's evident from the excerpts.",
+        "3-6 sentences of plain prose, then file paths mentioned inline with backticks. No headings."
+      ].join(" ")
+    },
+    {
+      role: "user",
+      content: [
+        `Explain: ${targetLabel}`,
+        "Relevant file excerpts:",
+        JSON.stringify(payload, null, 2)
+      ].join("\n\n")
     }
   ];
 }

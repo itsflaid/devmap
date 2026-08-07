@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { analyzeCommand } from "./commands/analyze.js";
 import { configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { explainCommand } from "./commands/explain.js";
 import { flowCommand } from "./commands/flow.js";
 import { initCommand } from "./commands/init.js";
 import { mapCommand } from "./commands/map.js";
@@ -68,6 +69,17 @@ program
   .option("--all", "include lower-confidence features and non-API routes, uncapped")
   .option("--json", "output machine-readable JSON")
   .action((target, options) => flowCommand(target, { json: options.json, all: options.all }));
+
+program
+  .command("explain")
+  .description("Ask what a specific file, feature, or function does")
+  .argument("<target>", "file path, feature name, or function name")
+  .option("--write", "also write .devmap/explain/<name>.md")
+  .option("--json", "output machine-readable JSON")
+  .action((target, options) => explainCommand(target, {
+    json: options.json,
+    write: options.write
+  }));
 
 const configCommand = program
   .command("config")

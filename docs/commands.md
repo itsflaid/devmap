@@ -399,6 +399,54 @@ devmap flow --json
 
 ---
 
+## `devmap explain`
+
+Ask what a specific file, feature, or function does. This is DevMap's first
+on-demand, question-driven interaction: everything else ships static
+pre-rendered views, this answers one question about one part of the codebase.
+
+### Purpose
+
+> What does `lib/auth.ts` do? What is `Authentication`? How does
+> `createSession` work?
+
+### Usage
+
+```bash
+devmap explain lib/auth.ts          # file mode
+devmap explain Authentication       # feature mode (if detected)
+devmap explain createSession        # function mode (resolved via topFunctions)
+devmap explain --write <target>     # also persist to .devmap/explain/<name>.md
+devmap explain --json <target>      # machine-readable JSON result
+```
+
+The `<target>` argument is required.
+
+### Responsibilities
+
+* Read `.devmap/snapshot.json`
+* Resolve the target in order: exact feature name → exact file path → unique
+  file-path suffix → unique top-level function name (case-insensitive);
+  ambiguous or unknown targets are errors with a hint
+* Require an AI provider API key — fail fast with `devmap init` guidance when
+  none is configured (no graceful degradation; the answer is the command)
+* Build question context with `buildQuestionContext` (existing keyword /
+  intent / ranking logic, reused unchanged)
+* Stream the prose answer to the terminal when not `--json`
+* Print a `Context files:` line listing which files fed the answer
+* `--write`: persist the answer to `.devmap/explain/<slug>.md`
+* Emit one structured JSON document when `--json` is passed
+
+### Rules
+
+* No caching of explain results
+* Do not catch provider request failures — let them surface loudly through
+  the standard error handler
+* Without `--write`, output is terminal-only — asking a question should not
+  create a permanent artifact every time
+
+---
+
 ## `devmap doctor`
 
 Run diagnostics for DevMap setup.

@@ -1,6 +1,38 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-06
+Terakhir diperbarui: 2026-08-07
+
+## Update 2026-08-07
+
+### update2.md — Spec 02 `devmap explain` (branch `explain-command`)
+
+Spec 02 diimplementasikan penuh; update2.md hanya instruksi dan sudah
+dihapus. Satu PR untuk seluruh work.
+
+- `utils/targetResolver.ts` baru: `resolveFileTarget` (exact → suffix →
+  ambiguity error), di-refactor dari `resolveMapTarget` di `map.ts` agar
+  dipakai bersama `map` dan `explain`.
+- `ai/provider.ts`: `AiTask` + `"explain"`; `ai/groq.ts`: entry `explain` di
+  `DEFAULT_AI_MODELS`/`DEFAULT_AI_FALLBACKS` (sama dengan analyze);
+  `ai/prompts.ts`: `buildExplainMessages(targetLabel, context)`.
+- `commands/explain.ts` baru: fail-fast provider check (throw `DevmapError`,
+  tanpa try/catch di sekitar AI call), resolusi target feature → file →
+  function (`topFunctions`, case-insensitive, ambiguity error), context
+  dibangun via `buildQuestionContext` (tidak dimodifikasi), stream jawaban
+  dengan `completeWithOptionalStreaming`, print baris `Context files:`.
+  `--write` menulis `.devmap/explain/<slug>.md`, `--json` mengembalikan
+  `ExplainResult`. Catatan desain: untuk mode function, question yang
+  dikirim ke context builder adalah `"<fn> in <file>"` agar file yang berisi
+  fungsi masuk ranking (keyword murni nama fungsi tidak match path/symbol).
+- `index.ts`: command `explain` (argumen `<target>` required) + `explain`
+  masuk `AVAILABLE_COMMANDS` di `commands/onboarding.ts`.
+- `test/explain-command.test.ts`: 10 tes (fail-fast, file, suffix, feature,
+  function dari snapshot asli fixture, ambiguity 2 file, not-found, `--write`,
+  tanpa `--write`, prioritas resolusi feature→file→function).
+- Docs: `docs/commands.md` section `devmap explain`; `docs/roadmap.md`
+  tandai explain ✅ + struktur `.devmap/explain/`.
+
+---
 
 ## Update 2026-08-06
 

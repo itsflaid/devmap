@@ -10,6 +10,7 @@ import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
 import { DevmapError } from "../utils/errors.js";
 import { slugifyMapName } from "../utils/slug.js";
+import { resolveFileTarget } from "../utils/targetResolver.js";
 import {
   buildMapMarkdown,
   renderFlatList,
@@ -118,21 +119,9 @@ function resolveMapTarget(snapshot: ProjectMap, target: string | undefined): Res
     return { mode: "feature", value: feature.name };
   }
 
-  if (snapshot.fileIndex[target]) {
-    return { mode: "file", value: target };
-  }
-
-  const suffixMatches = Object.keys(snapshot.fileIndex).filter(
-    (path) => path.endsWith(`/${target}`) || path === target
-  );
-  if (suffixMatches.length === 1) {
-    return { mode: "file", value: suffixMatches[0] };
-  }
-  if (suffixMatches.length > 1) {
-    throw new DevmapError(
-      `"${target}" matches multiple files.`,
-      `Be more specific — options: ${suffixMatches.slice(0, 5).join(", ")}${suffixMatches.length > 5 ? ", ..." : ""}`
-    );
+  const fileTarget = resolveFileTarget(snapshot, target);
+  if (fileTarget) {
+    return fileTarget;
   }
 
   const featureNames = snapshot.features.map((f) => f.name).join(", ") || "(none detected)";

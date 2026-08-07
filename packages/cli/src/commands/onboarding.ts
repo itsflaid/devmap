@@ -242,6 +242,7 @@ const AVAILABLE_COMMANDS = new Set([
   "config",
   "doctor",
   "map",
+  "explain",
 ]);
 
 type GoDeeperEntry = {

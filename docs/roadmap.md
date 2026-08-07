@@ -76,8 +76,8 @@ No AI call — pure traversal of the snapshot's `fileGraph`/`features`, already 
 
 ---
 
-### ⭐ `devmap explain [file/feature/function]`
-Core question it answers:
+### ✅ `devmap explain [file/feature/function]`
+Shipped. Core question it answers:
 > What does this file/feature/function do, in detail?
 
 ```bash
@@ -86,9 +86,14 @@ devmap explain "authentication feature"
 devmap explain createWorkspace
 ```
 
-Output: prose explanation of what the target does, what imports it, what it imports, why it's critical.
+Output: streamed prose explanation of what the target does, what imports it,
+what it imports, why it's critical — grounded in `buildQuestionContext`
+excerpts, with a `Context files:` line so the answer can be sanity-checked.
 
 Requires AI — but targeted (one file/feature at a time, not whole codebase).
+Fails fast with `devmap init` guidance when no provider API key is configured.
+`--write` persists the answer to `.devmap/explain/[name].md`; `--json` emits a
+structured `ExplainResult`.
 
 ---
 
@@ -129,6 +134,8 @@ list is used as-is.
   flows/              ← devmap flow output
     authentication.md
     authentication.mermaid
+  explain/            ← devmap explain --write output
+    lib-auth.md
   onboarding.md       ← devmap onboarding --write output
 ```
 

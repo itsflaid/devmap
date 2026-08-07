@@ -348,6 +348,63 @@ Expected:
 - target yang tidak dikenal gagal dengan daftar known flows dan exit code 1;
 - `flow --json` output dapat di-parse langsung.
 
+## Explain Command
+
+Focused automated test:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/explain-command.test.ts
+```
+
+Coverage:
+
+- fail-fast provider: tanpa config → `DevmapError` "requires an AI provider"
+  + hint `devmap init`, dan tidak ada file `.devmap/explain/` yang ditulis;
+- file mode exact path + suffix unambiguous (`auth.ts` → `lib/auth.ts`);
+- feature mode case-insensitive (`authentication` → `Authentication`);
+- function mode memakai nama fungsi asli dari `topFunctions` snapshot fixture
+  (bukan nama tebakan), `resolvedFile` benar, `contextFiles` berisi file tsb;
+- routing AI = `DEFAULT_AI_MODELS.explain` + `DEFAULT_AI_FALLBACKS.explain`;
+- ambiguity: 2 file dengan fungsi senama → `DevmapError` "matches multiple
+  functions" mencantumkan `file:line`;
+- unknown target → `DevmapError` "isn't a known file, feature, or function"
+  + `Known features:`;
+- `--write` menulis `.devmap/explain/<slug>.md` berisi `# <target>` + answer;
+- tanpa `--write` tidak ada file ditulis;
+- urutan resolusi feature → file → function.
+
+Catatan desain: untuk function mode, question yang dikirim ke
+`buildQuestionContext` adalah `"<fn> in <file>"` — keyword murni nama fungsi
+tidak match path/symbol ranking, tapi `<file>` pasti cocok.
+
+Manual source-mode check dari fixture:
+
+```powershell
+pnpm --filter devmap exec tsx --test test/explain-command.test.ts
+pnpm build:cli
+# Tanpa config (backup dulu): ~/.devmap/config.json harus dipindah dulu
+#   rename "$env:USERPROFILE\.devmap\config.json" config.json.bak
+node packages\cli\dist\index.js explain packages/cli/test/fixtures/nextjs-project/lib/auth.ts
+echo "exit code: $LASTEXITCODE"   # harus non-zero
+Test-Path packages/cli/test/fixtures/nextjs-project/.devmap/explain   # harus False
+#   restore: rename config.json.bak config.json
+# Dengan config asli (Groq key nyata):
+node packages\cli\dist\index.js explain packages/cli/test/fixtures/nextjs-project/lib/auth.ts
+node packages\cli\dist\index.js explain packages/cli/test/fixtures/nextjs-project/Authentication
+node packages\cli\dist\index.js explain packages/cli/test/fixtures/nextjs-project/getSession
+node packages\cli\dist\index.js explain --write packages/cli/test/fixtures/nextjs-project/lib/auth.ts
+Get-Content packages/cli/test/fixtures/nextjs-project/.devmap\explain\lib-auth.md
+node packages\cli\dist\index.js explain --json packages/cli/test/fixtures/nextjs-project/lib/auth.ts
+```
+
+Expected:
+
+- stream jawaban + baris `Context files:` di terminal;
+- target fungsi `getSession` ter-resolve ke `lib/auth.ts`;
+- `--write` membuat `.devmap/explain/lib-auth.md`;
+- `--json` menghasilkan `ExplainResult` yang valid;
+- tanpa config: fail-fast message + exit code 1.
+
 ## Model Routing And Override
 
 Focused automated test:

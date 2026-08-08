@@ -1,6 +1,7 @@
 import type { ScannedFile } from "../analysis/index.js";
 import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
+import { detectNestRoutes } from "./nestRouteDetector.js";
 
 export type RouteInfo = {
   path: string;
@@ -42,6 +43,10 @@ export function detectRoutes(
 
   if (frameworks.includes("sveltekit")) {
     routes.push(...detectSvelteKitRoutes(files));
+  }
+
+  if (frameworks.includes("nestjs")) {
+    routes.push(...detectNestRoutes(files));
   }
 
   if (frameworks.includes("express")) {

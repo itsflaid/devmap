@@ -389,3 +389,102 @@ test("Fastify routes surface through project map", async () => {
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// NestJS
+// ---------------------------------------------------------------------------
+
+test("Nest projects with platform-express are labeled nestjs, not express", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({
+      dependencies: {
+        "@nestjs/core": "^11.0.0",
+        "@nestjs/common": "^11.0.0",
+        "@nestjs/platform-express": "^11.0.0",
+        express: "^5.0.0"
+      }
+    })),
+    createScannedFile("nest-cli.json", "{}")
+  ];
+
+  assert.deepEqual(detectFrameworks(files), ["nestjs"]);
+});
+
+test("detectRoutes composes @Controller prefix with method decorator paths", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({ dependencies: { "@nestjs/common": "^11.0.0" } })),
+    createScannedFile("src/users/users.controller.ts", [
+      'import { Controller, Get, Post } from "@nestjs/common";',
+      "@Controller(\"users\")",
+      "export class UsersController {",
+      "  @Get(\":id\")",
+      "  findOne(@Param(\"id\") id: string) {}",
+      "",
+      "  @Post()",
+      "  create(@Body() dto: CreateUserDto) {}",
+      "}"
+    ].join("\n")),
+    createScannedFile("src/health/health.controller.ts", [
+      'import { Controller, Get } from "@nestjs/common";',
+      "@Controller()",
+      "export class HealthController {",
+      "  @Get()",
+      "  check() {}",
+      "}"
+    ].join("\n"))
+  ];
+
+  assert.deepEqual(detectFrameworks(files), ["nestjs"]);
+  const routes = detectRoutes(files, ["nestjs"]);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.kind, route.methods]),
+    [
+      ["/", "api", ["GET"]],
+      ["/users", "api", ["POST"]],
+      ["/users/:id", "api", ["GET"]]
+    ]
+  );
+});
+
+test("NestJS routes surface through project map and service stays classified", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({
+      name: "nestjs-api",
+      dependencies: {
+        "@nestjs/core": "^11.0.0",
+        "@nestjs/common": "^11.0.0",
+        "@nestjs/platform-express": "^11.0.0"
+      }
+    }),
+    "nest-cli.json": JSON.stringify({ sourceRoot: "src" }),
+    "src/users/users.controller.ts": [
+      'import { Controller, Get } from "@nestjs/common";',
+      "@Controller(\"users\")",
+      "export class UsersController {",
+      "  @Get(\":id\")",
+      "  findOne(@Param(\"id\") id: string) {}",
+      "}"
+    ].join("\n"),
+    "src/users/users.service.ts": [
+      'import { Injectable } from "@nestjs/common";',
+      "@Injectable()",
+      "export class UsersService {",
+      "  findOne(id: string) { return { id }; }",
+      "}"
+    ].join("\n")
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    assert.equal(snapshot.framework, "nestjs");
+    const routePaths = snapshot.routes.map((route) => route.path);
+    assert.ok(routePaths.includes("/users/:id"), "composed controller path appears in snapshot");
+    assert.equal(
+      snapshot.fileIndex["src/users/users.service.ts"]?.scope,
+      "service",
+      "users.service.ts stays classified as service without fileRole changes"
+    );
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

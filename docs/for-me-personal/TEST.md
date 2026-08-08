@@ -15,6 +15,38 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Multi-Framework Detection (update0 s.d. update5)
+
+Focused automated tests (suite khusus framework-routes: Astro, Nuxt, Vue,
+SvelteKit, Svelte SPA, Fastify, NestJS):
+
+```powershell
+pnpm --filter devmap exec tsx --test test/framework-routes.test.ts
+```
+
+Full suite:
+
+```powershell
+pnpm --filter devmap test
+pnpm --filter devmap build
+```
+
+Expected: `228 pass / 0 fail` untuk unit suite (node:test via `run-tests.ts`),
+build tsc 0 error. Ranah yang di-cover:
+
+- `detectFrameworks`/`detectRoutes` per framework: Astro pages/endpoints + Nuxt
+  file routing + SvelteKit `+page`/`+server` + Fastify chained/object-style +
+  Nest decorator-class (ts-morph).
+- Cross-file: Express router-mount dan Fastify plugin `prefix` compose via
+  dependency graph (`FileGraph`).
+- Integrasi `createProjectMap`: framework, routes, dan features (Vue Router
+  lazy-import, svelte-routing/svelte-spa-router object map) keluar benar.
+- Priority: project Nest dengan `@nestjs/platform-express` tetap label
+  `nestjs`, bukan `express`.
+
+Manual: `pnpm dev:cli -- analyze` pada project Express + router-mount harus
+memunculkan route `/mount/...` yang ter-compose dari prefix + sub-path.
+
 ## OpenRouter Provider
 
 Focused automated tests:

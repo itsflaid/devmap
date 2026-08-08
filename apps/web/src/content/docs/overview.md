@@ -31,14 +31,17 @@ incomplete.
 
 **Full support** — framework detection *and* route mapping:
 - Next.js (App Router and Pages Router)
+- Astro
+- Nuxt
+- SvelteKit
 - Express
 - Fastify
-- Nest
+- Nest (NestJS)
 
-**Detected, no route mapping yet** — DevMap recognizes the framework and
-indexes files/dependencies, but doesn't map routes for it:
+**SPA client-side routing** — framework detected, and routes declared in the
+client-side router (React Router, Vue Router, svelte-routing,
+svelte-spa-router) surface as features:
 - React (Create React App, Vite)
-- Astro
 - Vue
 - Svelte
 

@@ -6,6 +6,10 @@ import {
   type ProjectMap
 } from "../analyzers/pipeline/index.js";
 import { scanFiles } from "../analyzers/analysis/index.js";
+import {
+  BACKEND_FRAMEWORKS,
+  FRONTEND_FRAMEWORKS,
+} from "../analyzers/pipeline/projectMetadata.js";
 import { DevmapError } from "../utils/errors.js";
 
 export type SnapshotStatus =
@@ -142,9 +146,10 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
 
   if (isRecord(snapshot.project)) {
     if (typeof snapshot.project.projectType !== "string") {
-      snapshot.project.projectType = ["nextjs", "react"].includes(String(snapshot.project.framework))
+      const framework = String(snapshot.project.framework);
+      snapshot.project.projectType = FRONTEND_FRAMEWORKS.has(framework as never)
         ? "web-app"
-        : snapshot.project.framework === "express"
+        : BACKEND_FRAMEWORKS.has(framework as never)
         ? "api-service"
         : "unknown";
     }

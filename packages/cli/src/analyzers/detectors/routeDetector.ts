@@ -32,6 +32,10 @@ export function detectRoutes(
     routes.push(...detectNextRoutes(files));
   }
 
+  if (frameworks.includes("astro")) {
+    routes.push(...detectAstroRoutes(files));
+  }
+
   if (frameworks.includes("express")) {
     routes.push(...detectExpressRoutes(files, graph));
   }
@@ -76,6 +80,41 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
       path: toRoutePath(segments),
       file: file.path,
       kind: isApi ? "api" : "page"
+    });
+  }
+
+  return sortRoutes(routes);
+}
+
+/**
+ * detectAstroRoutes — pages live under src/pages/ (Astro always uses src/ as
+ * its source root). Page files are .astro/.md/.mdx; endpoint files are
+ * .ts/.js exporting GET/POST/etc., the same convention as Next.js route
+ * handlers. Underscore-prefixed segments and content collections are not
+ * routes and are skipped.
+ */
+function detectAstroRoutes(files: ScannedFile[]): RouteInfo[] {
+  const routes: RouteInfo[] = [];
+
+  for (const file of files.filter((item) => isArchitectureSource(item.path))) {
+    const match = file.path.match(
+      /(?:^|\/)src\/pages\/(.+)\.(astro|md|mdx|[cm]?[jt]s)$/
+    );
+    if (!match) continue;
+
+    const segments = match[1].split("/").filter(Boolean);
+    if (segments.some((segment) => segment.startsWith("_"))) continue;
+
+    const isApiFile = match[2] !== "astro" && match[2] !== "md" && match[2] !== "mdx";
+    const cleanSegments = segments[segments.length - 1] === "index"
+      ? segments.slice(0, -1)
+      : segments;
+
+    routes.push({
+      path: toRoutePath(cleanSegments),
+      file: file.path,
+      kind: isApiFile ? "api" : "page",
+      ...(isApiFile ? { methods: findHttpMethods(file.content) } : {})
     });
   }
 
@@ -243,7 +282,7 @@ function toRoutePath(segments: string[]): string {
 
 function findHttpMethods(content: string): string[] {
   const methods = new Set<string>();
-  const pattern = /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
+  const pattern = /export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
   let match = pattern.exec(content);
 
   while (match) {

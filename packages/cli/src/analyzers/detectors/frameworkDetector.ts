@@ -57,12 +57,14 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
   // Next.js: next.config.* or App Router / Pages Router file conventions.
-  // These patterns are Next.js-specific enough to safely add without gating.
+  // _app and _document are Next.js-unique; a bare src/pages/api/ folder is NOT
+  // (Astro uses the same folder for endpoints), so it is deliberately excluded
+  // from the Pages Router signal here.
   if (
     files.some((file) => /(^|\/)next\.config\.[cm]?[jt]s$/.test(file.path))
     || sourceFiles.some((file) =>
       /(^|\/)(?:src\/)?app\/(?:.+\/)?(?:page|layout|route)\.[jt]sx?$/.test(file.path)
-      || /(^|\/)(?:src\/)?pages\/(?:_app|_document|api\/)/.test(file.path)
+      || /(^|\/)(?:src\/)?pages\/(?:_app|_document)/.test(file.path)
     )
   ) {
     detected.add("nextjs");

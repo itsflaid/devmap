@@ -32,17 +32,21 @@ incomplete.
 **Full support** — framework detection *and* route mapping:
 - Next.js (App Router and Pages Router)
 - Express
+- Fastify
+- Nest
 
 **Detected, no route mapping yet** — DevMap recognizes the framework and
 indexes files/dependencies, but doesn't map routes for it:
 - React (Create React App, Vite)
 - Astro
+- Vue
+- Svelte
 
 **Databases & ORMs** — detected via dependency + schema/config file:
 - Prisma, Drizzle, Mongoose, Supabase
 - Raw SQL: PostgreSQL (`pg`), MySQL (`mysql2`), SQLite (`better-sqlite3`)
 
-**Anything else** (NestJS, Vue, Laravel, Django, Go, ...): DevMap still
+**Anything else** (Laravel, Django, Go, ...): DevMap still
 scans your files, dependencies, and import graph — you just won't get
 framework-specific route detection. `analyze` will report the framework
 as `unknown` rather than guessing wrong.

@@ -142,6 +142,7 @@ const commands = [
 <script>
   import { gsap } from "gsap";
   import { ScrollTrigger } from "gsap/ScrollTrigger";
+  import { staggerReveal } from "../../scripts/stagger-reveal";
 
   type CommandEntry = {
     command: string;
@@ -159,34 +160,7 @@ const commands = [
     document.querySelectorAll<HTMLElement>(".command-card")
   );
 
-  if (
-    !prefersReducedMotion
-    && cards.length
-    && "IntersectionObserver" in window
-  ) {
-    cards.forEach((card) => {
-      card.style.opacity = "0";
-      card.style.transform = "translateY(16px)";
-    });
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry, index) => {
-          if (entry.isIntersecting) {
-            const card = entry.target as HTMLElement;
-            setTimeout(() => {
-              card.style.opacity = "1";
-              card.style.transform = "none";
-            }, index * 80);
-            observer.unobserve(card);
-          }
-        });
-      },
-      { threshold: 0.2 }
-    );
-
-    cards.forEach((card) => observer.observe(card));
-  }
+  staggerReveal(cards, { y: 16, staggerMs: 80 });
 
   if (!prefersReducedMotion && !isMobile) {
     const dataElement = document.getElementById("commands-data");
@@ -300,7 +274,7 @@ const commands = [
   }
 
   .commands-section__track {
-    height: calc(70vh * 7);
+    height: calc(48vh * 7);
   }
 
   .command-palette {

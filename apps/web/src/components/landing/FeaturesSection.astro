@@ -1,112 +1,145 @@
 ---
-
-const features = [
-  {
-    label: "Static Analysis First",
-    copy: "80% static, 20% AI. One analyze pass extracts structure, routes, dependencies, and critical files without burning tokens. Every command after this, map, flow, explain, reads from that same snapshot instead of re-scanning your project.",
-  },
-  {
-    label: "Map & Flow",
-    copy: "See the shape of your project with devmap map, or trace exactly how one feature works end to end with devmap flow. Structural and temporal views of the same codebase.",
-  },
-  {
-    label: "Ask Anything, Instantly",
-    copy: "devmap explain answers a targeted question about a file, feature, or function directly, without re-analyzing the whole project.",
-  },
-  {
-    label: "Built for AI Agents",
-    copy: "Auto-generates DEVMAP.md, a portable context file your AI agent reads before touching your codebase.",
-  },
-  {
-    label: "Onboarding Guide",
-    copy: "Reading list, learning path, and modification guide for a new codebase. Productive in minutes, not days.",
-  },
-  {
-    label: "Fully Local & Private",
-    copy: "Your API key stays on your machine. Your code never touches devmap's servers, connections go directly to your AI provider.",
-  },
-];
 ---
 
-<section id="features" class="landing-section features-section">
-  <h2 class="features-section__title">
-    Everything you need to <span class="features-section__accent">understand</span> code faster.
-  </h2>
+<section id="features" class="engine-section">
+  <p class="engine-section__eyebrow">How it works</p>
 
-  <div class="features-section__grid">
-    {features.map((feature) => (
-      <div class="feature-card">
-        <span class="feature-card__label">{feature.label}</span>
-        <p class="feature-card__copy">{feature.copy}</p>
+  <div class="engine-section__grid">
+    <div class="engine-section__col engine-section__col--static">
+      <div class="engine-section__col-inner">
+        <p class="engine-section__label">Static analysis</p>
+        <p class="engine-section__stat">80%</p>
+        <p class="engine-section__line">
+          One <code>analyze</code> pass builds the whole picture,
+          structure, routes, dependencies, critical files, once.
+        </p>
       </div>
-    ))}
+    </div>
+
+    <div class="engine-section__col engine-section__col--ai">
+      <div class="engine-section__col-inner">
+        <p class="engine-section__label">AI</p>
+        <p class="engine-section__stat">20%</p>
+        <p class="engine-section__line">
+          Wherever a model is involved, enrichment, narration, answers,
+          it reads that snapshot instead of your raw code.
+        </p>
+      </div>
+    </div>
   </div>
 </section>
 
 <script>
   import { revealOnScroll } from "../../scripts/scroll-reveal";
 
-  const section = document.querySelector<HTMLElement>(".features-section");
+  const section = document.querySelector<HTMLElement>(".engine-section");
 
-  revealOnScroll(section, ".features-section__title", { y: 16 });
-  revealOnScroll(section, ".feature-card", {
-    y: 24,
-    stagger: 0.06,
-    start: "top 82%",
-  });
+  revealOnScroll(section, ".engine-section__eyebrow", { y: 12 });
+  revealOnScroll(
+    section,
+    ".engine-section__col--static .engine-section__label, .engine-section__col--static .engine-section__stat, .engine-section__col--static .engine-section__line",
+    { y: 16, stagger: 0.08 }
+  );
+  revealOnScroll(
+    section,
+    ".engine-section__col--ai .engine-section__label, .engine-section__col--ai .engine-section__stat, .engine-section__col--ai .engine-section__line",
+    { y: 16, stagger: 0.08 }
+  );
 </script>
 
 <style>
-  .features-section {
-    padding: var(--section-spacing) 0;
-    text-align: center;
+  .engine-section {
+    padding-top: var(--section-spacing);
   }
 
-  .features-section__title {
-    margin: 0 0 3rem;
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    line-height: 1.15;
+  .engine-section__eyebrow {
+    margin: 0 0 2rem;
+    padding: 0 var(--page-padding);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+
+  .engine-section__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 760px) {
+    .engine-section__grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .engine-section__col {
+    padding: clamp(3rem, 7vw, 5rem) var(--page-padding);
+  }
+
+  .engine-section__col--ai {
+    background: var(--color-bg-invert);
+    color: var(--color-text-invert);
+  }
+
+  .engine-section__col--ai :focus-visible {
+    outline-color: var(--color-text-invert);
+  }
+
+  .engine-section__col-inner {
+    max-width: 22rem;
+  }
+
+  .engine-section__label {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+  }
+
+  .engine-section__col--ai .engine-section__label {
+    color: var(--color-text-invert-muted);
+  }
+
+  .engine-section__stat {
+    margin: 0 0 1rem;
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    line-height: 1;
     letter-spacing: -0.02em;
     font-weight: 700;
   }
 
-  .features-section__accent {
+  .engine-section__col--static .engine-section__stat {
     color: var(--color-aqua);
   }
 
-  .features-section__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    max-width: 65rem;
-    margin: 0 auto;
-  }
-
-  .feature-card {
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    text-align: left;
-  }
-
-  .feature-card__label {
-    display: block;
-    margin-bottom: 0.75rem;
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--color-text);
-  }
-
-  .feature-card__copy {
+  .engine-section__line {
     margin: 0;
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: 0.9375rem;
+    line-height: 1.7;
     color: var(--color-text-muted);
   }
 
-  @media (max-width: 900px) {
-    .features-section__grid {
-      grid-template-columns: 1fr;
-    }
+  .engine-section__col--ai .engine-section__line {
+    color: var(--color-text-invert-muted);
+  }
+
+  .engine-section__line code {
+    padding: 0.125rem 0.375rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-family: var(--font-mono);
+    font-size: 0.8125em;
+    color: var(--color-text);
+  }
+
+  .engine-section__col--ai .engine-section__line code {
+    border-color: var(--color-border-invert-strong);
+    background: #ffffff;
+    color: var(--color-text-invert);
   }
 </style>

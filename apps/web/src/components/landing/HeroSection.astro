@@ -90,38 +90,12 @@ const indexRows = [
 </section>
 
 <script>
-  const prefersReducedMotion =
-    window.matchMedia &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  import { staggerReveal } from "../../scripts/stagger-reveal";
 
-  if (!prefersReducedMotion) {
-    const rows = document.querySelectorAll<HTMLElement>(".index-row");
-
-    if (rows.length && "IntersectionObserver" in window) {
-      rows.forEach((row) => {
-        row.style.opacity = "0";
-        row.style.transform = "translateY(10px)";
-      });
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-              const row = entry.target as HTMLElement;
-              setTimeout(() => {
-                row.style.opacity = "1";
-                row.style.transform = "none";
-              }, index * 90);
-              observer.unobserve(row);
-            }
-          });
-        },
-        { threshold: 0.2 }
-      );
-
-      rows.forEach((row) => observer.observe(row));
-    }
-  }
+  staggerReveal(document.querySelectorAll<HTMLElement>(".index-row"), {
+    y: 10,
+    staggerMs: 90,
+  });
 </script>
 
 <style>

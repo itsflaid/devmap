@@ -17,6 +17,14 @@
   --color-aqua: #2ee6d6;
   --color-aqua-soft: rgba(46, 230, 214, 0.1);
 
+  /* Inverted (light) palette — for the handful of sections that flip
+     to a light background amid the otherwise all-dark page. Cyan is
+     deliberately excluded here: the accent stays dark-section-only. */
+  --color-bg-invert: #f5f6f7;
+  --color-text-invert: #10151b;
+  --color-text-invert-muted: #4b5563;
+  --color-border-invert-strong: rgba(15, 20, 25, 0.16);
+
   /* Typography */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;

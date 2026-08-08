@@ -1,6 +1,71 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-07
+Terakhir diperbarui: 2026-08-08
+
+## Update 2026-08-08
+
+### update.md — Split FeaturesSection + Docs Framework Update (branch `main`)
+
+Diterapkan langsung di `main` (per instruksi). update.md tidak di-commit dan
+sudah dihapus.
+
+- `styles/global.css`: tambah 4 token palette inverted (`--color-bg-invert`,
+  `--color-text-invert`, `--color-text-invert-muted`,
+  `--color-border-invert-strong`) di `:root` setelah `--color-aqua-soft`.
+  Cyan sengaja tidak masuk palette inverted — aksen tetap dark-section-only.
+- `components/landing/FeaturesSection.astro`: dirombak total dari grid
+  feature-card jadi split panel "How it works" — eyebrow mono, grid 2 kolom
+  (1fr 1fr aktif ≥760px, stack di mobile), kolom kiri "Static analysis 80%"
+  (stat pakai `--color-aqua`), kolom kanan "AI 20%" flip ke latar terang
+  (`--color-bg-invert`), divider murni transisi warna tanpa border/shadow.
+  Copy disesuaikan ke source: tidak ada klaim "map/flow murni static" karena
+  `flow` ternyata pakai `completeWithOptionalStreaming` dan `analyze` punya
+  `enrichSnapshotWithAi` — yang akurat: kiri fokus ONE-TIME analyze pass
+  (berat di static parsing), kanan "AI baca snapshot, bukan raw code".
+  Reveal: eyebrow + masing-masing kolom via `revealOnScroll`.
+- `content/docs/overview.md`: tier framework diupdate sebagai kondisi "jika
+  detector sudah selesai diimplementasikan" (detector Fastify/Nest/Vue/Svelte
+  masih di planning). Full support += Fastify, Nest. Detected no route
+  mapping += Vue, Svelte. Contoh "Anything else" dihapus NestJS & Vue
+  (Laravel, Django, Go). Catatan: tier ini sengaja dibuat mendahului
+  implementasi detector, sesuai instruksi user.
+- Verifikasi: `pnpm --filter @devmap/web build` (astro check + build) 0 error.
+
+---
+
+### update.md — Light Section + GSAP Fixes (branch `main`, lanjutan)
+
+4 file kena; update.md tidak di-commit dan sudah dihapus. Satu push langsung
+ke `main` (tanpa PR/issue, per instruksi user).
+
+- `scripts/stagger-reveal.ts` baru: utility `staggerReveal(elements, options)`
+  — fade-up on-scroll berbasis IntersectionObserver + inline style, TANPA
+  GSAP/ScrollTrigger. Dipakai di elemen yang tidak boleh menarik GSAP (Hero
+  above-the-fold, biar bundle awal ringan) dan fallback mobile yang sudah
+  skip GSAP (card list CommandsSection). Guard `prefers-reduced-motion`,
+  fallback kalau `IntersectionObserver` tidak ada. Diekstrak dari logika
+  yang sebelumnya duplikat di Hero + Commands, dependency dipertahankan.
+- `HeroSection.astro`: script block diganti jadi panggilan `staggerReveal`
+  pada `.index-row` (`y: 10, staggerMs: 90`).
+- `CommandsSection.astro`: (1) fix pin height — `.commands-section__track`
+  `calc(70vh * 7)` → `calc(48vh * 7)` (490vh → 336vh; math scrub proporsional
+  ke tinggi track, tidak ada yang lain perlu diubah). (2) block observer card
+  list yang panjang diganti jadi `staggerReveal(cards, { y: 16, staggerMs: 80 })`
+  + import di baris atas; `const prefersReducedMotion` dipertahankan (dipakai
+  guard pin/scrub).
+- `OpenSourceSection.astro`: di-flip jadi light section (rewrite total) —
+  `<section>` luar full-bleed dengan bg `#f5f6f7`, `.landing-section` (width
+  constraint) pindah ke div `__inner` di dalamnya. Teks `#10151b` (mirror
+  dari `--color-surface`), muted `#4b5563`, `:focus-visible` outline di-override
+  lokal ke `--os-text` (cyan tetap dark-section-only). Dipilih karena satu dari
+  tiga section tanpa aksen cyan (Comparison, OpenSource, FooterCta), kontennya
+  soal trust/keterbukaan, dan posisi kedua-dari-akhir = satu jeda terang
+  sebelum balik gelap di FooterCta. Lokal `--os-*` var dipakai di
+  `.open-source-section--light` (nilai mirror token invert global).
+- Verifikasi: `pnpm --filter @devmap/web build` (astro check + build) 0 error.
+
+---
+
 
 ## Update 2026-08-07
 

@@ -81,3 +81,95 @@ test("Astro pages surface as features through project map", async () => {
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Nuxt
+// ---------------------------------------------------------------------------
+
+test("detectFrameworks and detectRoutes handle Nuxt file-based routing", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({
+      dependencies: { nuxt: "^3.12.0", vue: "^3.4.0" }
+    })),
+    createScannedFile("nuxt.config.ts", "export default defineNuxtConfig({});\n"),
+    createScannedFile("pages/index.vue", "<template><div>Home</div></template>\n"),
+    createScannedFile("pages/blog/index.vue", "<template><div>Blog</div></template>\n"),
+    createScannedFile("pages/blog/[slug].vue", "<template><div>Post</div></template>\n"),
+    createScannedFile("src/App.vue", "<template><div>App</div></template>\n")
+  ];
+
+  assert.deepEqual(detectFrameworks(files), ["nuxt"]);
+  const routes = detectRoutes(files, ["nuxt"]);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.kind]),
+    [
+      ["/", "page"],
+      ["/blog", "page"],
+      ["/blog/[slug]", "page"]
+    ]
+  );
+});
+
+test("Nuxt pages surface as features through project map", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({ name: "nuxt-app", dependencies: { nuxt: "^3.12.0", vue: "^3.4.0" } }),
+    "nuxt.config.ts": "export default defineNuxtConfig({});\n",
+    "pages/index.vue": "<template><div>Home</div></template>\n",
+    "pages/blog/index.vue": "<template><div>Blog</div></template>\n",
+    "pages/blog/[slug].vue": "<template><div>Post</div></template>\n"
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    assert.equal(snapshot.framework, "nuxt");
+    assert.deepEqual(
+      snapshot.routes.map((route) => route.path).sort(),
+      ["/", "/blog", "/blog/[slug]"]
+    );
+    const names = snapshot.features.map((feature) => feature.name);
+    assert.ok(names.includes("Blog"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Vue (SPA + Vue Router)
+// ---------------------------------------------------------------------------
+
+test("Vue Router routes resolve for identifier and lazy-import forms", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({
+      name: "vue-spa",
+      dependencies: { vue: "^3.4.0", "vue-router": "^4.3.0" },
+      devDependencies: { "@vitejs/plugin-vue": "^5.0.0", vite: "^7.0.0" }
+    }),
+    "src/App.vue": "<template><div>App</div></template>\n",
+    "src/router.ts": [
+      'import { createRouter, createWebHistory } from "vue-router";',
+      'import { AboutPage } from "./views/AboutPage.vue";',
+      "export const router = createRouter({",
+      "  history: createWebHistory(),",
+      "  routes: [",
+      '    { path: "/about", component: AboutPage },',
+      '    { path: "/contact", component: () => import("./views/ContactPage.vue") },',
+      "  ]",
+      "});"
+    ].join("\n"),
+    "src/views/AboutPage.vue": '<script>export default { name: "AboutPage" }</script>\n<template><div>About</div></template>\n',
+    "src/views/ContactPage.vue": '<script>export default { name: "ContactPage" }</script>\n<template><div>Contact</div></template>\n'
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    assert.equal(snapshot.framework, "vue");
+    const names = snapshot.features.map((feature) => feature.name);
+    assert.ok(names.includes("About"), "identifier form resolves to a feature");
+    assert.ok(names.includes("Contact"), "lazy-import form resolves to a feature");
+
+    const contact = snapshot.features.find((feature) => feature.name === "Contact");
+    assert.ok(contact?.files.includes("src/views/ContactPage.vue"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

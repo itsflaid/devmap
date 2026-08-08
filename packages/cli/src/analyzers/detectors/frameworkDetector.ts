@@ -37,6 +37,12 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     if ("next" in dependencies) detected.add("nextjs");
     if ("express" in dependencies) detected.add("express");
     if ("astro" in dependencies) detected.add("astro");
+    if ("nuxt" in dependencies) detected.add("nuxt");
+    if ("fastify" in dependencies) detected.add("fastify");
+    if ("@nestjs/core" in dependencies || "@nestjs/common" in dependencies) {
+      detected.add("nestjs");
+    }
+    if ("@sveltejs/kit" in dependencies) detected.add("sveltekit");
 
     const hasReactRuntime = "react-dom" in dependencies
       || "react-scripts" in dependencies
@@ -49,6 +55,21 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
       && hasReactRuntime
     ) {
       detected.add("react");
+    }
+
+    // Nuxt apps ship App.vue too, so vue must exclude when nuxt is present —
+    // same mirror of the react-vs-next exclusion. The runtime gate prevents a
+    // Vue UI library (vue only in peerDependencies) from being labeled an app.
+    const hasVueRuntime = "@vitejs/plugin-vue" in dependencies
+      || "@vitejs/plugin-vue2" in dependencies
+      || "vue-cli-service" in dependencies;
+    if (!("nuxt" in dependencies) && "vue" in dependencies && hasVueRuntime) {
+      detected.add("vue");
+    }
+
+    const hasSvelteRuntime = "@sveltejs/vite-plugin-svelte" in dependencies;
+    if (!("@sveltejs/kit" in dependencies) && "svelte" in dependencies && hasSvelteRuntime) {
+      detected.add("svelte");
     }
   }
 
@@ -102,6 +123,28 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   // Astro: src/pages/*.astro is specific enough to be safe as a standalone signal.
   if (sourceFiles.some((file) => /(^|\/)src\/pages\/.+\.astro$/.test(file.path))) {
     detected.add("astro");
+  }
+
+  // Nuxt: nuxt.config.* is as specific as next.config.* today.
+  if (files.some((file) => /(^|\/)nuxt\.config\.[cm]?[jt]s$/.test(file.path))) {
+    detected.add("nuxt");
+  }
+
+  // Vue: App.vue at the project root (or src/) is specific enough to stand alone.
+  if (sourceFiles.some((file) => /(^|\/)(?:src\/)?App\.vue$/.test(file.path))) {
+    detected.add("vue");
+  }
+
+  // SvelteKit: +page.svelte under src/routes/ is unique to SvelteKit — the "+"
+  // prefix is not used by any other framework. svelte.config.js is NOT used as a
+  // signal because non-SvelteKit Svelte projects have it too.
+  if (sourceFiles.some((file) => /(^|\/)src\/routes\/.+\+page\.svelte$/.test(file.path))) {
+    detected.add("sveltekit");
+  }
+
+  // NestJS: nest-cli.json is as specific as next.config.* / nuxt.config.*.
+  if (files.some((file) => /(^|\/)nest-cli\.json$/.test(file.path))) {
+    detected.add("nestjs");
   }
 
   return [

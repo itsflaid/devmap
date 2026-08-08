@@ -36,6 +36,10 @@ export function detectRoutes(
     routes.push(...detectAstroRoutes(files));
   }
 
+  if (frameworks.includes("nuxt")) {
+    routes.push(...detectNuxtRoutes(files));
+  }
+
   if (frameworks.includes("express")) {
     routes.push(...detectExpressRoutes(files, graph));
   }
@@ -115,6 +119,34 @@ function detectAstroRoutes(files: ScannedFile[]): RouteInfo[] {
       file: file.path,
       kind: isApiFile ? "api" : "page",
       ...(isApiFile ? { methods: findHttpMethods(file.content) } : {})
+    });
+  }
+
+  return sortRoutes(routes);
+}
+
+/**
+ * detectNuxtRoutes — Nuxt uses root-level pages/** (not src/pages/ like Astro),
+ * unless srcDir is customized in nuxt.config — a v1 limitation. Bracket syntax
+ * for dynamic segments, [...slug] for catch-alls, and index-stripping mirror
+ * Next.js Pages Router conventions.
+ */
+function detectNuxtRoutes(files: ScannedFile[]): RouteInfo[] {
+  const routes: RouteInfo[] = [];
+
+  for (const file of files.filter((item) => isArchitectureSource(item.path))) {
+    const match = file.path.match(/(?:^|\/)pages\/(.+)\.vue$/);
+    if (!match) continue;
+
+    const segments = match[1].split("/").filter(Boolean);
+    const cleanSegments = segments[segments.length - 1] === "index"
+      ? segments.slice(0, -1)
+      : segments;
+
+    routes.push({
+      path: toRoutePath(cleanSegments),
+      file: file.path,
+      kind: "page"
     });
   }
 

@@ -40,6 +40,10 @@ export function detectRoutes(
     routes.push(...detectNuxtRoutes(files));
   }
 
+  if (frameworks.includes("sveltekit")) {
+    routes.push(...detectSvelteKitRoutes(files));
+  }
+
   if (frameworks.includes("express")) {
     routes.push(...detectExpressRoutes(files, graph));
   }
@@ -147,6 +151,43 @@ function detectNuxtRoutes(files: ScannedFile[]): RouteInfo[] {
       path: toRoutePath(cleanSegments),
       file: file.path,
       kind: "page"
+    });
+  }
+
+  return sortRoutes(routes);
+}
+
+/**
+ * detectSvelteKitRoutes — the route unit is a FOLDER under src/routes/, not a
+ * file name. Only +page.svelte (page) and +server.[jt]s (api) are routes; the
+ * "+" prefix is SvelteKit-only, so the escaped literals below are safe. Route
+ * groups "(group)" are stripped by toRoutePath.
+ */
+function detectSvelteKitRoutes(files: ScannedFile[]): RouteInfo[] {
+  const routes: RouteInfo[] = [];
+
+  for (const file of files.filter((item) => isArchitectureSource(item.path))) {
+    const relativeMatch = file.path.match(/(?:^|\/)src\/routes\/(.*)$/);
+    if (!relativeMatch) continue;
+    const relative = relativeMatch[1];
+
+    let kind: "page" | "api" | null = null;
+    if (relative.endsWith("+page.svelte")) {
+      kind = "page";
+    } else if (/\+server\.[cm]?[jt]s$/.test(relative)) {
+      kind = "api";
+    }
+    if (!kind) continue;
+
+    const slashIndex = relative.lastIndexOf("/");
+    const folder = slashIndex === -1 ? "" : relative.slice(0, slashIndex);
+    const segments = folder === "" ? [] : folder.split("/");
+
+    routes.push({
+      path: toRoutePath(segments),
+      file: file.path,
+      kind,
+      ...(kind === "api" ? { methods: findHttpMethods(file.content) } : {})
     });
   }
 

@@ -173,3 +173,138 @@ test("Vue Router routes resolve for identifier and lazy-import forms", async () 
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// SvelteKit
+// ---------------------------------------------------------------------------
+
+test("detectRoutes maps SvelteKit +page and +server files only", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({
+      dependencies: { "@sveltejs/kit": "^2.0.0", svelte: "^5.0.0" }
+    })),
+    createScannedFile("src/routes/+page.svelte", "<h1>Home</h1>\n"),
+    createScannedFile("src/routes/about/+page.svelte", "<h1>About</h1>\n"),
+    createScannedFile("src/routes/blog/[slug]/+page.svelte", "<h1>Post</h1>\n"),
+    createScannedFile("src/routes/(app)/dashboard/+page.svelte", "<h1>Dashboard</h1>\n"),
+    createScannedFile("src/routes/api/users/+server.ts", "export function GET() { return new Response(); }\n"),
+    createScannedFile("src/routes/+layout.svelte", "{@render children?.()}\n"),
+    createScannedFile("src/routes/blog/+page.server.ts", "export function load() { return {}; }\n")
+  ];
+
+  assert.deepEqual(detectFrameworks(files), ["sveltekit"]);
+  const routes = detectRoutes(files, ["sveltekit"]);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.kind, route.methods]),
+    [
+      ["/", "page", undefined],
+      ["/about", "page", undefined],
+      ["/api/users", "api", ["GET"]],
+      ["/blog/[slug]", "page", undefined],
+      ["/dashboard", "page", undefined]
+    ]
+  );
+});
+
+test("SvelteKit pages surface as features through project map", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({
+      name: "sveltekit-app",
+      dependencies: { "@sveltejs/kit": "^2.0.0", svelte: "^5.0.0" }
+    }),
+    "src/routes/+page.svelte": "<h1>Home</h1>\n",
+    "src/routes/about/+page.svelte": "<h1>About</h1>\n",
+    "src/routes/blog/[slug]/+page.svelte": "<h1>Post</h1>\n",
+    "src/routes/(app)/dashboard/+page.svelte": "<h1>Dashboard</h1>\n",
+    "src/routes/api/users/+server.ts": "export function GET() { return new Response(); }\n",
+    "src/routes/+layout.svelte": "{@render children?.()}\n"
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    assert.equal(snapshot.framework, "sveltekit");
+    assert.deepEqual(
+      snapshot.routes.map((route) => route.path).sort(),
+      ["/", "/about", "/api/users", "/blog/[slug]", "/dashboard"]
+    );
+    const names = snapshot.features.map((feature) => feature.name);
+    assert.ok(names.includes("About"));
+    assert.ok(names.includes("Blog"));
+    assert.ok(names.includes("Dashboard"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Svelte SPA client routing
+// ---------------------------------------------------------------------------
+
+test("Svelte SPA routes from svelte-routing and svelte-spa-router become features", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({
+      name: "svelte-spa",
+      dependencies: { svelte: "^5.0.0" },
+      devDependencies: { "@sveltejs/vite-plugin-svelte": "^4.0.0", vite: "^7.0.0" }
+    }),
+    "src/App.svelte": [
+      "<script>",
+      '  import { Router, Route, Link } from "svelte-routing";',
+      '  import About from "./pages/About.svelte";',
+      '  import Blog from "./pages/Blog.svelte";',
+      "</script>",
+      "<main>",
+      "  <Router>",
+      '    <Route path="/about" component={About} />',
+      '    <Route path="/blog" component={Blog} />',
+      "  </Router>",
+      "</main>"
+    ].join("\n"),
+    "src/router.js": [
+      'import { hashLocation, routes as _routes } from "svelte-spa-router";',
+      'import About from "./pages/About.svelte";',
+      'import Blog from "./pages/Blog.svelte";',
+      "export const routes = {",
+      '  "/about": About,',
+      '  "/blog": Blog,',
+      "};"
+    ].join("\n"),
+    "src/pages/About.svelte": "<h1>About</h1>\n",
+    "src/pages/Blog.svelte": "<h1>Blog</h1>\n"
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    assert.equal(snapshot.framework, "svelte");
+    const names = snapshot.features.map((feature) => feature.name);
+    assert.ok(names.includes("About"), "svelte-routing component form resolves");
+    assert.ok(names.includes("Blog"), "svelte-spa-router object map resolves");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("svelte-spa-router object map only matches when the import is present", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({
+      name: "no-router",
+      dependencies: { svelte: "^5.0.0" },
+      devDependencies: { "@sveltejs/vite-plugin-svelte": "^4.0.0", vite: "^7.0.0" }
+    }),
+    "src/App.svelte": [
+      "<script>",
+      '  import NotReal from "./pages/NotReal.svelte";',
+      '  export const routes = { "/fake": NotReal };',
+      "</script>"
+    ].join("\n"),
+    "src/pages/NotReal.svelte": "<h1>NotReal</h1>\n"
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    const names = snapshot.features.map((feature) => feature.name);
+    assert.ok(!names.includes("Fake"), "object map without the svelte-spa-router import must not become a feature");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

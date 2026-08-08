@@ -122,6 +122,13 @@ const CLIENT_ROUTE_PATTERNS = [
 const LAZY_ROUTE_PATTERN =
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?component:\s*\(\)\s*=>\s*import\(\s*["'`]([^"'`]+)["'`]\s*\)/g;
 
+// svelte-spa-router — object map form: `const routes = { '/about': About }`.
+// Too generic to trust on its own (any "string-key : identifier" object could
+// match), so it only runs on files that import svelte-spa-router.
+const SVELTE_SPA_ROUTER_PATTERN = /["'`](\/[^"'`]*)["'`]\s*:\s*(\w+)/g;
+const SVELTE_SPA_ROUTER_IMPORT =
+  /from\s+["']svelte-spa-router["']|require\(\s*["']svelte-spa-router["']\s*\)/;
+
 type ClientRoute = {
   path: string;
   component: string;
@@ -148,6 +155,15 @@ function findClientRoutes(files: ScannedFile[]): ClientRoute[] {
     while (match) {
       routes.push({ path: match[1], component: "", specifier: match[2], definedIn: file.path });
       match = LAZY_ROUTE_PATTERN.exec(file.content);
+    }
+
+    if (SVELTE_SPA_ROUTER_IMPORT.test(file.content)) {
+      SVELTE_SPA_ROUTER_PATTERN.lastIndex = 0;
+      let svelteMatch = SVELTE_SPA_ROUTER_PATTERN.exec(file.content);
+      while (svelteMatch) {
+        routes.push({ path: svelteMatch[1], component: svelteMatch[2], definedIn: file.path });
+        svelteMatch = SVELTE_SPA_ROUTER_PATTERN.exec(file.content);
+      }
     }
   }
 

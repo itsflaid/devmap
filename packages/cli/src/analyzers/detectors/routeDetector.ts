@@ -1,5 +1,5 @@
 import type { ScannedFile } from "../analysis/index.js";
-import type { Framework } from "./frameworkDetector.js";
+import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
 
 export type RouteInfo = {
@@ -9,16 +9,34 @@ export type RouteInfo = {
   methods?: string[];
 };
 
-export function detectRoutes(files: ScannedFile[], framework: Framework): RouteInfo[] {
-  if (framework === "nextjs") {
-    return detectNextRoutes(files);
+/**
+ * detectRoutes — run every detector whose framework was detected, then merge
+ * the results. A project with a Next.js frontend AND an Express backend in a
+ * single scan now yields routes from BOTH sides instead of first-match-wins.
+ *
+ * Each per-framework detector stays isolated (they already filter by their own
+ * file patterns), so running several at once is safe — they don't collide
+ * because they look at different files.
+ *
+ * `graph` (optional) lets the Express detector resolve routers mounted across
+ * files so mount prefixes compose with the sub-paths they wrap.
+ */
+export function detectRoutes(
+  files: ScannedFile[],
+  frameworks: DetectedFramework[],
+  graph?: Record<string, string[]>
+): RouteInfo[] {
+  const routes: RouteInfo[] = [];
+
+  if (frameworks.includes("nextjs")) {
+    routes.push(...detectNextRoutes(files));
   }
 
-  if (framework === "express") {
-    return detectExpressRoutes(files);
+  if (frameworks.includes("express")) {
+    routes.push(...detectExpressRoutes(files, graph));
   }
 
-  return [];
+  return sortRoutes(routes);
 }
 
 function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
@@ -64,37 +82,156 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
   return sortRoutes(routes);
 }
 
-function detectExpressRoutes(files: ScannedFile[]): RouteInfo[] {
+const ROUTE_METHOD_PATTERN =
+  /\b(?:app|router)\.(get|post|put|patch|delete|options|head)\(\s*["'`]([^"'`]+)["'`]/gi;
+// Routers are usually named after their resource (paymentsRouter, authApi),
+// so a mounted target scan matches any identifier that ends in "Router" (or
+// is exactly "app"/"router") before a route method. Narrow enough to skip
+// HTTP-client calls like stripe.get() while catching mounted routers.
+const MOUNTED_ROUTER_PATTERN =
+  /\b(?:app|\w*[Rr]outer)\.(get|post|put|patch|delete|options|head)\(\s*["'`]([^"'`]+)["'`]/gi;
+const MOUNT_PATTERN =
+  /\b(?:app|router)\.use\(\s*["'`]([^"'`]+)["'`]\s*,\s*(\w+)\s*\)/g;
+
+type ExpressMount = { prefix: string; identifier: string; file: string };
+
+function detectExpressRoutes(
+  files: ScannedFile[],
+  graph?: Record<string, string[]>
+): RouteInfo[] {
   const routes: RouteInfo[] = [];
-  const routePattern = /\b(?:app|router)\.(get|post|put|patch|delete|options|head|use)\(\s*["'`]([^"'`]+)["'`]/gi;
-
-  for (const file of files.filter((item) =>
+  const eligibleFiles = files.filter((item) =>
     isArchitectureSource(item.path) && /\.[cm]?[jt]s$/.test(item.path)
-  )) {
-    const methodsByPath = new Map<string, Set<string>>();
-    routePattern.lastIndex = 0;
+  );
+  const byPath = new Map(eligibleFiles.map((file) => [file.path, file]));
 
-    let match = routePattern.exec(file.content);
-    while (match) {
-      const method = match[1].toUpperCase();
-      const path = match[2];
-      const methods = methodsByPath.get(path) ?? new Set<string>();
-      methods.add(method);
-      methodsByPath.set(path, methods);
-      match = routePattern.exec(file.content);
-    }
+  // First pass: direct route methods per file, plus collect mounted routers.
+  const directRoutes = new Map<string, RouteInfo[]>();
+  const mounts: ExpressMount[] = [];
 
-    for (const [path, methods] of methodsByPath) {
-      routes.push({
+  for (const file of eligibleFiles) {
+    const methodsByPath = collectRouteMethods(file.content);
+    if (methodsByPath.length > 0) {
+      directRoutes.set(file.path, methodsByPath.map(([path, methods]) => ({
         path,
         file: file.path,
+        kind: "api" as const,
+        methods
+      })));
+    }
+
+    MOUNT_PATTERN.lastIndex = 0;
+    let match = MOUNT_PATTERN.exec(file.content);
+    while (match) {
+      mounts.push({ prefix: match[1], identifier: match[2], file: file.path });
+      match = MOUNT_PATTERN.exec(file.content);
+    }
+  }
+
+  // Second pass: resolve mounted routers and compose prefix + sub-path.
+  const mountedFiles = new Set<string>();
+  for (const mount of mounts) {
+    const target = resolveMountedRouter(mount, eligibleFiles, byPath, graph);
+    const subRoutes = target
+      ? collectRouteMethods(target.content, MOUNTED_ROUTER_PATTERN)
+      : [];
+
+    if (target && subRoutes.length > 0) {
+      mountedFiles.add(target.path);
+      for (const [subPath, methods] of subRoutes) {
+        routes.push({
+          path: composeMountPath(mount.prefix, subPath),
+          file: mount.file,
+          kind: "api",
+          methods
+        });
+      }
+    } else {
+      // Unresolvable or empty router — keep the mount itself as a USE route so
+      // the middleware prefix stays visible instead of silently disappearing.
+      routes.push({
+        path: mount.prefix,
+        file: mount.file,
         kind: "api",
-        methods: [...methods].sort()
+        methods: ["USE"]
       });
     }
   }
 
-  return sortRoutes(routes);
+  // Emit standalone routes only for files that were not absorbed by a mount.
+  for (const [path, fileRoutes] of directRoutes) {
+    if (!mountedFiles.has(path)) {
+      routes.push(...fileRoutes);
+    }
+  }
+
+  return routes;
+}
+
+function collectRouteMethods(
+  content: string,
+  pattern: RegExp = ROUTE_METHOD_PATTERN
+): Array<[string, string[]]> {
+  const methodsByPath = new Map<string, Set<string>>();
+  pattern.lastIndex = 0;
+
+  let match = pattern.exec(content);
+  while (match) {
+    const method = match[1].toUpperCase();
+    const path = match[2];
+    const methods = methodsByPath.get(path) ?? new Set<string>();
+    methods.add(method);
+    methodsByPath.set(path, methods);
+    match = pattern.exec(content);
+  }
+
+  return [...methodsByPath]
+    .map(([path, methods]) => [path, [...methods].sort()] as [string, string[]])
+    .sort(([left], [right]) => left.localeCompare(right));
+}
+
+function resolveMountedRouter(
+  mount: ExpressMount,
+  files: ScannedFile[],
+  byPath: Map<string, ScannedFile>,
+  graph?: Record<string, string[]>
+): ScannedFile | undefined {
+  if (!graph) {
+    return undefined;
+  }
+
+  const candidates = (graph[mount.file] ?? [])
+    .map((path) => byPath.get(path))
+    .filter((file): file is ScannedFile => Boolean(file))
+    .filter((file) => /\.[cm]?[jt]s$/.test(file.path));
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const identifierPattern = new RegExp(`\\b${escapeRegExp(mount.identifier)}\\b`);
+  const identifierMatches = candidates.filter((file) =>
+    identifierPattern.test(file.content)
+  );
+  const withRouteMethods = candidates.filter((file) =>
+    collectRouteMethods(file.content, MOUNTED_ROUTER_PATTERN).length > 0
+  );
+
+  // Identifier match wins; fall back to "the only imported file that defines
+  // route methods" — covers the common one-router-per-import case without
+  // precise import parsing.
+  const pool = identifierMatches.length > 0 ? identifierMatches : withRouteMethods;
+  return pool.length === 1 ? pool[0] : undefined;
+}
+
+function composeMountPath(prefix: string, subPath: string): string {
+  if (subPath === "/" || subPath === "") {
+    return prefix;
+  }
+  return `${prefix.replace(/\/$/, "")}/${subPath.replace(/^\//, "")}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function toRoutePath(segments: string[]): string {

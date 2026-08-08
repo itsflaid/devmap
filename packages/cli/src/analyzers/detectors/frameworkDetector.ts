@@ -1,13 +1,33 @@
 import type { ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 
-export type Framework = "nextjs" | "react" | "express" | "astro" | "unknown";
+export type FrontendFramework =
+  | "nextjs" | "react" | "astro" | "vue" | "nuxt" | "svelte" | "sveltekit";
+export type BackendFramework =
+  | "express" | "fastify" | "nestjs" | "koa";
+export type Framework = FrontendFramework | BackendFramework | "unknown";
 export type DetectedFramework = Exclude<Framework, "unknown">;
 
+const FRONTEND_ORDER: FrontendFramework[] =
+  ["nextjs", "nuxt", "sveltekit", "astro", "react", "vue", "svelte"];
+const BACKEND_ORDER: BackendFramework[] =
+  ["nestjs", "fastify", "express", "koa"];
+
 export function detectFramework(files: ScannedFile[]): Framework {
-  return detectFrameworks(files)[0] ?? "unknown";
+  const [frontendWinner, backendWinner] = detectFrameworks(files);
+  return frontendWinner ?? backendWinner ?? "unknown";
 }
 
+/**
+ * detectFrameworks — detect every framework signal, then return AT MOST one
+ * winner per category (frontend, backend). Frontend-first for display.
+ *
+ * A project with both a Next.js frontend and an Express backend (single
+ * package or monorepo scan) returns two entries instead of the single
+ * first-match-wins value the old flat order produced. `nextjs` still beats
+ * `astro` within the frontend category — the same first-match-wins rule is
+ * simply scoped per category now.
+ */
 export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   const detected = new Set<DetectedFramework>();
 
@@ -82,10 +102,11 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     detected.add("astro");
   }
 
-  return FRAMEWORK_ORDER.filter((framework) => detected.has(framework));
+  return [
+    FRONTEND_ORDER.find((framework) => detected.has(framework)),
+    BACKEND_ORDER.find((framework) => detected.has(framework)),
+  ].filter((framework): framework is FrontendFramework | BackendFramework => Boolean(framework));
 }
-
-const FRAMEWORK_ORDER: DetectedFramework[] = ["nextjs", "express", "react", "astro"];
 
 function isParseableJson(content: string): boolean {
   try {

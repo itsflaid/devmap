@@ -308,3 +308,84 @@ test("svelte-spa-router object map only matches when the import is present", asy
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Fastify
+// ---------------------------------------------------------------------------
+
+test("detectRoutes maps Fastify chained and object-style routes", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({ dependencies: { fastify: "^5.0.0" } })),
+    createScannedFile("src/server.ts", [
+      'import Fastify from "fastify";',
+      "const app = Fastify();",
+      'app.get("/", async () => ({ hello: "world" }));',
+      'app.get("/health", async () => ({ ok: true }));',
+      'app.post("/users", async () => {});',
+      "app.route({ method: 'PUT', url: '/users/:id', handler: async () => ({}) });"
+    ].join("\n"))
+  ];
+
+  assert.deepEqual(detectFrameworks(files), ["fastify"]);
+  const routes = detectRoutes(files, ["fastify"]);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.kind, route.methods]),
+    [
+      ["/", "api", ["GET"]],
+      ["/health", "api", ["GET"]],
+      ["/users", "api", ["POST"]],
+      ["/users/:id", "api", ["PUT"]]
+    ]
+  );
+});
+
+test("Fastify plugin registrations compose mount prefix with sub-routes", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({ dependencies: { fastify: "^5.0.0" } })),
+    createScannedFile("src/server.ts", [
+      'import Fastify from "fastify";',
+      'import payments from "./plugins/payments.js";',
+      "const app = Fastify();",
+      "app.register(payments, { prefix: '/api/payments' });"
+    ].join("\n")),
+    createScannedFile("src/plugins/payments.ts", [
+      'import type { FastifyInstance } from "fastify";',
+      "export default async function payments(fastify: FastifyInstance) {",
+      '  fastify.get("/", async () => ({}));',
+      '  fastify.get("/:id", async () => ({}));',
+      "}"
+    ].join("\n"))
+  ];
+
+  const graph = { "src/server.ts": ["src/plugins/payments.ts"] };
+  const routes = detectRoutes(files, ["fastify"], graph);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.kind, route.methods]),
+    [
+      ["/api/payments", "api", ["GET"]],
+      ["/api/payments/:id", "api", ["GET"]]
+    ]
+  );
+});
+
+test("Fastify routes surface through project map", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({ name: "fastify-api", dependencies: { fastify: "^5.0.0" } }),
+    "src/server.ts": [
+      'import Fastify from "fastify";',
+      "const app = Fastify();",
+      'app.get("/health", async () => ({ ok: true }));',
+      'app.get("/users", async () => ({}));'
+    ].join("\n")
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    assert.equal(snapshot.framework, "fastify");
+    const routePaths = snapshot.routes.map((route) => route.path);
+    assert.ok(routePaths.includes("/health"), "chained fastify route appears in snapshot");
+    assert.ok(routePaths.includes("/users"), "chained fastify route appears in snapshot");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

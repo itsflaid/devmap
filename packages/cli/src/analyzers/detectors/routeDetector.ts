@@ -48,6 +48,10 @@ export function detectRoutes(
     routes.push(...detectExpressRoutes(files, graph));
   }
 
+  if (frameworks.includes("fastify")) {
+    routes.push(...detectFastifyRoutes(files, graph));
+  }
+
   return sortRoutes(routes);
 }
 
@@ -207,6 +211,113 @@ const MOUNT_PATTERN =
 
 type ExpressMount = { prefix: string; identifier: string; file: string };
 
+const FASTIFY_ROUTE_PATTERN =
+  /\b(?:fastify|app|server)\.(get|post|put|patch|delete|options|head)\(\s*["'`]([^"'`]+)["'`]/gi;
+// Object-style route declaration: app.route({ method: 'GET', url: '/users', ... })
+const FASTIFY_OBJECT_ROUTE_PATTERN =
+  /\.route\(\s*\{[^}]*?method:\s*["'`]?(\w+)["'`]?[^}]*?url:\s*["'`]([^"'`]+)["'`]/gs;
+// Plugin/prefix registration: app.register(plugin, { prefix: '/api' })
+const FASTIFY_REGISTER_PATTERN =
+  /\.register\(\s*(\w+)\s*,\s*\{[^}]*?prefix:\s*["'`]([^"'`]+)["'`]/g;
+
+type FastifyRegister = { prefix: string; identifier: string; file: string };
+
+function detectFastifyRoutes(
+  files: ScannedFile[],
+  graph?: Record<string, string[]>
+): RouteInfo[] {
+  const routes: RouteInfo[] = [];
+  const eligibleFiles = files.filter((item) =>
+    isArchitectureSource(item.path) && /\.[cm]?[jt]s$/.test(item.path)
+  );
+  const byPath = new Map(eligibleFiles.map((file) => [file.path, file]));
+
+  // First pass: direct routes per file, plus collect plugin registrations.
+  const directRoutes = new Map<string, RouteInfo[]>();
+  const registers: FastifyRegister[] = [];
+
+  for (const file of eligibleFiles) {
+    const methodsByPath = collectFastifyRoutes(file.content);
+    if (methodsByPath.length > 0) {
+      directRoutes.set(file.path, methodsByPath.map(([path, methods]) => ({
+        path,
+        file: file.path,
+        kind: "api" as const,
+        methods
+      })));
+    }
+
+    FASTIFY_REGISTER_PATTERN.lastIndex = 0;
+    let match = FASTIFY_REGISTER_PATTERN.exec(file.content);
+    while (match) {
+      registers.push({ prefix: match[2], identifier: match[1], file: file.path });
+      match = FASTIFY_REGISTER_PATTERN.exec(file.content);
+    }
+  }
+
+  // Second pass: resolve registered plugins and compose prefix + sub-path.
+  const mountedFiles = new Set<string>();
+  for (const register of registers) {
+    const target = resolveRouterTarget(
+      register.identifier,
+      register.file,
+      eligibleFiles,
+      byPath,
+      graph,
+      (file) => collectFastifyRoutes(file.content).length > 0
+    );
+    const subRoutes = target ? collectFastifyRoutes(target.content) : [];
+
+    if (target && subRoutes.length > 0) {
+      mountedFiles.add(target.path);
+      for (const [subPath, methods] of subRoutes) {
+        routes.push({
+          path: composeMountPath(register.prefix, subPath),
+          file: register.file,
+          kind: "api",
+          methods
+        });
+      }
+    }
+    // Unresolvable plugin without routes — it is not a route, so drop it.
+  }
+
+  // Emit standalone routes only for files that were not absorbed by a plugin.
+  for (const [path, fileRoutes] of directRoutes) {
+    if (!mountedFiles.has(path)) {
+      routes.push(...fileRoutes);
+    }
+  }
+
+  return routes;
+}
+
+function collectFastifyRoutes(content: string): Array<[string, string[]]> {
+  const methodsByPath = new Map<string, Set<string>>();
+  addRouteMethods(methodsByPath, content, FASTIFY_ROUTE_PATTERN);
+  addRouteMethods(methodsByPath, content, FASTIFY_OBJECT_ROUTE_PATTERN);
+  return [...methodsByPath]
+    .map(([path, methods]) => [path, [...methods].sort()] as [string, string[]])
+    .sort(([left], [right]) => left.localeCompare(right));
+}
+
+function addRouteMethods(
+  methodsByPath: Map<string, Set<string>>,
+  content: string,
+  pattern: RegExp
+): void {
+  pattern.lastIndex = 0;
+  let match = pattern.exec(content);
+  while (match) {
+    const method = match[1].toUpperCase();
+    const path = match[2];
+    const methods = methodsByPath.get(path) ?? new Set<string>();
+    methods.add(method);
+    methodsByPath.set(path, methods);
+    match = pattern.exec(content);
+  }
+}
+
 function detectExpressRoutes(
   files: ScannedFile[],
   graph?: Record<string, string[]>
@@ -243,7 +354,14 @@ function detectExpressRoutes(
   // Second pass: resolve mounted routers and compose prefix + sub-path.
   const mountedFiles = new Set<string>();
   for (const mount of mounts) {
-    const target = resolveMountedRouter(mount, eligibleFiles, byPath, graph);
+    const target = resolveRouterTarget(
+      mount.identifier,
+      mount.file,
+      eligibleFiles,
+      byPath,
+      graph,
+      (file) => collectRouteMethods(file.content, MOUNTED_ROUTER_PATTERN).length > 0
+    );
     const subRoutes = target
       ? collectRouteMethods(target.content, MOUNTED_ROUTER_PATTERN)
       : [];
@@ -302,17 +420,19 @@ function collectRouteMethods(
     .sort(([left], [right]) => left.localeCompare(right));
 }
 
-function resolveMountedRouter(
-  mount: ExpressMount,
-  files: ScannedFile[],
+function resolveRouterTarget(
+  identifier: string,
+  mountFile: string,
+  eligibleFiles: ScannedFile[],
   byPath: Map<string, ScannedFile>,
-  graph?: Record<string, string[]>
+  graph?: Record<string, string[]>,
+  hasRouteMethods?: (file: ScannedFile) => boolean
 ): ScannedFile | undefined {
   if (!graph) {
     return undefined;
   }
 
-  const candidates = (graph[mount.file] ?? [])
+  const candidates = (graph[mountFile] ?? [])
     .map((path) => byPath.get(path))
     .filter((file): file is ScannedFile => Boolean(file))
     .filter((file) => /\.[cm]?[jt]s$/.test(file.path));
@@ -320,13 +440,13 @@ function resolveMountedRouter(
     return undefined;
   }
 
-  const identifierPattern = new RegExp(`\\b${escapeRegExp(mount.identifier)}\\b`);
+  const identifierPattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`);
   const identifierMatches = candidates.filter((file) =>
     identifierPattern.test(file.content)
   );
-  const withRouteMethods = candidates.filter((file) =>
-    collectRouteMethods(file.content, MOUNTED_ROUTER_PATTERN).length > 0
-  );
+  const withRouteMethods = hasRouteMethods
+    ? candidates.filter(hasRouteMethods)
+    : [];
 
   // Identifier match wins; fall back to "the only imported file that defines
   // route methods" — covers the common one-router-per-import case without

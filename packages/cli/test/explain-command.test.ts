@@ -63,6 +63,8 @@ function fakeDependencies(client: AiClient): {
 async function copyFixture(): Promise<string> {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-explain-"));
   await cp(nextFixture, projectRoot, { recursive: true });
+  const snapshot = await createProjectMap(projectRoot);
+  await saveSnapshot(projectRoot, snapshot);
   return projectRoot;
 }
 

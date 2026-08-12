@@ -1,13 +1,33 @@
 import type { ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 
-export type Framework = "nextjs" | "react" | "express" | "astro" | "unknown";
+export type FrontendFramework =
+  | "nextjs" | "react" | "astro" | "vue" | "nuxt" | "svelte" | "sveltekit";
+export type BackendFramework =
+  | "express" | "fastify" | "nestjs" | "koa";
+export type Framework = FrontendFramework | BackendFramework | "unknown";
 export type DetectedFramework = Exclude<Framework, "unknown">;
 
+const FRONTEND_ORDER: FrontendFramework[] =
+  ["nextjs", "nuxt", "sveltekit", "astro", "react", "vue", "svelte"];
+const BACKEND_ORDER: BackendFramework[] =
+  ["nestjs", "fastify", "express", "koa"];
+
 export function detectFramework(files: ScannedFile[]): Framework {
-  return detectFrameworks(files)[0] ?? "unknown";
+  const [frontendWinner, backendWinner] = detectFrameworks(files);
+  return frontendWinner ?? backendWinner ?? "unknown";
 }
 
+/**
+ * detectFrameworks — detect every framework signal, then return AT MOST one
+ * winner per category (frontend, backend). Frontend-first for display.
+ *
+ * A project with both a Next.js frontend and an Express backend (single
+ * package or monorepo scan) returns two entries instead of the single
+ * first-match-wins value the old flat order produced. `nextjs` still beats
+ * `astro` within the frontend category — the same first-match-wins rule is
+ * simply scoped per category now.
+ */
 export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   const detected = new Set<DetectedFramework>();
 
@@ -17,6 +37,12 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     if ("next" in dependencies) detected.add("nextjs");
     if ("express" in dependencies) detected.add("express");
     if ("astro" in dependencies) detected.add("astro");
+    if ("nuxt" in dependencies) detected.add("nuxt");
+    if ("fastify" in dependencies) detected.add("fastify");
+    if ("@nestjs/core" in dependencies || "@nestjs/common" in dependencies) {
+      detected.add("nestjs");
+    }
+    if ("@sveltejs/kit" in dependencies) detected.add("sveltekit");
 
     const hasReactRuntime = "react-dom" in dependencies
       || "react-scripts" in dependencies
@@ -30,6 +56,21 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     ) {
       detected.add("react");
     }
+
+    // Nuxt apps ship App.vue too, so vue must exclude when nuxt is present —
+    // same mirror of the react-vs-next exclusion. The runtime gate prevents a
+    // Vue UI library (vue only in peerDependencies) from being labeled an app.
+    const hasVueRuntime = "@vitejs/plugin-vue" in dependencies
+      || "@vitejs/plugin-vue2" in dependencies
+      || "vue-cli-service" in dependencies;
+    if (!("nuxt" in dependencies) && "vue" in dependencies && hasVueRuntime) {
+      detected.add("vue");
+    }
+
+    const hasSvelteRuntime = "@sveltejs/vite-plugin-svelte" in dependencies;
+    if (!("@sveltejs/kit" in dependencies) && "svelte" in dependencies && hasSvelteRuntime) {
+      detected.add("svelte");
+    }
   }
 
   // Phase 2: file structure heuristics — secondary signal.
@@ -37,12 +78,14 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
   // Next.js: next.config.* or App Router / Pages Router file conventions.
-  // These patterns are Next.js-specific enough to safely add without gating.
+  // _app and _document are Next.js-unique; a bare src/pages/api/ folder is NOT
+  // (Astro uses the same folder for endpoints), so it is deliberately excluded
+  // from the Pages Router signal here.
   if (
     files.some((file) => /(^|\/)next\.config\.[cm]?[jt]s$/.test(file.path))
     || sourceFiles.some((file) =>
       /(^|\/)(?:src\/)?app\/(?:.+\/)?(?:page|layout|route)\.[jt]sx?$/.test(file.path)
-      || /(^|\/)(?:src\/)?pages\/(?:_app|_document|api\/)/.test(file.path)
+      || /(^|\/)(?:src\/)?pages\/(?:_app|_document)/.test(file.path)
     )
   ) {
     detected.add("nextjs");
@@ -82,10 +125,33 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     detected.add("astro");
   }
 
-  return FRAMEWORK_ORDER.filter((framework) => detected.has(framework));
-}
+  // Nuxt: nuxt.config.* is as specific as next.config.* today.
+  if (files.some((file) => /(^|\/)nuxt\.config\.[cm]?[jt]s$/.test(file.path))) {
+    detected.add("nuxt");
+  }
 
-const FRAMEWORK_ORDER: DetectedFramework[] = ["nextjs", "express", "react", "astro"];
+  // Vue: App.vue at the project root (or src/) is specific enough to stand alone.
+  if (sourceFiles.some((file) => /(^|\/)(?:src\/)?App\.vue$/.test(file.path))) {
+    detected.add("vue");
+  }
+
+  // SvelteKit: +page.svelte under src/routes/ is unique to SvelteKit — the "+"
+  // prefix is not used by any other framework. svelte.config.js is NOT used as a
+  // signal because non-SvelteKit Svelte projects have it too.
+  if (sourceFiles.some((file) => /(^|\/)src\/routes\/.+\+page\.svelte$/.test(file.path))) {
+    detected.add("sveltekit");
+  }
+
+  // NestJS: nest-cli.json is as specific as next.config.* / nuxt.config.*.
+  if (files.some((file) => /(^|\/)nest-cli\.json$/.test(file.path))) {
+    detected.add("nestjs");
+  }
+
+  return [
+    FRONTEND_ORDER.find((framework) => detected.has(framework)),
+    BACKEND_ORDER.find((framework) => detected.has(framework)),
+  ].filter((framework): framework is FrontendFramework | BackendFramework => Boolean(framework));
+}
 
 function isParseableJson(content: string): boolean {
   try {

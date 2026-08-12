@@ -11,6 +11,7 @@ import {
   detectFramework,
   detectFrameworks
 } from "../src/analyzers/detectors/frameworkDetector.js";
+import { detectRoutes } from "../src/analyzers/detectors/routeDetector.js";
 import { detectFeatures } from "../src/analyzers/features/featureDetector.js";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { detectExternalServices } from "../src/analyzers/detectors/serviceDetector.js";
@@ -158,6 +159,71 @@ test("framework detector reports Astro in a mixed workspace", () => {
   assert.deepEqual(detectFrameworks(files), ["astro"]);
 });
 
+test("framework detector returns one frontend and one backend winner for mixed projects", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({
+      name: "fullstack-fixture",
+      dependencies: {
+        next: "^15.0.0",
+        react: "^19.0.0",
+        "react-dom": "^19.0.0",
+        express: "^5.0.0"
+      }
+    })),
+    createScannedFile("app/page.tsx", "export default function Page() { return <main />; }\n"),
+    createScannedFile("server.ts", [
+      "import express from 'express';",
+      "const app = express();",
+      "app.get('/status', (_req, res) => res.json({ ok: true }));"
+    ].join("\n"))
+  ];
+
+  assert.deepEqual(detectFrameworks(files), ["nextjs", "express"]);
+  assert.equal(detectFramework(files), "nextjs");
+});
+
+test("detectRoutes merges routes from every detected framework", () => {
+  const files = [
+    createScannedFile("app/api/health/route.ts", [
+      "export function GET() { return Response.json({ ok: true }); }"
+    ].join("\n")),
+    createScannedFile("server.ts", [
+      "import express from 'express';",
+      "const app = express();",
+      "app.get('/status', (_req, res) => res.json({ ok: true }));"
+    ].join("\n"))
+  ];
+
+  const routes = detectRoutes(files, ["nextjs", "express"]);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.kind, route.methods]),
+    [
+      ["/api/health", "api", ["GET"]],
+      ["/status", "api", ["GET"]]
+    ]
+  );
+});
+
+test("detectRoutes stays backward compatible for single-framework projects", () => {
+  const nextFiles = [
+    createScannedFile("app/page.tsx", "export default function Page() { return <main />; }\n")
+  ];
+  const expressFiles = [
+    createScannedFile("server.ts", [
+      "import express from 'express';",
+      "const app = express();",
+      "app.get('/status', (_req, res) => res.json({ ok: true }));"
+    ].join("\n"))
+  ];
+
+  assert.deepEqual(detectRoutes(nextFiles, ["nextjs"]), [
+    { path: "/", file: "app/page.tsx", kind: "page" }
+  ]);
+  assert.deepEqual(detectRoutes(expressFiles, ["express"]), [
+    { path: "/status", file: "server.ts", kind: "api", methods: ["GET"] }
+  ]);
+});
+
 test("project map classifies a standalone React app and finds its browser entry", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-react-project-"));
 
@@ -191,6 +257,50 @@ test("project map classifies a standalone React app and finds its browser entry"
     assert.equal(projectMap.framework, "react");
     assert.equal(projectMap.project.projectType, "web-app");
     assert.ok(projectMap.entryPoints.includes("src/main.tsx"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("project map extracts routes from both frontend and backend frameworks", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-fullstack-project-"));
+
+  try {
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({
+      name: "fullstack-fixture",
+      dependencies: {
+        next: "^15.0.0",
+        react: "^19.0.0",
+        "react-dom": "^19.0.0",
+        express: "^5.0.0"
+      }
+    }), "utf8");
+    await mkdir(join(projectRoot, "app", "api", "health"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "app", "api", "health", "route.ts"),
+      "export function GET() { return Response.json({ ok: true }); }\n",
+      "utf8"
+    );
+    await writeFile(
+      join(projectRoot, "server.ts"),
+      [
+        "import express from 'express';",
+        "const app = express();",
+        "app.get('/status', (_req, res) => res.json({ ok: true }));"
+      ].join("\n"),
+      "utf8"
+    );
+
+    const projectMap = await createProjectMap(projectRoot);
+    assert.equal(projectMap.framework, "nextjs");
+    assert.deepEqual(projectMap.project.frameworks, ["nextjs", "express"]);
+    assert.deepEqual(
+      projectMap.routes.map((route) => [route.path, route.kind, route.methods]),
+      [
+        ["/api/health", "api", ["GET"]],
+        ["/status", "api", ["GET"]]
+      ]
+    );
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -514,7 +624,7 @@ test("project map summarizes an Express fixture", async () => {
       path: "/payments",
       file: "src/server.ts",
       kind: "api",
-      methods: ["USE"]
+      methods: ["GET"]
     }
   ]);
   const paymentsFlow = projectMap.flows.find((flow) => flow.name === "Request /payments");

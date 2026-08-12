@@ -173,7 +173,7 @@ export async function createProjectMap(
   );
   const framework = project.framework;
   const entryPoints = detectEntryPoints(graph);
-  const routes = detectRoutes(files, framework);
+  const routes = detectRoutes(files, project.frameworks, graph);
   const database = detectDatabase(files);
 
   // Step 1: Extract entities dari schema (Prisma dll) atau route fallback

@@ -4,6 +4,61 @@ Terakhir diperbarui: 2026-08-08
 
 ## Update 2026-08-08
 
+### Multi-Framework Detection — update0.md s.d. update5.md (branch `update-support-framework-detector`)
+
+Enam fase, tiap fase satu commit, satu GitHub issue + satu PR menutup seluruh
+kerjaan (keputusan user: "keseluruhannya jadi 1 issue aja, gk ush issue tiap
+fase"). update0-5.md + fullstack-project-type.md TIDAK pernah di-commit.
+
+- **Phase 0** (`4d17f48`) — arsitektur multi-framework: `frameworkDetector.ts`
+  punya `FrontendFramework`/`BackendFramework`/`Framework`, `FRONTEND_ORDER =
+  ["nextjs","nuxt","sveltekit","astro","react","vue","svelte"]`, `BACKEND_ORDER
+  = ["nestjs","fastify","express","koa"]`; `detectFrameworks` kembalikan maksimal
+  1 frontend + 1 backend winner; `detectRoutes(files, frameworks[], graph?)`
+  gabungkan hasil per-framework (bukan first-match-wins). Express router-mount
+  resolve via dependency graph + `composeMountPath` + fallback `USE` route.
+  `projectMetadata.ts` export `FRONTEND_FRAMEWORKS`/`BACKEND_FRAMEWORKS` Sets.
+- **Phase 1** (`cb04c1f`) — Astro: `src/pages/*.astro|.md|.mdx` + `.ts/.js`
+  endpoint, `findHttpMethods` juga match `export const POST`, `_components`
+  di-skip. Test suite baru `test/framework-routes.test.ts` (helper
+  `createScannedFile` + `buildFixture`).
+- **Phase 2** (`b697124`) — Vue & Nuxt: manifest nuxt/vue + runtime gate
+  (`@vitejs/plugin-vue`, `vue-cli-service`; vue exclude saat nuxt ada);
+  `detectNuxtRoutes` (bracket dynamic, `index` di-strip); frontendFeatureDetector
+  tambah Vue Router identifier + `LAZY_ROUTE_PATTERN` + `resolveRouteSpecifierFile`/
+  `normalizeRoutePath`.
+- **Phase 3** (`6a59da2`) — Svelte & SvelteKit: sveltekit gate (kit ada →
+  sveltekit, else svelte + vite-plugin); `detectSvelteKitRoutes` cuma hitung
+  `+page.svelte`/`+server.*`, route group `(app)` di-strip, root `+page.svelte`
+  → `/`; svelte-spa-router gated ke import. Fix bug root file: `lastIndexOf("/")
+  === -1` bikin `/+page.svelt` (karakter terakhir ke-slice) — ditangani dengan
+  folder `""` saat tidak ada slash.
+- **Phase 4** (`2c825a0`) — Fastify: method-chaining (`fastify|app|server`
+  `.get/.post/...`), object style `.route({ method, url })`, plugin `.register(x,
+  { prefix })` resolve cross-file (refactor `resolveMountedRouter` →
+  generic `resolveRouterTarget(identifier, mountFile, ..., hasRouteMethods)`).
+  Plugin tanpa routes tidak jadi route (beda dari Express USE fallback).
+- **Phase 5** (`edfa6b1`) — NestJS: file BARU `nestRouteDetector.ts` pakai
+  ts-morph (bukan regex) karena decorator+class butuh scope method-per-class.
+  Pre-filter `content.includes("@Controller")` sebelum parse; `@Controller('x')`
+  + `@Get(':id')` compose; `@All()` expand ke semua method; try/catch per file.
+  Priority: `nestjs` menang sebelum express/fastify meski
+  `@nestjs/platform-express` ada (test membuktikan). `fileRole.ts` tidak perlu
+  diubah (`*.controller.ts`/`*.service.ts`/`*.guard.ts`/`*.repository.ts` sudah
+  match).
+- Verifikasi tiap fase: `pnpm --filter devmap test` (node:test, 228 pass 0 fail)
+  + `pnpm --filter devmap build` (tsc) 0 error.
+- Docs terakhir: `apps/web/src/content/docs/overview.md` tier framework diupdate
+  ke kondisi nyata (Full support += Astro/Nuxt/SvelteKit/Fastify/Nest; React/Vue/
+  Svelte jadi "SPA client-side routing" karena route client-side jadi feature),
+  `docs/for-me-personal/PROGRESS.md` entri ini.
+- Next: minta user bikin GitHub issue → push → PR `Closes #<issue>`; setelah
+  merge, reset branch ke `origin/main`.
+
+---
+
+## Update 2026-08-08
+
 ### update.md — Split FeaturesSection + Docs Framework Update (branch `main`)
 
 Diterapkan langsung di `main` (per instruksi). update.md tidak di-commit dan

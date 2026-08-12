@@ -112,9 +112,30 @@ const CLIENT_ROUTE_PATTERNS = [
   /<Route\s+[^>]*?path=["'`]([^"'`]+)["'`][^>]*?component=\{?(\w+)/g,
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?element:\s*<(\w+)/g,
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?Component:\s*(\w+)/g,
+  // Vue Router — identifier form (component already imported above).
+  /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?component:\s*(\w+)\s*[,}]/g,
 ];
 
-type ClientRoute = { path: string; component: string; definedIn: string };
+// Vue Router — lazy import form: `component: () => import("./views/About.vue")`.
+// Captures the relative specifier instead of an identifier, so it resolves
+// through resolveRouteSpecifierFile rather than the identifier matcher.
+const LAZY_ROUTE_PATTERN =
+  /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?component:\s*\(\)\s*=>\s*import\(\s*["'`]([^"'`]+)["'`]\s*\)/g;
+
+// svelte-spa-router — object map form: `const routes = { '/about': About }`.
+// Too generic to trust on its own (any "string-key : identifier" object could
+// match), so it only runs on files that import svelte-spa-router.
+const SVELTE_SPA_ROUTER_PATTERN = /["'`](\/[^"'`]*)["'`]\s*:\s*(\w+)/g;
+const SVELTE_SPA_ROUTER_IMPORT =
+  /from\s+["']svelte-spa-router["']|require\(\s*["']svelte-spa-router["']\s*\)/;
+
+type ClientRoute = {
+  path: string;
+  component: string;
+  /** Relative import specifier for lazy imports (e.g. "./views/About.vue"). */
+  specifier?: string;
+  definedIn: string;
+};
 
 function findClientRoutes(files: ScannedFile[]): ClientRoute[] {
   const routes: ClientRoute[] = [];
@@ -126,6 +147,22 @@ function findClientRoutes(files: ScannedFile[]): ClientRoute[] {
       while (match) {
         routes.push({ path: match[1], component: match[2], definedIn: file.path });
         match = pattern.exec(file.content);
+      }
+    }
+
+    LAZY_ROUTE_PATTERN.lastIndex = 0;
+    let match = LAZY_ROUTE_PATTERN.exec(file.content);
+    while (match) {
+      routes.push({ path: match[1], component: "", specifier: match[2], definedIn: file.path });
+      match = LAZY_ROUTE_PATTERN.exec(file.content);
+    }
+
+    if (SVELTE_SPA_ROUTER_IMPORT.test(file.content)) {
+      SVELTE_SPA_ROUTER_PATTERN.lastIndex = 0;
+      let svelteMatch = SVELTE_SPA_ROUTER_PATTERN.exec(file.content);
+      while (svelteMatch) {
+        routes.push({ path: svelteMatch[1], component: svelteMatch[2], definedIn: file.path });
+        svelteMatch = SVELTE_SPA_ROUTER_PATTERN.exec(file.content);
       }
     }
   }
@@ -149,6 +186,49 @@ function resolveRouteComponentFile(route: ClientRoute, fileGraph: FileGraph): st
 }
 
 /**
+ * Vue Router's lazy form captures a relative specifier ("./views/About.vue"),
+ * not an identifier — the graph's resolved imports won't match it directly.
+ * Resolve the specifier against the defining file's folder and match the
+ * scanned file list, covering explicit .vue extensions and omitted ones.
+ */
+function resolveRouteSpecifierFile(route: ClientRoute, files: ScannedFile[]): string | undefined {
+  const available = new Set(files.map((file) => file.path));
+  const baseParts = route.definedIn.split("/");
+  baseParts.pop();
+  const normalized = normalizeRoutePath([...baseParts, route.specifier ?? ""].join("/"));
+  const candidates = [
+    normalized,
+    `${normalized}.vue`,
+    `${normalized}.ts`,
+    `${normalized}.tsx`,
+    `${normalized}.js`,
+    `${normalized}.jsx`,
+    `${normalized}/index.vue`,
+    `${normalized}/index.ts`,
+    `${normalized}/index.js`
+  ];
+
+  return candidates.find((candidate) => available.has(candidate));
+}
+
+function normalizeRoutePath(path: string): string {
+  const parts: string[] = [];
+
+  for (const part of path.split("/")) {
+    if (part === "." || part === "") {
+      continue;
+    }
+    if (part === "..") {
+      parts.pop();
+      continue;
+    }
+    parts.push(part);
+  }
+
+  return parts.join("/");
+}
+
+/**
  * detectClientRouteFeatures — same purpose and output shape as
  * detectFrontendPageFeatures, for SPAs with no file-based routing (Vite +
  * React Router). Route paths come from parsing route definitions instead of
@@ -168,7 +248,9 @@ export function detectClientRouteFeatures(
     if (!topSegment || topSegment.startsWith(":") || topSegment.startsWith("*")) continue;
     if (NON_FEATURE_PAGE_SEGMENTS.has(topSegment.toLowerCase())) continue;
 
-    const resolvedFile = resolveRouteComponentFile(route, fileGraph);
+    const resolvedFile = route.specifier
+      ? resolveRouteSpecifierFile(route, files)
+      : resolveRouteComponentFile(route, fileGraph);
     if (!resolvedFile) continue;
 
     const seeds = bySegment.get(topSegment) ?? [];

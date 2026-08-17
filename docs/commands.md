@@ -528,10 +528,10 @@ Set a global model override for AI-powered commands.
 ### Usage
 
 ```bash
-devmap config model llama-3.1-8b-instant
+devmap config model qwen/qwen3.6-27b
 devmap config model openai/gpt-oss-120b
 devmap config model auto
-devmap config model llama-3.1-8b-instant --local
+devmap config model qwen/qwen3.6-27b --local
 ```
 
 `auto` restores command-based routing:
@@ -562,7 +562,7 @@ The typed model is stored as the primary choice and is not silently replaced.
 
 Automatic routing also uses ordered fallback chains:
 
-* `analyze`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `llama-3.1-8b-instant`
+* `analyze`: `qwen/qwen3.6-27b`, then `openai/gpt-oss-120b`
 
 DevMap advances after model-unavailable and transient provider responses. For
 rate limits, it first retries the current model three times with exponential

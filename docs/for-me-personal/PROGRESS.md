@@ -1160,7 +1160,7 @@ Layer, UI Components, AI Integration.
 - Groq chat completion memakai endpoint REST resmi tanpa SDK tambahan.
 - Default model `ask` menggunakan production model
   `openai/gpt-oss-20b`.
-- Fallback model menggunakan `llama-3.3-70b-versatile`.
+- Fallback model menggunakan `openai/gpt-oss-120b`.
 - Request 429 di-retry maksimal tiga kali memakai exponential backoff dan
   header `retry-after`.
 - Invalid API key, rate limit, provider failure, empty response, dan response
@@ -1176,7 +1176,8 @@ Layer, UI Components, AI Integration.
 
 - Standard `devmap analyze` memakai `openai/gpt-oss-20b` ketika config bernilai
   `auto`.
-- `devmap analyze --deep` memakai `llama-3.3-70b-versatile`.
+- `devmap analyze --deep` (sebelum dihapus) memakai `llama-3.3-70b-versatile`;
+  fallback saat ini memakai `openai/gpt-oss-120b`.
 - Prompt hanya mengirim compact static snapshot, bukan full raw source.
 - Interpretasi arsitektur menyebut entry point, critical file, route, feature,
   database, service, dan relationship yang didukung snapshot.

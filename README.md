@@ -276,13 +276,13 @@ Requests go directly from your machine to the selected provider.
 
 ```bash
 # npm
-npm install -g devmap
+npm install -g @flaid/devmap
 
 # pnpm
-pnpm add -g devmap
+pnpm add -g @flaid/devmap
 
 # run without installing
-npx devmap analyze
+npx @flaid/devmap analyze
 ```
 
 Requirements:

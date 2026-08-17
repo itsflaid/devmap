@@ -21,14 +21,14 @@ Focused automated tests (suite khusus framework-routes: Astro, Nuxt, Vue,
 SvelteKit, Svelte SPA, Fastify, NestJS):
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/framework-routes.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/framework-routes.test.ts
 ```
 
 Full suite:
 
 ```powershell
-pnpm --filter devmap test
-pnpm --filter devmap build
+pnpm --filter @flaid/devmap test
+pnpm --filter @flaid/devmap build
 ```
 
 Expected: `228 pass / 0 fail` untuk unit suite (node:test via `run-tests.ts`),
@@ -52,7 +52,7 @@ memunculkan route `/mount/...` yang ter-compose dari prefix + sub-path.
 Focused automated tests:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/init-and-errors.test.ts test/openrouter-client.test.ts test/doctor.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/init-and-errors.test.ts test/openrouter-client.test.ts test/doctor.test.ts
 ```
 
 Manual source test sebaiknya dijalankan dari project fixture atau project luar,
@@ -89,7 +89,7 @@ atau dokumentasi debugging.
 Focused automated tests:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/init-and-errors.test.ts test/config-command.test.ts test/analyze-ai.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/init-and-errors.test.ts test/config-command.test.ts test/analyze-ai.test.ts
 ```
 
 Expected:
@@ -108,7 +108,7 @@ Expected:
 Focused automated tests:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/config-local.test.ts test/doctor.test.ts test/analyze-ai.test.ts test/flow-command.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/config-local.test.ts test/doctor.test.ts test/analyze-ai.test.ts test/flow-command.test.ts
 ```
 
 Expected:
@@ -124,14 +124,14 @@ Expected:
 - Menambahkan `apiKey`/`provider` manual ke `.devmap/config.local.json`
   diabaikan dan memunculkan warning persis sekali:
   `config.local.json only supports "model", ...`.
-- `pnpm --filter devmap test:unit` → 199 pass / 0 fail;
-  `pnpm --filter devmap test:types` → 0 error.
+- `pnpm --filter @flaid/devmap test:unit` → 199 pass / 0 fail;
+  `pnpm --filter @flaid/devmap test:types` → 0 error.
 
 Full suite:
 
 ```powershell
-pnpm --filter devmap test:unit
-pnpm --filter devmap test:types
+pnpm --filter @flaid/devmap test:unit
+pnpm --filter @flaid/devmap test:types
 ```
 
 ## Mixed Workspace Snapshot Accuracy
@@ -161,7 +161,7 @@ Periksa `.devmap/index.json` dan feature maps. Expected:
 Focused tests:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/file-analyzers.test.ts test/agent-navigation.test.ts test/analyzers.test.ts test/analyze-ai.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/file-analyzers.test.ts test/agent-navigation.test.ts test/analyzers.test.ts test/analyze-ai.test.ts
 ```
 
 Tes source langsung pada root DevMap tanpa memakai Groq:
@@ -213,7 +213,7 @@ Expected:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/onboarding-command.test.ts test/onboarding-model.test.ts test/json-output.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/onboarding-command.test.ts test/onboarding-model.test.ts test/json-output.test.ts
 ```
 
 Model layer (new):
@@ -233,7 +233,7 @@ pnpm dev:cli onboarding "$root" --write
 pnpm dev:cli onboarding "$root" --write --language id
 ```
 
-Catatan: `pnpm dev:cli` memakai `pnpm --filter devmap`, sehingga command
+Catatan: `pnpm dev:cli` memakai `pnpm --filter @flaid/devmap`, sehingga command
 source-mode berjalan dari `packages/cli`. Untuk mengetes root workspace DevMap,
 selalu kirim path target eksplisit seperti contoh di atas.
 
@@ -264,7 +264,7 @@ Expected result:
 Jalankan focused test ranking dan evaluation:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/context-builder.test.ts test/context-builder-eval.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/context-builder.test.ts test/context-builder-eval.test.ts
 ```
 
 
@@ -302,7 +302,7 @@ Expected result:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/analyzers.test.ts test/analyze-ai.test.ts test/context-builder.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/analyzers.test.ts test/analyze-ai.test.ts test/context-builder.test.ts
 ```
 
 Expected result:
@@ -335,7 +335,7 @@ pasti.
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/flow-command.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/flow-command.test.ts
 ```
 
 Coverage:
@@ -362,7 +362,7 @@ Manual source-mode check dari fixture (dengan home terisolasi supaya key
 nyata tidak terbaca):
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/flow-command.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/flow-command.test.ts
 pnpm build:cli
 $oldProfile = $env:USERPROFILE
 $env:USERPROFILE = Join-Path $env:TEMP "devmap-flow-test-home"
@@ -385,7 +385,7 @@ Expected:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/explain-command.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/explain-command.test.ts
 ```
 
 Coverage:
@@ -412,7 +412,7 @@ tidak match path/symbol ranking, tapi `<file>` pasti cocok.
 Manual source-mode check dari fixture:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/explain-command.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/explain-command.test.ts
 pnpm build:cli
 # Tanpa config (backup dulu): ~/.devmap/config.json harus dipindah dulu
 #   rename "$env:USERPROFILE\.devmap\config.json" config.json.bak
@@ -442,7 +442,7 @@ Expected:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/config-command.test.ts test/analyze-ai.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/config-command.test.ts test/analyze-ai.test.ts
 ```
 
 Expected automatic routing:
@@ -476,7 +476,7 @@ command should restore automatic command-based routing.
 Focused contract test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/json-output.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/json-output.test.ts
 ```
 
 Manual source-mode checks:
@@ -507,7 +507,7 @@ Expected:
 Focused automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/ai-client.test.ts test/analyze-ai.test.ts test/json-output.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/ai-client.test.ts test/analyze-ai.test.ts test/json-output.test.ts
 ```
 
 Coverage penting:
@@ -567,7 +567,7 @@ Sebelum publish MVP:
 Focused metadata test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/package-distribution.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/package-distribution.test.ts
 ```
 
 Inspect metadata before packing:
@@ -623,7 +623,7 @@ file dalam `packages/cli/src/` secara langsung.
 
 ### Menjalankan Package CLI Langsung
 
-`pnpm dev:cli` menjalankan package `devmap` melalui `pnpm --filter devmap`.
+`pnpm dev:cli` menjalankan package `devmap` melalui `pnpm --filter @flaid/devmap`.
 Karena itu current working directory command menjadi `packages/cli`, bukan root
 repository. Mode ini bagus untuk mengetes CLI package, tetapi snapshot akan
 dibuat di `packages/cli/.devmap/snapshot.json`.
@@ -725,8 +725,8 @@ pnpm test:cli
 Command tersebut menjalankan:
 
 ```powershell
-pnpm --filter devmap test:unit
-pnpm --filter devmap test:types
+pnpm --filter @flaid/devmap test:unit
+pnpm --filter @flaid/devmap test:types
 ```
 
 Hasil minimum saat ini:
@@ -742,7 +742,7 @@ fail 0
 Analyzer dan snapshot:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/analyzers.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/analyzers.test.ts
 ```
 
 Expected tambahan:
@@ -764,37 +764,37 @@ Expected tambahan:
 AI client:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/ai-client.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/ai-client.test.ts
 ```
 
 Command `ask`:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/ask-command.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/ask-command.test.ts
 ```
 
 AI analyze:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/analyze-ai.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/analyze-ai.test.ts
 ```
 
 Doctor:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/doctor.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/doctor.test.ts
 ```
 
 Terminal Markdown:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/markdown-terminal.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/markdown-terminal.test.ts
 ```
 
 Context Builder benchmark:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/context-builder-eval.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/context-builder-eval.test.ts
 ```
 
 Target Context Builder:
@@ -868,19 +868,19 @@ Status manual terakhir:
 Dari root repository DevMap:
 
 ```powershell
-pnpm --filter devmap pack --pack-destination artifacts
+pnpm --filter @flaid/devmap pack --pack-destination artifacts
 ```
 
 Tarball akan dibuat di:
 
 ```text
-artifacts/devmap-0.1.0.tgz
+artifacts/flaid-devmap-0.1.0.tgz
 ```
 
 Simpan path absolutnya:
 
 ```powershell
-$tarball = (Resolve-Path ".\artifacts\devmap-0.1.0.tgz").Path
+$tarball = (Resolve-Path ".\artifacts\flaid-devmap-0.1.0.tgz").Path
 $tarball
 ```
 
@@ -925,8 +925,8 @@ npm install --save-dev "$tarball"
 Setelah install, jalankan DevMap melalui:
 
 ```powershell
-npx devmap --version
-npx devmap --help
+npx @flaid/devmap --version
+npx @flaid/devmap --help
 ```
 
 ### D. Integrasikan DevMap Ke Project
@@ -940,9 +940,9 @@ $env:GROQ_API_KEY="gsk_your_key"
 Jalankan:
 
 ```powershell
-npx devmap init
-npx devmap analyze --fresh
-npx devmap doctor
+npx @flaid/devmap init
+npx @flaid/devmap analyze --fresh
+npx @flaid/devmap doctor
 ```
 
 `init` seharusnya:
@@ -991,16 +991,16 @@ Ulangi:
 
 ```powershell
 cd "C:\path\to\devmap"
-pnpm --filter devmap pack --pack-destination artifacts
+pnpm --filter @flaid/devmap pack --pack-destination artifacts
 
 cd "C:\path\to\project-lain"
-npm install --save-dev "C:\path\to\devmap\artifacts\devmap-0.1.0.tgz"
+npm install --save-dev "C:\path\to\devmap\artifacts\flaid-devmap-0.1.0.tgz"
 ```
 
 Kemudian jalankan kembali:
 
 ```powershell
-npx devmap analyze --fresh
+npx @flaid/devmap analyze --fresh
 ```
 
 ### F. Cleanup Project Uji
@@ -1025,12 +1025,12 @@ perubahan penting. Periksa juga entry `.devmap/` pada `.gitignore`.
 
 ## 5. Tes Dengan `npm exec` Tanpa Install Global
 
-Tes ini memastikan gaya penggunaan seperti `npx devmap` bekerja.
+Tes ini memastikan gaya penggunaan seperti `npx @flaid/devmap` bekerja.
 
 Dari root DevMap:
 
 ```powershell
-$tarball = (Resolve-Path ".\artifacts\devmap-0.1.0.tgz").Path
+$tarball = (Resolve-Path ".\artifacts\flaid-devmap-0.1.0.tgz").Path
 ```
 
 Jalankan secara berurutan:
@@ -1184,7 +1184,7 @@ Jika existing `AGENTS.md` ditemukan tanpa prompt interaktif:
 Automated test:
 
 ```powershell
-pnpm --filter devmap exec tsx --test test/init-and-errors.test.ts
+pnpm --filter @flaid/devmap exec tsx --test test/init-and-errors.test.ts
 ```
 
 ---

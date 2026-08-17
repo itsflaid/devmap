@@ -1281,7 +1281,9 @@ Saat ini CLI sudah bisa:
 
 ### Setup Package CLI
 
-- Package CLI publik memakai nama `devmap` agar `npx devmap` bekerja.
+- Package CLI publik memakai nama `@flaid/devmap` (nama `devmap` di npm telah
+  dipakai tool lain); entry binary tetap `devmap` sehingga command tetap
+  `devmap analyze` setelah install.
 - Entry binary `devmap` ditambahkan dan diarahkan ke `./dist/index.js`.
 - Welcome screen aqua ditambahkan untuk command `devmap` tanpa argumen. Desainnya
   memakai ASCII wordmark DevMap sebagai brand signal, memakai warna truecolor

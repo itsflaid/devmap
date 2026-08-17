@@ -11,13 +11,13 @@ Version `0.1.0` is an early beta focused on Next.js and Express projects.
 ## Install
 
 ```bash
-npm install --global devmap
+npm install --global @flaid/devmap
 ```
 
 Or run without a global install:
 
 ```bash
-npx devmap --help
+npx @flaid/devmap --help
 ```
 
 ## Requirements

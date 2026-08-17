@@ -6,11 +6,14 @@
 
 ## Overview
 
-DevMap MVP provides five core project commands and one configuration command:
+DevMap ships the following core project commands and one configuration command:
 
 * `devmap init`
 * `devmap analyze`
 * `devmap onboarding`
+* `devmap map`
+* `devmap flow`
+* `devmap explain`
 * `devmap doctor`
 * `devmap config model`
 
@@ -640,7 +643,6 @@ They are not part of the current MVP command scope.
 | Command           | Purpose                                     |
 | ----------------- | ------------------------------------------- |
 | `devmap features` | Detect implemented project features         |
-| `devmap explain`  | Explain folders, modules, and architecture  |
 | `devmap docs`     | Generate project documentation              |
 | `devmap deadcode` | Detect unused files, exports, and functions |
 | `devmap report`   | Generate project health report              |

@@ -17,6 +17,13 @@ All notable changes to DevMap are documented in this file.
 - `ts-morph` analysis for JavaScript and TypeScript behind a normalized
   analyzer registry with heuristic and fallback analyzers
 - Lightweight `.devmap/index.json` and per-feature navigation maps for agents
+- `devmap map` for full dependency-graph navigation
+- `devmap flow` with curated and AI-narrated flow documents
+- `devmap explain` for file, feature, and function explanations
+
+### Removed
+
+- `devmap ask` (replaced by `devmap explain` and `devmap flow`)
 
 ### Changed
 
@@ -41,13 +48,12 @@ Initial early beta release.
 - Versioned reusable snapshots with stale and corrupt-state detection
 - Route, dependency, entry point, database, feature, and service detection
 - `devmap analyze` with cached AI architecture interpretation
-- `devmap ask` with bounded context selection and bilingual questions
 - Command-based Groq model routing and configurable model overrides
 - Streaming human-readable AI responses
 - Machine-readable `--json` output for all MVP commands
 - `devmap doctor` diagnostics
 - Safe `DEVMAP.md` and `AGENTS.md` integration
-- Cross-platform CI for Windows, macOS, and Linux on Node.js 18, 20, and 22
+- Cross-platform CI for Windows, macOS, and Linux on Node.js 22 and 24
 - Packed-package end-to-end tests for Next.js and Express fixtures
 
 ### Security And Privacy

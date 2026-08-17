@@ -31,7 +31,7 @@ Most contributions will be inside `packages/cli/src/`.
 
 ## Setup
 
-**Requirements:** Node.js 18+, pnpm
+**Requirements:** Node.js 22+, pnpm
 
 ```bash
 # Clone the repo

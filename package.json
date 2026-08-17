@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "packageManager": "pnpm@10.34.2",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "description": "Understand any codebase in minutes, not days.",
   "scripts": {

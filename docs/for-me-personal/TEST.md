@@ -603,7 +603,7 @@ pnpm --version
 
 Requirement:
 
-- Node.js 18 atau lebih baru;
+- Node.js 22 atau lebih baru;
 - pnpm 10.34.2.
 
 Install dependency:
@@ -1245,17 +1245,17 @@ Expected:
 
 ## 10. Cross-Version Dan CI Testing
 
-Verifikasi Windows Node.js 18 dan 20:
+Verifikasi Node.js 22 dan 24:
 
 ```powershell
-npx -p node@18 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
-npx -p node@20 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
+npx -p node@22 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
+npx -p node@24 node packages\cli\node_modules\tsx\dist\cli.mjs packages\cli\test\run-tests.ts
 ```
 
 GitHub Actions menguji:
 
 - Windows, Ubuntu, dan macOS;
-- Node.js 18, 20, dan 22;
+- Node.js 22 dan 24;
 - frozen install;
 - CLI test;
 - CLI build;
@@ -1291,7 +1291,7 @@ Expected:
 
 - `astro check` menghasilkan 0 error, 0 warning, dan 0 hint;
 - `astro build` membuat static route `/index.html`;
-- Astro dependency tetap berada di versi yang kompatibel dengan Node 18
+- Astro dependency tetap berada di versi yang kompatibel dengan Node 22
   (`astro@5.7.14` saat ini);
 - folder placeholder di `apps/web/src/` tetap berisi README supaya struktur
   kosong landing page terdokumentasi.

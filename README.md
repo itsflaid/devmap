@@ -10,7 +10,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
   <img src="https://img.shields.io/github/license/itsflaid/devmap?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=flat-square" alt="Node.js" />
+  <img src="https://img.shields.io/badge/node-%3E%3D22-green?style=flat-square" alt="Node.js" />
   <img src="https://img.shields.io/badge/status-MVP-2EE6D6?style=flat-square" alt="Status" />
 </p>
 
@@ -288,7 +288,7 @@ npx @flaid/devmap analyze
 Requirements:
 
 ```txt
-Node.js 18+
+Node.js 22+
 ```
 
 ---

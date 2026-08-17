@@ -14,7 +14,7 @@ pnpm add -g @flaid/devmap
 npx @flaid/devmap analyze
 ```
 
-Requirements: Node.js 18+
+Requirements: Node.js 22+
 
 ```bash
 devmap init

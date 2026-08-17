@@ -22,7 +22,7 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
     publishConfig?: { access?: string };
   };
 
-  assert.equal(packageJson.name, "devmap");
+  assert.equal(packageJson.name, "@flaid/devmap");
   assert.equal(packageJson.version, "0.1.0");
   assert.equal(
     packageJson.description,

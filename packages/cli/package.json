@@ -1,5 +1,5 @@
 {
-  "name": "devmap",
+  "name": "@flaid/devmap",
   "version": "0.1.0",
   "description": "AI-powered CLI to analyze, map, and explain codebases.",
   "bin": {

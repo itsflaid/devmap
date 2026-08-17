@@ -39,7 +39,7 @@ try {
 
   await runNodeCli(pnpmCli, [
     "--filter",
-    "devmap",
+    "@flaid/devmap",
     "pack",
     "--pack-destination",
     artifactsDirectory

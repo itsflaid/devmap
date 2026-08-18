@@ -47,7 +47,7 @@ export function detectProjectMetadata(
     framework: primaryFramework,
     frameworks,
     language: detectLanguage(files),
-    packageManager: detectPackageManager(projectRoot),
+    packageManager: detectPackageManager(projectRoot, manifests),
     projectType,
     workspaceType,
     ...(primaryManifest?.description ? { description: primaryManifest.description } : {})
@@ -62,6 +62,7 @@ type PackageManifest = {
   main?: unknown;
   exports?: unknown;
   workspaces?: unknown;
+  packageManager?: unknown;
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
 };
@@ -80,6 +81,7 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
           main: parsed.main,
           exports: parsed.exports,
           workspaces: parsed.workspaces,
+          packageManager: parsed.packageManager,
           dependencies: isStringRecord(parsed.dependencies) ? parsed.dependencies : {},
           devDependencies: isStringRecord(parsed.devDependencies) ? parsed.devDependencies : {}
         }];
@@ -98,11 +100,11 @@ function detectProjectType(
   framework: Framework,
   manifests: PackageManifest[]
 ): ProjectType {
-  if (manifests.some((manifest) => manifest.bin)) return "node-cli";
   if (FRONTEND_FRAMEWORKS.has(framework) || hasDependency(manifests, "astro")) {
     return "web-app";
   }
   if (BACKEND_FRAMEWORKS.has(framework)) return "api-service";
+  if (manifests.some((manifest) => manifest.bin)) return "node-cli";
   if (manifests.some((manifest) => manifest.exports || manifest.main)) return "library";
   return "unknown";
 }
@@ -157,7 +159,19 @@ function detectLanguage(files: ScannedFile[]): ProjectLanguage {
   return "unknown";
 }
 
-function detectPackageManager(projectRoot: string): PackageManager {
+function detectPackageManager(
+  projectRoot: string,
+  manifests: PackageManifest[]
+): PackageManager {
+  const rootManifest = manifests.find((manifest) => manifest.path === "package.json");
+  const declared = typeof rootManifest?.packageManager === "string"
+    ? rootManifest.packageManager.split("@")[0]
+    : null;
+  if (declared === "pnpm") return "pnpm";
+  if (declared === "npm") return "npm";
+  if (declared === "yarn") return "yarn";
+  if (declared === "bun") return "bun";
+
   if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
     return "pnpm";
   }

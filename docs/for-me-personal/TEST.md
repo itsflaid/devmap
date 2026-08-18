@@ -147,8 +147,8 @@ $env:USERPROFILE = $oldProfile
 
 Periksa `.devmap/index.json` dan feature maps. Expected:
 
-- `projectType` adalah `node-cli`;
-- primary `framework` adalah `unknown`;
+- `projectType` adalah `web-app`;
+- primary `framework` adalah `astro`;
 - `frameworks` memuat `astro`;
 - Documentation dimulai dari root `README.md`, bukan README dalam assets;
 - purpose `ai/provider.ts` menjelaskan pemilihan provider/model routing dan
@@ -193,9 +193,9 @@ Expected:
   `Follow dependency` atau salinan daftar feature files;
 - `index.json.criticalFiles` dimulai dari executable/feature entry points dan
   tidak mempromosikan type-only hub hanya karena import count;
-- project header DevMap berisi `projectType: node-cli`,
-  `workspaceType: monorepo`, dan language `typescript`, sementara framework
-  tetap `unknown` karena CLI bukan framework;
+- project header DevMap berisi `projectType: web-app`,
+  `workspaceType: monorepo`, dan language `typescript`, dengan framework
+  `astro` (framework-first menang atas `bin` di packages/cli);
 - summary menjelaskan TypeScript monorepo, Node.js CLI, package description,
   dan capabilities tanpa file-count filler;
 - tiga critical file pertama untuk DevMap adalah `packages/cli/src/index.ts`,

@@ -201,8 +201,8 @@ test("agent navigation describes mixed CLI workspaces without misleading agents"
       features: Array<{ id: string; map: string }>;
     };
 
-    assert.equal(index.project.projectType, "node-cli");
-    assert.equal(index.project.framework, "unknown");
+    assert.equal(index.project.projectType, "web-app");
+    assert.equal(index.project.framework, "astro");
     assert.deepEqual(index.project.frameworks, ["astro"]);
 
     const documentation = index.features.find((feature) => feature.id === "documentation");

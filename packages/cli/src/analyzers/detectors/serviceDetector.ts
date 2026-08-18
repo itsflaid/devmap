@@ -1,25 +1,6 @@
 import type { ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
-
-const SERVICES: Array<[string[], string]> = [
-  [["@prisma/client", "prisma"], "Prisma"],
-  [["@supabase/supabase-js", "supabase"], "Supabase"],
-  [["stripe"], "Stripe"],
-  [["next-auth", "authjs"], "NextAuth"],
-  [["midtrans"], "Midtrans"],
-  [["resend"], "Resend"],
-  [["cloudinary"], "Cloudinary"],
-  [["firebase"], "Firebase"],
-  [["openai"], "OpenAI"],
-  [["groq"], "Groq"],
-  [["openrouter"], "OpenRouter"]
-];
-
-const SOURCE_SERVICE_SIGNALS: Array<[string[], string]> = [
-  [["api.groq.com", "console.groq.com", "groq api key", "groqclient"], "Groq"],
-  [["api.openai.com", "openai api key", "openaiclient"], "OpenAI"],
-  [["openrouter.ai", "openrouter api key", "openrouterclient"], "OpenRouter"]
-];
+import { SERVICES, SOURCE_SERVICE_SIGNALS } from "../registry/index.js";
 
 export function detectExternalServices(files: ScannedFile[]): string[] {
   const services = new Set<string>();
@@ -108,7 +89,9 @@ function readSourceServiceNames(files: ScannedFile[]): string[] {
 }
 
 function isServiceSignalDefinitionFile(path: string): boolean {
-  const fileName = path.toLowerCase().split("/").at(-1) ?? "";
+  const normalized = path.toLowerCase();
+  if (/\/analyzers\/registry\//.test(normalized)) return true;
+  const fileName = normalized.split("/").at(-1) ?? "";
   return fileName === "servicedetector.ts"
     || fileName === "servicedetector.tsx"
     || fileName === "servicedetector.js"

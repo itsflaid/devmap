@@ -5,10 +5,10 @@ This document defines the release process for the npm package in
 
 ## Release Policy
 
-- Package name: `devmap`
-- Initial beta version: `0.1.0`
+- Package name: `@flaid/devmap`
+- Initial beta version: `0.2.0`
 - Git tag format: `v<version>`
-- npm dist-tag for `0.1.0`: `latest`
+- npm dist-tag for `0.2.0`: `latest`
 - Source of package version: `packages/cli/package.json`
 - Do not publish from the private workspace root
 
@@ -33,7 +33,7 @@ Confirm:
 
 - live Groq `init`, `analyze`, streaming, and `doctor` were tested;
 - GitHub Actions is green on Windows, macOS, and Linux;
-- `packages/cli/package.json` and CLI `--version` both report `0.1.0`;
+- `packages/cli/package.json` and CLI `--version` both report `0.2.0`;
 - no API key, `.env`, `.devmap`, source test fixture, or local artifact is in
   the package;
 - README, changelog, and release notes describe the same version and limits.
@@ -41,7 +41,7 @@ Confirm:
 ## Inspect The Package
 
 ```bash
-pnpm --filter devmap pack --pack-destination artifacts
+pnpm --filter @flaid/devmap pack --pack-destination artifacts
 npm pack ./packages/cli --dry-run
 ```
 
@@ -51,11 +51,11 @@ metadata such as `package.json`, `README.md`, and `LICENSE`.
 Install the tarball in a temporary or external project:
 
 ```bash
-npm install --save-dev /absolute/path/to/devmap-0.1.0.tgz
-npx devmap --version
-npx devmap --help
-npx devmap analyze --fresh
-npx devmap doctor
+npm install --save-dev /absolute/path/to/flaid-devmap-0.2.0.tgz
+npx @flaid/devmap --version
+npx @flaid/devmap --help
+npx @flaid/devmap analyze --fresh
+npx @flaid/devmap doctor
 ```
 
 ## First npm Publish
@@ -65,23 +65,23 @@ The first publish establishes package ownership:
 ```bash
 npm login
 npm whoami
-pnpm --filter devmap publish --access public
+pnpm --filter @flaid/devmap publish --access public
 ```
 
 Before confirming, verify npm displays:
 
 ```text
-devmap@0.1.0
+@flaid/devmap@0.2.0
 ```
 
 After publishing:
 
 ```bash
-npm view devmap version
-npx --yes devmap@0.1.0 --version
+npm view @flaid/devmap version
+npx --yes @flaid/devmap@0.2.0 --version
 ```
 
-Create GitHub tag `v0.1.0` and a matching GitHub Release using the changelog.
+Create GitHub tag `v0.2.0` and a matching GitHub Release using the changelog.
 
 ## Automated Releases
 

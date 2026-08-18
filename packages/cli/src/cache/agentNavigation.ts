@@ -57,7 +57,7 @@ export async function writeAgentNavigationFiles(
       frameworks: snapshot.project.frameworks,
       language: snapshot.project.language,
       packageManager: snapshot.project.packageManager,
-      projectType: snapshot.project.projectType,
+      projectTypes: snapshot.project.projectTypes,
       workspaceType: snapshot.project.workspaceType,
       summary: createProjectSummary(snapshot)
     },
@@ -266,11 +266,22 @@ function createProjectSummary(snapshot: ProjectMap): string {
 
 function describeProjectKind(snapshot: ProjectMap): string {
   const workspace = snapshot.project.workspaceType === "monorepo" ? "monorepo" : "project";
-  if (snapshot.project.projectType === "node-cli") return `${workspace} centered on a Node.js CLI`;
-  if (snapshot.project.projectType === "web-app") return `${workspace} containing a web application`;
-  if (snapshot.project.projectType === "api-service") return `${workspace} containing an API service`;
-  if (snapshot.project.projectType === "library") return `${workspace} containing a reusable library`;
-  return workspace;
+  const types = snapshot.project.projectTypes;
+  const kinds: string[] = [];
+
+  if (types.includes("node-cli")) kinds.push("Node.js CLI");
+  if (types.includes("web-app")) kinds.push("web application");
+  if (types.includes("api-service")) kinds.push("API service");
+  if (types.includes("library")) kinds.push("reusable library");
+
+  if (kinds.length === 0) return workspace;
+  if (kinds.length === 1) {
+    const kind = kinds[0];
+    if (kind === "Node.js CLI") return `${workspace} centered on a ${kind}`;
+    return `${workspace} containing a ${kind}`;
+  }
+
+  return `${workspace} containing ${kinds.slice(0, -1).join(", ")} and ${kinds[kinds.length - 1]}`;
 }
 
 function formatLabel(value: string): string {

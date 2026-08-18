@@ -10,7 +10,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/stars/itsflaid/devmap?style=flat-square" alt="Stars" />
   <img src="https://img.shields.io/github/license/itsflaid/devmap?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/node-%3E%3D18-green?style=flat-square" alt="Node.js" />
+  <img src="https://img.shields.io/badge/node-%3E%3D22-green?style=flat-square" alt="Node.js" />
   <img src="https://img.shields.io/badge/status-MVP-2EE6D6?style=flat-square" alt="Status" />
 </p>
 
@@ -20,10 +20,6 @@ Structured project intelligence for developers and AI agents.
 </p>
 
 Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
-
----
-
-[Demo GIF placeholder — record before publishing]
 
 ---
 
@@ -276,19 +272,19 @@ Requests go directly from your machine to the selected provider.
 
 ```bash
 # npm
-npm install -g devmap
+npm install -g @flaid/devmap
 
 # pnpm
-pnpm add -g devmap
+pnpm add -g @flaid/devmap
 
 # run without installing
-npx devmap analyze
+npx @flaid/devmap analyze
 ```
 
 Requirements:
 
 ```txt
-Node.js 18+
+Node.js 22+
 ```
 
 ---
@@ -320,7 +316,6 @@ See [docs/roadmap.md](./docs/roadmap.md) for details.
 
 ## Documentation
 
-- [PRD.md](./PRD.md)
 - [docs/commands.md](./docs/commands.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/generated-files.md](./docs/generated-files.md)
@@ -341,16 +336,15 @@ DevMap is open source and welcomes contributions.
 git clone https://github.com/itsflaid/devmap
 cd devmap
 
-npm install
-npm link
+pnpm install
+pnpm link --global
 
 devmap analyze
 ```
 
 Before contributing:
 
-1. Read `PRD.md`
-2. Read `docs/architecture.md`
+1. Read `docs/architecture.md`
 3. Read `CONTRIBUTING.md`
 
 ---

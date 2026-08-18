@@ -39,7 +39,7 @@ try {
 
   await runNodeCli(pnpmCli, [
     "--filter",
-    "devmap",
+    "@flaid/devmap",
     "pack",
     "--pack-destination",
     artifactsDirectory
@@ -80,10 +80,10 @@ try {
     await writeFile(packageJsonPath, fixturePackageJson, "utf8");
 
     const version = await runDevmap(projectRoot, ["--version"]);
-    assert.match(version.stdout, /^0\.1\.0/m);
+    assert.match(version.stdout, /^0\.2\.0/m);
 
     const help = await runDevmap(projectRoot, ["--help"]);
-    assert.match(stripAnsi(help.stdout), /analyze\s+Analyze project structure/);
+    assert.match(stripAnsi(help.stdout), /analyze\s+\[target\]\s+Analyze project structure/);
 
     const analyze = await runDevmap(projectRoot, ["analyze", "--fresh"]);
     assert.match(
@@ -113,19 +113,23 @@ try {
     ]));
     assert.equal(analyzeJson.project.framework, expectedFramework);
 
-    const ask = await runDevmap(projectRoot, [
-      "ask",
-      "Where is the main application entry point?"
-    ]);
-    assert.match(stripAnsi(ask.stdout), /Relevant Files/);
+    const flow = await runDevmap(projectRoot, ["flow"]);
+    const flowOutput = stripAnsi(flow.stdout);
+    if (snapshot.flows.length > 0) {
+      assert.match(flowOutput, /Wrote \.devmap\/flows\/.*\.md/);
+    }
 
-    const askJson = parseJsonOutput(await runDevmap(projectRoot, [
-      "ask",
-      "Where is the main application entry point?",
+    const flowJson = parseJsonOutput(await runDevmap(projectRoot, [
+      "flow",
       "--json"
     ]));
-    assert.equal(askJson.status, "static");
-    assert.ok(Array.isArray(askJson.relevantFiles));
+    assert.equal(flowJson.status, "ok");
+    assert.ok(Array.isArray(flowJson.flows));
+    assert.equal(flowJson.flows.length, snapshot.flows.length);
+    assert.ok(flowJson.writtenPaths.length === flowJson.flows.length);
+    for (const path of flowJson.writtenPaths) {
+      await readFile(join(projectRoot, path.markdown), "utf8");
+    }
 
     const doctor = await runDevmap(projectRoot, ["doctor"]);
     const doctorOutput = stripAnsi(doctor.stdout);

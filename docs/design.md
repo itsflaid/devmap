@@ -1,6 +1,6 @@
 # DevMap — Design System
 
-← Back to PRD: ../PRD.md
+← Back to Roadmap: ./roadmap.md
 
 ---
 
@@ -336,7 +336,7 @@ Remove it.
 
 Product direction:
 
-* ../PRD.md
+* roadmap.md
 
 Command behavior:
 

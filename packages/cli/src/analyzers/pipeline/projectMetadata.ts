@@ -1,18 +1,17 @@
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { ScannedFile } from "../analysis/fileScanner.js";
-import type { DetectedFramework, Framework } from "../detectors/frameworkDetector.js";
+import {
+  BACKEND_FRAMEWORK_SET,
+  FRONTEND_FRAMEWORK_SET,
+  type DetectedFramework,
+  type Framework,
+} from "../detectors/frameworkDetector.js";
 
 export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
 export type ProjectType = "node-cli" | "web-app" | "api-service" | "library" | "unknown";
 
-export const FRONTEND_FRAMEWORKS = new Set<Framework>([
-  "nextjs", "react", "astro", "vue", "nuxt", "svelte", "sveltekit"
-]);
-export const BACKEND_FRAMEWORKS = new Set<Framework>([
-  "express", "fastify", "nestjs", "koa"
-]);
 export type WorkspaceType = "monorepo" | "single-package";
 
 export type ProjectMetadata = {
@@ -22,7 +21,7 @@ export type ProjectMetadata = {
   frameworks: DetectedFramework[];
   language: ProjectLanguage;
   packageManager: PackageManager;
-  projectType: ProjectType;
+  projectTypes: ProjectType[];
   workspaceType: WorkspaceType;
   description?: string;
 };
@@ -34,10 +33,10 @@ export function detectProjectMetadata(
   frameworks: DetectedFramework[] = framework === "unknown" ? [] : [framework]
 ): ProjectMetadata {
   const manifests = readPackageManifests(files);
-  const projectType = detectProjectType(framework, manifests);
-  const primaryManifest = selectPrimaryManifest(manifests, projectType);
+  const projectTypes = detectProjectTypes(frameworks, manifests);
+  const primaryManifest = selectPrimaryManifest(manifests, projectTypes);
   const workspaceType = detectWorkspaceType(projectRoot, manifests);
-  const primaryFramework = projectType === "node-cli" || projectType === "library"
+  const primaryFramework = projectTypes.includes("node-cli") || projectTypes.includes("library")
     ? "unknown"
     : framework;
 
@@ -47,8 +46,8 @@ export function detectProjectMetadata(
     framework: primaryFramework,
     frameworks,
     language: detectLanguage(files),
-    packageManager: detectPackageManager(projectRoot),
-    projectType,
+    packageManager: detectPackageManager(projectRoot, manifests),
+    projectTypes,
     workspaceType,
     ...(primaryManifest?.description ? { description: primaryManifest.description } : {})
   };
@@ -62,6 +61,7 @@ type PackageManifest = {
   main?: unknown;
   exports?: unknown;
   workspaces?: unknown;
+  packageManager?: unknown;
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
 };
@@ -80,6 +80,7 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
           main: parsed.main,
           exports: parsed.exports,
           workspaces: parsed.workspaces,
+          packageManager: parsed.packageManager,
           dependencies: isStringRecord(parsed.dependencies) ? parsed.dependencies : {},
           devDependencies: isStringRecord(parsed.devDependencies) ? parsed.devDependencies : {}
         }];
@@ -94,24 +95,33 @@ function readProjectName(manifests: PackageManifest[]): string | null {
   return rootManifest?.name?.trim() || null;
 }
 
-function detectProjectType(
-  framework: Framework,
+function detectProjectTypes(
+  frameworks: DetectedFramework[],
   manifests: PackageManifest[]
-): ProjectType {
-  if (manifests.some((manifest) => manifest.bin)) return "node-cli";
-  if (FRONTEND_FRAMEWORKS.has(framework) || hasDependency(manifests, "astro")) {
-    return "web-app";
+): ProjectType[] {
+  const types = new Set<ProjectType>();
+
+  if (frameworks.some((f) => FRONTEND_FRAMEWORK_SET.has(f)) || hasDependency(manifests, "astro")) {
+    types.add("web-app");
   }
-  if (BACKEND_FRAMEWORKS.has(framework)) return "api-service";
-  if (manifests.some((manifest) => manifest.exports || manifest.main)) return "library";
-  return "unknown";
+  if (frameworks.some((f) => BACKEND_FRAMEWORK_SET.has(f))) {
+    types.add("api-service");
+  }
+  if (manifests.some((manifest) => manifest.bin)) {
+    types.add("node-cli");
+  }
+  if (manifests.some((manifest) => (manifest.exports || manifest.main) && !manifest.bin)) {
+    types.add("library");
+  }
+
+  return types.size > 0 ? [...types] : ["unknown"];
 }
 
 function selectPrimaryManifest(
   manifests: PackageManifest[],
-  projectType: ProjectType
+  projectTypes: ProjectType[]
 ): PackageManifest | undefined {
-  if (projectType === "node-cli") {
+  if (projectTypes.includes("node-cli")) {
     return manifests.find((manifest) => manifest.bin);
   }
 
@@ -157,7 +167,19 @@ function detectLanguage(files: ScannedFile[]): ProjectLanguage {
   return "unknown";
 }
 
-function detectPackageManager(projectRoot: string): PackageManager {
+function detectPackageManager(
+  projectRoot: string,
+  manifests: PackageManifest[]
+): PackageManager {
+  const rootManifest = manifests.find((manifest) => manifest.path === "package.json");
+  const declared = typeof rootManifest?.packageManager === "string"
+    ? rootManifest.packageManager.split("@")[0]
+    : null;
+  if (declared === "pnpm") return "pnpm";
+  if (declared === "npm") return "npm";
+  if (declared === "yarn") return "yarn";
+  if (declared === "bun") return "bun";
+
   if (existsSync(join(projectRoot, "pnpm-lock.yaml"))) {
     return "pnpm";
   }

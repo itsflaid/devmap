@@ -9,7 +9,7 @@ When working in this repository:
 
 ## Workflow
 
-1. Read the PRD and relevant documentation.
+1. Read the relevant documentation.
 3. Add or update tests, documentation, and personal development notes.
 4. Run the relevant verification gates.
 5. Before committing, pushing, or opening the PR, stop and ask the user to
@@ -38,13 +38,13 @@ No parentheses scope. Examples:
 Never use: fix(scope): or feat(scope):
 
 
-read PRD and all documentation first before hands-on.
+read all documentation first before hands-on.
 
 ## Source of Truth
 
-The PRD is the source of truth for product behavior, requirements, and priorities.
+The roadmap (`docs/roadmap.md`) is the source of truth for product behavior, requirements, and priorities.
 
-If there is any conflict between the PRD and other documents (README, docs, comments, plans, or specifications), follow the PRD.
+If there is any conflict between the roadmap and other documents (README, docs, comments, plans, or specifications), follow the roadmap.
 
 
 

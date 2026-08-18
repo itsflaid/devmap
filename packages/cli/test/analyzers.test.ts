@@ -255,7 +255,7 @@ test("project map classifies a standalone React app and finds its browser entry"
 
     const projectMap = await createProjectMap(projectRoot);
     assert.equal(projectMap.framework, "react");
-    assert.equal(projectMap.project.projectType, "web-app");
+    assert.deepEqual(projectMap.project.projectTypes, ["web-app"]);
     assert.ok(projectMap.entryPoints.includes("src/main.tsx"));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -476,7 +476,7 @@ test("project map summarizes a Next.js fixture", async () => {
     frameworks: ["nextjs"],
     language: "typescript",
     packageManager: "unknown",
-    projectType: "web-app",
+    projectTypes: ["web-app"],
     workspaceType: "single-package"
   });
   assert.ok(projectMap.entryPoints.includes("app/page.tsx"));
@@ -663,13 +663,13 @@ test("snapshot reader supplies project classification defaults for schema v1 sna
   try {
     const projectMap = await createProjectMap(nextFixture);
     const legacyProject = projectMap.project as Partial<typeof projectMap.project>;
-    delete legacyProject.projectType;
+    delete legacyProject.projectTypes;
     delete legacyProject.workspaceType;
     delete legacyProject.frameworks;
     await saveSnapshot(temporaryRoot, projectMap);
 
     const saved = await readSnapshot(temporaryRoot);
-    assert.equal(saved?.project.projectType, "web-app");
+    assert.deepEqual(saved?.project.projectTypes, ["web-app"]);
     assert.equal(saved?.project.workspaceType, "single-package");
     assert.deepEqual(saved?.project.frameworks, ["nextjs"]);
   } finally {

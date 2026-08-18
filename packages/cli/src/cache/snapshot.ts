@@ -7,9 +7,9 @@ import {
 } from "../analyzers/pipeline/index.js";
 import { scanFiles } from "../analyzers/analysis/index.js";
 import {
-  BACKEND_FRAMEWORKS,
-  FRONTEND_FRAMEWORKS,
-} from "../analyzers/pipeline/projectMetadata.js";
+  BACKEND_FRAMEWORK_SET,
+  FRONTEND_FRAMEWORK_SET,
+} from "../analyzers/detectors/frameworkDetector.js";
 import { DevmapError } from "../utils/errors.js";
 
 export type SnapshotStatus =
@@ -145,13 +145,21 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
   }
 
   if (isRecord(snapshot.project)) {
-    if (typeof snapshot.project.projectType !== "string") {
+    // Migration shim for snapshots that predate `projectTypes`. The canonical
+    // field is now an array so a single project can be both a CLI and a web
+    // app (mixed workspaces). Mirrors the framework-first classification in
+    // `detectProjectTypes()` (analyzers/pipeline/projectMetadata.ts) — keep
+    // the two in sync.
+    if (!Array.isArray(snapshot.project.projectTypes)) {
       const framework = String(snapshot.project.framework);
-      snapshot.project.projectType = FRONTEND_FRAMEWORKS.has(framework as never)
+      const legacyType = typeof snapshot.project.projectType === "string"
+        ? snapshot.project.projectType
+        : FRONTEND_FRAMEWORK_SET.has(framework)
         ? "web-app"
-        : BACKEND_FRAMEWORKS.has(framework as never)
+        : BACKEND_FRAMEWORK_SET.has(framework)
         ? "api-service"
         : "unknown";
+      snapshot.project.projectTypes = [legacyType];
     }
     if (typeof snapshot.project.workspaceType !== "string") {
       snapshot.project.workspaceType = "single-package";

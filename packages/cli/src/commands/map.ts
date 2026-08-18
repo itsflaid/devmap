@@ -22,6 +22,7 @@ import { output, withJsonOutput } from "../utils/output.js";
 
 const USES_DEPTH = 2;
 const USED_BY_DEPTH = 1;
+const FEATURE_MAP_DEPTH = 4;
 
 export type MapOptions = {
   json?: boolean;
@@ -199,7 +200,7 @@ function buildFeatureMap(
   const listCap = all ? Infinity : DEFAULT_MAX_CHILDREN;
 
   const internalTree = root
-    ? buildBoundedTree(snapshot.fileGraph, root, depth ?? 4, {
+    ? buildBoundedTree(snapshot.fileGraph, root, depth ?? FEATURE_MAP_DEPTH, {
         filter: (path) => featureFiles.has(path),
         maxChildren
       })

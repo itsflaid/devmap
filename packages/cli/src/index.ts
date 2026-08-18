@@ -109,7 +109,7 @@ await runSafely(async () => {
   }
 
   if (process.argv.length === 3 && ["--help", "-h", "help"].includes(process.argv[2])) {
-    printHelp();
+    printHelp(program);
     return;
   }
 

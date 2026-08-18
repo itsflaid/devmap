@@ -1,17 +1,20 @@
 import type { ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 
-export type FrontendFramework =
-  | "nextjs" | "react" | "astro" | "vue" | "nuxt" | "svelte" | "sveltekit";
-export type BackendFramework =
-  | "express" | "fastify" | "nestjs" | "koa";
+export const FRONTEND_FRAMEWORKS = [
+  "nextjs", "nuxt", "sveltekit", "astro", "react", "vue", "svelte"
+] as const;
+export const BACKEND_FRAMEWORKS = [
+  "nestjs", "fastify", "express", "koa"
+] as const;
+
+export type FrontendFramework = typeof FRONTEND_FRAMEWORKS[number];
+export type BackendFramework = typeof BACKEND_FRAMEWORKS[number];
 export type Framework = FrontendFramework | BackendFramework | "unknown";
 export type DetectedFramework = Exclude<Framework, "unknown">;
 
-const FRONTEND_ORDER: FrontendFramework[] =
-  ["nextjs", "nuxt", "sveltekit", "astro", "react", "vue", "svelte"];
-const BACKEND_ORDER: BackendFramework[] =
-  ["nestjs", "fastify", "express", "koa"];
+export const FRONTEND_FRAMEWORK_SET = new Set<string>(FRONTEND_FRAMEWORKS);
+export const BACKEND_FRAMEWORK_SET = new Set<string>(BACKEND_FRAMEWORKS);
 
 export function detectFramework(files: ScannedFile[]): Framework {
   const [frontendWinner, backendWinner] = detectFrameworks(files);
@@ -148,8 +151,8 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   }
 
   return [
-    FRONTEND_ORDER.find((framework) => detected.has(framework)),
-    BACKEND_ORDER.find((framework) => detected.has(framework)),
+    FRONTEND_FRAMEWORKS.find((framework) => detected.has(framework)),
+    BACKEND_FRAMEWORKS.find((framework) => detected.has(framework)),
   ].filter((framework): framework is FrontendFramework | BackendFramework => Boolean(framework));
 }
 

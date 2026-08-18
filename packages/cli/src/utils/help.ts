@@ -1,22 +1,18 @@
+import type { Command } from "commander";
 import { theme } from "./output.js";
 
-const commands = [
-  ["init", "Initialize DevMap configuration"],
-  ["analyze", "Analyze project structure"],
-  ["onboarding", "Generate project onboarding guide"],
-  ["map [target]", "Map dependencies: project, feature, or file"],
-  ["config model", "Set model override or automatic routing"],
-  ["doctor", "Diagnose DevMap setup"]
-] as const;
-
-export function printHelp(): void {
+export function printHelp(program: Command): void {
   console.log(`\n${theme.aqua}devmap${theme.reset} - Understand any codebase.\n`);
   console.log(`${theme.aqua}USAGE${theme.reset}`);
   console.log(`  devmap <command> [options]\n`);
   console.log(`${theme.aqua}COMMANDS${theme.reset}`);
 
-  for (const [command, description] of commands) {
-    console.log(`  ${theme.aqua}${command.padEnd(16)}${theme.reset} ${theme.gray}${description}${theme.reset}`);
+  for (const cmd of program.commands) {
+    const args = cmd.registeredArguments
+      .map((argument) => (argument.required ? `<${argument.name()}>` : `[${argument.name()}]`))
+      .join(" ");
+    const usage = args ? `${cmd.name()} ${args}` : cmd.name();
+    console.log(`  ${theme.aqua}${usage.padEnd(16)}${theme.reset} ${theme.gray}${cmd.description()}${theme.reset}`);
   }
 
   console.log(`\n${theme.aqua}OPTIONS${theme.reset}`);

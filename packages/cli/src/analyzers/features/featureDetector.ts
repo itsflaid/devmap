@@ -14,6 +14,7 @@ import { detectFrontendPageFeatures, detectClientRouteFeatures } from "../detect
 import type { FileGraph } from "../graph/dependencyGraph.js";
 import { isArchitectureSource } from "../graph/index.js";
 import { mergeIntoFeatureList } from "./featureMerge.js";
+import { FEATURE_SIGNALS, hasAiProviderUrl, isAiProviderImport } from "../registry/index.js";
 
 export type FeatureInfo = {
   name: string;
@@ -29,165 +30,6 @@ export type FeatureInfo = {
 
 export type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
 
-const FEATURE_SIGNALS: Array<{
-  name: string;
-  terms: string[];
-  purpose: string;
-  importOnly?: true;
-  minimumDistinctFiles?: number;
-}> = [
-  {
-    name: "Authentication",
-    terms: [
-      "next-auth", "auth0", "clerk", "lucia", "better-auth", "passport",
-      "firebase/auth", "@supabase/auth", "kinde",
-      "auth", "login", "session", "jwt", "oauth", "openid",
-    ],
-    purpose: "Handles authentication, identity, sessions, login, and access control."
-  },
-  {
-    name: "Payments",
-    terms: [
-      "stripe", "midtrans", "xendit", "@xendit", "paypal", "braintree",
-      "razorpay", "paddle", "lemonsqueezy", "lemon-squeezy",
-      "payment", "checkout", "billing", "subscription", "invoice",
-    ],
-    purpose: "Handles payment providers, billing, and transaction workflows."
-  },
-  {
-    name: "File Upload",
-    terms: [
-      "multer", "formidable", "busboy", "cloudinary", "uploadthing",
-      "aws-sdk/s3", "@aws-sdk/client-s3", "minio", "backblaze",
-      "firebase/storage", "@supabase/storage",
-      "upload", "storage", "bucket", "blob",
-    ],
-    purpose: "Handles file ingestion, cloud storage, and upload providers."
-  },
-  {
-    name: "Email",
-    terms: [
-      "resend", "nodemailer", "@sendgrid/mail", "sendgrid", "mailgun",
-      "postmark", "@postmark", "aws-sdk/ses", "@aws-sdk/client-ses",
-      "react-email", "@react-email",
-      "email", "mailer", "smtp",
-    ],
-    purpose: "Handles transactional email delivery and templates."
-  },
-  {
-    name: "AI Integration",
-    importOnly: true,
-    terms: [
-      // Provider SDKs only — no generic terms like "ai", "llm", "embedding"
-      // Path matching is disabled for AI; detection is import-only
-      "openai", "groq", "openrouter", "@anthropic-ai/sdk", "anthropic",
-      "google-generative-ai", "@google/generative-ai", "@google/genai", "cohere",
-      "mistralai", "together", "replicate", "huggingface",
-      "langchain", "@langchain", "llamaindex", "@vercel/ai", "ai/react",
-    ],
-    purpose: "Handles AI providers, LLM calls, prompts, and model context."
-  },
-  {
-    name: "Notifications",
-    minimumDistinctFiles: 2,
-    terms: [
-      "web-push", "pusher", "ably", "soketi", "firebase-messaging",
-      "@firebase/messaging", "onesignal", "novu", "@novu",
-      "notification", "push", "realtime", "websocket",
-    ],
-    purpose: "Handles push notifications, real-time events, and user alerts."
-  },
-  {
-    name: "Caching",
-    terms: [
-      "ioredis", "redis", "@upstash/redis", "upstash", "keyv",
-      "lru-cache", "node-cache", "memcached",
-      "cache", "ttl", "invalidate",
-    ],
-    purpose: "Handles in-memory and distributed caching strategies."
-  },
-  {
-    name: "Search",
-    minimumDistinctFiles: 2,
-    terms: [
-      "meilisearch", "typesense", "algolia", "@algolia",
-      "elasticsearch", "@elastic/elasticsearch",
-      "orama", "@orama",
-      "search", "fulltext", "index", "facet",
-    ],
-    purpose: "Handles full-text search, indexing, and faceted filtering."
-  },
-  {
-    name: "Background Jobs",
-    terms: [
-      "bullmq", "bull", "bee-queue", "agenda", "node-cron",
-      "inngest", "@inngest", "trigger.dev", "@trigger.dev",
-      "quirrel",
-      "queue", "worker", "job", "cron", "scheduler",
-    ],
-    purpose: "Handles background processing, job queues, and scheduled tasks."
-  },
-  {
-    name: "Logging & Monitoring",
-    terms: [
-      "pino", "winston", "bunyan", "morgan",
-      "@sentry/node", "@sentry/nextjs", "sentry",
-      "datadog", "dd-trace", "opentelemetry", "@opentelemetry",
-      "logger", "telemetry", "tracing",
-    ],
-    purpose: "Handles application logging, error tracking, and observability."
-  },
-  {
-    name: "Testing",
-    terms: [
-      "vitest", "jest", "@testing-library", "playwright",
-      "cypress", "supertest", "msw",
-      "test", "spec", "mock", "fixture",
-    ],
-    purpose: "Contains test suites, mocks, and testing infrastructure."
-  },
-  {
-    name: "Internationalization",
-    terms: [
-      "next-intl", "next-i18next", "i18next", "react-i18next",
-      "lingui", "@lingui", "formatjs", "react-intl",
-      "i18n", "l10n", "locale", "translation",
-    ],
-    purpose: "Handles multi-language support, locale routing, and translations."
-  },
-  {
-    name: "Analytics",
-    minimumDistinctFiles: 2,
-    terms: [
-      "posthog", "mixpanel", "@mixpanel", "amplitude",
-      "google-analytics", "gtag", "plausible",
-      "segment", "@segment",
-      "analytics", "tracking", "event",
-    ],
-    purpose: "Handles user analytics, event tracking, and product metrics."
-  },
-  {
-    name: "Rate Limiting",
-    terms: [
-      "@upstash/ratelimit", "express-rate-limit",
-      "rate-limiter-flexible", "bottleneck",
-      "ratelimit", "rate-limit", "throttle",
-    ],
-    purpose: "Handles API rate limiting and request throttling."
-  },
-  {
-    name: "CMS & Content",
-    minimumDistinctFiles: 2,
-    terms: [
-      "contentlayer", "@contentlayer", "sanity", "@sanity",
-      "contentful", "strapi", "payload", "keystatic",
-      "notion", "@notionhq",
-      "cms", "content", "mdx",
-    ],
-    purpose: "Handles CMS integrations and structured content management."
-  },
-];
-
 // ---------------------------------------------------------------------------
 // ROLE_FEATURES — only user-visible features, not architectural layers.
 //
@@ -198,6 +40,9 @@ const FEATURE_SIGNALS: Array<{
 //   → detected via FEATURE_SIGNALS (import-based), role-based too noisy
 //   "documentation"
 //   → re-added with strict meta-file filtering via isDocumentationEvidence()
+//
+// FEATURE_SIGNALS (vocabulary-driven feature detection) lives in
+// ../registry/index.js — one file per domain under ../registry/.
 // ---------------------------------------------------------------------------
 const ROLE_FEATURES: Array<{
   role: FileRole;
@@ -300,6 +145,17 @@ function isFeatureEvidenceFile(path: string): boolean {
     || /\/prisma\/schema\.prisma$/.test(lower)
     || /^prisma\/schema\.prisma$/.test(lower)
   );
+}
+
+// ---------------------------------------------------------------------------
+// Registry self-exclusion
+//
+// Files under ../registry/ *define* the detection vocabulary. They are not
+// evidence of a real feature in the scanned project — without this check a
+// file like registry/email.ts would self-match the "email" term it describes.
+// ---------------------------------------------------------------------------
+function isRegistryFile(path: string): boolean {
+  return /\/analyzers\/registry\//.test(path.toLowerCase());
 }
 
 // ---------------------------------------------------------------------------
@@ -496,9 +352,12 @@ export function detectFeatures(
 
   // --- FEATURE_SIGNALS ---
   // Pre-filter once here — avoids redundant isFeatureEvidenceFile calls inside each signal loop
+  // Registry files (../registry/**) are excluded: they *define* the vocabulary,
+  // so their paths/content would otherwise self-match every signal they describe.
   const technicalFiles = scopedFiles
     .filter((file) => isTechnicalFeatureSource(file.path))
-    .filter((file) => isFeatureEvidenceFile(file.path));
+    .filter((file) => isFeatureEvidenceFile(file.path))
+    .filter((file) => !isRegistryFile(file.path));
 
   for (const signal of FEATURE_SIGNALS) {
     const evidence = technicalFiles
@@ -893,70 +752,11 @@ function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
 // ---------------------------------------------------------------------------
 // matchesSignal
 //
-// AI Integration: import-only by default, no generic term/path matching.
-//   "ai", "llm", "embedding", "model" appear in too many non-AI contexts.
-//   Only a recognized provider import is reliable evidence — WITH two
-//   narrow fallbacks for providers called via raw fetch() instead of an
-//   SDK package (DevMap's own ai/groq.ts and ai/openrouter.ts do exactly
-//   this): a literal provider hostname in file content, or the file living
-//   under the same src/ai/ convention already used for file-role
-//   classification. Neither reintroduces generic substring noise — both
-//   require a specific, low-noise signal, not a bare "ai" match anywhere.
+// AI Integration: import-only by default — see ../registry/ai-providers.ts for the
+// provider vocabulary and the fetch()-URL fallback rules.
 //
 // All other signals: path matching first, then import matching.
 // ---------------------------------------------------------------------------
-
-const AI_PROVIDER_IMPORTS = new Set([
-  "openai",
-  "groq",
-  "openrouter",
-  "anthropic",
-  "@anthropic-ai/sdk",
-  "cohere",
-  "mistralai",
-  "together",
-  "replicate",
-  "huggingface",
-  "llamaindex",
-]);
-
-const AI_PROVIDER_PREFIXES = [
-  "langchain",
-  "@langchain/",
-  "google-generative-ai",
-  "@google/generative-ai",
-  "@google/genai",
-  "@vercel/ai",
-  "ai/",
-];
-
-function isAiProviderImport(specifier: string): boolean {
-  const lower = specifier.toLowerCase();
-  if (AI_PROVIDER_IMPORTS.has(lower)) return true;
-  return AI_PROVIDER_PREFIXES.some((prefix) => lower.startsWith(prefix));
-}
-
-// Fallback for providers called via raw fetch() instead of an SDK package —
-// e.g. `fetch("https://api.groq.com/openai/v1/chat/completions")` with no
-// "groq" import anywhere. Only consulted when isAiProviderImport finds
-// nothing, so it doesn't loosen the "no noisy path/term matching" rule above.
-const AI_PROVIDER_HOSTS = [
-  "api.groq.com",
-  "api.openai.com",
-  "openrouter.ai/api",
-  "api.anthropic.com",
-  "generativelanguage.googleapis.com",
-  "api.cohere.ai",
-  "api.mistral.ai",
-  "api.together.xyz",
-  "api.replicate.com",
-];
-
-function hasAiProviderUrl(content: string | undefined): boolean {
-  if (!content) return false;
-  const lower = content.toLowerCase();
-  return AI_PROVIDER_HOSTS.some((host) => lower.includes(host));
-}
 
 function matchesSignal(
   file: ScannedFile,

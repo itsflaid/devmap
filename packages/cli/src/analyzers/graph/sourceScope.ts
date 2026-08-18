@@ -3,8 +3,12 @@ const NON_PRODUCTION_SEGMENTS = new Set([
   "__mocks__",
   "__tests__",
   "coverage",
+  "demo",
   "docs",
+  "example",
+  "examples",
   "fixtures",
+  "samples",
   "test",
   "tests"
 ]);

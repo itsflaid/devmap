@@ -4,16 +4,16 @@
   "version": "1.0.0",
   "packageManager": "pnpm@10.34.2",
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "description": "Understand any codebase in minutes, not days.",
   "scripts": {
     "dev:web": "pnpm --filter @devmap/web dev",
     "build:web": "pnpm --filter @devmap/web build",
     "preview:web": "pnpm --filter @devmap/web preview",
-    "dev:cli": "pnpm --filter devmap dev",
-    "build:cli": "pnpm --filter devmap build",
-    "test:cli": "pnpm --filter devmap test",
+    "dev:cli": "pnpm --filter @flaid/devmap dev",
+    "build:cli": "pnpm --filter @flaid/devmap build",
+    "test:cli": "pnpm --filter @flaid/devmap test",
     "test:package-e2e": "node packages/cli/test/package-e2e.mjs"
   },
   "keywords": [

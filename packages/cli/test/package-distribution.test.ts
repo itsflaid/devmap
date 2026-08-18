@@ -22,19 +22,19 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
     publishConfig?: { access?: string };
   };
 
-  assert.equal(packageJson.name, "devmap");
-  assert.equal(packageJson.version, "0.1.0");
+  assert.equal(packageJson.name, "@flaid/devmap");
+  assert.equal(packageJson.version, "0.2.0");
   assert.equal(
     packageJson.description,
     "AI-powered CLI to analyze, map, and explain codebases."
   );
   assert.equal(packageJson.bin?.devmap, "./dist/index.js");
-  assert.equal(packageJson.engines?.node, ">=18");
+  assert.equal(packageJson.engines?.node, ">=22");
   assert.deepEqual(packageJson.files, ["dist"]);
   assert.ok(packageJson.keywords?.includes("codebase"));
   assert.ok(packageJson.keywords?.includes("ai"));
   assert.ok(packageJson.keywords?.includes("developer-tools"));
-  assert.equal(packageJson.scripts?.prepack, "pnpm run build");
+  assert.equal(packageJson.scripts?.prepack, "npm run build");
   assert.equal(packageJson.publishConfig?.access, "public");
 
   const [readme, changelog, _license, cliEntry] = await Promise.all([

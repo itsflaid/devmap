@@ -8,7 +8,9 @@ All notable changes to DevMap are documented in this file.
 
 - Automated npm release workflow
 - Public benchmark results
-- Feedback-driven fixes from the `0.1.0` beta
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.2.0] - 2026-08-18
 
 ### Added
 
@@ -17,12 +19,25 @@ All notable changes to DevMap are documented in this file.
 - `ts-morph` analysis for JavaScript and TypeScript behind a normalized
   analyzer registry with heuristic and fallback analyzers
 - Lightweight `.devmap/index.json` and per-feature navigation maps for agents
+- `devmap map` for full dependency-graph navigation
+- `devmap flow` with curated and AI-narrated flow documents
+- `devmap explain` for file, feature, and function explanations
+
+### Removed
+
+- `devmap ask` (replaced by `devmap explain` and `devmap flow`)
 
 ### Changed
 
 - Snapshot metadata now separates the primary framework from frameworks found
   in workspace packages, prioritizes root documentation, and emits semantic
   file purposes and provider-neutral AI flows
+- Project classification now supports multiple simultaneous project types —
+  a workspace can be both a `node-cli` and a `web-app` at once — and demo,
+  example, and sample projects are excluded from analysis
+- Feature and service detection vocabulary is centralized in a domain registry
+  (`analyzers/registry/`) so DevMap no longer detects itself as using the
+  services it merely documents
 - `devmap init` defaults OpenRouter to `openrouter/free` on Enter and explains
   how to change the stored model with `devmap config model <model-id>`
 - Feature detection now separates documentation, landing UI, CLI commands,
@@ -41,13 +56,12 @@ Initial early beta release.
 - Versioned reusable snapshots with stale and corrupt-state detection
 - Route, dependency, entry point, database, feature, and service detection
 - `devmap analyze` with cached AI architecture interpretation
-- `devmap ask` with bounded context selection and bilingual questions
 - Command-based Groq model routing and configurable model overrides
 - Streaming human-readable AI responses
 - Machine-readable `--json` output for all MVP commands
 - `devmap doctor` diagnostics
 - Safe `DEVMAP.md` and `AGENTS.md` integration
-- Cross-platform CI for Windows, macOS, and Linux on Node.js 18, 20, and 22
+- Cross-platform CI for Windows, macOS, and Linux on Node.js 22 and 24
 - Packed-package end-to-end tests for Next.js and Express fixtures
 
 ### Security And Privacy
@@ -64,5 +78,6 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/itsflaid/devmap/releases/tag/v0.2.0
 [0.1.0]: https://github.com/itsflaid/devmap/releases/tag/v0.1.0

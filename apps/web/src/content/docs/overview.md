@@ -7,14 +7,14 @@ title: "Devmap Docs"
 ## Quick Start
 
 ```bash
-npm install -g devmap
+npm install -g @flaid/devmap
 # or
-pnpm add -g devmap
+pnpm add -g @flaid/devmap
 # or run without installing
-npx devmap analyze
+npx @flaid/devmap analyze
 ```
 
-Requirements: Node.js 18+
+Requirements: Node.js 22+
 
 ```bash
 devmap init

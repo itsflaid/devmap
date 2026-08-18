@@ -1,20 +1,23 @@
 # DevMap — Commands Reference
 
-← Back to PRD: ../PRD.md
+← Back to Roadmap: ./roadmap.md
 
 ---
 
 ## Overview
 
-DevMap MVP provides five core project commands and one configuration command:
+DevMap ships the following core project commands and one configuration command:
 
 * `devmap init`
 * `devmap analyze`
 * `devmap onboarding`
+* `devmap map`
+* `devmap flow`
+* `devmap explain`
 * `devmap doctor`
 * `devmap config model`
 
-Additional product commands should wait until the MVP is shipped unless the PRD
+Additional product commands should wait until the MVP is shipped unless the roadmap
 explicitly promotes them into the `0.1.0` scope.
 
 Future commands are documented in:
@@ -528,10 +531,10 @@ Set a global model override for AI-powered commands.
 ### Usage
 
 ```bash
-devmap config model llama-3.1-8b-instant
+devmap config model qwen/qwen3.6-27b
 devmap config model openai/gpt-oss-120b
 devmap config model auto
-devmap config model llama-3.1-8b-instant --local
+devmap config model qwen/qwen3.6-27b --local
 ```
 
 `auto` restores command-based routing:
@@ -562,7 +565,7 @@ The typed model is stored as the primary choice and is not silently replaced.
 
 Automatic routing also uses ordered fallback chains:
 
-* `analyze`: `qwen/qwen3.6-27b`, `llama-3.3-70b-versatile`, then `llama-3.1-8b-instant`
+* `analyze`: `qwen/qwen3.6-27b`, then `openai/gpt-oss-120b`
 
 DevMap advances after model-unavailable and transient provider responses. For
 rate limits, it first retries the current model three times with exponential
@@ -640,7 +643,6 @@ They are not part of the current MVP command scope.
 | Command           | Purpose                                     |
 | ----------------- | ------------------------------------------- |
 | `devmap features` | Detect implemented project features         |
-| `devmap explain`  | Explain folders, modules, and architecture  |
 | `devmap docs`     | Generate project documentation              |
 | `devmap deadcode` | Detect unused files, exports, and functions |
 | `devmap report`   | Generate project health report              |
@@ -657,7 +659,7 @@ See:
 
 Product direction belongs in:
 
-* `../PRD.md`
+* `docs/roadmap.md`
 
 Command behavior belongs in:
 
@@ -667,4 +669,4 @@ Implementation details belong in:
 
 * `docs/architecture.md`
 
-If documentation conflicts, `PRD.md` takes precedence for product direction.
+If documentation conflicts, `docs/roadmap.md` takes precedence for product direction.

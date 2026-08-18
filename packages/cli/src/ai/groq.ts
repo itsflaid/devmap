@@ -23,17 +23,14 @@ export const DEFAULT_AI_MODELS = {
 export const DEFAULT_AI_FALLBACKS = {
   analyze: [
     "qwen/qwen3.6-27b",
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant"
+    "openai/gpt-oss-120b"
   ],
   flowNarration: [
-    "qwen/qwen3.6-27b",
-    "llama-3.1-8b-instant"
+    "openai/gpt-oss-120b"
   ],
   explain: [
     "qwen/qwen3.6-27b",
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant"
+    "openai/gpt-oss-120b"
   ]
 } as const;
 
@@ -51,13 +48,9 @@ const EXCLUDED_MODEL_PATTERNS = [
 ];
 
 const PREFERRED_MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama-3.1-70b-versatile",
-  "openai/gpt-oss-20b",
   "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
   "qwen/qwen3.6-27b",
-  "qwen/qwen3-32b",
-  "llama-3.1-8b-instant",
 ];
 
 export type GroqClientDependencies = {

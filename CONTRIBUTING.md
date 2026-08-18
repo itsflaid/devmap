@@ -21,7 +21,7 @@ devmap/
 │       │   └── utils/     ← output, config, helpers
 │       └── test/
 │           └── fixtures/  ← dummy projects for testing
-├── docs/                  ← PRD, architecture, commands, roadmap
+├── docs/                  ← architecture, commands, roadmap
 └── README.md
 ```
 
@@ -31,7 +31,7 @@ Most contributions will be inside `packages/cli/src/`.
 
 ## Setup
 
-**Requirements:** Node.js 18+, pnpm
+**Requirements:** Node.js 22+, pnpm
 
 ```bash
 # Clone the repo
@@ -43,7 +43,7 @@ pnpm install
 
 # Link CLI globally so you can test it like a real user
 cd packages/cli
-npm link
+pnpm link --global
 
 # Verify it works
 devmap --version

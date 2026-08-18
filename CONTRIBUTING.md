@@ -21,7 +21,7 @@ devmap/
 │       │   └── utils/     ← output, config, helpers
 │       └── test/
 │           └── fixtures/  ← dummy projects for testing
-├── docs/                  ← PRD, architecture, commands, roadmap
+├── docs/                  ← architecture, commands, roadmap
 └── README.md
 ```
 

@@ -1,6 +1,6 @@
 # DevMap — Architecture
 
-← Back to PRD: ../PRD.md
+← Back to Roadmap: ./roadmap.md
 
 ---
 
@@ -448,7 +448,7 @@ Examples include OpenAI, Gemini, and Ollama.
 
 | Topic | File |
 |---|---|
-| Product direction | `../PRD.md` |
+| Product direction | `docs/roadmap.md` |
 | Command behavior | `docs/commands.md` |
 | Generated file behavior | `docs/generated-files.md` |
 | Benchmarking | `docs/benchmarking.md` |

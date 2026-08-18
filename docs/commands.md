@@ -1,6 +1,6 @@
 # DevMap — Commands Reference
 
-← Back to PRD: ../PRD.md
+← Back to Roadmap: ./roadmap.md
 
 ---
 
@@ -17,7 +17,7 @@ DevMap ships the following core project commands and one configuration command:
 * `devmap doctor`
 * `devmap config model`
 
-Additional product commands should wait until the MVP is shipped unless the PRD
+Additional product commands should wait until the MVP is shipped unless the roadmap
 explicitly promotes them into the `0.1.0` scope.
 
 Future commands are documented in:
@@ -659,7 +659,7 @@ See:
 
 Product direction belongs in:
 
-* `../PRD.md`
+* `docs/roadmap.md`
 
 Command behavior belongs in:
 
@@ -669,4 +669,4 @@ Implementation details belong in:
 
 * `docs/architecture.md`
 
-If documentation conflicts, `PRD.md` takes precedence for product direction.
+If documentation conflicts, `docs/roadmap.md` takes precedence for product direction.

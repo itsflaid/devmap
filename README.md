@@ -320,7 +320,6 @@ See [docs/roadmap.md](./docs/roadmap.md) for details.
 
 ## Documentation
 
-- [PRD.md](./PRD.md)
 - [docs/commands.md](./docs/commands.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/generated-files.md](./docs/generated-files.md)
@@ -349,8 +348,7 @@ devmap analyze
 
 Before contributing:
 
-1. Read `PRD.md`
-2. Read `docs/architecture.md`
+1. Read `docs/architecture.md`
 3. Read `CONTRIBUTING.md`
 
 ---

@@ -158,7 +158,7 @@ function buildHowItWorks(snapshot: ProjectMap, language: OnboardingLanguage): Co
   const hasAuth = snapshot.features.some((f) => f.name === "Authentication");
   const hasRoutes = snapshot.routes.length > 0 || snapshot.apiRoutes.length > 0;
   const hasDatabase = Boolean(snapshot.database);
-  const isCli = snapshot.project.projectType === "node-cli"
+  const isCli = snapshot.project.projectTypes.includes("node-cli")
     || Object.values(snapshot.fileIndex).some((e) => e.scope === "cli");
   const domainPattern = (snapshot.domain as { ownershipPattern?: string })?.ownershipPattern;
 

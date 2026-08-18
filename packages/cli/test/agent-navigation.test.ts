@@ -105,7 +105,7 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
     const result = await writeAgentNavigationFiles(outputRoot, snapshot);
     const index = JSON.parse(await readFile(result.indexPath, "utf8")) as {
       project: {
-        projectType: string;
+        projectTypes: string[];
         workspaceType: string;
         summary: string;
       };
@@ -113,7 +113,7 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
       features: Array<{ id: string; map: string }>;
     };
 
-    assert.equal(index.project.projectType, "node-cli");
+    assert.deepEqual(index.project.projectTypes, ["node-cli"]);
     assert.equal(index.project.workspaceType, "monorepo");
     assert.match(index.project.summary, /TypeScript monorepo centered on a Node\.js CLI/i);
     assert.match(index.project.summary, /generates reusable navigation context/i);
@@ -197,12 +197,12 @@ test("agent navigation describes mixed CLI workspaces without misleading agents"
     const snapshot = await createProjectMap(projectRoot);
     const result = await writeAgentNavigationFiles(outputRoot, snapshot);
     const index = JSON.parse(await readFile(result.indexPath, "utf8")) as {
-      project: { framework: string; frameworks: string[]; projectType: string };
+      project: { framework: string; frameworks: string[]; projectTypes: string[] };
       features: Array<{ id: string; map: string }>;
     };
 
-    assert.equal(index.project.projectType, "web-app");
-    assert.equal(index.project.framework, "astro");
+    assert.deepEqual(index.project.projectTypes, ["web-app", "node-cli"]);
+    assert.equal(index.project.framework, "unknown");
     assert.deepEqual(index.project.frameworks, ["astro"]);
 
     const documentation = index.features.find((feature) => feature.id === "documentation");

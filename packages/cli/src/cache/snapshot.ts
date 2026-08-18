@@ -7,9 +7,9 @@ import {
 } from "../analyzers/pipeline/index.js";
 import { scanFiles } from "../analyzers/analysis/index.js";
 import {
-  BACKEND_FRAMEWORKS,
-  FRONTEND_FRAMEWORKS,
-} from "../analyzers/pipeline/projectMetadata.js";
+  BACKEND_FRAMEWORK_SET,
+  FRONTEND_FRAMEWORK_SET,
+} from "../analyzers/detectors/frameworkDetector.js";
 import { DevmapError } from "../utils/errors.js";
 
 export type SnapshotStatus =
@@ -145,11 +145,14 @@ function normalizeSnapshotDefaults(snapshot: Record<string, unknown>): void {
   }
 
   if (isRecord(snapshot.project)) {
+    // Migration shim for snapshots that predate `projectType`. Mirrors the
+    // framework-first classification in `detectProjectType()`
+    // (analyzers/pipeline/projectMetadata.ts) — keep the two in sync.
     if (typeof snapshot.project.projectType !== "string") {
       const framework = String(snapshot.project.framework);
-      snapshot.project.projectType = FRONTEND_FRAMEWORKS.has(framework as never)
+      snapshot.project.projectType = FRONTEND_FRAMEWORK_SET.has(framework)
         ? "web-app"
-        : BACKEND_FRAMEWORKS.has(framework as never)
+        : BACKEND_FRAMEWORK_SET.has(framework)
         ? "api-service"
         : "unknown";
     }

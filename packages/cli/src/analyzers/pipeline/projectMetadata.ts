@@ -1,18 +1,17 @@
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { ScannedFile } from "../analysis/fileScanner.js";
-import type { DetectedFramework, Framework } from "../detectors/frameworkDetector.js";
+import {
+  BACKEND_FRAMEWORK_SET,
+  FRONTEND_FRAMEWORK_SET,
+  type DetectedFramework,
+  type Framework,
+} from "../detectors/frameworkDetector.js";
 
 export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
 export type ProjectType = "node-cli" | "web-app" | "api-service" | "library" | "unknown";
 
-export const FRONTEND_FRAMEWORKS = new Set<Framework>([
-  "nextjs", "react", "astro", "vue", "nuxt", "svelte", "sveltekit"
-]);
-export const BACKEND_FRAMEWORKS = new Set<Framework>([
-  "express", "fastify", "nestjs", "koa"
-]);
 export type WorkspaceType = "monorepo" | "single-package";
 
 export type ProjectMetadata = {
@@ -100,10 +99,10 @@ function detectProjectType(
   framework: Framework,
   manifests: PackageManifest[]
 ): ProjectType {
-  if (FRONTEND_FRAMEWORKS.has(framework) || hasDependency(manifests, "astro")) {
+  if (FRONTEND_FRAMEWORK_SET.has(framework) || hasDependency(manifests, "astro")) {
     return "web-app";
   }
-  if (BACKEND_FRAMEWORKS.has(framework)) return "api-service";
+  if (BACKEND_FRAMEWORK_SET.has(framework)) return "api-service";
   if (manifests.some((manifest) => manifest.bin)) return "node-cli";
   if (manifests.some((manifest) => manifest.exports || manifest.main)) return "library";
   return "unknown";

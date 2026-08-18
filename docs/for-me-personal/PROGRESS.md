@@ -1,6 +1,66 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-08
+Terakhir diperbarui: 2026-08-18
+
+## Update 2026-08-18
+
+### Audit Remediation — branch `fix/audit-remediation` (12 commits)
+
+Remediasi hasil audit (audit.md, dihapus setelah selesai) yang dijalankan agent
+pada 2026-08-18. Semua commit di branch `fix/audit-remediation`, di-push tanpa
+PR sesuai instruksi user.
+
+1. `85df6f2` `fix: replace deprecated groq fallback models` — ganti model Groq
+   yang shut down (llama-3.3-70b-versatile, llama-3.1-8b-instant) dengan yang
+   masih aktif.
+2. `7f0b379` `chore: rename npm package to @flaid/devmap` — rename dari `devmap`
+   (nama sudah dimiliki orang lain).
+3. `188c775` `docs: update install references for @flaid/devmap`.
+4. `9f5288d` `chore: bump node engines to >=22 and expand ci matrix` — Node 18/20
+   EOL; engines floor `>=22`, CI matrix Node 22/24 x 3 OS.
+5. `67c6160` `docs: reconcile command reference with shipped cli` — README,
+   `docs/commands.md`, `CHANGELOG.md`, `docs/releasing.md` disinkronkan dengan
+   CLI 0.1.0 yang punya `map`/`flow`/`explain`.
+6. `eee4387` `fix: replace removed ask command in package e2e` — test e2e paket
+   masih memakai command `ask` yang sudah dihapus; ganti ke command yang ada.
+7. `693ff8b` `docs: remove stale PRD` — `PRD.md` dihapus total (keputusan user,
+   tanpa pengganti). AGENTS.md + docs dirujuk ke `docs/roadmap.md` sebagai
+   source of truth.
+8. `291da89` `refactor: cut redundant three-commands landing section` — hapus
+   section landing "Three Commands" (`HowItWorksSection.astro`), repoint nav ke
+   `/#commands`, daftar framework FooterCtaSection dilengkapi, CommandsSection
+   init mock `Groq` → `OpenRouter`.
+9. `f5c42d6` `chore: bump commander astro typescript and tailwindcss` —
+   commander ^15, astro 5.18.2, typescript ^5.9.3, tailwindcss ^3.4.19. Periksa
+   breaking changes commander v15 (ESM-only, Node >=22.12) — aman karena CLI
+   sudah ESM. 228 test pass, build cli+web pass.
+10. `b7f86a7` `chore: remove allowBuilds placeholder and align sort style` —
+    hapus block `allowBuilds` kosong di pnpm-workspace.yaml, `.sort()` →
+    `localeCompare`, `npm link` → `pnpm link --global` di docs.
+11. `3b5f235` `fix: include flow in onboarding commands and fix project type
+    detection` — tambah `flow` ke `AVAILABLE_COMMANDS` onboarding;
+    `detectProjectType` framework-first (web-app > api-service > node-cli >
+    library > unknown); `detectPackageManager` baca field `packageManager` di
+    root manifest dulu, fallback ke lockfile. User memilih "framework-first +
+    bin `.some()` fallback" sehingga DevMap self-classification berubah
+    node-cli → web-app (framework astro menang atas bin packages/cli).
+12. `624dcdc` `refactor: centralize framework and ai provider vocab` — canonical
+    framework array + `FRONTEND_FRAMEWORK_SET`/`BACKEND_FRAMEWORK_SET` dipindah
+    ke `frameworkDetector.ts`; AI-provider vocab pindah dari featureDetector ke
+    `knownAiProviders.ts`; `map.ts` `depth ?? 4` → `FEATURE_MAP_DEPTH`;
+    `snapshot.ts` migration shim diberi cross-ref comment ke
+    `detectProjectType()`.
+
+### Catatan / Pending
+
+- **Dual project type (DEFERRED)** — user akan analisa bareng Claude dulu.
+  DevMap sendiri terdeteksi `projectType: web-app` karena framework-first
+  (astro menang), padahal secara utama adalah node CLI + web app. Opsi yang
+  dibahas: `projectTypes[]` array + primary (rekomendasi), nilai compound
+  tunggal, atau balik prioritas ke bin-first (menghidupkan masalah audit
+  original). Belum diputuskan.
+- `artifacts/` (untracked, output e2e pack) dan `audit.md` (untracked) tidak
+  di-commit; `audit.md` dihapus setelah remediasi selesai.
 
 ## Update 2026-08-08
 

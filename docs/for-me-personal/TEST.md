@@ -124,7 +124,7 @@ Expected:
 - Menambahkan `apiKey`/`provider` manual ke `.devmap/config.local.json`
   diabaikan dan memunculkan warning persis sekali:
   `config.local.json only supports "model", ...`.
-- `pnpm --filter @flaid/devmap test:unit` → 199 pass / 0 fail;
+- `pnpm --filter @flaid/devmap test:unit` → 228 pass / 0 fail;
   `pnpm --filter @flaid/devmap test:types` → 0 error.
 
 Full suite:

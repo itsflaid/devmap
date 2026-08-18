@@ -49,7 +49,7 @@
   },
   "type": "module",
   "dependencies": {
-    "commander": "^12.0.0",
+    "commander": "^15.0.0",
     "ignore": "^7.0.6",
     "p-limit": "^7.3.0",
     "ts-morph": "^28.0.0"

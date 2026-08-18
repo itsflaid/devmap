@@ -23,10 +23,6 @@ Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
 
 ---
 
-[Demo GIF placeholder — record before publishing]
-
----
-
 ## The Problem
 
 Before doing real work, developers and AI agents need context.

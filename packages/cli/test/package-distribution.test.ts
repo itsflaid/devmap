@@ -23,7 +23,7 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
   };
 
   assert.equal(packageJson.name, "@flaid/devmap");
-  assert.equal(packageJson.version, "0.1.0");
+  assert.equal(packageJson.version, "0.2.0");
   assert.equal(
     packageJson.description,
     "AI-powered CLI to analyze, map, and explain codebases."
@@ -34,7 +34,7 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
   assert.ok(packageJson.keywords?.includes("codebase"));
   assert.ok(packageJson.keywords?.includes("ai"));
   assert.ok(packageJson.keywords?.includes("developer-tools"));
-  assert.equal(packageJson.scripts?.prepack, "pnpm run build");
+  assert.equal(packageJson.scripts?.prepack, "npm run build");
   assert.equal(packageJson.publishConfig?.access, "public");
 
   const [readme, changelog, _license, cliEntry] = await Promise.all([

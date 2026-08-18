@@ -80,10 +80,10 @@ try {
     await writeFile(packageJsonPath, fixturePackageJson, "utf8");
 
     const version = await runDevmap(projectRoot, ["--version"]);
-    assert.match(version.stdout, /^0\.1\.0/m);
+    assert.match(version.stdout, /^0\.2\.0/m);
 
     const help = await runDevmap(projectRoot, ["--help"]);
-    assert.match(stripAnsi(help.stdout), /analyze\s+Analyze project structure/);
+    assert.match(stripAnsi(help.stdout), /analyze\s+\[target\]\s+Analyze project structure/);
 
     const analyze = await runDevmap(projectRoot, ["analyze", "--fresh"]);
     assert.match(

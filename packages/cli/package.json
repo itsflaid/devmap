@@ -1,6 +1,6 @@
 {
   "name": "@flaid/devmap",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI-powered CLI to analyze, map, and explain codebases.",
   "bin": {
     "devmap": "./dist/index.js"
@@ -16,7 +16,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json",
-    "prepack": "pnpm run build",
+    "prepack": "npm run build",
     "test": "pnpm run test:unit && pnpm run test:types",
     "test:unit": "tsx test/run-tests.ts",
     "test:types": "tsc -p tsconfig.json --noEmit"

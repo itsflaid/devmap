@@ -3,10 +3,11 @@
 Understand any codebase in minutes, not days.
 
 DevMap is a CLI that combines static analysis with optional AI-powered
-interpretation. It maps project structure, generates reusable context, and
-maps project structure and generates reusable context without sending an entire repository to an AI model.
+interpretation. It maps project structure and generates reusable context
+without sending an entire repository to an AI model.
 
-Version `0.1.0` is an early beta focused on Next.js and Express projects.
+Version `0.2.0` classifies full workspaces (multiple project types at once),
+centralizes detection vocabulary, and ships `map`, `flow`, and `explain`.
 
 ## Install
 
@@ -91,6 +92,11 @@ DevMap-owned server.
 devmap init
 devmap analyze
 devmap analyze --fresh
+devmap map                    # full project map
+devmap map <feature-or-file>  # scoped to one feature or file
+devmap flow                   # curated top flows
+devmap flow <feature-or-route>
+devmap explain <target>       # file, feature, or function
 devmap onboarding --write
 devmap onboarding --write --language id
 devmap doctor
@@ -137,11 +143,12 @@ terminal decoration, or streamed partial output.
 
 ## Supported Stacks
 
-- Next.js
-- Express
+- Frontend: Next.js, Astro, SvelteKit, Nuxt, React, Vue, Svelte
+- Backend: Express, NestJS, Fastify, Koa
 
-Other frameworks may be detected partially and are not part of the `0.1.0`
-support promise.
+Detection covers the full list above; Next.js and Express receive the deepest
+analysis. Multi-package workspaces are classified per project type, so a
+monorepo containing a CLI and a web app is reported as both.
 
 ## Privacy
 

@@ -43,7 +43,7 @@ pnpm install
 
 # Link CLI globally so you can test it like a real user
 cd packages/cli
-npm link
+pnpm link --global
 
 # Verify it works
 devmap --version

@@ -16,7 +16,7 @@ export function detectEntryPoints(graph: FileGraph): string[] {
     .filter((path) => isSourceFile(path))
     .filter((path) => isArchitectureSource(path))
     .filter((path) => ENTRY_PATTERNS.some((pattern) => pattern.test(path)) || (!imported.has(path) && (graph[path]?.length ?? 0) > 0))
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
     .slice(0, 20);
 }
 

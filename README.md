@@ -340,8 +340,8 @@ DevMap is open source and welcomes contributions.
 git clone https://github.com/itsflaid/devmap
 cd devmap
 
-npm install
-npm link
+pnpm install
+pnpm link --global
 
 devmap analyze
 ```

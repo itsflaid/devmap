@@ -483,7 +483,7 @@ Manual source-mode checks:
 
 ```powershell
 pnpm dev:cli analyze --json
-pnpm dev:cli ask "where scanner" --json
+pnpm dev:cli flow --json
 pnpm dev:cli doctor --json
 pnpm dev:cli config model auto --json
 ```
@@ -634,7 +634,7 @@ pnpm dev:cli -- --help
 pnpm dev:cli -- doctor
 pnpm dev:cli -- analyze
 pnpm dev:cli -- analyze --fresh
-pnpm dev:cli -- ask "bagaimana analyzer bekerja?"
+pnpm dev:cli -- flow
 ```
 
 ### Menjalankan DevMap Pada Root Repository DevMap
@@ -648,7 +648,7 @@ Pakai binary `tsx.cmd` milik `packages/cli` secara langsung:
 
 ```powershell
 .\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts analyze --fresh
-.\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts ask "where do I start to add framework detection?"
+.\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts flow
 .\packages\cli\node_modules\.bin\tsx.cmd .\packages\cli\src\index.ts doctor
 ```
 
@@ -656,7 +656,7 @@ Expected:
 
 - `.devmap/snapshot.json` muncul di root repository DevMap;
 - bukan di `packages/cli/.devmap/snapshot.json`;
-- Ask membaca snapshot root yang baru dibuat.
+- Flow membaca snapshot root yang baru dibuat.
 
 Gunakan mode ini setelah mengubah:
 
@@ -824,7 +824,7 @@ node packages/cli/dist/index.js --version
 node packages/cli/dist/index.js --help
 node packages/cli/dist/index.js doctor
 node packages/cli/dist/index.js analyze --fresh
-node packages/cli/dist/index.js ask "bagaimana analyzer bekerja?"
+node packages/cli/dist/index.js flow
 ```
 
 Perbedaan dengan source mode:

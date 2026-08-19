@@ -70,6 +70,65 @@ test("SQLExtractor does not activate for projects with no raw SQL client", () =>
   assert.equal(extractor.canHandle(files), false);
 });
 
+test("SQLExtractor ignores comment prose even when it contains SQL-shaped words", () => {
+  // Regression: naive quote-pairing regex used to merge a JSDoc comment
+  // ("...come from parsing route definitions...") with unrelated code into
+  // one fake string literal, producing a bogus "Parsing" entity.
+  const extractor = new SQLExtractor();
+  const files = [
+    scannedFile("src/db.ts", 'import { Pool } from "pg";\n'),
+    scannedFile(
+      "src/router.ts",
+      [
+        "/**",
+        " * Route paths come from parsing route definitions instead of",
+        " * folder conventions; ownership uses the exact same rule.",
+        " */",
+        "export function detectRoutes() { return []; }"
+      ].join("\n")
+    )
+  ];
+  assert.equal(extractor.extract(files).length, 0);
+});
+
+test("SQLExtractor ignores ordinary UI copy that happens to contain SQL verbs", () => {
+  // Regression: "Update your billing information" (confirm/alert/toast text)
+  // used to produce a bogus "Your" entity.
+  const extractor = new SQLExtractor();
+  const files = [
+    scannedFile("src/db.ts", 'import { Pool } from "pg";\n'),
+    scannedFile(
+      "src/ui/checkout.ts",
+      'alert("Update your billing information");\nconfirm("Delete this item?");\n'
+    )
+  ];
+  assert.equal(extractor.extract(files).length, 0);
+});
+
+test("SQLExtractor ignores Title Case proper nouns after SQL verbs", () => {
+  // Regression: DevMap's own CLI help text `.description("Update DevMap
+  // configuration")` used to produce a bogus "Devmap" entity.
+  const extractor = new SQLExtractor();
+  const files = [
+    scannedFile("src/db.ts", 'import { Pool } from "pg";\n'),
+    scannedFile("src/index.ts", '.description("Update DevMap configuration");\n')
+  ];
+  assert.equal(extractor.extract(files).length, 0);
+});
+
+test("SQLExtractor does not scan test/doc/fixture files", () => {
+  // Regression: files under docs/, test/, fixtures/ etc. were scanned like
+  // any other source file, so illustrative SQL examples in documentation or
+  // test-fixture query strings leaked into self-analysis output.
+  const extractor = new SQLExtractor();
+  const files = [
+    scannedFile("src/db.ts", 'import { Pool } from "pg";\n'),
+    scannedFile("docs/example.md", 'Example: `pool.query("SELECT * FROM widgets")`'),
+    scannedFile("test/fixture.test.ts", 'pool.query("SELECT * FROM widgets");')
+  ];
+  assert.equal(extractor.extract(files).length, 0);
+});
+
 test("databaseDetector recognizes raw SQL clients (pg, mysql2, better-sqlite3)", () => {
   const pgProject = [
     scannedFile("package.json", JSON.stringify({ dependencies: { pg: "^8.0.0" } }))

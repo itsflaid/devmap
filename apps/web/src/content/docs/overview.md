@@ -45,9 +45,16 @@ svelte-spa-router) surface as features:
 - Vue
 - Svelte
 
-**Databases & ORMs** — detected via dependency + schema/config file:
-- Prisma, Drizzle, Mongoose, Supabase
-- Raw SQL: PostgreSQL (`pg`), MySQL (`mysql2`), SQLite (`better-sqlite3`)
+**Databases & ORMs** — schema/entity extraction, full field + relation
+fidelity:
+- Prisma
+
+**Detected as dependency (badge "uses X"), schema extraction not yet
+implemented:** Drizzle, Mongoose, Supabase, TypeORM — on the roadmap.
+
+**Raw SQL** (table names from query strings, no fields/relations — lowest
+confidence of the three): PostgreSQL (`pg`), MySQL (`mysql2`), SQLite
+(`better-sqlite3`)
 
 **Anything else** (Laravel, Django, Go, ...): DevMap still
 scans your files, dependencies, and import graph — you just won't get

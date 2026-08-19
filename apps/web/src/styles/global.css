@@ -118,6 +118,29 @@ button {
   color: rgba(10, 13, 17, 0.55);
 }
 
+.cta-primary__copy-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 0.125rem;
+}
+
+.cta-primary__copy-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+.cta-primary__copy-check {
+  display: none;
+}
+
+.cta-primary[data-copied] .cta-primary__copy-copy {
+  display: none;
+}
+
+.cta-primary[data-copied] .cta-primary__copy-check {
+  display: inline-block;
+}
+
 .cta-secondary {
   display: inline-flex;
   align-items: center;

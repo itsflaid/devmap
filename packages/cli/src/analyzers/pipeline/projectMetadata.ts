@@ -7,6 +7,7 @@ import {
   type DetectedFramework,
   type Framework,
 } from "../detectors/frameworkDetector.js";
+import { isArchitectureSource } from "../graph/index.js";
 
 export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
@@ -68,7 +69,7 @@ type PackageManifest = {
 
 function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
   return files
-    .filter((file) => file.path.endsWith("package.json"))
+    .filter((file) => file.path.endsWith("package.json") && isArchitectureSource(file.path))
     .flatMap((file) => {
       try {
         const parsed = JSON.parse(file.content) as Record<string, unknown>;

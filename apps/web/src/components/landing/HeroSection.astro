@@ -43,9 +43,18 @@ const indexRows = [
     </p>
 
     <div class="hero__cta-row">
-      <button type="button" class="cta-primary">
+      <button type="button" class="cta-primary" aria-label="npm install -g @flaid/devmap">
         <span class="cta-prompt" aria-hidden="true">$</span>
-        npm install -g @flaid/devmap
+        <span class="cta-primary__command">npm install -g @flaid/devmap</span>
+        <span class="cta-primary__copy-icon" aria-hidden="true">
+          <svg class="cta-primary__copy-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="5.5" y="5.5" width="8" height="8" rx="1"></rect>
+            <path d="M3.5 10.5h-1a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"></path>
+          </svg>
+          <svg class="cta-primary__copy-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 8.5l3.5 3.5L13 5"></path>
+          </svg>
+        </span>
       </button>
       <a class="cta-secondary" href="https://github.com/itsflaid/devmap">
         View on GitHub →
@@ -91,11 +100,17 @@ const indexRows = [
 
 <script>
   import { staggerReveal } from "../../scripts/stagger-reveal";
+  import { initCopyCommand } from "../../scripts/copy-command";
 
   staggerReveal(document.querySelectorAll<HTMLElement>(".index-row"), {
     y: 10,
     staggerMs: 90,
   });
+
+  const hero = document.querySelector<HTMLElement>(".hero");
+  const copyButton = hero?.querySelector<HTMLElement>(".cta-primary");
+  const copyCommand = hero?.querySelector<HTMLElement>(".cta-primary__command");
+  if (copyButton && copyCommand) initCopyCommand(copyButton, copyCommand);
 </script>
 
 <style>

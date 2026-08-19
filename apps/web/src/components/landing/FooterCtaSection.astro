@@ -14,6 +14,15 @@
     <button type="button" class="cta-primary" aria-label="npm install -g @flaid/devmap">
       <span class="cta-prompt" aria-hidden="true">$</span>
       <span class="cta-primary__command" aria-hidden="true">npm install -g @flaid/devmap</span><span class="cta-primary__caret" aria-hidden="true"></span>
+      <span class="cta-primary__copy-icon" aria-hidden="true">
+        <svg class="cta-primary__copy-copy" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="5.5" y="5.5" width="8" height="8" rx="1"></rect>
+          <path d="M3.5 10.5h-1a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1"></path>
+        </svg>
+        <svg class="cta-primary__copy-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 8.5l3.5 3.5L13 5"></path>
+        </svg>
+      </span>
     </button>
     <a class="cta-secondary" href="https://github.com/itsflaid/devmap#readme">
       Read the Docs
@@ -24,6 +33,7 @@
 <script>
   import { gsap } from "gsap";
   import { ScrollTrigger } from "gsap/ScrollTrigger";
+  import { initCopyCommand } from "../../scripts/copy-command";
 
   gsap.registerPlugin(ScrollTrigger);
 
@@ -101,6 +111,8 @@
       });
     }
   }
+
+  if (primaryButton && commandEl) initCopyCommand(primaryButton, commandEl);
 </script>
 
 <style>

@@ -8,9 +8,6 @@ dist/
 
 .agents/config.local.md
 
-# Personal development notes — kept local, not public.
-docs/for-me-personal/
-
 # Test fixtures intentionally verify ignored paths.
 !packages/cli/test/fixtures/nextjs-project/.env
 !packages/cli/test/fixtures/nextjs-project/node_modules/

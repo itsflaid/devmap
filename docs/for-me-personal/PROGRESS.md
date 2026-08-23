@@ -30,11 +30,22 @@ branch/issue/PR):
 4. Gates sebelum commit: test unit 236/236 pass, `tsc --noEmit` bersih,
    build dist fresh, e2e packed-package pass (Next.js/Express/React fixtures).
 
-Rencana pasca-commit (jalankan berurutan): push origin/main → `npm whoami`
-(harus `fadilz`) → `pnpm pack` + inspeksi tarball → smoke test install dari
-tgz → `pnpm publish --access public` dari packages/cli (+ OTP) → verifikasi
-`npm view @flaid/devmap version` → fresh install `npx @flaid/devmap@latest`
-→ tag `v0.2.0` + GitHub Release agar link CHANGELOG tidak 404.
+Hasil pasca-commit (SELESAI, 2026-08-23):
+
+1. Publish sukses: `+ @flaid/devmap@0.2.0` live di npm.
+2. OTP saga: publish sempat berulang kali ditolak `EOTP` walau preferensi
+   akun `auth-only` — ternyata kebijakan npm Agustus 2026 mewajibkan 2FA saat
+   publish dan UI hanya menyediakan Security Key (TOTP app tidak lagi bisa
+   didaftar). Solusi final: granular bypass-2FA token sekali pakai
+   (`.npmrc` sementara, dihapus setelahnya, token direvoke di website).
+   Detail lengkap di DEBUG.md #26.
+3. Verifikasi lolos semua: `npm view @flaid/devmap version` → `0.2.0`,
+   fresh install `npx -y @flaid/devmap@latest --version` → `0.2.0`.
+4. Tag `v0.2.0` di-push; GitHub Release dibuat:
+   https://github.com/itsflaid/devmap/releases/tag/v0.2.0
+5. Catatan ke depan: mulai Januari 2027 npm membatasi direct publishing via
+   bypass token — siapkan trusted publishing (OIDC) sebelum rilis berikutnya.
+   Alur rilis lengkap terdokumentasi di TEST.md bagian 12.
 
 ## Update 2026-08-18
 

@@ -124,8 +124,8 @@ Expected:
 - Menambahkan `apiKey`/`provider` manual ke `.devmap/config.local.json`
   diabaikan dan memunculkan warning persis sekali:
   `config.local.json only supports "model", ...`.
-- `pnpm --filter @flaid/devmap test:unit` → 228 pass / 0 fail;
-  `pnpm --filter @flaid/devmap test:types` → 0 error.
+- `pnpm --filter @flaid/devmap test:unit` â†’ 228 pass / 0 fail;
+  `pnpm --filter @flaid/devmap test:types` â†’ 0 error.
 
 Full suite:
 
@@ -217,7 +217,7 @@ pnpm --filter @flaid/devmap exec tsx --test test/onboarding-command.test.ts test
 ```
 
 Model layer (new):
-- `test/onboarding-model.test.ts` — `buildOnboardingModel()` dengan fixture
+- `test/onboarding-model.test.ts` â€” `buildOnboardingModel()` dengan fixture
   nyata (Next.js) dan snapshot kosong; verifikasi semua field `OnboardingModel`
   terisi; validasi priority range (1-4); dukungan bahasa Indonesia; edge case
   snapshot minimal tanpa features/flows.
@@ -345,17 +345,17 @@ Coverage:
   markdown berisi Purpose + Steps + mermaid block valid tanpa narration;
 - `--all` menghasilkan count >= default dan memasukkan route non-API
   (page route) yang tidak muncul di default;
-- target exact case-insensitive; target unknown → DevmapError dengan hint
-  known flows; target ambigu → DevmapError "matches multiple flows";
+- target exact case-insensitive; target unknown â†’ DevmapError dengan hint
+  known flows; target ambigu â†’ DevmapError "matches multiple flows";
 - `--json` menghasilkan satu dokumen `FlowResult` yang valid;
 - narration success dengan fake `createAiClient` (model = `DEFAULT_AI_MODELS.flowNarration`,
   fallback = `DEFAULT_AI_FALLBACKS.flowNarration`, `maxCompletionTokens: 400`,
   section "How it works" di markdown);
-- narration failure dengan fake client yang melempar `DevmapError` → warning,
+- narration failure dengan fake client yang melempar `DevmapError` â†’ warning,
   `narrated: false`, command tetap menyelesaikan semua flow.
 
 Catatan: semua test tanpa AI wajib inject `loadConfig: async () => null`
-karena mesin dev punya config global dengan API key nyata — tanpa itu test
+karena mesin dev punya config global dengan API key nyata â€” tanpa itu test
 akan memanggil AI live.
 
 Manual source-mode check dari fixture (dengan home terisolasi supaya key
@@ -390,23 +390,23 @@ pnpm --filter @flaid/devmap exec tsx --test test/explain-command.test.ts
 
 Coverage:
 
-- fail-fast provider: tanpa config → `DevmapError` "requires an AI provider"
+- fail-fast provider: tanpa config â†’ `DevmapError` "requires an AI provider"
   + hint `devmap init`, dan tidak ada file `.devmap/explain/` yang ditulis;
-- file mode exact path + suffix unambiguous (`auth.ts` → `lib/auth.ts`);
-- feature mode case-insensitive (`authentication` → `Authentication`);
+- file mode exact path + suffix unambiguous (`auth.ts` â†’ `lib/auth.ts`);
+- feature mode case-insensitive (`authentication` â†’ `Authentication`);
 - function mode memakai nama fungsi asli dari `topFunctions` snapshot fixture
   (bukan nama tebakan), `resolvedFile` benar, `contextFiles` berisi file tsb;
 - routing AI = `DEFAULT_AI_MODELS.explain` + `DEFAULT_AI_FALLBACKS.explain`;
-- ambiguity: 2 file dengan fungsi senama → `DevmapError` "matches multiple
+- ambiguity: 2 file dengan fungsi senama â†’ `DevmapError` "matches multiple
   functions" mencantumkan `file:line`;
-- unknown target → `DevmapError` "isn't a known file, feature, or function"
+- unknown target â†’ `DevmapError` "isn't a known file, feature, or function"
   + `Known features:`;
 - `--write` menulis `.devmap/explain/<slug>.md` berisi `# <target>` + answer;
 - tanpa `--write` tidak ada file ditulis;
-- urutan resolusi feature → file → function.
+- urutan resolusi feature â†’ file â†’ function.
 
 Catatan desain: untuk function mode, question yang dikirim ke
-`buildQuestionContext` adalah `"<fn> in <file>"` — keyword murni nama fungsi
+`buildQuestionContext` adalah `"<fn> in <file>"` â€” keyword murni nama fungsi
 tidak match path/symbol ranking, tapi `<file>` pasti cocok.
 
 Manual source-mode check dari fixture:
@@ -1302,7 +1302,7 @@ Preview:
 pnpm preview:web
 ```
 
-### Landing Page Redesign — Spec 03
+### Landing Page Redesign â€” Spec 03
 
 Verifikasi landing page editorial calm (branch `landing-page`):
 
@@ -1323,9 +1323,9 @@ Expected:
   ```
 - tidak ada horizontal scrollbar di 375px, index list Hero tidak wrap aneh
   dan garis vertikal tetap sejajar dengan dots;
-- tidak ada em dash (`—`) di `apps/web/src`:
+- tidak ada em dash (`â€”`) di `apps/web/src`:
   ```powershell
-  (Select-String -Path "apps\web\src\**\*" -Pattern "—" -Recurse).Count
+  (Select-String -Path "apps\web\src\**\*" -Pattern "â€”" -Recurse).Count
   ```
 - `devmap ask` tidak muncul di `apps/web/src`;
 - `coming soon` / `phase 2` tidak muncul di FeaturesSection dan
@@ -1335,7 +1335,7 @@ Expected:
 - `prefers-reduced-motion: reduce` menghapus stagger animasi Hero, konten
   tetap fully visible.
 
-### Docs Page — Spec 04
+### Docs Page â€” Spec 04
 
 Build + serve:
 
@@ -1406,3 +1406,71 @@ Review staged files:
 git diff --cached --stat
 git diff --cached
 ```
+
+
+---
+
+## 12. Rilis Paket ke npm
+
+Alur final publish `@flaid/devmap` (terverifikasi 2026-08-23 untuk versi
+0.2.0).
+
+Prasyarat sekali setup:
+
+- Org npm `flaid` ada; akun `fadilz` sebagai owner;
+- Akun punya 2FA aktif (Security Key/passkey);
+- Preferensi write-actions bebas (`auth-only` cukup, publish lewat token).
+
+Langkah rilis:
+
+1. Pastikan working tree bersih dan gates hijau:
+
+   ```powershell
+   git status --short
+   pnpm run test:unit          # dari packages/cli
+   pnpm run test:types
+   pnpm run test:package-e2e   # dari root
+   ```
+
+2. Buat Granular Access Token sekali pakai di
+   <https://www.npmjs.com/settings/fadilz/tokens/create>: scope `@flaid`
+   permission **Read and write** + opsi **bypass two-factor authentication**
+   aktif, lalu Generate.
+
+3. Pasang token sementara:
+
+   ```powershell
+   Set-Content "$env:USERPROFILE\.npmrc" "//registry.npmjs.org/:_authToken=<TOKEN>" -Encoding ASCII
+   ```
+
+4. Publish dari `packages/cli`:
+
+   ```powershell
+   cd packages\cli
+   pnpm publish --access public
+   ```
+
+5. Bersihkan token dari mesin DAN revoke di website (Access Tokens):
+
+   ```powershell
+   Remove-Item "$env:USERPROFILE\.npmrc"
+   ```
+
+6. Verifikasi (registry API bisa lag beberapa menit; halaman web package
+   biasanya tampil lebih dulu):
+
+   ```powershell
+   npm view @flaid/devmap version         # harus sama dengan package.json
+   npx -y @flaid/devmap@latest --version  # dari folder kosong
+   ```
+
+7. Tag dan GitHub Release agar link CHANGELOG tidak 404:
+
+   ```powershell
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   gh release create vX.Y.Z --title "..." --notes "..."
+   ```
+
+Catatan: mulai Januari 2027 npm membatasi direct publishing via token bypass
+2FA - pertimbangkan trusted publishing (OIDC) sebelum tanggal tersebut.

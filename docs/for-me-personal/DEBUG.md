@@ -1015,7 +1015,7 @@ adalah source code penuh yang bisa di-parse AST.
 
 ### Akar Masalah
 
-ts-morph adalah pure TypeScript/JavaScript parser — dia tidak mengerti
+ts-morph adalah pure TypeScript/JavaScript parser â€” dia tidak mengerti
 format SFC (Single File Component) yang mencampur template, style, dan
 script dalam satu file. Tidak ada preprocessing step yang memisahkan
 script block sebelum dilempar ke ts-morph.
@@ -1026,19 +1026,19 @@ Buat layer `preprocessors/` sebelum ts-morph:
 
 ```
 ScannedFile (.vue/.svelte/.astro)
-  → preprocessor.extract()     ekstrak pure JS/TS dari script block
-  → ExtractedScript             pure code + language + lineOffset
-  → ts-morph parse              semantic analysis seperti .ts biasa
-  → FileAnalysis (confidence: "high")
+  â†’ preprocessor.extract()     ekstrak pure JS/TS dari script block
+  â†’ ExtractedScript             pure code + language + lineOffset
+  â†’ ts-morph parse              semantic analysis seperti .ts biasa
+  â†’ FileAnalysis (confidence: "high")
 ```
 
 Setiap format punya preprocessor sendiri:
-- `VuePreprocessor` — regex match `<script>` dengan optional `lang="ts"`
-- `SveltePreprocessor` — prefer instance script, fallback ke module script
-- `AstroPreprocessor` — match frontmatter antara `---` fences
+- `VuePreprocessor` â€” regex match `<script>` dengan optional `lang="ts"`
+- `SveltePreprocessor` â€” prefer instance script, fallback ke module script
+- `AstroPreprocessor` â€” match frontmatter antara `---` fences
 
 File tanpa script block (template-only component) return `null` dari
-`extract()` — `TsMorphAnalyzer` handle ini dengan empty medium-confidence
+`extract()` â€” `TsMorphAnalyzer` handle ini dengan empty medium-confidence
 analysis daripada crash.
 
 `HeuristicAnalyzer.supports()` dihapus dari ketiga extension ini agar
@@ -1047,7 +1047,7 @@ fallback implicit dan sulit di-debug.
 
 ### Verifikasi
 
-Analyze project Vue/Nuxt atau Astro — file `.vue` dan `.astro` sekarang
+Analyze project Vue/Nuxt atau Astro â€” file `.vue` dan `.astro` sekarang
 punya `analyzer: "ts-morph"` dan `analysisConfidence: "high"` di
 `fileIndex`.
 
@@ -1055,7 +1055,7 @@ punya `analyzer: "ts-morph"` dan `analysisConfidence: "high"` di
 
 File yang punya embedded JS/TS butuh preprocessing sebelum masuk AST
 parser. Interface `LanguagePreprocessor` memisahkan extraction concern dari
-parsing concern — tambah format baru tidak perlu ubah ts-morph logic.
+parsing concern â€” tambah format baru tidak perlu ubah ts-morph logic.
 
 ---
 
@@ -1070,10 +1070,10 @@ Hasil `devmap analyze` pada project lain (DevNote, toko online, dll) hanya
 menampilkan:
 
 ```
-Authentication ✅
-Database ✅
-Documentation ✅
-Sisanya noise atau kosong ❌
+Authentication âœ…
+Database âœ…
+Documentation âœ…
+Sisanya noise atau kosong âŒ
 ```
 
 Feature seperti "Snippet Management", "Workspace", "Order Management" tidak
@@ -1085,11 +1085,11 @@ muncul. Sementara di project DevMap sendiri ada "Snapshot Engine" dan
 `featureDetector.ts` punya dua masalah utama:
 
 1. `ROLE_FEATURES` mengandung `"snapshot-engine"` dan `"analysis-engine"`
-   yang hanya match di folder `/src/analyzers/` dan `/src/cache/` — path
+   yang hanya match di folder `/src/analyzers/` dan `/src/cache/` â€” path
    spesifik DevMap. Project lain selalu evidence kosong.
 
 2. `FEATURE_FILE_PRIORITIES` berisi regex path DevMap seperti:
-   `/\/analyzers\/tsmorphanalyzer\.[cm]?[jt]s$/` — sorting jadi arbitrary
+   `/\/analyzers\/tsmorphanalyzer\.[cm]?[jt]s$/` â€” sorting jadi arbitrary
    untuk project lain karena semua pattern miss.
 
 3. Tidak ada mekanisme untuk detect domain features seperti "Snippet
@@ -1101,31 +1101,31 @@ muncul. Sementara di project DevMap sendiri ada "Snapshot Engine" dan
 Redesign feature detection menjadi pipeline berlayer:
 
 ```
-Layer 1 — Technical Features (library-based, tetap ada)
+Layer 1 â€” Technical Features (library-based, tetap ada)
   FEATURE_SIGNALS: diperluas dari 6 ke 15 signals
   matchesSignal: whole-word fix untuk term pendek
 
-Layer 2 — Entity Extraction (schema-based)
-  PrismaExtractor: parse schema.prisma → entity names + relations
+Layer 2 â€” Entity Extraction (schema-based)
+  PrismaExtractor: parse schema.prisma â†’ entity names + relations
   RouteFallbackExtractor: derive entity hints dari URL segments
 
-Layer 3 — Capability Detection (route-based)
+Layer 3 â€” Capability Detection (route-based)
   CRUD: group routes by resource + HTTP methods
   Behavioral: sharing, collaboration, discovery, social, dll
 
-Layer 4 — Feature Assembly (consume Layer 1-3)
-  capabilitiesToFeatures(): CRUD capability → "Snippet Management"
-  entityGraphToFeatures(): Prisma entity → feature dengan relation context
+Layer 4 â€” Feature Assembly (consume Layer 1-3)
+  capabilitiesToFeatures(): CRUD capability â†’ "Snippet Management"
+  entityGraphToFeatures(): Prisma entity â†’ feature dengan relation context
 
-Layer 5 — AI Domain Inference (optional, structured metadata)
+Layer 5 â€” AI Domain Inference (optional, structured metadata)
   Input: entities + capabilities + technical features (bukan raw code)
   Output: domain name + domain-specific features
   Token: ~300-500 per call
 ```
 
 Keputusan utama: **tidak** implement route-segment-to-feature-name mapping
-(`/snippets` → "Snippet Management") karena approach ini sama hardcode-nya
-dengan yang sebelumnya — cuma pindah layer. Entity extraction + capability
+(`/snippets` â†’ "Snippet Management") karena approach ini sama hardcode-nya
+dengan yang sebelumnya â€” cuma pindah layer. Entity extraction + capability
 detection lebih scalable karena tidak perlu tau nama domain upfront.
 
 `fileRole.ts` di-generalize: hapus `"snapshot-engine"` dan
@@ -1135,13 +1135,13 @@ detection lebih scalable karena tidak perlu tau nama domain upfront.
 
 Analyze DevNote menghasilkan:
 ```
-Snippet Management    ✅ dari CRUD capability /api/snippets
-Content Sharing       ✅ dari behavioral signal /snippets/[id]/share
-Team Collaboration    ✅ dari /workspaces/[id]/members + /join
-Social Interactions   ✅ dari /snippets/[id]/like + /favorite
-API Layer             ✅ dari fileRole "api-handler"
-Service Layer         ✅ dari fileRole "service"
-AI Integration        ❌ false positive dihilangkan (lihat #22)
+Snippet Management    âœ… dari CRUD capability /api/snippets
+Content Sharing       âœ… dari behavioral signal /snippets/[id]/share
+Team Collaboration    âœ… dari /workspaces/[id]/members + /join
+Social Interactions   âœ… dari /snippets/[id]/like + /favorite
+API Layer             âœ… dari fileRole "api-handler"
+Service Layer         âœ… dari fileRole "service"
+AI Integration        âŒ false positive dihilangkan (lihat #22)
 ```
 
 ### Pelajaran
@@ -1149,11 +1149,11 @@ AI Integration        ❌ false positive dihilangkan (lihat #22)
 Feature detector yang bagus harus bisa jawab: "apa yang project ini
 *lakukan*?" bukan hanya "library apa yang dipakai?". Entity dan route
 adalah dua sumber informasi yang paling reliable karena keduanya adalah
-kontrak eksplisit project — bukan inferred dari naming.
+kontrak eksplisit project â€” bukan inferred dari naming.
 
 Domain-specific features (Syntax Highlighting, Certificate Generation, dll)
 memang tidak bisa di-detect secara static karena terlalu domain-specific.
-Itu territory AI inference — dan AI inference harus terima structured
+Itu territory AI inference â€” dan AI inference harus terima structured
 metadata, bukan raw source code.
 
 ---
@@ -1178,9 +1178,9 @@ DevNote tidak memakai AI library apapun.
 term pendek `"ai"`. Substring match menemukan:
 
 ```
-"tailwind"    → "t-AI-lwind"  → match!
-"detail"      → "det-AI-l"   → match!
-"SnippetList" → tidak match   → tapi file lain match
+"tailwind"    â†’ "t-AI-lwind"  â†’ match!
+"detail"      â†’ "det-AI-l"   â†’ match!
+"SnippetList" â†’ tidak match   â†’ tapi file lain match
 ```
 
 Karena confidence dihitung dari jumlah evidence, banyak false positive
@@ -1188,7 +1188,7 @@ membuat confidence "high".
 
 ### Solusi
 
-Term ≤3 karakter harus match sebagai whole word, bukan substring:
+Term â‰¤3 karakter harus match sebagai whole word, bukan substring:
 
 ```typescript
 function matchesPathTerm(path: string, term: string): boolean {
@@ -1201,10 +1201,10 @@ function matchesPathTerm(path: string, term: string): boolean {
 
 Test:
 ```
-"tailwind.config.ts" + "ai" → ❌ (ai di tengah kata, tidak ada separator)
-"src/ai/provider.ts" + "ai" → ✅ (ai sebagai path segment, dikelilingi /)
-"lib/ai.ts" + "ai"          → ✅ (ai diikuti .)
-"SnippetDetail.tsx" + "ai"  → ❌ (ai di tengah kata)
+"tailwind.config.ts" + "ai" â†’ âŒ (ai di tengah kata, tidak ada separator)
+"src/ai/provider.ts" + "ai" â†’ âœ… (ai sebagai path segment, dikelilingi /)
+"lib/ai.ts" + "ai"          â†’ âœ… (ai diikuti .)
+"SnippetDetail.tsx" + "ai"  â†’ âŒ (ai di tengah kata)
 ```
 
 Terms yang kena fix: `"ai"`, `"cms"`, `"db"`, `"i18n"`, `"l10n"`.
@@ -1212,12 +1212,12 @@ Long terms seperti `"stripe"`, `"openai"`, `"redis"` tetap substring match.
 
 ### Verifikasi
 
-Analyze DevNote — "AI Integration" tidak muncul lagi di features.
+Analyze DevNote â€” "AI Integration" tidak muncul lagi di features.
 
 ### Pelajaran
 
 Term pendek dalam feature detection selalu berisiko substring false positive.
-Semua term ≤3 karakter harus pakai whole-word matching di path check.
+Semua term â‰¤3 karakter harus pakai whole-word matching di path check.
 Import matching tetap aman pakai substring karena import specifiers adalah
 package names yang well-defined.
 
@@ -1235,7 +1235,7 @@ menghasilkan:
 
 ```
 Routes
-──────────────────
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 None detected yet
 ```
 
@@ -1264,15 +1264,15 @@ Ganti `^` dengan `(?:^|\/)` agar match di manapun dalam path:
 ```
 
 Fix yang sama diterapkan ke Pages Router pattern. `(?:^|\/)` artinya:
-"match di awal string ATAU setelah slash" — works untuk single-package
+"match di awal string ATAU setelah slash" â€” works untuk single-package
 dan monorepo.
 
 ### Verifikasi
 
 Analyze DevNote menghasilkan 35 routes terdeteksi dengan benar:
 ```
-/api/snippets → apps/web/src/app/api/snippets/route.ts
-/workspaces/[id] → apps/web/src/app/(dashboard)/workspaces/[id]/page.tsx
+/api/snippets â†’ apps/web/src/app/api/snippets/route.ts
+/workspaces/[id] â†’ apps/web/src/app/(dashboard)/workspaces/[id]/page.tsx
 ...
 ```
 
@@ -1311,7 +1311,7 @@ narration tetap inject fake `createAiClient` seperti pola `analyze-ai.test.ts`.
 
 ### Verifikasi
 
-`pnpm --filter devmap exec tsx --test test/flow-command.test.ts` — 10/10 pass,
+`pnpm --filter devmap exec tsx --test test/flow-command.test.ts` â€” 10/10 pass,
 tidak ada request AI live yang tersisa.
 
 ### Pelajaran
@@ -1394,3 +1394,59 @@ Gunakan format:
 ### Verifikasi
 ### Pelajaran
 ```
+
+---
+
+## 26. Publish npm Selalu Kena EOTP Meski Preferensi Akun auth-only
+
+**Tanggal:** 2026-08-23
+**Status:** Selesai
+
+### Gejala
+
+`pnpm publish --access public` untuk `@flaid/devmap@0.2.0` gagal dengan
+`npm error code EOTP` ("This operation requires a one-time password from your
+authenticator") padahal preferensi akun sudah `auth-only` (`npm profile get`
+menunjukkan `two-factor auth: auth-only`). Halaman 2FA akun juga tidak
+menawarkan pendaftaran authenticator app (TOTP) - hanya Security Key.
+
+### Akar Masalah
+
+Kebijakan npm era Agustus 2026 (banner "npm tokens that bypass 2FA are being
+restricted"; docs `about-two-factor-authentication` editan 2026-08-03):
+
+1. Publishing wajib disertai verifikasi 2FA - preferensi `auth-only` pada
+   akun tidak lagi membebaskan operasi publish.
+2. Alur enable 2FA di website npm kini hanya menyediakan **Security Key**
+   (passkey/WebAuthn); enrollment authenticator app (TOTP) tidak ditawarkan,
+   jadi tidak ada kode 6 digit untuk diketik.
+3. Org yang baru dibuat menyertakan syarat 2FA member sehingga disable 2FA
+   akun ikut diblokir ("you belong to 1 organization(s) that require it").
+
+### Solusi
+
+Buat **Granular Access Token dengan bypass 2FA**: scope `@flaid` permission
+Read and write + opsi bypass two-factor authentication aktif. Token ditulis
+sementara ke `%USERPROFILE%\.npmrc`
+(`//registry.npmjs.org/:_authToken=...`), publish dijalankan, lalu `.npmrc`
+dihapus dan token direvoke di website. Disable 2FA akun yang terblokir org
+diselesaikan dengan mematikan sementara *2FA Enforcement* di halaman Members
+org, lalu menyalakannya kembali setelah 2FA personal aktif.
+
+### Verifikasi
+
+- Output publish berakhir `+ @flaid/devmap@0.2.0`.
+- `npm view @flaid/devmap version` mengembalikan `0.2.0` setelah propagasi
+  CDN sekitar lima menit; halaman web package tampil lebih dulu daripada
+  endpoint registry API, jadi 404 sementara bukan berarti publish gagal.
+- Fresh install folder bersih: `npx -y @flaid/devmap@latest --version`
+  mengembalikan `0.2.0`.
+
+### Pelajaran
+
+- Periksa docs platform terbaru sebelum mendebag alur otorisasi lama; UI dan
+  kebijakan npm berubah signifikan pada 2026.
+- Pola rilis sampai Januari 2027: granular bypass token sekali pakai per
+  rilis. Setelah tanggal tersebut direct publishing via token bypass
+  dibatasi - migrasi ke trusted publishing (OIDC).
+- Token yang pernah melewati chat/session wajib langsung direvoke.

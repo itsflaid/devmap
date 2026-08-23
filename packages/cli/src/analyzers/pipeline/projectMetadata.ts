@@ -37,9 +37,7 @@ export function detectProjectMetadata(
   const projectTypes = detectProjectTypes(frameworks, manifests);
   const primaryManifest = selectPrimaryManifest(manifests, projectTypes);
   const workspaceType = detectWorkspaceType(projectRoot, manifests);
-  const primaryFramework = projectTypes.includes("node-cli") || projectTypes.includes("library")
-    ? "unknown"
-    : framework;
+  const primaryFramework = isRootCliOrLibrary(manifests) ? "unknown" : framework;
 
   return {
     name: readProjectName(manifests) ?? basename(projectRoot),
@@ -89,6 +87,25 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
         return [];
       }
     });
+}
+
+/**
+ * Whether the ROOT package itself (not any nested workspace member) is
+ * shaped like a CLI or a library. Deliberately scoped to the root manifest
+ * only — unlike `detectProjectTypes`, which intentionally checks every
+ * manifest so `projectTypes` can report "this repo also contains a CLI"
+ * as one of several labels. That whole-tree check must not be reused here:
+ * a monorepo root (e.g. a private workspace with no bin/main/exports of its
+ * own) that merely CONTAINS a CLI subpackage (e.g. packages/cli) is not
+ * itself a CLI, and shouldn't have its correctly-detected framework (e.g.
+ * an Astro app living in apps/web) blanked out to "unknown" because of it.
+ */
+function isRootCliOrLibrary(manifests: PackageManifest[]): boolean {
+  const rootManifest = manifests.find((manifest) => manifest.path === "package.json");
+  if (!rootManifest) return false;
+
+  if (rootManifest.bin) return true;
+  return Boolean((rootManifest.exports || rootManifest.main) && !rootManifest.bin);
 }
 
 function readProjectName(manifests: PackageManifest[]): string | null {

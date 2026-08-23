@@ -284,7 +284,7 @@ npx @flaid/devmap analyze
 Requirements:
 
 ```txt
-Node.js 22+
+Node.js 22.12+
 ```
 
 ---

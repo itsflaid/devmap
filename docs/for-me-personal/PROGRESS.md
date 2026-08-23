@@ -1,6 +1,40 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-18
+Terakhir diperbarui: 2026-08-23
+
+## Update 2026-08-23
+
+### Audit pra-publish npm + persiapan rilis @flaid/devmap@0.2.0
+
+Audit penuh menjelang first publish ke npm (org `flaid` dibuat di akun
+`fadilz`, 2FA aktif). Hasil audit: metadata paket lengkap, tidak ada hardcoded
+secret, tanpa `child_process`, shebang terjaga, LICENSE/README/CHANGELOG siap,
+nama unscoped `devmap` ternyata sudah dimiliki proyek lain (StevenLOL/devmap)
+— makanya wajib scope `@flaid`.
+
+Perubahan satu commit langsung di `main` (instruksi eksplisit user: tanpa
+branch/issue/PR):
+
+1. `engines.node` `>=22` → `>=22.12` di root, `packages/cli`, dan `apps/web`
+   — menyamakan requirement riil commander@15 (`>=22.12.0`, cek lockfile).
+   Assertion di `test/package-distribution.test.ts` ikut diubah.
+2. Ikutkan fix framework-detection yang tertunda di working tree:
+   `detectProjectMetadata` kini pakai `isRootCliOrLibrary()` yang hanya membaca
+   manifest ROOT — monorepo berisi CLI/library subpackage tidak lagi
+   meng-blank-out framework hasil deteksi (kasus nyata: repo DevMap sendiri).
+   + test baru `project-metadata.test.ts`, update `agent-navigation.test.ts`.
+3. Doc touch-up "Node.js 22+" → "Node.js 22.12+": README root, README CLI,
+   CONTRIBUTING, `apps/web/src/content/docs/overview.md` (termasuk perbaikan
+   teks troubleshooting basi "upgrade to Node 18+"), 1 entri Changed di
+   CHANGELOG 0.2.0.
+4. Gates sebelum commit: test unit 236/236 pass, `tsc --noEmit` bersih,
+   build dist fresh, e2e packed-package pass (Next.js/Express/React fixtures).
+
+Rencana pasca-commit (jalankan berurutan): push origin/main → `npm whoami`
+(harus `fadilz`) → `pnpm pack` + inspeksi tarball → smoke test install dari
+tgz → `pnpm publish --access public` dari packages/cli (+ OTP) → verifikasi
+`npm view @flaid/devmap version` → fresh install `npx @flaid/devmap@latest`
+→ tag `v0.2.0` + GitHub Release agar link CHANGELOG tidak 404.
 
 ## Update 2026-08-18
 

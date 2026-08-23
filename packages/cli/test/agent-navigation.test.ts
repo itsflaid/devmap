@@ -202,7 +202,13 @@ test("agent navigation describes mixed CLI workspaces without misleading agents"
     };
 
     assert.deepEqual(index.project.projectTypes, ["web-app", "node-cli"]);
-    assert.equal(index.project.framework, "unknown");
+    // A mixed workspace still surfaces its real, detected framework — agents
+    // aren't misled because `projectTypes`/`frameworks` sit right alongside
+    // it in the same object, spelling out "this repo also has a CLI".
+    // Nulling `framework` here used to hide a correctly-detected Astro app
+    // behind "unknown" for any monorepo that happens to contain a bin field
+    // anywhere (e.g. devmap's own repo). See project-metadata.test.ts.
+    assert.equal(index.project.framework, "astro");
     assert.deepEqual(index.project.frameworks, ["astro"]);
 
     const documentation = index.features.find((feature) => feature.id === "documentation");

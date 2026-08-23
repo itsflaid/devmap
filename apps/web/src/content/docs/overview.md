@@ -14,7 +14,7 @@ pnpm add -g @flaid/devmap
 npx @flaid/devmap analyze
 ```
 
-Requirements: Node.js 22+
+Requirements: Node.js 22.12+
 
 ```bash
 devmap init
@@ -263,7 +263,7 @@ Straight from `devmap doctor`'s real checks:
 - **API key invalid or missing** → run `devmap init` again, or set `GROQ_API_KEY` / `OPENROUTER_API_KEY`
 - **Snapshot missing or corrupt** → `devmap analyze --fresh`
 - **Model unavailable** → `devmap init` or `devmap config model <model-id>`
-- **Node version unsupported** → upgrade to Node 18+
+- **Node version unsupported** → upgrade to Node.js 22.12+
 
 ---
 

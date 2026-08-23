@@ -603,7 +603,7 @@ pnpm --version
 
 Requirement:
 
-- Node.js 22 atau lebih baru;
+- Node.js 22.12 atau lebih baru (engines workspace: `>=22.12`);
 - pnpm 10.34.2.
 
 Install dependency:

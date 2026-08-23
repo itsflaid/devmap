@@ -23,7 +23,7 @@ npx @flaid/devmap --help
 
 ## Requirements
 
-- Node.js 22 or newer
+- Node.js 22.12 or newer
 - A Groq or OpenRouter API key for AI-powered analysis and answers
 
 Static analysis still works when AI is not configured.

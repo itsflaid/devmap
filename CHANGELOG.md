@@ -29,6 +29,9 @@ All notable changes to DevMap are documented in this file.
 
 ### Changed
 
+- Root-manifest CLI/library detection no longer blanks out a correctly
+  detected workspace framework in mixed monorepos, and the minimum supported
+  Node.js version is stated precisely as 22.12 to match dependency engines
 - Snapshot metadata now separates the primary framework from frameworks found
   in workspace packages, prioritizes root documentation, and emits semantic
   file purposes and provider-neutral AI flows

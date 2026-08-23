@@ -29,7 +29,7 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
     "AI-powered CLI to analyze, map, and explain codebases."
   );
   assert.equal(packageJson.bin?.devmap, "./dist/index.js");
-  assert.equal(packageJson.engines?.node, ">=22");
+  assert.equal(packageJson.engines?.node, ">=22.12");
   assert.deepEqual(packageJson.files, ["dist"]);
   assert.ok(packageJson.keywords?.includes("codebase"));
   assert.ok(packageJson.keywords?.includes("ai"));

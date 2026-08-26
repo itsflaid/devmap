@@ -40,6 +40,25 @@ Never use: fix(scope): or feat(scope):
 
 read all documentation first before hands-on.
 
+## Publishing
+
+DevMap ships to npm as `@flaid/devmap` from `packages/cli`. Changes fall
+into two categories with different handling:
+
+**Outside the published package** (root docs, `guide/`, landing site,
+internal scripts, anything not bundled into the npm tarball):
+- Commit and push normally. No version bump, no tag. This does not
+  trigger the publish workflow.
+
+**Inside `packages/cli`** (anything shipped in the npm package):
+- Do not bump the version, tag, or push on your own. Stop first and ask
+  the user to confirm the change is publish-worthy and which bump level
+  applies (`patch` / `minor` / `major`).
+- Only after explicit user confirmation: run `npm version <level>` in
+  `packages/cli`, then `git push --follow-tags`.
+- Passing verification gates is not authorization to publish — always
+  wait for the user's go-ahead on this step specifically.
+
 ## Source of Truth
 
 The roadmap (`docs/roadmap.md`) is the source of truth for product behavior, requirements, and priorities.

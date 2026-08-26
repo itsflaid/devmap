@@ -1,24 +1,20 @@
 import type { DevmapConfig } from "../utils/config.js";
+import { DevmapError } from "../utils/errors.js";
 import type { AiClient } from "./types.js";
-import {
-  DEFAULT_AI_FALLBACKS,
-  DEFAULT_AI_MODELS,
-  GroqClient,
-  inspectGroqProvider
-} from "./groq.js";
-import {
-  inspectOpenRouterProvider,
-  OpenRouterClient,
-  OPENROUTER_FREE_MODEL
-} from "./openrouter.js";
+import { PROVIDERS } from "./registry.js";
 
 export type AiTask = "analyze" | "flowNarration" | "explain";
 export type ProviderInspection = { reachable: true; modelAvailable: boolean };
 
 export function createAiClient(config: DevmapConfig): AiClient {
-  return config.provider === "openrouter"
-    ? new OpenRouterClient(config.apiKey ?? "")
-    : new GroqClient(config.apiKey ?? "");
+  const descriptor = PROVIDERS[config.provider];
+  if (descriptor.requiresBaseUrl && !config.baseUrl?.trim()) {
+    throw new DevmapError(
+      `${descriptor.displayName} requires an endpoint base URL.`,
+      "Run devmap init and set the base URL of your OpenAI-compatible endpoint."
+    );
+  }
+  return descriptor.createClient(config.apiKey ?? "", config.baseUrl);
 }
 
 export function resolveAiRouting(
@@ -29,26 +25,29 @@ export function resolveAiRouting(
     return { model: config.model, fallbackModels: [] };
   }
 
-  if (config.provider === "openrouter") {
-    return { model: OPENROUTER_FREE_MODEL, fallbackModels: [] };
+  const descriptor = PROVIDERS[config.provider];
+  const resolved = descriptor.supportsAutoModel
+    ? descriptor.resolveAutoModel?.(task)
+    : undefined;
+
+  if (!resolved) {
+    throw new DevmapError(
+      `${descriptor.displayName} doesn't support automatic model selection.`,
+      "Run devmap init and choose a model explicitly."
+    );
   }
 
-  return {
-    model: DEFAULT_AI_MODELS[task],
-    fallbackModels: DEFAULT_AI_FALLBACKS[task]
-  };
+  return resolved;
 }
 
 export function providerDisplayName(provider: DevmapConfig["provider"]): string {
-  return provider === "openrouter" ? "OpenRouter" : "Groq";
+  return PROVIDERS[provider].displayName;
 }
 
 export function inspectAiProvider(
-  provider: DevmapConfig["provider"],
-  apiKey: string,
+  config: DevmapConfig,
   model: string
 ): Promise<ProviderInspection> {
-  return provider === "openrouter"
-    ? inspectOpenRouterProvider(apiKey, model)
-    : inspectGroqProvider(apiKey, model);
+  const descriptor = PROVIDERS[config.provider];
+  return descriptor.inspect(config.apiKey ?? "", model, config.baseUrl);
 }

@@ -19,7 +19,7 @@ Analyze once. Reuse context everywhere.
 Structured project intelligence for developers and AI agents.
 </p>
 
-Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid)
+Built by [Muhammad Fadil (@itsflaid)](https://github.com/itsflaid) · [www.flaid.my.id](https://www.flaid.my.id)
 
 ---
 

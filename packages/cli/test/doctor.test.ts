@@ -130,7 +130,7 @@ test("doctor reports the project override source and inspects the local model", 
         apiKey: "gsk_fixture",
         model: "auto"
       }),
-      inspectProvider: async (_apiKey, model, _provider) => {
+      inspectProvider: async (_config, model) => {
         inspectedModel = model;
         return { reachable: true, modelAvailable: true };
       }
@@ -156,8 +156,8 @@ test("doctor inspects OpenRouter with the configured user model", async () => {
         apiKey: "sk-or-fixture",
         model: "qwen/qwen3-coder"
       }),
-      inspectProvider: async (_apiKey, model, provider) => {
-        inspectedProvider = provider;
+      inspectProvider: async (config, model) => {
+        inspectedProvider = config.provider;
         inspectedModel = model;
         return { reachable: true, modelAvailable: true };
       }

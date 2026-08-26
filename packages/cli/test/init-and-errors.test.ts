@@ -124,7 +124,7 @@ test("interactive init appends DevMap instructions only after confirmation", asy
       loadConfig: async () => null,
       persistConfig: async () => undefined,
       validateApiKey: async () => undefined,
-      listGroqModels: async () => ["openai/gpt-oss-20b"]
+      listModels: async () => ["openai/gpt-oss-20b"]
     });
 
     const content = await readFile(join(projectRoot, "AGENTS.md"), "utf8");
@@ -150,7 +150,7 @@ test("interactive init preserves existing AGENTS.md when confirmation is decline
       loadConfig: async () => null,
       persistConfig: async () => undefined,
       validateApiKey: async () => undefined,
-      listGroqModels: async () => ["openai/gpt-oss-20b"]
+      listModels: async () => ["openai/gpt-oss-20b"]
     });
 
     assert.equal(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), original);
@@ -273,7 +273,7 @@ test("interactive init selects Groq with the provider menu", async () => {
         savedConfig = config;
       },
       validateApiKey: async () => undefined,
-      listGroqModels: async () => [
+      listModels: async () => [
         "openai/gpt-oss-20b",
         "llama-3.3-70b-versatile"
       ]

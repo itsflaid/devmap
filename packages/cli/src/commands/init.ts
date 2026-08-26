@@ -1,12 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { listGroqModels, validateGroqApiKey } from "../ai/groq.js";
+import { PROVIDERS, type ProviderDescriptor } from "../ai/registry.js";
 import {
-  OPENROUTER_FREE_MODEL,
-  validateOpenRouterApiKey
-} from "../ai/openrouter.js";
-import { providerDisplayName } from "../ai/provider.js";
-import { readConfig, writeConfig, type DevmapConfig } from "../utils/config.js";
+  readConfig,
+  writeConfig,
+  type DevmapConfig,
+  type DevmapProvider
+} from "../utils/config.js";
 import {
   ensureAgentsFile,
   inspectAgentsFile,
@@ -25,9 +25,10 @@ export type InitDependencies = {
   prompt?: Prompt;
   validateApiKey?: (
     apiKey: string,
-    provider: DevmapConfig["provider"]
+    provider: DevmapProvider,
+    baseUrl?: string
   ) => Promise<void>;
-  listGroqModels?: (apiKey: string) => Promise<string[]>;
+  listModels?: (apiKey: string, baseUrl?: string) => Promise<string[]>;
   isInteractive?: boolean;
   environmentApiKey?: string;
   environmentOpenRouterApiKey?: string;
@@ -67,18 +68,31 @@ async function runInit(
 
   try {
     const provider = await resolveProvider(prompt, interactive, existingConfig);
-    const providerName = providerDisplayName(provider);
-    const environmentApiKey = dependencies.environmentApiKey
-      ?? (provider === "openrouter"
+    const descriptor = PROVIDERS[provider];
+    const providerName = descriptor.displayName;
+    const baseUrl = await resolveBaseUrl({
+      descriptor,
+      prompt,
+      interactive,
+      existingBaseUrl: existingConfig?.provider === provider
+        ? existingConfig.baseUrl
+        : undefined
+    });
+    let environmentApiKey = dependencies.environmentApiKey;
+    if (!environmentApiKey) {
+      environmentApiKey = descriptor.envVarName === "OPENROUTER_API_KEY"
         ? dependencies.environmentOpenRouterApiKey ?? process.env.OPENROUTER_API_KEY
-        : process.env.GROQ_API_KEY);
+        : process.env[descriptor.envVarName];
+    }
     const validateApiKey = dependencies.validateApiKey
-      ?? ((key: string, selectedProvider: DevmapConfig["provider"]) => (
-        selectedProvider === "openrouter"
-          ? validateOpenRouterApiKey(key)
-          : validateGroqApiKey(key)
+      ?? ((key: string, selectedProvider: DevmapProvider, selectedBaseUrl?: string) => (
+        PROVIDERS[selectedProvider].inspect(key, undefined, selectedBaseUrl)
+          .then(() => undefined)
       ));
     output.keyValue("Provider", providerName);
+    if (baseUrl) {
+      output.keyValue("Base URL", baseUrl);
+    }
 
     const apiKey = await resolveApiKey({
       prompt,
@@ -91,16 +105,17 @@ async function runInit(
     });
 
     output.step(`Validating ${providerName} API key`);
-    await validateApiKey(apiKey, provider);
+    await validateApiKey(apiKey, provider, baseUrl);
     output.success(`${providerName} API key is valid`);
 
     const model = await resolveInitialModel({
       provider,
+      baseUrl,
       apiKey,
       prompt,
       interactive,
       existingConfig,
-      listModels: dependencies.listGroqModels ?? listGroqModels
+      listModels: dependencies.listModels
     });
 
     const agentsStatus = await inspectAgentsFile(projectRoot);
@@ -116,7 +131,8 @@ async function runInit(
     await persistConfig({
       provider,
       apiKey,
-      model
+      model,
+      ...(baseUrl ? { baseUrl } : {})
     });
 
     const ignored = await ensureDevmapIgnored(projectRoot);
@@ -124,11 +140,8 @@ async function runInit(
     const agentsResult = await ensureAgentsFile(projectRoot, appendToExistingAgents);
 
     output.success("Config saved to ~/.devmap/config.json");
-    if (provider === "openrouter") {
-      output.note(`OpenRouter model: ${model}`);
-      output.note("Change it later with: devmap config model <model-id>");
-    } else if (model !== "auto") {
-      output.note(`Groq model: ${model}`);
+    if (model !== "auto") {
+      output.note(`${providerName} model: ${model}`);
       output.note("Change it later with: devmap config model <model-id>");
     }
     output.success(ignored ? "Added .devmap/ to .gitignore" : ".devmap/ already ignored");
@@ -180,7 +193,7 @@ type ResolveApiKeyOptions = {
   interactive: boolean;
   environmentApiKey?: string;
   existingApiKey?: string;
-  provider: DevmapConfig["provider"];
+  provider: DevmapProvider;
 };
 
 async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
@@ -188,18 +201,20 @@ async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
     return options.environmentApiKey.trim();
   }
 
+  const descriptor = PROVIDERS[options.provider];
+  const providerName = descriptor.displayName;
+
   if (!options.interactive || !options.prompt) {
     if (options.existingApiKey?.trim()) {
       return options.existingApiKey.trim();
     }
 
     throw new DevmapError(
-      `An ${providerDisplayName(options.provider)} API key is required to initialize DevMap.`,
-      `Run devmap init in an interactive terminal or set ${readProviderEnvName(options.provider)}.`
+      `An ${providerName} API key is required to initialize DevMap.`,
+      `Run devmap init in an interactive terminal or set ${descriptor.envVarName}.`
     );
   }
 
-  const providerName = providerDisplayName(options.provider);
   const keyPrompt = options.existingApiKey
     ? `${providerName} API key [press Enter to keep existing]: `
     : `${providerName} API key: `;
@@ -209,20 +224,63 @@ async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
   if (!apiKey) {
     throw new DevmapError(
       `An ${providerName} API key is required.`,
-      options.provider === "openrouter"
-        ? "Create one at https://openrouter.ai/keys."
-        : "Create one at https://console.groq.com/keys."
+      descriptor.apiKeyHintUrl
+        ? `Create one at ${descriptor.apiKeyHintUrl}.`
+        : `Set ${descriptor.envVarName} or create a key in your endpoint's console.`
     );
   }
 
   return apiKey;
 }
 
+type ResolveBaseUrlOptions = {
+  descriptor: ProviderDescriptor;
+  prompt: Prompt | null;
+  interactive: boolean;
+  existingBaseUrl?: string;
+};
+
+async function resolveBaseUrl(
+  options: ResolveBaseUrlOptions
+): Promise<string | undefined> {
+  const { descriptor } = options;
+  if (!descriptor.requiresBaseUrl) {
+    return undefined;
+  }
+
+  const prefill = options.existingBaseUrl?.trim()
+    || descriptor.defaultBaseUrl
+    || "";
+
+  if (!options.interactive || !options.prompt) {
+    if (prefill) {
+      return prefill;
+    }
+
+    throw new DevmapError(
+      `A base URL is required for ${descriptor.displayName}.`,
+      "Run devmap init in an interactive terminal."
+    );
+  }
+
+  const answer = (await options.prompt.ask(`Endpoint base URL [${prefill}]: `)).trim();
+  const baseUrl = answer || prefill;
+
+  if (!baseUrl) {
+    throw new DevmapError(
+      `A base URL is required for ${descriptor.displayName}.`,
+      "Enter the root URL of your OpenAI-compatible endpoint, e.g. http://localhost:20128/v1."
+    );
+  }
+
+  return baseUrl;
+}
+
 async function resolveProvider(
   prompt: Prompt | null,
   interactive: boolean,
   existingConfig: DevmapConfig | null
-): Promise<DevmapConfig["provider"]> {
+): Promise<DevmapProvider> {
   if (!interactive || !prompt) {
     if (existingConfig) return existingConfig.provider;
     return process.env.OPENROUTER_API_KEY && !process.env.GROQ_API_KEY
@@ -230,34 +288,56 @@ async function resolveProvider(
       : "groq";
   }
 
-  return prompt.select("AI provider", [
-    { label: "Groq", value: "groq" },
-    { label: "OpenRouter", value: "openrouter" }
-  ], existingConfig?.provider ?? "groq");
+  return prompt.select("AI provider",
+    Object.values(PROVIDERS).map((descriptor) => ({
+      label: descriptor.displayName,
+      value: descriptor.id
+    })),
+    existingConfig?.provider ?? "groq"
+  );
 }
 
 type ResolveInitialModelOptions = {
-  provider: DevmapConfig["provider"];
+  provider: DevmapProvider;
   apiKey: string;
+  baseUrl?: string;
   prompt: Prompt | null;
   interactive: boolean;
   existingConfig: DevmapConfig | null;
-  listModels: (apiKey: string) => Promise<string[]>;
+  listModels?: (apiKey: string, baseUrl?: string) => Promise<string[]>;
 };
 
 async function resolveInitialModel(
   options: ResolveInitialModelOptions
 ): Promise<string> {
-  if (options.provider === "groq") {
-    const existingModel = options.existingConfig?.provider === "groq"
-      ? options.existingConfig.model
-      : undefined;
-    if (!options.interactive || !options.prompt) return existingModel ?? "auto";
+  const descriptor = PROVIDERS[options.provider];
+  const existingModel = options.existingConfig?.provider === options.provider
+    ? options.existingConfig.model
+    : undefined;
 
-    const models = await options.listModels(options.apiKey);
+  if (!options.interactive || !options.prompt) {
+    if (!descriptor.supportsAutoModel && (!existingModel || existingModel === "auto")) {
+      throw new DevmapError(
+        `${descriptor.displayName} requires an explicit model.`,
+        "Run devmap init in an interactive terminal, or set one first with: devmap config model <model-id>"
+      );
+    }
+    return existingModel ?? "auto";
+  }
+
+  const fetchModels = descriptor.listModels
+    ? async (apiKey: string, baseUrl?: string) => (
+        options.listModels
+          ? options.listModels(apiKey, baseUrl)
+          : descriptor.listModels!(apiKey, baseUrl)
+      )
+    : undefined;
+
+  if (fetchModels) {
+    const models = await fetchModels(options.apiKey, options.baseUrl);
     if (models.length === 0) {
       throw new DevmapError(
-        "Groq did not return any available models.",
+        `${descriptor.displayName} did not return any available models.`,
         "Try again shortly or run devmap doctor."
       );
     }
@@ -266,26 +346,18 @@ async function resolveInitialModel(
       ? existingModel
       : models[0]!;
     return options.prompt.select(
-      "Groq model",
+      `${descriptor.displayName} model`,
       models.map((model) => ({ label: model, value: model })),
       defaultModel
     );
   }
 
-  const existingModel = options.existingConfig?.provider === "openrouter"
-    ? options.existingConfig.model
-    : undefined;
+  const fallbackDefault = descriptor.defaultModel ?? "auto";
   const defaultModel = existingModel && existingModel !== "auto"
     ? existingModel
-    : OPENROUTER_FREE_MODEL;
-  if (!options.interactive || !options.prompt) return defaultModel;
-
+    : fallbackDefault;
   const answer = await options.prompt.ask(
-    `OpenRouter model [${defaultModel}]: `
+    `${descriptor.displayName} model [${defaultModel}]: `
   );
   return answer.trim() || defaultModel;
-}
-
-function readProviderEnvName(provider: DevmapConfig["provider"]): string {
-  return provider === "openrouter" ? "OPENROUTER_API_KEY" : "GROQ_API_KEY";
 }

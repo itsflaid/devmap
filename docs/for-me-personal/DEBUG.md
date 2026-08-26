@@ -1450,3 +1450,106 @@ org, lalu menyalakannya kembali setelah 2FA personal aktif.
   rilis. Setelah tanggal tersebut direct publishing via token bypass
   dibatasi - migrasi ke trusted publishing (OIDC).
 - Token yang pernah melewati chat/session wajib langsung direvoke.
+
+---
+
+## 27. npm version Tidak Membuat Commit/Tag di Subpackage Monorepo pnpm
+
+**Tanggal:** 2026-08-26
+
+### Gejala
+
+
+pm version minor -m "chore: release 0.3.0" dijalankan dari
+packages/cli pada monorepo pnpm. Output hanya 0.3.0, exit code 0, dan
+field ersion di packages/cli/package.json berubah - tetapi tidak ada
+commit rilis, tidak ada tag baru (git tag -l masih hanya 0.2.0), dan
+git push origin main --follow-tags hanya meng-push commit changelog.
+Rilis hampir dianggap sudah ter-tag.
+
+### Penyebab
+
+Belum terdiagnosis pasti (perilaku npm@latest di workspace pnpm dengan
+packageManager: pnpm@10.34.2). Yang jelas: 
+pm version keluar sukses
+tanpa melakukan operasi git apa pun, tanpa pesan error.
+
+### Solusi
+
+Lakukan langkah git secara eksplisit, jangan percaya 
+pm version untuk
+bagian git:
+
+`powershell
+npm version minor                       # cukup untuk ubah field version
+git add packages/cli/package.json
+git commit -m "chore: release x.y.z"
+git tag -a vx.y.z -m "chore: release x.y.z"
+git push origin main vx.y.z
+`
+
+Alternatif yang lebih aman: cek git status --porcelain + git tag -l
+setelah 
+pm version sebelum push; kalau tag baru tidak ada, jalankan
+langkah manual.
+
+### Verifikasi
+
+- git ls-remote --tags origin menampilkan x.y.z.
+- Tab Actions menjalankan workflow publish pada event tag tersebut.
+
+### Pelajaran
+
+- --follow-tags juga hanya meng-push tag **annotated** yang reachable;
+  tag ringan atau tag yang gagal dibuat tidak akan ikut.
+- Selalu verifikasi artefak git (commit + tag) sebelum menganggap rilis
+  terpicu; output sukses dari tool bukan bukti.
+
+---
+
+
+## 28. Test Distribusi Mem-pin Versi Package sehingga Publish Workflow Gagal
+
+**Tanggal:** 2026-08-26
+
+### Gejala
+
+Workflow publish.yml (trigger tag 0.3.0) gagal di langkah "Test CLI":
+250 pass / 1 fail khusus di CI, padahal suite lokal Windows 251 pass semua.
+Tes yang gagal: package-distribution.test.ts -
+'0.3.0' !== '0.2.0'.
+
+### Penyebab
+
+Assertion ssert.equal(packageJson.version, "0.2.0") mem-pin versi secara
+hardcoded. Verifikasi lokal pernah dijalankan **sebelum** bump versi, jadi
+gagalnya baru muncul saat CI menjalankan ulang tes setelah versi dinaikkan.
+
+### Solusi
+
+Ganti assertion versi dengan pola semver:
+
+`	s
+assert.match(packageJson.version ?? "", /^\d+\.\d+\.\d+(?:-.+)?$/);
+`
+
+Karena npm belum menerbitkan apa pun saat kegagalan (publish adalah step
+terakhir), tag aman digeser: fix di-commit ke main, lalu
+git tag -f -a v0.3.0 ... + hapus/push ulang tag remote untuk memicu ulang
+workflow.
+
+### Verifikasi
+
+- Suite lokal 251 pass dengan package.json versi 0.3.0.
+- Run publish kedua sukses (conclusion: success) dan
+  
+pm view @flaid/devmap version ->  .3.0.
+
+### Pelajaran
+
+- Jangan pin nilai yang berubah tiap rilis (versi, tanggal) di dalam test;
+  assert bentuk/polanya saja.
+- Urutan gate penting: jalankan full test suite SETELAH bump versi sebelum
+  menagih tag, karena bump bisa merusak asumsi test.
+- Tag rilis yang belum ter-publish boleh digeser; setelah publish, tag
+  bersifat permanen.

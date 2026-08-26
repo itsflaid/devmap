@@ -2,6 +2,25 @@
 
 Terakhir diperbarui: 2026-08-26
 
+## Update 2026-08-26 (lanjutan)
+
+### Rilis 0.3.0 — publish otomatis via OIDC berhasil
+
+1. PR #74 di-merge user (6 commit). Commit changelog yang terlanjur di-push
+   ke branch setelah merge di-cherry-pick ke main (`e182531`), branch lama
+   dihapus dari remote.
+2. Bump minor: `npm version minor` ternyata hanya mengubah field version
+   tanpa commit/tag (lihat DEBUG.md #27) — dipulihkan manual:
+   `37a4284 chore: release 0.3.0` + tag annotated `v0.3.0`.
+3. Run publish pertama gagal di gate test: assertion versi hardcoded
+   `"0.2.0"` (DEBUG.md #28) → diganti regex semver (`8e245f4`), tag digeser
+   ke commit fix, workflow dipicu ulang.
+4. Run kedua sukses; `npm view @flaid/devmap version` → `0.3.0`;
+   GitHub Release dibuat dari entri CHANGELOG:
+   https://github.com/itsflaid/devmap/releases/tag/v0.3.0
+5. Trusted publishing OIDC bekerja tanpa OTP/token — saga EOTP 0.2.0 resmi
+   selesai; alur rilis berikutnya tinggal bump + push tag.
+
 ## Update 2026-08-26
 
 ### Provider registry (9Router/custom), rilis otomatis, housekeeping — branch `provider-registry-and-release`

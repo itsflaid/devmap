@@ -49,9 +49,13 @@ Kasus error yang perlu dicek manual: server mati → pesan
 `readConfig` mengembalikan null; `config model auto` pada provider custom →
 error "doesn't support automatic model selection."
 
-Publish workflow (`publish.yml`) hanya aktif saat push tag `v*.*.*`; publish
-pertama via workflow ini ditonton sebagai dry run di tab Actions sebelum
-dipercaya untuk rilis berikutnya.
+Publish workflow (`publish.yml`) hanya aktif saat push tag `v*.*.*`.
+Status rilis 0.3.0 (2026-08-26): **terbukti end-to-end** — run kedua sukses,
+`npm view @flaid/devmap version` → `0.3.0`, GitHub Release v0.3.0 dibuat.
+Catatan: jangan lupa full test suite SETELAH bump versi sebelum push tag
+(assertion versi kini regex semver, bukan pin hardcoded — DEBUG.md #28), dan
+verifikasi commit+tag benar-benar terbentuk setelah `npm version`
+(DEBUG.md #27).
 
 ## Multi-Framework Detection (update0 s.d. update5)
 

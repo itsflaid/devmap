@@ -6,9 +6,32 @@ All notable changes to DevMap are documented in this file.
 
 ### Planned
 
-- Automated npm release workflow
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
+
+## [0.3.0] - 2026-08-26
+
+### Added
+
+- Custom OpenAI-compatible provider support: `devmap init` now offers any
+  self-hosted or third-party OpenAI-compatible endpoint with a base URL prompt
+  (default `http://localhost:20128/v1`) and a model list fetched from the
+  endpoint's `/models`
+- Data-driven provider registry centralizing per-provider behavior and
+  metadata, replacing hardcoded Groq/OpenRouter branching across config, init,
+  config, doctor, and client creation
+- Automated npm release: tag-pushed `v*.*.*` tags build, test, and publish via
+  npm OIDC trusted publishing (`.github/workflows/publish.yml`)
+
+### Changed
+
+- Package description and README copy reframe DevMap as a persistent, reusable
+  context layer for humans and AI agents
+- Groq and OpenRouter clients share one SSE streaming/parsing helper with
+  identical external behavior; custom endpoints get distinct connection-error
+  wording
+- Non-interactive init on providers without automatic model selection now
+  fails clearly instead of saving an unusable `model: "auto"`
 
 ## [0.2.0] - 2026-08-18
 

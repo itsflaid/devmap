@@ -1,10 +1,14 @@
 # DevMap
 
-Understand any codebase in minutes, not days.
+Every new AI chat about your code starts from zero — you re-explain
+the same codebase every time. DevMap fixes that.
 
-DevMap is a CLI that combines static analysis with optional AI-powered
-interpretation. It maps project structure and generates reusable context
-without sending an entire repository to an AI model.
+It's a CLI that combines static analysis with optional AI
+interpretation to build a structured, reusable understanding layer
+of your project — once. That layer (`.devmap/index.json`, feature
+maps, `DEVMAP.md`) is what you and any AI agent read afterward,
+instead of re-scanning or re-pasting the whole repo. Full repo
+source stays local — nothing gets sent wholesale to the AI model.
 
 Version `0.2.0` classifies full workspaces (multiple project types at once),
 centralizes detection vocabulary, and ships `map`, `flow`, and `explain`.

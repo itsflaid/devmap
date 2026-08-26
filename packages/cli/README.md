@@ -28,7 +28,8 @@ npx @flaid/devmap --help
 ## Requirements
 
 - Node.js 22.12 or newer
-- A Groq or OpenRouter API key for AI-powered analysis and answers
+- An API key for an AI provider: Groq, OpenRouter, or any custom
+  OpenAI-compatible endpoint
 
 Static analysis still works when AI is not configured.
 
@@ -48,7 +49,8 @@ devmap doctor
 
 ## AI Provider Setup
 
-Choose Groq or OpenRouter with the arrow keys during:
+Choose Groq, OpenRouter, or a custom OpenAI-compatible endpoint with the arrow
+keys during:
 
 ```bash
 devmap init
@@ -56,6 +58,10 @@ devmap init
 
 Groq keys are available at https://console.groq.com/keys. OpenRouter keys are
 available at https://openrouter.ai/keys.
+
+For custom endpoints, DevMap asks for the base URL (prefilled with
+`http://localhost:20128/v1`) and lists the models your server exposes, so any
+OpenAI-compatible self-hosted gateway works out of the box.
 
 For OpenRouter, DevMap prompts:
 

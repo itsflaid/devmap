@@ -3,10 +3,13 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { output } from "./output.js";
 
+export type DevmapProvider = "groq" | "openrouter" | "custom";
+
 export type DevmapConfig = {
-  provider: "groq" | "openrouter";
+  provider: DevmapProvider;
   apiKey?: string;
   model: "auto" | string;
+  baseUrl?: string;
 };
 
 export type LocalDevmapConfig = {
@@ -106,7 +109,7 @@ function normalizeConfig(value: unknown): DevmapConfig | null {
     ? "auto"
     : record.model;
 
-  if (provider !== "groq" && provider !== "openrouter") {
+  if (provider !== "groq" && provider !== "openrouter" && provider !== "custom") {
     return null;
   }
 
@@ -124,6 +127,18 @@ function normalizeConfig(value: unknown): DevmapConfig | null {
       return null;
     }
     config.apiKey = record.apiKey;
+  }
+
+  if (provider === "custom") {
+    if (typeof record.baseUrl !== "string" || record.baseUrl.trim().length === 0) {
+      return null;
+    }
+    config.baseUrl = record.baseUrl.trim();
+  } else if (typeof record.baseUrl === "string") {
+    if (record.baseUrl.trim().length === 0) {
+      return null;
+    }
+    config.baseUrl = record.baseUrl.trim();
   }
 
   return config;

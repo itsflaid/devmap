@@ -5,6 +5,7 @@ import {
   writeLocalConfig,
   type DevmapConfig
 } from "../utils/config.js";
+import { PROVIDERS } from "../ai/registry.js";
 import { output, withJsonOutput } from "../utils/output.js";
 
 export type ConfigDependencies = {
@@ -53,6 +54,14 @@ async function updateModel(
     };
   }
 
+  const descriptor = PROVIDERS[config.provider];
+  const autoRouting = descriptor.supportsAutoModel
+    ? descriptor.resolveAutoModel?.("analyze")
+    : undefined;
+  const resolvedModel = autoRouting && autoRouting.fallbackModels.length === 0
+    ? autoRouting.model
+    : undefined;
+
   if (dependencies.local) {
     const projectRoot = resolve(dependencies.projectRoot ?? process.cwd());
     await writeLocalConfig(projectRoot, { model: selectedModel });
@@ -67,8 +76,8 @@ async function updateModel(
       provider: config.provider,
       model: selectedModel,
       automaticRouting: selectedModel === "auto",
-      ...(selectedModel === "auto" && config.provider === "openrouter"
-        ? { resolvedModel: "openrouter/free" }
+      ...(selectedModel === "auto" && resolvedModel
+        ? { resolvedModel }
         : {})
     };
   }
@@ -80,8 +89,8 @@ async function updateModel(
 
   output.success(
     selectedModel === "auto"
-      ? config.provider === "openrouter"
-        ? "Restored OpenRouter free model routing (openrouter/free)."
+      ? resolvedModel
+        ? `Restored ${descriptor.displayName} free model routing (${resolvedModel}).`
         : "Restored automatic command-based model routing."
       : `Default model override set to ${selectedModel}.`
   );
@@ -91,8 +100,8 @@ async function updateModel(
     provider: config.provider,
     model: selectedModel,
     automaticRouting: selectedModel === "auto",
-    ...(selectedModel === "auto" && config.provider === "openrouter"
-      ? { resolvedModel: "openrouter/free" }
+    ...(selectedModel === "auto" && resolvedModel
+      ? { resolvedModel }
       : {})
   };
 }

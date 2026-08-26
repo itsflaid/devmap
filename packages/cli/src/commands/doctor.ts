@@ -30,9 +30,8 @@ export type DoctorDependencies = {
   loadConfig?: () => Promise<DevmapConfig | null>;
   loadLocalConfig?: (projectRoot: string) => Promise<LocalDevmapConfig | null>;
   inspectProvider?: (
-    apiKey: string,
-    model: string,
-    provider: DevmapConfig["provider"]
+    config: DevmapConfig,
+    model: string
   ) => Promise<ProviderInspection>;
 };
 
@@ -56,9 +55,7 @@ async function runDoctor(
   const loadConfig = dependencies.loadConfig ?? readConfig;
   const loadLocalConfig = dependencies.loadLocalConfig ?? readLocalConfig;
   const inspectProvider = dependencies.inspectProvider
-    ?? ((apiKey: string, model: string, provider: DevmapConfig["provider"]) => (
-      inspectAiProvider(provider, apiKey, model)
-    ));
+    ?? ((config: DevmapConfig, model: string) => inspectAiProvider(config, model));
   const [config, localConfig, snapshotResult, files] = await Promise.all([
     loadConfig(),
     loadLocalConfig(projectRoot),
@@ -108,11 +105,7 @@ async function runDoctor(
     apiKeyStatus = "missing";
   } else {
     try {
-      const provider = await inspectProvider(
-        config.apiKey,
-        selectedModel,
-        config.provider
-      );
+      const provider = await inspectProvider(config, selectedModel);
       apiKeyStatus = provider.reachable ? "valid" : "unreachable";
       modelStatus = provider.modelAvailable
         ? describeModel(selectedModel, modelSource)

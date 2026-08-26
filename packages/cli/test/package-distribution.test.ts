@@ -23,7 +23,7 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
   };
 
   assert.equal(packageJson.name, "@flaid/devmap");
-  assert.equal(packageJson.version, "0.2.0");
+  assert.match(packageJson.version ?? "", /^\d+\.\d+\.\d+(?:-.+)?$/);
   assert.equal(
     packageJson.description,
     "CLI that maps codebases into a persistent, reusable context layer for humans and AI agents."

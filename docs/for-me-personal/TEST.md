@@ -15,6 +15,44 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Custom Provider & Registry (2026-08-26)
+
+Focused automated tests:
+
+```powershell
+pnpm --filter @flaid/devmap exec tsx --test test/custom-client.test.ts test/provider-registry.test.ts test/init-and-errors.test.ts test/doctor.test.ts test/config-command.test.ts
+```
+
+Full suite + build + packed e2e (gates sebelum rilis):
+
+```powershell
+pnpm --filter @flaid/devmap test
+pnpm --filter @flaid/devmap build
+pnpm test:package-e2e
+```
+
+Expected: `251 pass / 0 fail`, tsc 0 error, e2e pass untuk fixture
+Next.js/Express/React.
+
+Manual flow custom endpoint (mis. 9Router lokal):
+
+1. `pnpm dev:cli -- init` → pilih "Custom (OpenAI-compatible)".
+2. Base URL ter-prefill `http://localhost:20128/v1` — Enter untuk terima,
+   atau ketik URL lain.
+3. Masukkan API key endpoint, lalu pilih model dari daftar yang diambil dari
+   `GET {baseUrl}/models`.
+4. `pnpm dev:cli -- doctor` harus menampilkan provider `custom` dan API key valid.
+5. `pnpm dev:cli -- analyze` pada project kecil memakai model endpoint tersebut.
+
+Kasus error yang perlu dicek manual: server mati → pesan
+"Could not connect to the configured endpoint."; config custom tanpa baseUrl →
+`readConfig` mengembalikan null; `config model auto` pada provider custom →
+error "doesn't support automatic model selection."
+
+Publish workflow (`publish.yml`) hanya aktif saat push tag `v*.*.*`; publish
+pertama via workflow ini ditonton sebagai dry run di tab Actions sebelum
+dipercaya untuk rilis berikutnya.
+
 ## Multi-Framework Detection (update0 s.d. update5)
 
 Focused automated tests (suite khusus framework-routes: Astro, Nuxt, Vue,

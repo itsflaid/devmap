@@ -1,6 +1,40 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-23
+Terakhir diperbarui: 2026-08-26
+
+## Update 2026-08-26
+
+### Provider registry (9Router/custom), rilis otomatis, housekeeping — branch `provider-registry-and-release`
+
+Eksekusi spec task.md (file dihapus setelah selesai, tidak di-commit) dalam
+6 commit:
+
+1. `cf6dee9` docs: hapus `.opencode/` (config model lama + dep `@opencode-ai/plugin`
+   yang nganggur), backlink `www.flaid.my.id` di README root, sisipkan policy
+   `## Publishing` di AGENTS.md.
+2. `bb31002` docs: description package CLI + copy pembuka README CLI sesuai spec;
+   assertion description di `package-distribution.test.ts` ikut disesuaikan.
+3. `a358303` refactor: helper SSE bersama `ai/openaiCompatibleStream.ts`
+   (`parseSseStream`, `readCompletionPayload`, `normalizeUsage`) — groq/openrouter
+   refactor murni, pesan error dipertahankan via message-set per provider,
+   usage `x_groq` jadi `readExtraUsage` hook.
+4. `e4e7968` feat: provider `custom` OpenAI-compatible (`ai/custom.ts`,
+   `ai/registry.ts` PROVIDERS map, baseUrl di config, init dinamis + prompt base
+   URL default `http://localhost:20128/v1`, doctor signature baru
+   `inspectAiProvider(config, model)`, config command pakai `supportsAutoModel`).
+   Motivasi: dukung 9Router/self-hosted endpoint.
+5. `29cd545` ci: workflow `publish.yml` trigger tag `v*.*.*`, OIDC trusted
+   publishing (npm Trusted Publisher sudah diset dari sisi npmjs.com oleh Fadil).
+6. Catatan pribadi ini.
+
+Keputusan penting:
+
+- Publish TIDAK otomatis per merge — hanya tag push yang memicu; bump versi
+  tetap butuh konfirmasi eksplisit Fadil (policy `## Publishing`).
+- Non-interactive init untuk provider tanpa auto-model (custom) sekarang
+  melempar error yang jelas daripada menyimpan `model: "auto"` yang tidak valid.
+- Gates: 251 unit test pass (+15 baru: custom client & registry), tsc bersih,
+  build dist fresh, e2e packed-package pass.
 
 ## Update 2026-08-23
 

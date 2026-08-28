@@ -217,23 +217,32 @@ Use your preferred AI tool to change it.
 
 ## Supported Stacks
 
-### MVP
+### Full support — framework detection + route mapping
 
-- React.js
-- Next.js
-- Node.js
+- Next.js (App Router and Pages Router)
+- Astro
+- Nuxt
+- SvelteKit
 - Express
+- Fastify
+- NestJS
+
+### SPA client-side routing — routes read from the client router
+
+- React (Create React App, Vite)
+- Vue
+- Svelte
+
+### Databases
+
+- Prisma — full field + relation extraction
+- Raw SQL (`pg`, `mysql2`, `better-sqlite3`) — table names only
+- Drizzle, Mongoose, Supabase, TypeORM — detected as dependency only
 
 ### Planned
 
-- Vue.js
-- Nest.js
-- Nuxt.js
-- Php - Laravel
-- All JS/TS ecosystem
-
-Workspace classification can identify Astro packages, but deep Astro analysis
-is not part of the current MVP support promise.
+- PHP (Laravel)
+- Python, Go, Java, Rust, Dart, C# — see [docs/roadmap.md](./docs/roadmap.md) Phase 6
 
 ---
 
@@ -243,18 +252,20 @@ DevMap is free and open source.
 
 AI features require a provider API key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
 
-| Provider   | Status  |
-| ---------- | ------- |
-| Groq       | MVP     |
-| OpenRouter | MVP     |
-| OpenAI     | Planned |
-| Gemini     | Planned |
+| Provider                       | Status  |
+| ------------------------------- | ------- |
+| Groq                            | MVP     |
+| OpenRouter                      | MVP     |
+| Custom (any OpenAI-compatible)  | MVP     |
+| OpenAI (official, hosted)       | Planned |
+| Gemini                          | Planned |
 
-`devmap init` lets you choose Groq or OpenRouter with the arrow keys. Groq
-shows the available model list and stores the selected model. For OpenRouter,
-pressing Enter at `OpenRouter model [openrouter/free]:` keeps the free router;
-typing another model ID uses that free or paid model instead. Change it later
-with `devmap config model <model-id>`.
+`devmap init` lets you choose Groq, OpenRouter, or a custom OpenAI-compatible
+endpoint with the arrow keys. Groq shows the available model list and stores
+the selected model. For OpenRouter, pressing Enter at
+`OpenRouter model [openrouter/free]:` keeps the free router; typing another
+model ID uses that free or paid model instead. Change it later with
+`devmap config model <model-id>`.
 
 API keys are stored locally:
 
@@ -291,24 +302,27 @@ Node.js 22.12+
 
 ## Roadmap
 
-### MVP
+### Shipped
 
 - [x] `devmap init`
 - [x] `devmap analyze`
 - [x] `devmap doctor`
-- [  ] `devmap onboarding`
+- [x] `devmap onboarding`
+- [x] `devmap map`
+- [x] `devmap explain`
+- [x] `devmap flow`
+- [x] Custom OpenAI-compatible provider
 
-### Next
-- [ ] `devmap map`
-- [ ] `devmap explain`
-- [ ] `devmap flow`
+### Next (Phase 3)
 
+- [ ] Frontend SPA store extraction (Zustand, Redux Toolkit, Pinia)
+- [ ] Better SPA feature/entry-point detection
 
 ### Later
 
 - [ ] OpenAI provider
 - [ ] Gemini provider
-- [ ] Local AI mode
+- [ ] Local/Ollama AI mode
 
 See [docs/roadmap.md](./docs/roadmap.md) for details.
 

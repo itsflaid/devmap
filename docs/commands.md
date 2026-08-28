@@ -483,14 +483,18 @@ devmap doctor
 ```txt
 DevMap Doctor
 
-DevMap version     0.1.0        ✓
-Node.js version    20.11.0      ✓
-Provider           Groq         ✓
-API key            valid        ✓
-Model              configured   ✓
-Snapshot           exists       ✓
-Project            Next.js      ✓
-Platform           Windows      ✓
+DevMap              <installed version>
+Node.js             v22.x.x
+OS                  win32/x64
+Project             my-app
+Framework           next.js
+Workspace Frameworks express
+Package Manager     npm
+Provider            groq
+Config              exists
+Snapshot            valid
+API key             valid
+Model               openai/gpt-oss-20b (project override)
 
 No issues found.
 ```
@@ -500,19 +504,26 @@ No issues found.
 ```txt
 DevMap Doctor
 
-DevMap version     0.1.0        ✓
-Node.js version    20.11.0      ✓
-Provider           Groq         ✓
-API key            invalid      ✗
-Snapshot           missing      ⚠
+DevMap              <installed version>
+Node.js             v22.x.x
+OS                  win32/x64
+Project             my-app
+Framework           next.js
+Workspace Frameworks express
+Package Manager     npm
+Provider            not configured
+Config              missing
+Snapshot            stale
+API key             missing
+Model               not configured
 
 Issues found:
 
-✗ API key is invalid
-  Run devmap init again and enter a valid API key.
+Provider is not configured
+  Run devmap init to set up an AI provider.
 
-⚠ Snapshot is missing
-  Run devmap analyze before using devmap onboarding.
+Snapshot is stale
+  Run devmap analyze to refresh the snapshot.
 ```
 
 ### Rules
@@ -539,7 +550,8 @@ devmap config model qwen/qwen3.6-27b --local
 
 `auto` restores command-based routing:
 
-* `analyze` uses `openai/gpt-oss-20b`
+* `analyze` / `explain`: primary `openai/gpt-oss-20b` → `qwen/qwen3.6-27b` → `openai/gpt-oss-120b`
+* `flowNarration`: primary `openai/gpt-oss-20b` → `openai/gpt-oss-120b`
 
 `--local` writes `.devmap/config.local.json` in the current project instead of
 the global `~/.devmap/config.json`. Only `model` can be set locally: provider
@@ -565,7 +577,8 @@ The typed model is stored as the primary choice and is not silently replaced.
 
 Automatic routing also uses ordered fallback chains:
 
-* `analyze`: `qwen/qwen3.6-27b`, then `openai/gpt-oss-120b`
+* `analyze` / `explain`: `qwen/qwen3.6-27b`, then `openai/gpt-oss-120b`
+* `flowNarration`: `openai/gpt-oss-120b`
 
 DevMap advances after model-unavailable and transient provider responses. For
 rate limits, it first retries the current model three times with exponential
@@ -612,6 +625,9 @@ integration.
 devmap init --json
 devmap analyze --json
 devmap onboarding --json
+devmap map --json
+devmap flow --json
+devmap explain <target> --json
 devmap doctor --json
 devmap config model auto --json
 ```

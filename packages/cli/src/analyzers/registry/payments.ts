@@ -8,7 +8,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
     genericTerms: [
       "stripe", "midtrans", "xendit", "@xendit", "paypal", "braintree",
       "razorpay", "paddle", "lemonsqueezy", "lemon-squeezy",
-      "payment", "checkout", "billing", "subscription", "invoice",
+      "payment", "checkout", "billing", "invoice",
     ],
   },
   {

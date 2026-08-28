@@ -418,6 +418,7 @@ All AI interactions go through a provider abstraction.
 
 - Groq
 - OpenRouter
+- Custom (any OpenAI-compatible endpoint — self-hosted or third-party)
 
 ### Extensibility
 

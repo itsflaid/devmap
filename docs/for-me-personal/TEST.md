@@ -73,7 +73,7 @@ pnpm --filter @flaid/devmap test
 pnpm --filter @flaid/devmap build
 ```
 
-Expected: `228 pass / 0 fail` untuk unit suite (node:test via `run-tests.ts`),
+Expected: `251 pass / 0 fail` untuk unit suite (node:test via `run-tests.ts`),
 build tsc 0 error. Ranah yang di-cover:
 
 - `detectFrameworks`/`detectRoutes` per framework: Astro pages/endpoints + Nuxt
@@ -166,7 +166,7 @@ Expected:
 - Menambahkan `apiKey`/`provider` manual ke `.devmap/config.local.json`
   diabaikan dan memunculkan warning persis sekali:
   `config.local.json only supports "model", ...`.
-- `pnpm --filter @flaid/devmap test:unit` â†’ 228 pass / 0 fail;
+- `pnpm --filter @flaid/devmap test:unit` â†’ 251 pass / 0 fail;
   `pnpm --filter @flaid/devmap test:types` â†’ 0 error.
 
 Full suite:
@@ -490,7 +490,7 @@ pnpm --filter @flaid/devmap exec tsx --test test/config-command.test.ts test/ana
 Expected automatic routing:
 
 - `analyze`: `openai/gpt-oss-20b`
-- `analyze` fallback: Qwen 3.6 27B -> Llama 70B Versatile -> Llama 8B Instant
+- `analyze` fallback: `qwen/qwen3.6-27b` -> `openai/gpt-oss-120b`
 
 Automated expectations:
 
@@ -774,8 +774,8 @@ pnpm --filter @flaid/devmap test:types
 Hasil minimum saat ini:
 
 ```text
-tests 122
-pass 122
+tests 251
+pass 251
 fail 0
 ```
 
@@ -916,13 +916,13 @@ pnpm --filter @flaid/devmap pack --pack-destination artifacts
 Tarball akan dibuat di:
 
 ```text
-artifacts/flaid-devmap-0.1.0.tgz
+artifacts/<the .tgz filename printed by pnpm --filter @flaid/devmap pack>
 ```
 
 Simpan path absolutnya:
 
 ```powershell
-$tarball = (Resolve-Path ".\artifacts\flaid-devmap-0.1.0.tgz").Path
+$tarball = (Resolve-Path ".\artifacts\*.tgz").Path
 $tarball
 ```
 
@@ -1036,7 +1036,7 @@ cd "C:\path\to\devmap"
 pnpm --filter @flaid/devmap pack --pack-destination artifacts
 
 cd "C:\path\to\project-lain"
-npm install --save-dev "C:\path\to\devmap\artifacts\flaid-devmap-0.1.0.tgz"
+npm install --save-dev "C:\path\to\devmap\artifacts\<packed .tgz>"
 ```
 
 Kemudian jalankan kembali:
@@ -1072,7 +1072,7 @@ Tes ini memastikan gaya penggunaan seperti `npx @flaid/devmap` bekerja.
 Dari root DevMap:
 
 ```powershell
-$tarball = (Resolve-Path ".\artifacts\flaid-devmap-0.1.0.tgz").Path
+$tarball = (Resolve-Path ".\artifacts\*.tgz").Path
 ```
 
 Jalankan secara berurutan:

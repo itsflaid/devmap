@@ -395,11 +395,10 @@ DevMap analyzes the majority of modern web and application codebases using the s
 
 | Version | Phase | Description |
 |---------|-------|-------------|
-| 0.1.0 | 1 | `init` + `analyze` + `onboarding` + `doctor` — first public release |
-| 0.2.0 | 2 | `devmap map` |
-| 0.3.0 | 2 | `devmap explain` |
-| 0.4.0 | 2 | `devmap flow` |
-| 1.0.0 | 2 | Stable release — all Phase 2 commands ship and are production-ready |
+| 0.1.0 | 1 | Initial beta — `init`, `analyze`, `doctor` |
+| 0.2.0 | 2 | `onboarding` rebuild + `map` + `flow` + `explain` shipped together |
+| 0.3.0 | 2 | Custom OpenAI-compatible provider, provider registry refactor, automated npm release |
+| 1.0.0 | 2 | Stable release — pending |
 | 1.1.0 | 3 | Frontend SPA support (React / Vue / Svelte without framework routing) |
 | 2.0.0 | 4 | Multi-provider AI (OpenAI + Gemini + Ollama) |
 | 3.0.0 | 5 | Agent Layer — persistent context across sessions |

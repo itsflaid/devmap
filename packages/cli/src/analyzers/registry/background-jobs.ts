@@ -8,7 +8,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
     genericTerms: [
       "bullmq", "bull", "bee-queue", "agenda", "node-cron",
       "inngest", "@inngest", "trigger.dev", "@trigger.dev",
-      "quirrel",
+      "quirrel", "@upstash/qstash", "qstash",
       "queue", "worker", "job", "cron", "scheduler",
     ],
   },

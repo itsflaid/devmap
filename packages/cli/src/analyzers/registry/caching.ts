@@ -6,7 +6,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
     category: "feature",
     purpose: "Handles in-memory and distributed caching strategies.",
     genericTerms: [
-      "ioredis", "redis", "@upstash/redis", "upstash", "keyv",
+      "ioredis", "redis", "@upstash/redis", "keyv",
       "lru-cache", "node-cache", "memcached",
       "cache", "ttl", "invalidate",
     ],

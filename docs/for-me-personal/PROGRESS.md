@@ -2,6 +2,23 @@
 
 Terakhir diperbarui: 2026-08-26
 
+## Update 2026-08-29
+
+### Arsitektur Analyzer Stabilization — branch `codex/analyzer-v2-design`
+
+- Mengganti dokumentasi arsitektur lama dengan `docs/architecture.md` sebagai
+  source of truth: pipeline pass berbasis fact/evidence, kontrak
+  analyzer/detector eksplisit, provenance/reliability terstruktur, dan batas AI
+  sebagai interpretasi yang tidak boleh menjadi fakta deterministik.
+- Menambahkan `task.md` sebagai runbook implementasi bertahap: fixture regresi,
+  candidate reconciliation, pengetatan producer, scope/alias import, AI
+  boundary, kompatibilitas snapshot, dan quality gate.
+- Sengaja mempertahankan graph impor in-memory, full rebuild default, snapshot
+  JSON, serta adapter built-in; cache incremental dan public plugin API ditunda
+  sampai ada benchmark/kebutuhan Phase 6.
+- Tidak ada source code atau implementasi yang diubah. Validasi dokumen:
+  `git diff --check` bersih.
+
 ## Update 2026-08-26 (lanjutan)
 
 ### Rilis 0.3.0 — publish otomatis via OIDC berhasil
@@ -2002,4 +2019,3 @@ Branch: `update-onboarding-model` (lanjutan, tanpa branch baru)
 - 7 onboarding-specific tests pass (all)
 - 124/140 total tests pass (16 pre-existing failures tidak terkait)
 - TypeScript compile `tsc --noEmit` clean (0 error)
-

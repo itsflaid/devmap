@@ -1,23 +1,56 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-26
+Terakhir diperbarui: 2026-08-30
 
-## Update 2026-08-29
+## Update 2026-08-30
 
-### Arsitektur Analyzer Stabilization — branch `codex/analyzer-v2-design`
+### Analyzer Stabilization — WP0–WP6 SELESAI (265/265 tests pass)
 
-- Mengganti dokumentasi arsitektur lama dengan `docs/architecture.md` sebagai
-  source of truth: pipeline pass berbasis fact/evidence, kontrak
-  analyzer/detector eksplisit, provenance/reliability terstruktur, dan batas AI
-  sebagai interpretasi yang tidak boleh menjadi fakta deterministik.
-- Menambahkan `task.md` sebagai runbook implementasi bertahap: fixture regresi,
-  candidate reconciliation, pengetatan producer, scope/alias import, AI
-  boundary, kompatibilitas snapshot, dan quality gate.
-- Sengaja mempertahankan graph impor in-memory, full rebuild default, snapshot
-  JSON, serta adapter built-in; cache incremental dan public plugin API ditunda
-  sampai ada benchmark/kebutuhan Phase 6.
-- Tidak ada source code atau implementasi yang diubah. Validasi dokumen:
-  `git diff --check` bersih.
+Semua work packages dalam `task.md` diselesaikan:
+
+**WP0–WP1**: Sudah done dari session sebelumnya.
+
+**WP2 — Deterministic reconciliation**:
+- `computeSimilarity` reverted ke original (all dims always included)
+- `fingerprintSimilarity` fixed (removed `/ (1 - weights.nameSimilarity)` reweighting)
+- `findEntityFiles()` substring matching: removed `lowerName.includes(fileStem)` + added length guard `>= name.length + 1`
+- Documentation entry point: `chooseFeatureEntryPoint` sorts by `featureFilePriority` for Documentation features
+
+**WP3 — Candidate producers**:
+- `matchesImportTerm` segment-aware matching
+- `hasAuthSymbol`/`hasGuardSymbol` word boundary `\b` fix
+
+**WP4 — AI boundary and diagnostics**:
+- Added `DependencyGraphDiagnostics` type with `unresolvedAliases` and `parserFallbacks`
+- Diagnostics section added to `ProjectMap` snapshot (only present when non-empty)
+
+**WP5 — Scope and graph correctness**:
+- New `aliasResolver.ts`: reads `tsconfig.json` `compilerOptions.paths`, supports `@/`, `~/` conventions
+- `buildDependencyGraph` accepts alias mappings, resolves non-relative imports
+- `RouteFallbackExtractor`: sub-resource guard — segments after `[id]`/`[slug]` are not extracted as standalone entities
+
+**WP6 — Projection, compatibility, and cleanup**:
+- `featureFilePriority` exported from `featureDetector.ts`
+- `features/index.ts` exports updated
+- Snapshot reader is permissive (new optional `diagnostics` field handled gracefully)
+
+### Files changed (total)
+- `featureSimilarity.ts` — computeSimilarity reverted + jaccard/trigram empty→0.0 + routePaths + fingerprintSimilarity fixed
+- `featureDetector.ts` — matchesImportTerm + hasAuthSymbol/hasGuardSymbol \b + findEntityFiles fix + exported featureFilePriority
+- `featureMerge.ts` — REVERTED, clean
+- `features/index.ts` — exports: featureFilePriority
+- `pipeline/projectMap.ts` — Documentation entry point fix + alias wiring + diagnostics
+- `graph/dependencyGraph.ts` — alias resolution + DependencyGraphDiagnostics + resolveAliasPath
+- `graph/aliasResolver.ts` — NEW: loadAliasMappings + resolveAlias
+- `graph/index.ts` — exports: aliasResolver + DependencyGraphDiagnostics
+- `analysis/extractors/fallbackExtractor.ts` — sub-resource guard for dynamic segments
+- `test/feature-similarity-merge.test.ts` — test adjustments + fingerprint test
+- `test/analyzers.test.ts` — updated canonical name assertions + buildDependencyGraph destructuring
+- `test/map-command.test.ts` — "Payment Management" regex
+- `test/flow-command.test.ts` — "Payment Management flow" assertion
+- `test/dependency-graph-alias.test.ts` — RED from WP0, now GREEN
+- `test/feature-stability-regression.test.ts` — RED from WP0, now GREEN
+- `featureCandidates.ts` (untracked, baru) — reconcileFeatureCandidates, findStructuredAnchors, MergeDecision
 
 ## Update 2026-08-26 (lanjutan)
 

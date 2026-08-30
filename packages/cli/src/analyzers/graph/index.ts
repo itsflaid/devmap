@@ -4,7 +4,16 @@ export {
 } from "./dependencyGraph.js";
 export type {
   FileGraph,
+  DependencyGraphDiagnostics,
 } from "./dependencyGraph.js";
+
+export {
+  loadAliasMappings,
+  resolveAlias,
+} from "./aliasResolver.js";
+export type {
+  AliasMapping,
+} from "./aliasResolver.js";
 
 export {
   detectEntryPoints,

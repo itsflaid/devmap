@@ -170,7 +170,7 @@ test("flow rejects an ambiguous target with the candidate list", async () => {
       (error: unknown) => {
         assert.ok(error instanceof DevmapError);
         assert.match(error.message, /matches multiple flows/);
-        assert.match(error.hint ?? "", /Payments flow/);
+        assert.match(error.hint ?? "", /Payment Management flow/);
         assert.match(error.hint ?? "", /Request \/payments/);
         return true;
       }

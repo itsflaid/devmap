@@ -131,7 +131,7 @@ test("map with no target produces a curated, feature-clustered project view", as
     const logs = stripAnsi(await captureOutput(() => mapCommand(undefined, { projectRoot })));
 
     assert.match(logs, /Features/);
-    assert.match(logs, /Payments/);
+    assert.match(logs, /Payment Management/);
     assert.match(logs, /Entry points/);
     assert.match(logs, /src\/server\.ts/);
     assert.match(logs, /Coverage/);

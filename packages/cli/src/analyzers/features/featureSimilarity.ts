@@ -34,6 +34,8 @@ export type FeatureIdentity = {
   searchTerms: string[];
   /** Related entity names — dari entityGraph atau domainFeature.relatedEntities */
   relatedEntities: string[];
+  /** Route resources are a hard anchor when both sides resolve to the same resource. */
+  routePaths?: string[];
   /** Purpose / description string — dipakai sebagai soft signal */
   purpose?: string;
 };
@@ -97,10 +99,11 @@ export function computeSimilarity(
   config?: FeatureSimilarityConfig
 ): number {
   const { weights } = resolveConfig(config);
-  const fileScore   = jaccardSimilarity(new Set(a.files), new Set(b.files));
-  const termScore   = jaccardSimilarity(new Set(normTerms(a.searchTerms)), new Set(normTerms(b.searchTerms)));
+
+  const fileScore = jaccardSimilarity(new Set(a.files), new Set(b.files));
+  const termScore = jaccardSimilarity(new Set(normTerms(a.searchTerms)), new Set(normTerms(b.searchTerms)));
   const entityScore = jaccardSimilarity(new Set(normTerms(a.relatedEntities)), new Set(normTerms(b.relatedEntities)));
-  const nameScore   = trigramSimilarity(a.name, b.name);
+  const nameScore = trigramSimilarity(a.name, b.name);
 
   return (
     fileScore   * weights.fileOverlap +
@@ -277,7 +280,7 @@ function describeFilesOverlap(a: string[], b: string[]): string {
  * Return 0.0 kalau salah satu empty dan yang lain tidak.
  */
 export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 && b.size === 0) return 1.0;
+  if (a.size === 0 && b.size === 0) return 0.0;
   if (a.size === 0 || b.size === 0) return 0.0;
 
   let intersection = 0;
@@ -286,7 +289,7 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   }
 
   const union = a.size + b.size - intersection;
-  return union === 0 ? 1.0 : intersection / union;
+  return union === 0 ? 0.0 : intersection / union;
 }
 
 /**
@@ -303,7 +306,7 @@ export function trigramSimilarity(a: string, b: string): number {
   const ta = buildTrigrams(a.toLowerCase());
   const tb = buildTrigrams(b.toLowerCase());
 
-  if (ta.size === 0 && tb.size === 0) return 1.0;
+  if (ta.size === 0 && tb.size === 0) return 0.0;
   if (ta.size === 0 || tb.size === 0) return 0.0;
 
   let intersection = 0;
@@ -334,6 +337,10 @@ function buildTrigrams(s: string): Set<string> {
  */
 function normTerms(terms: string[]): string[] {
   return terms.map((t) => t.toLowerCase().trim()).filter(Boolean);
+}
+
+function comparableDimension(left: string[], right: string[], weight: number): { score: number; weight: number } {
+  return { score: jaccardSimilarity(new Set(left), new Set(right)), weight };
 }
 
 // ---------------------------------------------------------------------------
@@ -389,8 +396,8 @@ export function fingerprintSimilarity(a: FeatureFingerprint, b: FeatureFingerpri
   // tanpa nameSimilarity karena fingerprint tidak menyimpan nama
   const { weights } = DEFAULT_SIMILARITY_CONFIG;
   return (
-    fileScore   * (weights.fileOverlap / (1 - weights.nameSimilarity)) +
-    termScore   * (weights.termOverlap / (1 - weights.nameSimilarity)) +
-    entityScore * (weights.entityOverlap / (1 - weights.nameSimilarity))
+    fileScore   * weights.fileOverlap +
+    termScore   * weights.termOverlap +
+    entityScore * weights.entityOverlap
   );
 }

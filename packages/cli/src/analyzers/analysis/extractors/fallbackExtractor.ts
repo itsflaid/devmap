@@ -57,16 +57,27 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
 
     for (const route of routes.filter((r) => r.kind === "api")) {
       const segments = route.path.split("/").filter(Boolean);
+      let prevWasDynamic = false;
 
       for (const segment of segments) {
         // Skip dynamic segments: [id], [slug], [...catchall]
-        if (segment.startsWith("[")) continue;
+        if (segment.startsWith("[")) {
+          prevWasDynamic = true;
+          continue;
+        }
+        // Segments immediately after a dynamic parameter are sub-resources
+        // (e.g. /api/workspaces/[id]/members → "members" is a sub-resource of "workspaces")
+        if (prevWasDynamic) {
+          prevWasDynamic = false;
+          continue;
+        }
         // Skip short segments: "v1", "id", dll
         if (segment.length <= 2) continue;
         // Skip common non-entity prefixes
         if (ROUTE_NON_ENTITY_SEGMENTS.has(segment.toLowerCase())) continue;
 
         entityNames.add(singularize(segment));
+        prevWasDynamic = false;
       }
     }
 

@@ -13,7 +13,12 @@ import type {
 import { detectFrontendPageFeatures, detectClientRouteFeatures } from "../detectors/index.js";
 import type { FileGraph } from "../graph/dependencyGraph.js";
 import { isArchitectureSource } from "../graph/index.js";
-import { mergeIntoFeatureList } from "./featureMerge.js";
+import {
+  projectFeatureCandidates,
+  reconcileFeatureCandidates,
+  type FeatureCandidate,
+  type FeatureCandidateSource,
+} from "./featureCandidates.js";
 import { FEATURE_SIGNALS, hasAiProviderUrl, isAiProviderImport } from "../registry/index.js";
 
 export type FeatureInfo = {
@@ -317,7 +322,7 @@ export function detectFeatures(
   capabilities?: CapabilityInfo[],
   fileGraph?: FileGraph
 ): FeatureInfo[] {
-  const features: FeatureInfo[] = [];
+  const candidates: FeatureCandidate[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
 
   // --- ROLE_FEATURES ---
@@ -340,12 +345,16 @@ export function detectFeatures(
       .slice(0, 12);
 
     if (evidence.length > 0) {
-      features.push(createFeatureInfo(
+      candidates.push(toFeatureCandidate(
+        "registry",
+        `role-${definition.role}`,
+        createFeatureInfo(
         definition.name,
         evidence,
         definition.terms,
         definition.purpose,
         analyses
+        )
       ));
     }
   }
@@ -378,13 +387,13 @@ export function detectFeatures(
     }
 
     if (evidence.length > 0) {
-      mergeFeature(features, createFeatureInfo(
+      candidates.push(toFeatureCandidate("registry", `signal-${signal.name}`, createFeatureInfo(
         signal.name,
         evidence,
         signal.terms,
         signal.purpose,
         analyses
-      ));
+      )));
     }
   }
 
@@ -393,27 +402,69 @@ export function detectFeatures(
 
   if (capabilities && capabilities.length > 0) {
     for (const feature of capabilitiesToFeatures(capabilities)) {
-      if (feature !== null) mergeFeature(features, feature);
+      if (feature !== null) {
+        candidates.push(toFeatureCandidate("capability", "route-capability", feature, routes));
+      }
     }
   }
 
   if (entityGraph && entityGraph.entityNames.length > 0) {
     for (const feature of entityGraphToFeatures(entityGraph, scopedFiles)) {
-      mergeFeature(features, feature);
+      candidates.push(toFeatureCandidate("entity", `entity-${feature.name}`, feature, routes));
     }
   }
 
   if (fileGraph) {
     for (const feature of detectFrontendPageFeatures(routes, fileGraph)) {
-      mergeFeature(features, feature);
+      candidates.push(toFeatureCandidate("frontend-page", "file-page", feature, routes));
     }
     for (const feature of detectClientRouteFeatures(scopedFiles, fileGraph)) {
-      mergeFeature(features, feature);
+      candidates.push(toFeatureCandidate("client-route", "client-route", feature, routes));
     }
   }
 
+  const features = projectFeatureCandidates(reconcileFeatureCandidates(candidates).clusters);
   return enrichAuthenticationFeature(features, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function toFeatureCandidate(
+  source: FeatureCandidateSource,
+  ruleId: string,
+  feature: FeatureInfo,
+  routes: RouteInfo[] = []
+): FeatureCandidate {
+  const entityNames = feature.name.endsWith(" Management")
+    ? [feature.name.slice(0, -" Management".length)]
+    : [];
+  const routePaths = routes
+    .filter((route) => feature.files.includes(route.file))
+    .map((route) => route.path)
+    .sort();
+
+  return {
+    id: `${source}:${ruleId}:${normalizeCandidateSubject(feature.name)}`,
+    label: feature.name,
+    source,
+    evidence: [{
+      ruleId,
+      source,
+      files: [...feature.evidence].sort(),
+      routePaths,
+      entityNames,
+      detail: feature.purpose,
+      reliability: source === "entity" ? "high" : "medium",
+    }],
+    files: [...feature.files].sort(),
+    routePaths,
+    entityNames,
+    conclusionConfidence: feature.confidence,
+    projection: feature,
+  };
+}
+
+function normalizeCandidateSubject(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 // ---------------------------------------------------------------------------
@@ -552,6 +603,7 @@ function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
       return pathSegments.some((segment) => {
         const fileStem = segment.replace(/\.[^/.]+$/, "");
         if (fileStem === lowerName) return true;
+        if (fileStem.includes(lowerName) && fileStem.length >= lowerName.length + 1) return true;
         const segParts = splitNameToSegments(fileStem);
         return nameSegments.some((ns) => segParts.includes(ns));
       });
@@ -745,10 +797,6 @@ function createFeatureInfo(
  * Alasan tidak hapus function ini: masih dipanggil di beberapa tempat di file ini.
  * mergeIntoFeatureList menggantikan logika lama yang pakai normalizeFeatureName.
  */
-function mergeFeature(features: FeatureInfo[], addition: FeatureInfo): void {
-  mergeIntoFeatureList(features, addition);
-}
-
 // ---------------------------------------------------------------------------
 // matchesSignal
 //
@@ -776,11 +824,44 @@ function matchesSignal(
 
   if (analysis) {
     return terms.some((term) =>
-      analysis.imports.some((specifier) => specifier.toLowerCase().includes(term))
+      analysis.imports.some((specifier) => matchesImportTerm(specifier, term))
     );
   }
 
   return false;
+}
+
+/**
+ * matchesImportTerm — segment-aware import specifier matching.
+ *
+ * Prevents false positives like "author" matching the "auth" signal.
+ *
+ * Rules:
+ *   - Scoped packages: exact match on package name after @org/
+ *     e.g. "@auth/core" matches "auth", "@prisma/client" matches "prisma"
+ *   - Unscoped packages: exact match on first segment
+ *     e.g. "next-auth" matches "auth" (via segment boundary), "author" does NOT
+ *   - Local imports: use the same segment-boundary regex as path matching
+ *     e.g. "./author" does NOT match "auth", "./auth/config" DOES match "auth"
+ */
+function matchesImportTerm(specifier: string, term: string): boolean {
+  const lower = specifier.toLowerCase();
+
+  // Scoped package: @org/name — match against the name segment
+  const scopedMatch = lower.match(/^@[^/]+\/(.+)$/);
+  if (scopedMatch) {
+    const packageName = scopedMatch[1];
+    // Exact segment match: "auth" matches "next-auth" (contains "-auth")
+    // but "auth" does NOT match "author" (different segment)
+    return getOrCompilePattern(term).test(packageName)
+      || packageName === term
+      || packageName.split("-").includes(term);
+  }
+
+  // Unscoped package or local path: use segment-boundary matching
+  // This reuses the same regex that protects path matching
+  return getOrCompilePattern(term).test(lower)
+    || lower.split("/").some((segment) => segment === term);
 }
 
 const regexCache = new Map<string, RegExp>();
@@ -892,11 +973,11 @@ export function detectAuthenticationSemanticRole(
     || /firebase\/auth/.test(s)
   );
   const hasAuthSymbol = symbols.some((s) =>
-    /(auth|session|login|register|signin|signout|jwt|token|credential)/i.test(s)
+    /\b(auth|session|login|register|signin|signout|jwt|token|credential)\b/i.test(s)
   );
   const hasAuthPath = /(^|[/._-])(auth|session|login|register|signin|signout)([/._-]|$)/.test(normalizedPath);
   const hasGuardPath = /(^|[/._-])(guard|middleware|proxy|protected)([/._-]|$)/.test(normalizedPath);
-  const hasGuardSymbol = symbols.some((s) => /(guard|middleware|proxy|protected)/i.test(s));
+  const hasGuardSymbol = symbols.some((s) => /\b(guard|middleware|proxy|protected)\b/i.test(s));
 
   if (
     /(^|\/)src\/auth\.[cm]?[jt]sx?$/.test(normalizedPath)
@@ -926,7 +1007,7 @@ export function detectAuthenticationSemanticRole(
 // ---------------------------------------------------------------------------
 // File priority helpers
 // ---------------------------------------------------------------------------
-function featureFilePriority(featureName: string, path: string): number {
+export function featureFilePriority(featureName: string, path: string): number {
   const normalized = path.toLowerCase();
 
   if (featureName === "Documentation") {

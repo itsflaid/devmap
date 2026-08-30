@@ -4,6 +4,7 @@ export {
   orderAuthenticationFiles,
   authenticationFilePriority,
   classifyFileTier,
+  featureFilePriority,
 } from "./featureDetector.js";
 export type {
   FeatureInfo,
@@ -28,6 +29,19 @@ export {
   fingerprintSimilarity,
   DEFAULT_SIMILARITY_THRESHOLD,
 } from "./featureSimilarity.js";
+
+export {
+  reconcileFeatureCandidates,
+  projectFeatureCandidates,
+} from "./featureCandidates.js";
+export type {
+  FeatureCandidate,
+  FeatureCandidateSource,
+  FeatureCluster,
+  FeatureEvidence,
+  FeatureReconciliation,
+  ObservationReliability,
+} from "./featureCandidates.js";
 export type {
   FeatureIdentity,
   FeatureFingerprint,

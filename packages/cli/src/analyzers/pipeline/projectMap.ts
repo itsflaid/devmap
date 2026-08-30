@@ -13,11 +13,14 @@ import {
   buildDependencyGraph, countReferences,
   detectEntryPoints,
   isArchitectureSource,
+  loadAliasMappings,
+  type DependencyGraphDiagnostics,
 } from "../graph/index.js";
 import {
   authenticationFilePriority,
   detectAuthenticationSemanticRole,
   detectFeatures,
+  featureFilePriority,
   orderAuthenticationFiles,
   mergeDomainFeatures,
   classifyFileTier,
@@ -133,6 +136,8 @@ export type ProjectMap = {
     dependents: string[];
   }>;
   warnings?: string[];
+  /** Structured diagnostics from the analysis pipeline. */
+  diagnostics?: DependencyGraphDiagnostics;
   dependencies: Record<string, string[]>;
   /** Resolved file-to-file import graph (project-relative paths). Distinct from
    *  `dependencies`, which holds package.json npm dependency names. */
@@ -161,7 +166,8 @@ export async function createProjectMap(
 ): Promise<ProjectMap> {
   const files = await scanFiles(projectRoot);
   const analyses = await analyzeFiles(files);
-  const graph = buildDependencyGraph(files, analyses);
+  const aliasMappings = await loadAliasMappings(projectRoot);
+  const { graph, diagnostics: graphDiagnostics } = buildDependencyGraph(files, analyses, aliasMappings);
   const references = countReferences(graph);
   const detectedFramework = detectFramework(files);
   const frameworks = detectFrameworks(files);
@@ -261,6 +267,9 @@ export async function createProjectMap(
     },
     changeImpact: buildChangeImpact(fileIndex, features, flows, graph),
     warnings: detectAnalysisWarnings(files, entryPoints, criticalFiles, features),
+    ...(graphDiagnostics.unresolvedAliases.length > 0 || graphDiagnostics.parserFallbacks.length > 0
+      ? { diagnostics: graphDiagnostics }
+      : {}),
     dependencies: readPackageDependencies(files),
     fileGraph: graph,
     fileIndex
@@ -676,6 +685,14 @@ function chooseFeatureEntryPoint(
 
   if (route) {
     return route.file;
+  }
+
+  if (featureName === "Documentation" && files.length > 1) {
+    const sorted = [...files].sort((a, b) =>
+      featureFilePriority(featureName, a) - featureFilePriority(featureName, b)
+      || a.localeCompare(b)
+    );
+    return sorted[0];
   }
 
   return files[0];

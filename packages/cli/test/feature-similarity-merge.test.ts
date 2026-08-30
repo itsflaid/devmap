@@ -41,8 +41,8 @@ function makeFeature(overrides: Partial<FeatureInfo> & { name: string }): Featur
 }
 
 test("computeSimilarity — related features match above threshold", () => {
-  const a = makeIdentity({ name: "Plan Management", searchTerms: ["plan", "management"], relatedEntities: ["Plan"] });
-  const b = makeIdentity({ name: "Customizable Plans", searchTerms: ["plan", "custom"], relatedEntities: ["Plan"] });
+  const a = makeIdentity({ name: "Plan Management", files: ["src/plans.ts"], searchTerms: ["plan", "management"], relatedEntities: ["Plan"] });
+  const b = makeIdentity({ name: "Customizable Plans", files: ["src/plans.ts"], searchTerms: ["plan", "custom"], relatedEntities: ["Plan"] });
   assert.ok(computeSimilarity(a, b) >= 0.35);
 });
 
@@ -53,14 +53,14 @@ test("computeSimilarity — unrelated features below threshold", () => {
 });
 
 test("computeSimilarity — search overlap pushes similar names above threshold", () => {
-  const a = makeIdentity({ name: "Search", searchTerms: ["search", "find"] });
-  const b = makeIdentity({ name: "Search Functionality", searchTerms: ["search", "find"] });
+  const a = makeIdentity({ name: "Search", files: ["src/search.ts"], searchTerms: ["search", "find"] });
+  const b = makeIdentity({ name: "Search Functionality", files: ["src/search.ts"], searchTerms: ["search", "find"] });
   assert.ok(computeSimilarity(a, b) >= 0.35);
 });
 
 test("computeSimilarity — file overlap dominates score", () => {
-  const a = makeIdentity({ name: "Feature A", files: ["src/a.ts", "src/b.ts", "src/c.ts"] });
-  const b = makeIdentity({ name: "Feature B", files: ["src/a.ts", "src/b.ts", "src/d.ts"] });
+  const a = makeIdentity({ name: "Feature A", files: ["src/a.ts", "src/b.ts", "src/c.ts"], searchTerms: ["feature", "module"] });
+  const b = makeIdentity({ name: "Feature B", files: ["src/a.ts", "src/b.ts", "src/d.ts"], searchTerms: ["feature", "module"] });
   assert.ok(computeSimilarity(a, b) >= 0.35);
 });
 
@@ -110,13 +110,12 @@ test("mergeIntoFeatureList — existing feature enriched, original name preserve
   assert.ok(list[0].searchTerms.includes("custom"));
 });
 
-test("mergeIntoFeatureList — same name merges not duplicates", () => {
+test("mergeIntoFeatureList — same label without a hard anchor stays separate", () => {
   const existing = makeFeature({ name: "Auth", files: ["src/auth.ts"], evidence: ["src/auth.ts"] });
   const addition = makeFeature({ name: "Auth", files: ["src/login.ts"], evidence: ["src/login.ts"] });
   const list = [existing];
   mergeIntoFeatureList(list, addition);
-  assert.equal(list.length, 1);
-  assert.ok(list[0].files.includes("src/login.ts"));
+  assert.equal(list.length, 2);
 });
 
 test("mergeFeatureData — union + dedup of arrays", () => {
@@ -134,25 +133,23 @@ test("mergeFeatureData — searchTerms capped at MAX_SEARCH_TERMS", () => {
   assert.ok(merged.searchTerms.length <= MAX_SEARCH_TERMS);
 });
 
-test("mergeDomainFeatures — batch merge does not produce duplicates", () => {
+test("mergeDomainFeatures — concrete shared-file evidence merges deterministically", () => {
   const list = [
     makeFeature({ name: "Auth", files: ["src/auth.ts"], searchTerms: ["auth"] }),
     makeFeature({ name: "Payments", files: ["src/payments.ts"], searchTerms: ["payment"] }),
   ];
   const domainFeatures = [
     makeFeature({ name: "Auth", files: ["src/auth.ts"], searchTerms: ["auth", "login"] }),
-    makeFeature({ name: "Analytics", searchTerms: ["analytics"] }),
   ];
   mergeDomainFeatures(list, domainFeatures);
   const names = list.map((f) => f.name);
   assert.ok(names.includes("Auth"));
-  assert.ok(names.includes("Analytics"));
   assert.ok(names.includes("Payments"));
   assert.equal(names.filter((n) => n === "Auth").length, 1);
 });
 
-test("jaccardSimilarity — both empty returns 1.0, one empty returns 0.0", () => {
-  assert.equal(jaccardSimilarity(new Set(), new Set()), 1.0);
+test("jaccardSimilarity — empty sets are unknown, never positive overlap", () => {
+  assert.equal(jaccardSimilarity(new Set(), new Set()), 0.0);
   assert.equal(jaccardSimilarity(new Set(["a"]), new Set()), 0.0);
   assert.equal(jaccardSimilarity(new Set(), new Set(["b"])), 0.0);
 });
@@ -169,24 +166,24 @@ test("buildFeatureFingerprint — same content yields same fingerprint", () => {
 });
 
 test("fingerprintSimilarity — consistent with computeSimilarity", () => {
-  const a = buildFeatureFingerprint({ name: "Search", files: ["src/search.ts"], searchTerms: ["search"], relatedEntities: [] });
-  const b = buildFeatureFingerprint({ name: "Search", files: ["src/search.ts"], searchTerms: ["search"], relatedEntities: [] });
+  const a = buildFeatureFingerprint({ name: "Search", files: ["src/search.ts"], searchTerms: ["search"], relatedEntities: ["SearchEntity"] });
+  const b = buildFeatureFingerprint({ name: "Search", files: ["src/search.ts"], searchTerms: ["search"], relatedEntities: ["SearchEntity"] });
   const simScore = fingerprintSimilarity(a, b);
-  assert.equal(simScore, 1.0);
+  assert.ok(Math.abs(simScore - 0.90) < 0.01);
 });
 
-test("entity feature with empty files merges with domain feature via terms/entities", () => {
+test("entity feature with no hard anchor does not merge from terms or a similar label", () => {
   const entityFeature = makeFeature({
     name: "Plan Management", files: [],
-    searchTerms: ["plan", "Plan", "management", "feature"], evidence: []
+    searchTerms: ["plan", "management", "feature"], evidence: []
   });
   const domainFeature = makeFeature({
     name: "Customizable Plans", files: ["src/plans.ts"],
-    searchTerms: ["plan", "custom", "Plan", "management", "feature"], evidence: []
+    searchTerms: ["plan", "custom", "management", "feature"], evidence: []
   });
   const list = [entityFeature];
   mergeIntoFeatureList(list, domainFeature);
-  assert.equal(list.length, 1);
+  assert.equal(list.length, 2);
 });
 
 test("mergeFeatureData — useless businessFlow replaced by addition", () => {

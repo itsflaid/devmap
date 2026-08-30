@@ -308,7 +308,7 @@ test("project map extracts routes from both frontend and backend frameworks", as
 
 test("dependency graph resolves TypeScript imports using .js specifiers", async () => {
   const files = await scanFiles(nextFixture);
-  const graph = buildDependencyGraph(files);
+  const { graph } = buildDependencyGraph(files);
   const references = countReferences(graph);
 
   assert.deepEqual(graph["app/page.tsx"], ["lib/auth.ts"]);
@@ -635,12 +635,12 @@ test("project map summarizes an Express fixture", async () => {
     ["src/server.ts", "src/routes/payments.ts"]
   );
   assert.deepEqual(projectMap.changeImpact["src/routes/payments.ts"].impacts.sort(), [
-    "Payments",
-    "Payments flow",
+    "Payment Management",
+    "Payment Management flow",
     "Request /payments"
   ]);
   assert.ok(projectMap.onboarding.recommendedPath.includes("src/server.ts"));
-  assert.ok(projectMap.features.some((feature) => feature.name === "Payments"));
+  assert.ok(projectMap.features.some((feature) => feature.name === "Payment Management"));
 });
 
 test("snapshot can be saved and read back", async () => {

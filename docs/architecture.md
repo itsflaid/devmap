@@ -5,8 +5,6 @@ architecture. Updated 2026-08-29.
 
 This is the architecture source of truth for DevMap's analyzer direction. It
 replaces the former root-level reverse-engineering and V2 proposal documents.
-The roadmap in `docs/roadmap.md` remains the source of truth for product
-sequence and priority when it conflicts with this document.
 
 ## 1. Executive Decision
 

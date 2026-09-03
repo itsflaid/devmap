@@ -12,13 +12,8 @@ When working in this repository:
 1. Read the relevant documentation.
 3. Add or update tests, documentation, and personal development notes.
 4. Run the relevant verification gates.
-5. Before committing, pushing, or opening the PR, stop and ask the user to
-   create a GitHub issue. Provide a ready-to-use issue title and body.
-6. Wait for the user to provide the issue number.
-7. Commit and push the verified work, then open a PR that includes
-   `Closes #<issue-number>` in the PR body.
-8. Give the user the PR link so they can review and merge it. The merge should
-   close the linked issue automatically.
+5. Commit and push the verified work, then open a PR.
+6. Give the user the PR link so they can review and merge it.
 
 ## Commits
 
@@ -58,14 +53,6 @@ internal scripts, anything not bundled into the npm tarball):
   `packages/cli`, then `git push --follow-tags`.
 - Passing verification gates is not authorization to publish — always
   wait for the user's go-ahead on this step specifically.
-
-## Source of Truth
-
-The roadmap (`docs/roadmap.md`) is the source of truth for product behavior, requirements, and priorities.
-
-If there is any conflict between the roadmap and other documents (README, docs, comments, plans, or specifications), follow the roadmap.
-
-
 
 
 ## Relevant Skills

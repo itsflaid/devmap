@@ -18,6 +18,7 @@ const execute = promisify(execFile);
 const executeShell = promisify(exec);
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(testDirectory, "..");
+const expectedVersion = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8")).version;
 const workspaceRoot = resolve(packageRoot, "../..");
 const pnpmCli = process.env.npm_execpath;
 const npmExecutable = join(
@@ -80,7 +81,7 @@ try {
     await writeFile(packageJsonPath, fixturePackageJson, "utf8");
 
     const version = await runDevmap(projectRoot, ["--version"]);
-    assert.match(version.stdout, /^0\.2\.0/m);
+    assert.match(version.stdout, new RegExp(`^${expectedVersion.replace(/\./g, "\\.")}$`, "m"));
 
     const help = await runDevmap(projectRoot, ["--help"]);
     assert.match(stripAnsi(help.stdout), /analyze\s+\[target\]\s+Analyze project structure/);

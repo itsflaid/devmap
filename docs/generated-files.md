@@ -147,8 +147,6 @@ The snapshot intentionally does **not** contain full source code.
 
 ---
 
-# Generated Files
-
 DevMap generates the following files when you run its commands.
 
 ## .devmap/maps/

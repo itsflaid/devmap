@@ -25,7 +25,7 @@ const commands = [
   {
     command: "devmap onboarding",
     query: "where do I start reading",
-    coreQuestion: "Where should I start reading this project?", // REAL — docs/roadmap.md
+    coreQuestion: "Where should I start reading this project?",
     output: [
       "Start here:",
       "1. app/layout.tsx — root layout",
@@ -36,7 +36,7 @@ const commands = [
   {
     command: "devmap map authentication",
     query: "what does auth connect to",
-    coreQuestion: "This file/feature — what does it connect to, and how?", // REAL — docs/roadmap.md
+    coreQuestion: "This file/feature — what does it connect to, and how?",
     output: [
       "auth.ts",
       "├─ used by → session/route.ts",
@@ -47,7 +47,7 @@ const commands = [
   {
     command: "devmap flow authentication",
     query: "how does login work end to end",
-    coreQuestion: "How does this feature work from start to finish?", // REAL — docs/roadmap.md
+    coreQuestion: "How does this feature work from start to finish?",
     output: [
       "1. POST /api/session",
       "2. validateCredentials()",
@@ -58,7 +58,7 @@ const commands = [
   {
     command: 'devmap explain "authentication feature"',
     query: "how does auth work",
-    coreQuestion: "What does this file/feature/function do, in detail?", // REAL — docs/roadmap.md
+    coreQuestion: "What does this file/feature/function do, in detail?",
     output: [
       "Handles session creation and validation.",
       "Imports db.ts for user lookup.",
@@ -70,7 +70,7 @@ const commands = [
     query: "why isn't this working",
     coreQuestion: "Why isn't this working?", // CONSTRUCTED
     output: [
-      "DevMap version     0.1.0   ✓",
+      "DevMap version     <current>   ✓",
       "Provider           Groq    ✓",
       "API key            valid   ✓",
       "No issues found.",

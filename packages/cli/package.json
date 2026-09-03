@@ -1,7 +1,7 @@
 {
   "name": "@flaid/devmap",
-  "version": "0.3.2",
-  "description": "CLI that maps codebases into a persistent, reusable context layer for humans and AI agents.",
+  "version": "0.3.3",
+  "description": "CLI that maps codebases into a reusable context layer for developers and AI agents.",
   "bin": {
     "devmap": "./dist/index.js"
   },

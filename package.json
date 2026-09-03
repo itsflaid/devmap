@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=22.12"
   },
-  "description": "Understand any codebase in minutes, not days.",
+  "description": "Reusable context layer for developers and AI agents.",
   "scripts": {
     "dev:web": "pnpm --filter @devmap/web dev",
     "build:web": "pnpm --filter @devmap/web build",

@@ -10,9 +10,6 @@ maps, `DEVMAP.md`) is what you and any AI agent read afterward,
 instead of re-scanning or re-pasting the whole repo. Full repo
 source stays local — nothing gets sent wholesale to the AI model.
 
-Version `0.2.0` classifies full workspaces (multiple project types at once),
-centralizes detection vocabulary, and ships `map`, `flow`, and `explain`.
-
 ## Install
 
 ```bash

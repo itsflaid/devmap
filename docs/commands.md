@@ -1,7 +1,5 @@
 # DevMap — Commands Reference
 
-← Back to Roadmap: ./roadmap.md
-
 ---
 
 ## Overview
@@ -16,13 +14,6 @@ DevMap ships the following core project commands and one configuration command:
 * `devmap explain`
 * `devmap doctor`
 * `devmap config model`
-
-Additional product commands should wait until the MVP is shipped unless the roadmap
-explicitly promotes them into the `0.1.0` scope.
-
-Future commands are documented in:
-
-* [roadmap.md](./roadmap.md)
 
 ---
 
@@ -665,24 +656,6 @@ They are not part of the current MVP command scope.
 | `devmap watch`    | Auto-update snapshot on file changes        |
 | `devmap visual`   | Generate architecture diagram               |
 
-See:
+Command behavior belongs in `docs/commands.md`.
 
-* [roadmap.md](./roadmap.md)
-
----
-
-## Source of Truth
-
-Product direction belongs in:
-
-* `docs/roadmap.md`
-
-Command behavior belongs in:
-
-* `docs/commands.md`
-
-Implementation details belong in:
-
-* `docs/architecture.md`
-
-If documentation conflicts, `docs/roadmap.md` takes precedence for product direction.
+Implementation details belong in `docs/architecture.md`.

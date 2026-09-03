@@ -1,7 +1,5 @@
 # DevMap — Design System
 
-← Back to Roadmap: ./roadmap.md
-
 ---
 
 # Philosophy
@@ -336,16 +334,12 @@ Remove it.
 
 Product direction:
 
-* roadmap.md
+* `docs/commands.md`
 
 Command behavior:
 
-* commands.md
+* `docs/commands.md`
 
 Architecture:
 
-* architecture.md
-
-Roadmap:
-
-* roadmap.md
+* `docs/architecture.md`

@@ -242,7 +242,7 @@ Use your preferred AI tool to change it.
 ### Planned
 
 - PHP (Laravel)
-- Python, Go, Java, Rust, Dart, C# — see [docs/roadmap.md](./docs/roadmap.md) Phase 6
+- Python, Go, Java, Rust, Dart, C# 
 
 ---
 
@@ -257,8 +257,6 @@ AI features require a provider API key. DevMap uses Groq by default — analysis
 | Groq                            | MVP     |
 | OpenRouter                      | MVP     |
 | Custom (any OpenAI-compatible)  | MVP     |
-| OpenAI (official, hosted)       | Planned |
-| Gemini                          | Planned |
 
 `devmap init` lets you choose Groq, OpenRouter, or a custom OpenAI-compatible
 endpoint with the arrow keys. Groq shows the available model list and stores
@@ -298,33 +296,6 @@ Requirements:
 Node.js 22.12+
 ```
 
----
-
-## Roadmap
-
-### Shipped
-
-- [x] `devmap init`
-- [x] `devmap analyze`
-- [x] `devmap doctor`
-- [x] `devmap onboarding`
-- [x] `devmap map`
-- [x] `devmap explain`
-- [x] `devmap flow`
-- [x] Custom OpenAI-compatible provider
-
-### Next (Phase 3)
-
-- [ ] Frontend SPA store extraction (Zustand, Redux Toolkit, Pinia)
-- [ ] Better SPA feature/entry-point detection
-
-### Later
-
-- [ ] OpenAI provider
-- [ ] Gemini provider
-- [ ] Local/Ollama AI mode
-
-See [docs/roadmap.md](./docs/roadmap.md) for details.
 
 ---
 

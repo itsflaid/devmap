@@ -50,9 +50,15 @@ internal scripts, anything not bundled into the npm tarball):
   the user to confirm the change is publish-worthy and which bump level
   applies (`patch` / `minor` / `major`).
 - Only after explicit user confirmation: run `npm version <level>` in
-  `packages/cli`, then `git push --follow-tags`.
+  `packages/cli`, then `git push --follow-tags` with the `v*.*.*` tag.
 - Passing verification gates is not authorization to publish — always
   wait for the user's go-ahead on this step specifically.
+- Publishing to npm is done exclusively via GitHub Actions using npm
+  Trusted Publishing (OIDC). Do **not** run `npm publish` manually
+  from a local terminal — it requires 2FA and is not the configured
+  publish path. Pushing a `v*.*.*` tag to `origin` triggers the
+  `publish.yml` workflow, which handles build, test, and npm publish
+  via OIDC. Monitor results in the GitHub Actions tab.
 
 
 ## Relevant Skills

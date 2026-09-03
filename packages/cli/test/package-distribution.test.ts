@@ -26,7 +26,7 @@ test("npm package metadata supports npx devmap with a minimal tarball", async ()
   assert.match(packageJson.version ?? "", /^\d+\.\d+\.\d+(?:-.+)?$/);
   assert.equal(
     packageJson.description,
-    "CLI that maps codebases into a persistent, reusable context layer for humans and AI agents."
+    "CLI that maps codebases into a reusable context layer for developers and AI agents."
   );
   assert.equal(packageJson.bin?.devmap, "./dist/index.js");
   assert.equal(packageJson.engines?.node, ">=22.12");

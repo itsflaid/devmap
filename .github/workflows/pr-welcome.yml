@@ -1,0 +1,46 @@
+name: PR Welcome
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Add welcome comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const checklist = [
+              '## ✅ Welcome ke DevMap!',
+              '',
+              'Terima kasih sudah buat PR. Pastikan checklist ini terpenuhi sebelum review:',
+              '',
+              '- [ ] `devmap doctor` lolos (tanpa error)',
+              '- [ ] Test `pnpm test:cli` lolos (251 pass)',
+              '- [ ] New commands diupdate di `docs/commands.md`',
+              '- [ ] Tidak ada `console.log` di command files',
+              '- [ ] Registry terms sesuai standar (baca `docs/guide/05-signal-registry.md`)',
+              '- [ ] Code style match dengan `CONTRIBUTING.md`',
+              '',
+              '**CI akan jalan otomatis** pada setiap update. Kalau gagal, akan muncul link run di komentar ini.',
+              '',
+              'Kalau DevMap membantu, tolong star ya: <https://github.com/itsflaid/devmap>',
+              '',
+              'Terima kasih kontribusinya! 🙏'
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: checklist
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-review']
+            });

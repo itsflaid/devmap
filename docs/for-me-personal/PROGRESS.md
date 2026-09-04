@@ -1,6 +1,41 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-08-30
+Terakhir diperbarui: 2026-09-04
+
+## Update 2026-09-04
+
+### Contributor-Friendly Infrastructure — branch `feat/contributor-friendly-infra`
+
+Menambahkan template, workflow, dan konfigurasi agar kontributor baru lebih
+mudah mulai berkontribusi ke DevMap.
+
+1. `opencode.json` — model config untuk opencode: plan mode pakai
+   `9router/planner` (edit: deny, bash: ask), build mode pakai
+   `9router/executor`. MCP servers: Context7, Firecrawl, Exa.
+2. `.github/ISSUE_TEMPLATE/bug_report.md` — template bug report dengan
+   fields: version, command run, expected/actual, doctor output, sample
+   project, steps, context. Label `needs-triage`.
+3. `.github/pull_request_template.md` — PR template dengan summary, issue
+   link, checklist (doctor, test, docs, console.log, registry, code style).
+   Label `needs-review`.
+4. `.github/workflows/pr-welcome.yml` — auto-comment checklist + label
+   `needs-review` saat PR dibuka.
+5. 20 GitHub issues (#80–#99) untuk registry provider: Clerk, Auth0,
+   Passport, Lucia, Redis, Upstash, Memcached, LemonSqueezy, SendGrid,
+   Nodemailer, Mailgun, Postmark, Pusher, Ably, OneSignal, Novu, Algolia,
+   Meilisearch, Typesense, TogetherAI. Label `good first issue` +
+   `enhancement`.
+6. Label `good first issue` ditambahkan ke issues #76–#79 (database
+   extractors: NoSQL, Drizzle, TypeORM, Mongoose).
+
+**Dihapus**: `.github/ISSUE_TEMPLATE/star_request.md` (jelek) +
+`.github/workflows/star-nudge.yml` (dead code).
+
+**Files**: opencode.json, .github/ISSUE_TEMPLATE/bug_report.md,
+.github/pull_request_template.md, .github/workflows/pr-welcome.yml,
+docs/for-me-personal/PROGRESS.md.
+
+---
 
 ## Update 2026-08-30
 

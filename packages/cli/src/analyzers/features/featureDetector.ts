@@ -650,15 +650,17 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
 
   const features: FeatureInfo[] = [];
 
-  const meaningfulEntities = entityGraph.source === "prisma"
+  const meaningfulEntities = (entityGraph.source === "prisma"
     ? entityGraph.entities.filter((e) =>
         relations.some((r) => r.from === e.name || r.to === e.name)
       )
-    : entityGraph.entities;
+    : entityGraph.entities)
+    .filter((e) => !trueChildNames.has(e.name) && !INFRASTRUCTURE_ENTITY_NAMES.has(e.name))
+    // entity dengan implementasi nyata (sourceFiles dari route-hint/SQL) diprioritaskan
+    // di atas entity yang cuma eksis di schema tanpa file custom
+    .sort((a, b) => (b.sourceFiles?.length ?? 0) - (a.sourceFiles?.length ?? 0));
 
   for (const entity of meaningfulEntities.slice(0, 8)) {
-    if (trueChildNames.has(entity.name)) continue;
-    if (INFRASTRUCTURE_ENTITY_NAMES.has(entity.name)) continue;
 
     const ownedNames = relations
       .filter((r) => r.from === entity.name && r.kind === "one-to-many")

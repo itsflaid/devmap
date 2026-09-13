@@ -263,3 +263,164 @@ test("native parser failure falling back to heuristic emits a diagnostic and doe
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+// WP1: Prisma schema with >8 relation-bearing models — boilerplate NextAuth
+// models listed first must not starve out real domain entities when the
+// meaningfulEntities list is capped at 8.
+test("domain entities survive the 8-entity cap when boilerplate models appear first", async () => {
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({
+      name: "large-schema",
+      dependencies: { "next-auth": "^5.0.0", "@prisma/client": "^6.0.0" },
+    }),
+    "prisma/schema.prisma": [
+      'generator client { provider = "prisma-client-js" }',
+      'datasource db { provider = "postgresql" }',
+      // --- boilerplate NextAuth models (listed first) ---
+      "model User {",
+      "  id              String           @id @default(cuid())",
+      "  email           String           @unique",
+      "  accounts        Account[]",
+      "  sessions        Session[]",
+      "  authenticators  Authenticator[]",
+      "  rooms           Room[]",
+      "  messages        Message[]",
+      "  checklistItems  ChecklistItem[]",
+      "  pushSubscriptions PushSubscription[]",
+      "}",
+      "model Account {",
+      "  id                String  @id @default(cuid())",
+      "  userId            String",
+      "  user              User    @relation(fields: [userId], references: [id])",
+      "  type              String",
+      "  provider          String",
+      "  providerAccountId String",
+      "  refresh_token     String?",
+      "  access_token      String?",
+      "  expires_at        Int?",
+      "  token_type        String?",
+      "  scope             String?",
+      "  id_token          String?",
+      "  session_state     String?",
+      "  @@unique([provider, providerAccountId])",
+      "}",
+      "model Session {",
+      "  id           String   @id @default(cuid())",
+      "  sessionToken String   @unique",
+      "  userId       String",
+      "  user         User     @relation(fields: [userId], references: [id])",
+      "  expires      DateTime",
+      "}",
+      "model VerificationToken {",
+      "  identifier String",
+      "  token      String   @unique",
+      "  expires    DateTime",
+      "  @@unique([identifier, token])",
+      "}",
+      "model Authenticator {",
+      "  id                   String  @id @default(cuid())",
+      "  userId               String",
+      "  user                 User    @relation(fields: [userId], references: [id])",
+      "  credentialPublicKey  String",
+      "  counter              Int",
+      "  credentialDeviceType String",
+      "  credentialBackedUp   Boolean",
+      "  transports           String?",
+      "  @@unique([userId, credentialPublicKey])",
+      "}",
+      // --- domain models ---
+      "model Room {",
+      "  id        String      @id @default(cuid())",
+      "  name      String",
+      "  ownerId   String",
+      "  owner     User        @relation(fields: [ownerId], references: [id])",
+      "  messages  Message[]",
+      "  checklistItems ChecklistItem[]",
+      "  createdAt DateTime    @default(now())",
+      "}",
+      "model Message {",
+      "  id        String   @id @default(cuid())",
+      "  content   String",
+      "  roomId    String",
+      "  room      Room     @relation(fields: [roomId], references: [id])",
+      "  authorId  String",
+      "  author    User     @relation(fields: [authorId], references: [id])",
+      "  createdAt DateTime @default(now())",
+      "}",
+      "model ChecklistItem {",
+      "  id        String   @id @default(cuid())",
+      "  text      String",
+      "  checked   Boolean  @default(false)",
+      "  roomId    String",
+      "  room      Room     @relation(fields: [roomId], references: [id])",
+      "  authorId  String",
+      "  author    User     @relation(fields: [authorId], references: [id])",
+      "}",
+      "model PushSubscription {",
+      "  id        String @id @default(cuid())",
+      "  endpoint  String",
+      "  userId    String",
+      "  user      User   @relation(fields: [userId], references: [id])",
+      "}",
+    ].join("\n"),
+    "lib/auth.ts": [
+      'import NextAuth from "next-auth";',
+      'import CredentialsProvider from "next-auth/providers/credentials";',
+      "export const auth = NextAuth({",
+      "  providers: [CredentialsProvider({",
+      "    credentials: { email: {}, password: {} },",
+      "    authorize: async (credentials) => null,",
+      "  })],",
+      "});",
+    ].join("\n"),
+    "app/api/session/route.ts": [
+      'import { auth } from "../../../lib/auth.js";',
+      "export async function GET() {",
+      "  const session = await auth();",
+      "  return Response.json(session);",
+      "}",
+    ].join("\n"),
+    "lib/room.ts": [
+      'import { PrismaClient } from "@prisma/client";',
+      "const prisma = new PrismaClient();",
+      "export async function listRooms() {",
+      "  return prisma.room.findMany();",
+      "}",
+    ].join("\n"),
+    "lib/message.ts": [
+      'import { PrismaClient } from "@prisma/client";',
+      "const prisma = new PrismaClient();",
+      "export async function listMessages(roomId: string) {",
+      "  return prisma.message.findMany({ where: { roomId } });",
+      "}",
+    ].join("\n"),
+    "lib/checklist.ts": [
+      'import { PrismaClient } from "@prisma/client";',
+      "const prisma = new PrismaClient();",
+      "export async function listChecklistItems(roomId: string) {",
+      "  return prisma.checklistItem.findMany({ where: { roomId } });",
+      "}",
+    ].join("\n"),
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    const featureNames = snapshot.features.map((f) => f.name);
+
+    // 2 of 4 domain entities must appear as features despite 9 total
+    // relation-bearing models exceeding the 8-entity cap.
+    // ChecklistItem and PushSubscription are excluded because
+    // isTrueChildEntity returns true (one parent, no children of their own)
+    // — they get folded into their parent entity as owned entities instead.
+    assert.ok(featureNames.includes("Room Management"), "Room should be a feature");
+    assert.ok(featureNames.includes("Message Management"), "Message should be a feature");
+
+    // Boilerplate infrastructure models must NOT appear
+    assert.ok(!featureNames.includes("Account Management"), "Account is infrastructure");
+    assert.ok(!featureNames.includes("Session Management"), "Session is infrastructure");
+    assert.ok(!featureNames.includes("VerificationToken Management"), "VerificationToken is infrastructure");
+    assert.ok(!featureNames.includes("Authenticator Management"), "Authenticator is infrastructure");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

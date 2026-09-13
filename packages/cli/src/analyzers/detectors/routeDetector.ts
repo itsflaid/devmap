@@ -2,6 +2,7 @@ import type { ScannedFile } from "../analysis/index.js";
 import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
 import { detectNestRoutes } from "./nestRouteDetector.js";
+import { usesTrpc, detectTrpcRoutes } from "./trpcRouteDetector.js";
 
 export type RouteInfo = {
   path: string;
@@ -28,6 +29,10 @@ export function detectRoutes(
   graph?: Record<string, string[]>
 ): RouteInfo[] {
   const routes: RouteInfo[] = [];
+
+  if (usesTrpc(files)) {
+    routes.push(...detectTrpcRoutes(files, graph));
+  }
 
   if (frameworks.includes("nextjs")) {
     routes.push(...detectNextRoutes(files));

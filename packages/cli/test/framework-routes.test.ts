@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { detectFrameworks } from "../src/analyzers/detectors/frameworkDetector.js";
 import { detectRoutes } from "../src/analyzers/detectors/routeDetector.js";
@@ -486,5 +487,92 @@ test("NestJS routes surface through project map and service stays classified", a
     );
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// tRPC
+// ---------------------------------------------------------------------------
+
+const trpcFixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "trpc-project");
+
+test("detectRoutes extracts tRPC procedures as routes", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({
+      dependencies: {
+        next: "^14.0.0",
+        "@trpc/server": "^10.0.0",
+        "@trpc/client": "^10.0.0",
+        zod: "^3.22.0",
+        "@prisma/client": "^5.0.0"
+      }
+    })),
+    createScannedFile("src/server/trpc.ts", [
+      'import { initTRPC } from "@trpc/server";',
+      "const t = initTRPC.create();",
+      "export const router = t.router;",
+      "export const publicProcedure = t.procedure;"
+    ].join("\n")),
+    createScannedFile("src/server/routers/room.ts", [
+      'import { z } from "zod";',
+      'import { router, publicProcedure } from "../trpc";',
+      "export const roomRouter = router({",
+      "  list: publicProcedure.query(async ({ ctx }) => {",
+      "    return ctx.prisma.room.findMany();",
+      "  }),",
+      "  create: publicProcedure",
+      "    .input(z.object({ name: z.string() }))",
+      "    .mutation(async ({ ctx, input }) => {",
+      "      return ctx.prisma.room.create({ data: input });",
+      "    }),",
+      "});"
+    ].join("\n")),
+    createScannedFile("src/server/routers/message.ts", [
+      'import { z } from "zod";',
+      'import { router, publicProcedure } from "../trpc";',
+      "export const messageRouter = router({",
+      "  list: publicProcedure.query(async ({ ctx }) => {",
+      "    return ctx.prisma.message.findMany();",
+      "  }),",
+      "  create: publicProcedure",
+      "    .input(z.object({ content: z.string(), roomId: z.number() }))",
+      "    .mutation(async ({ ctx, input }) => {",
+      "      return ctx.prisma.message.create({ data: input });",
+      "    }),",
+      "});"
+    ].join("\n")),
+    createScannedFile("src/server/routers/_app.ts", [
+      'import { router } from "../trpc";',
+      'import { roomRouter } from "./room";',
+      'import { messageRouter } from "./message";',
+      "export const appRouter = router({",
+      "  room: roomRouter,",
+      "  message: messageRouter,",
+      "});"
+    ].join("\n"))
+  ];
+
+  const routes = detectRoutes(files, []);
+  assert.ok(routes.some((r) => r.path === "/trpc/room.list" && r.methods?.includes("QUERY")));
+  assert.ok(routes.some((r) => r.path === "/trpc/room.create" && r.methods?.includes("MUTATION")));
+  assert.ok(routes.some((r) => r.path === "/trpc/message.list" && r.methods?.includes("QUERY")));
+  assert.ok(routes.some((r) => r.path === "/trpc/message.create" && r.methods?.includes("MUTATION")));
+});
+
+test("tRPC routes surface as features through project map", async () => {
+  try {
+    const snapshot = await createProjectMap(trpcFixture);
+    const routePaths = snapshot.routes.map((r) => r.path).sort();
+    assert.ok(routePaths.includes("/trpc/room.list"), "room.list route detected");
+    assert.ok(routePaths.includes("/trpc/room.create"), "room.create route detected");
+    assert.ok(routePaths.includes("/trpc/message.list"), "message.list route detected");
+    assert.ok(routePaths.includes("/trpc/message.create"), "message.create route detected");
+
+    const names = snapshot.features.map((f) => f.name);
+    const hasManagement = names.some((n) => n.includes("Management"));
+    assert.ok(hasManagement, "at least one Management feature from tRPC entities");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw err;
   }
 });

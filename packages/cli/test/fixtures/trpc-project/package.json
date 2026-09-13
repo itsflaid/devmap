@@ -1,0 +1,10 @@
+{
+  "name": "trpc-fixture",
+  "dependencies": {
+    "next": "^14.0.0",
+    "@trpc/server": "^10.0.0",
+    "@trpc/client": "^10.0.0",
+    "zod": "^3.22.0",
+    "@prisma/client": "^5.0.0"
+  }
+}

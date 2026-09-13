@@ -1,0 +1,23 @@
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  rooms     Room[]
+  messages  Message[]
+}
+
+model Room {
+  id        Int       @id @default(autoincrement())
+  name      String
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  messages  Message[]
+}
+
+model Message {
+  id        Int       @id @default(autoincrement())
+  content   String
+  roomId    Int
+  room      Room      @relation(fields: [roomId], references: [id])
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+}

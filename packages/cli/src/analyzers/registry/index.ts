@@ -16,6 +16,7 @@ import { DESCRIPTORS as rateLimitingDescriptors } from "./rate-limiting.js";
 import { DESCRIPTORS as cmsContentDescriptors } from "./cms-content.js";
 import { DESCRIPTORS as databaseDescriptors } from "./database.js";
 import { DESCRIPTORS as firebaseDescriptors } from "./firebase.js";
+import { DESCRIPTORS as encryptionDescriptors } from "./encryption.js";
 
 export type { SignalDescriptor };
 
@@ -37,6 +38,7 @@ export const REGISTRY_DESCRIPTORS: SignalDescriptor[] = [
   ...cmsContentDescriptors,
   ...databaseDescriptors,
   ...firebaseDescriptors,
+  ...encryptionDescriptors,
 ];
 
 const descriptorByName = new Map(REGISTRY_DESCRIPTORS.map((descriptor) => [descriptor.name, descriptor]));

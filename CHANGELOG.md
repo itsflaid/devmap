@@ -9,6 +9,18 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.3.5] - 2026-09-13
+
+### Fixed
+
+- Entity feature detection no longer lets infrastructure or true-child
+  entities starve out real domain entities when a Prisma schema has more
+  than 8 relation-bearing models
+- Page-feature ownership no longer inflates through barrel/re-export files,
+  preventing unrelated components from being attributed to the wrong page
+- Feature reconciliation no longer treats high fan-in shared files as
+  sufficient evidence to merge unrelated feature candidates
+
 ## [0.3.0] - 2026-08-26
 
 ### Added

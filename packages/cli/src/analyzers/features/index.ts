@@ -8,6 +8,7 @@ export {
 } from "./featureDetector.js";
 export type {
   FeatureInfo,
+  DetectFeaturesResult,
   AuthSemanticRole,
   FileTier,
 } from "./featureDetector.js";
@@ -40,6 +41,8 @@ export type {
   FeatureCluster,
   FeatureEvidence,
   FeatureReconciliation,
+  MergeDecision,
+  AnchorType,
   ObservationReliability,
 } from "./featureCandidates.js";
 export type {

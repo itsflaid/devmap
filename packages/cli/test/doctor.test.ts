@@ -173,6 +173,81 @@ test("doctor inspects OpenRouter with the configured user model", async () => {
   }
 });
 
+test("doctor shows feature merge warnings for cross-source single-file merges", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-feature-diagnostics-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "doctor-fixture-diagnostics", dependencies: { express: "^5.0.0" } }),
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "server.ts"), "export const app = true;\n", "utf8");
+    const snapshot = await createProjectMap(projectRoot);
+    snapshot.featureDiagnostics = {
+      mergeDecisions: [
+        {
+          candidateIds: ["registry:signal-Auth:auth", "frontend-page:file-page:login"],
+          outcome: "merged",
+          anchors: [{ type: "file", value: "src/pages/login.tsx" }],
+          reason: "Merged by shared file."
+        }
+      ],
+      rejectedCandidateIds: []
+    };
+    await saveSnapshot(projectRoot, snapshot);
+
+    const logs = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => ({
+        provider: "groq",
+        apiKey: "gsk_fixture",
+        model: "auto"
+      }),
+      inspectProvider: async () => ({
+        reachable: true,
+        modelAvailable: true
+      })
+    }));
+
+    assert.match(logs, /Feature merges \(review disarankan\)/);
+    assert.match(logs, /registry:signal-Auth:auth <-> frontend-page:file-page:login via 1 file: src\/pages\/login\.tsx/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("doctor does not show feature merge section when no cross-source merges", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-no-diagnostics-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "doctor-fixture-no-diagnostics", dependencies: { express: "^5.0.0" } }),
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "server.ts"), "export const app = true;\n", "utf8");
+    await saveSnapshot(projectRoot, await createProjectMap(projectRoot));
+
+    const logs = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => ({
+        provider: "groq",
+        apiKey: "gsk_fixture",
+        model: "auto"
+      }),
+      inspectProvider: async () => ({
+        reachable: true,
+        modelAvailable: true
+      })
+    }));
+
+    assert.doesNotMatch(logs, /Feature merges \(review disarankan\)/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 async function captureOutput(action: () => Promise<void>): Promise<string> {
   const logs: string[] = [];
   const originalLog = console.log;

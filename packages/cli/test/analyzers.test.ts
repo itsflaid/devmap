@@ -428,7 +428,7 @@ test("feature detection keeps documentation and landing UI out of technical feat
     )
   ];
 
-  const features = detectFeatures(files, {}, []);
+  const { features } = detectFeatures(files, {}, []);
   const names = features.map((feature) => feature.name);
 
   assert.ok(names.includes("AI Integration"));

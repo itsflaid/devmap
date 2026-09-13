@@ -136,6 +136,21 @@ async function runDoctor(
     issues.push("Run devmap analyze --fresh to regenerate the snapshot.");
   }
 
+  if (snapshotResult.status === "valid" && snapshotResult.snapshot.featureDiagnostics) {
+    const risky = snapshotResult.snapshot.featureDiagnostics.mergeDecisions.filter((d) => {
+      if (d.outcome !== "merged" || d.anchors.length !== 1 || d.anchors[0].type !== "file") return false;
+      const [sourceA] = d.candidateIds[0].split(":");
+      const [sourceB] = d.candidateIds[1].split(":");
+      return sourceA !== sourceB;
+    });
+    if (risky.length > 0) {
+      output.section("Feature merges (review disarankan)");
+      for (const d of risky) {
+        output.warning(`${d.candidateIds[0]} <-> ${d.candidateIds[1]} via 1 file: ${d.anchors[0].value}`);
+      }
+    }
+  }
+
   if (issues.length === 0) {
     output.success("No issues found");
   } else {

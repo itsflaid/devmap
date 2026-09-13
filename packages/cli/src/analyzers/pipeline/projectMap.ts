@@ -138,6 +138,10 @@ export type ProjectMap = {
   warnings?: string[];
   /** Structured diagnostics from the analysis pipeline. */
   diagnostics?: DependencyGraphDiagnostics;
+  featureDiagnostics?: {
+    mergeDecisions: Array<{ candidateIds: [string, string]; outcome: string; anchors: Array<{ type: string; value: string }> }>;
+    rejectedCandidateIds: string[];
+  };
   dependencies: Record<string, string[]>;
   /** Resolved file-to-file import graph (project-relative paths). Distinct from
    *  `dependencies`, which holds package.json npm dependency names. */
@@ -189,8 +193,9 @@ export async function createProjectMap(
   const capabilities = detectCapabilities(routes, entityGraph);
 
   // Step 3: Detect features — consume entityGraph + capabilities
+  const featureResult = detectFeatures(files, analyses, routes, database, entityGraph, capabilities, graph);
   const features = attachFeatureEntryPoints(
-    detectFeatures(files, analyses, routes, database, entityGraph, capabilities, graph),
+    featureResult.features,
     routes,
     entryPoints,
     graph,
@@ -269,6 +274,9 @@ export async function createProjectMap(
     warnings: detectAnalysisWarnings(files, entryPoints, criticalFiles, features),
     ...(graphDiagnostics.unresolvedAliases.length > 0 || graphDiagnostics.parserFallbacks.length > 0
       ? { diagnostics: graphDiagnostics }
+      : {}),
+    ...(featureResult.mergeDecisions.length > 0 || featureResult.rejectedCandidateIds.length > 0
+      ? { featureDiagnostics: { mergeDecisions: featureResult.mergeDecisions, rejectedCandidateIds: featureResult.rejectedCandidateIds } }
       : {}),
     dependencies: readPackageDependencies(files),
     fileGraph: graph,

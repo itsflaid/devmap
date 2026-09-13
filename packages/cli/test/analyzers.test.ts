@@ -428,7 +428,7 @@ test("feature detection keeps documentation and landing UI out of technical feat
     )
   ];
 
-  const features = detectFeatures(files, {}, []);
+  const { features } = detectFeatures(files, {}, []);
   const names = features.map((feature) => feature.name);
 
   assert.ok(names.includes("AI Integration"));
@@ -760,6 +760,34 @@ test("snapshot inspection rejects invalid fileIndex entries", async () => {
       status: "corrupt",
       error: "fileIndex contains invalid entries."
     });
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("feature detection finds Encryption from crypto imports", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-encryption-test-"));
+
+  try {
+    await writeFile(
+      join(projectRoot, "package.json"),
+      JSON.stringify({ name: "encryption-fixture", dependencies: {} }),
+      "utf8"
+    );
+    await mkdir(join(projectRoot, "lib"), { recursive: true });
+    await mkdir(join(projectRoot, "app"), { recursive: true });
+    await writeFile(
+      join(projectRoot, "lib/encryption.ts"),
+      'import { createCipheriv, createDecipheriv } from "node:crypto";\nexport function encrypt(data: string) { return data; }\n',
+      "utf8"
+    );
+    await writeFile(join(projectRoot, "app/page.tsx"), 'export default function Home() { return <div>Hi</div>; }\n', "utf8");
+
+    const files = await scanFiles(projectRoot);
+    const { features } = detectFeatures(files, {}, []);
+    const names = features.map((f) => f.name);
+
+    assert.ok(names.includes("Encryption"), `Expected "Encryption" in features, got: ${names.join(", ")}`);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

@@ -98,8 +98,8 @@ function detectCrudCapabilities(
   const capabilities: CapabilityInfo[] = [];
 
   for (const [resource, { methods, files }] of resourceMap) {
-    const hasRead = methods.has("GET");
-    const hasWrite = methods.has("POST") || methods.has("PUT") || methods.has("PATCH");
+    const hasRead = methods.has("GET") || methods.has("QUERY");
+    const hasWrite = methods.has("POST") || methods.has("PUT") || methods.has("PATCH") || methods.has("MUTATION");
     const hasDelete = methods.has("DELETE");
 
     if (!hasRead && !hasWrite) continue;

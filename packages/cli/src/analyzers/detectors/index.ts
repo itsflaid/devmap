@@ -37,3 +37,5 @@ export {
   detectFrontendPageFeatures,
   detectClientRouteFeatures,
 } from "./frontendFeatureDetector.js";
+
+export { usesTrpc, detectTrpcRoutes } from "./trpcRouteDetector.js";

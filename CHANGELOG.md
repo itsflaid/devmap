@@ -9,6 +9,19 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.4.0] - 2026-09-13
+
+### Added
+
+- tRPC router and procedure detection
+- Encryption/crypto signal descriptor in the feature registry
+- Feature reconciliation diagnostics in project map and devmap doctor
+
+### Changed
+
+- Authentication semantic-role detection participates in the same
+  feature candidate/reconciliation pipeline as every other detector
+
 ## [0.3.5] - 2026-09-13
 
 ### Fixed

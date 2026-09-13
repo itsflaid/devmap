@@ -18,6 +18,7 @@ import {
   reconcileFeatureCandidates,
   type FeatureCandidate,
   type FeatureCandidateSource,
+  type FeatureCluster,
 } from "./featureCandidates.js";
 import { FEATURE_SIGNALS, hasAiProviderUrl, isAiProviderImport } from "../registry/index.js";
 
@@ -31,6 +32,12 @@ export type FeatureInfo = {
   searchTerms: string[];
   confidence: "high" | "medium" | "low";
   evidence: string[];
+};
+
+export type DetectFeaturesResult = {
+  features: FeatureInfo[];
+  mergeDecisions: Array<{ candidateIds: [string, string]; outcome: string; anchors: Array<{ type: string; value: string }> }>;
+  rejectedCandidateIds: string[];
 };
 
 export type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
@@ -321,7 +328,7 @@ export function detectFeatures(
   entityGraph?: EntityGraph,
   capabilities?: CapabilityInfo[],
   fileGraph?: FileGraph
-): FeatureInfo[] {
+): DetectFeaturesResult {
   const candidates: FeatureCandidate[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
 
@@ -426,8 +433,13 @@ export function detectFeatures(
   const fileReferenceCounts = fileGraph ? countReferences(fileGraph) : {};
   const reconciliation = reconcileFeatureCandidates(candidates, fileReferenceCounts);
   const features = projectFeatureCandidates(reconciliation.clusters);
-  return enrichAuthenticationFeature(features, scopedFiles, analyses)
+  const enriched = enrichAuthenticationFeature(features, reconciliation.clusters, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));
+  return {
+    features: enriched,
+    mergeDecisions: reconciliation.mergeDecisions ?? [],
+    rejectedCandidateIds: reconciliation.rejectedCandidateIds
+  };
 }
 
 function toFeatureCandidate(
@@ -899,16 +911,21 @@ function escapeRegex(str: string): string {
 // ---------------------------------------------------------------------------
 function enrichAuthenticationFeature(
   features: FeatureInfo[],
+  clusters: FeatureCluster[],
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>
 ): FeatureInfo[] {
   const authFiles = collectAuthenticationFeatureFiles(files, analyses);
   if (authFiles.length === 0) return features;
 
-  const existingAuth = features.find((f) => f.name === "Authentication");
-  if (existingAuth) {
+  const authCluster = clusters.find((cluster) =>
+    cluster.candidates.some((c) => c.source === "registry" && c.label === "Authentication")
+  );
+  const targetName = authCluster?.canonicalLabel ?? "Authentication";
+  const existingTarget = features.find((f) => f.name === targetName);
+  if (existingTarget) {
     return features.map((feature) =>
-      feature.name === "Authentication"
+      feature.name === targetName
         ? {
             ...feature,
             files: orderAuthenticationFiles([...new Set([...feature.files, ...authFiles])]),
@@ -924,7 +941,7 @@ function enrichAuthenticationFeature(
 
   return [
     ...features,
-    createFeatureInfo("Authentication", authFiles, [
+    createFeatureInfo(targetName, authFiles, [
       "auth", "authentication", "login", "session", "jwt", "next-auth"
     ], undefined, analyses)
   ];
@@ -947,7 +964,8 @@ function collectAuthenticationFeatureFiles(
         const symbols = analysis
           ? analysis.symbols.map((s) => s.name)
           : extractSymbolsFallback(file.content);
-        return detectAuthenticationSemanticRole(file.path, symbols, imports, file.content) !== null;
+        const role = detectAuthenticationSemanticRole(file.path, symbols, imports, file.content);
+        return role !== null && role !== "consumer";
       })
       .map((file) => file.path)
   );

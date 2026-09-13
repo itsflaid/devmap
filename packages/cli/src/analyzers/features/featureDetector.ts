@@ -12,7 +12,7 @@ import type {
 } from "../detectors/index.js";
 import { detectFrontendPageFeatures, detectClientRouteFeatures } from "../detectors/index.js";
 import type { FileGraph } from "../graph/dependencyGraph.js";
-import { isArchitectureSource } from "../graph/index.js";
+import { countReferences, isArchitectureSource } from "../graph/index.js";
 import {
   projectFeatureCandidates,
   reconcileFeatureCandidates,
@@ -423,7 +423,8 @@ export function detectFeatures(
     }
   }
 
-  const reconciliation = reconcileFeatureCandidates(candidates);
+  const fileReferenceCounts = fileGraph ? countReferences(fileGraph) : {};
+  const reconciliation = reconcileFeatureCandidates(candidates, fileReferenceCounts);
   const features = projectFeatureCandidates(reconciliation.clusters);
   return enrichAuthenticationFeature(features, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));

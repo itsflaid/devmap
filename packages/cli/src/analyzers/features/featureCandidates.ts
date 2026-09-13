@@ -86,7 +86,12 @@ const CONFIDENCE_PRIORITY: Record<FeatureCandidate["conclusionConfidence"], numb
  * only influence the deterministic canonical-label tie break after candidates
  * are already in the same connected component.
  */
-export function reconcileFeatureCandidates(candidates: FeatureCandidate[]): FeatureReconciliation {
+const HUB_FILE_THRESHOLD = 5;
+
+export function reconcileFeatureCandidates(
+  candidates: FeatureCandidate[],
+  fileReferenceCounts: Record<string, number> = {}
+): FeatureReconciliation {
   const deterministicCandidates = candidates
     .filter((candidate) => candidate.source !== "ai")
     .map(normalizeCandidate)
@@ -113,7 +118,7 @@ export function reconcileFeatureCandidates(candidates: FeatureCandidate[]): Feat
     for (let right = left + 1; right < deterministicCandidates.length; right += 1) {
       const leftCandidate = deterministicCandidates[left];
       const rightCandidate = deterministicCandidates[right];
-      const structured = findStructuredAnchors(leftCandidate, rightCandidate);
+      const structured = findStructuredAnchors(leftCandidate, rightCandidate, fileReferenceCounts);
       if (structured.length === 0) {
         mergeDecisions.push({
           candidateIds: [leftCandidate.id, rightCandidate.id],
@@ -252,11 +257,13 @@ function findHardAnchors(left: FeatureCandidate, right: FeatureCandidate): strin
 
 function findStructuredAnchors(
   left: FeatureCandidate,
-  right: FeatureCandidate
+  right: FeatureCandidate,
+  fileReferenceCounts: Record<string, number> = {}
 ): Array<{ type: AnchorType; value: string }> {
   const entityAnchors = intersection(left.entityNames, right.entityNames)
     .map((entity) => ({ type: "entity" as const, value: entity }));
   const fileAnchors = intersection(left.files, right.files)
+    .filter((file) => (fileReferenceCounts[file] ?? 0) <= HUB_FILE_THRESHOLD)
     .map((file) => ({ type: "file" as const, value: file }));
   const routeAnchors = intersection(
     left.routePaths.map(routeResource).filter(Boolean),

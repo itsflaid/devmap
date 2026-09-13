@@ -195,3 +195,35 @@ test("author-related entity candidate does not merge into Authentication cluster
   const labels = reconciliation.clusters.map((c) => c.canonicalLabel).sort();
   assert.deepEqual(labels, ["Authentication", "Author Management"]);
 });
+
+// WP3: High fan-in shared files should NOT serve as merge anchors.
+test("high fan-in shared file does not merge unrelated candidates", () => {
+  const candidates = [
+    candidate({
+      id: "frontend-page:chat",
+      label: "Chat",
+      source: "frontend-page",
+      files: ["app/chat/page.tsx", "lib/shared-utils.ts"],
+    }),
+    candidate({
+      id: "frontend-page:dashboard",
+      label: "Dashboard",
+      source: "frontend-page",
+      files: ["app/dashboard/page.tsx", "lib/shared-utils.ts"],
+    }),
+  ];
+
+  // shared-utils.ts is imported by 8 different files — it's a hub, not evidence
+  const reconciliation = reconcileFeatureCandidates(candidates, {
+    "lib/shared-utils.ts": 8,
+  });
+
+  assert.equal(reconciliation.clusters.length, 2, "Hub file should not merge candidates");
+
+  // Control: same file with low refcount should still merge
+  const reconciliationControl = reconcileFeatureCandidates(candidates, {
+    "lib/shared-utils.ts": 1,
+  });
+
+  assert.equal(reconciliationControl.clusters.length, 1, "Low refcount file should still merge");
+});

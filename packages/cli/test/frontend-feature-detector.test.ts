@@ -175,3 +175,50 @@ test("API routes are not mistaken for page features, and vice versa", async () =
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+// WP2: Barrel/re-export files should not inflate page feature ownership.
+// Two different pages both import from a barrel — the barrel's
+// re-exported components should NOT appear in either page's files.
+test("barrel re-export file does not inflate page feature ownership", async () => {
+  // Use "widgets.ts" instead of "index.ts" to avoid false-positive matches
+  // from registry signals (e.g. Search matches "index" in import paths).
+  const projectRoot = await buildFixture({
+    "package.json": JSON.stringify({ name: "barrel-test" }),
+    "app/settings/page.tsx": [
+      'import { ThemeToggle } from "../../ui/widgets.js";',
+      'export default function SettingsPage() { return <ThemeToggle />; }',
+    ].join("\n"),
+    "app/dashboard/page.tsx": [
+      'import { ThemeToggle } from "../../ui/widgets.js";',
+      'export default function DashboardPage() { return <ThemeToggle />; }',
+    ].join("\n"),
+    "ui/widgets.ts": [
+      'export * from "./ThemeToggle.js";',
+    ].join("\n"),
+    "ui/ThemeToggle.tsx": [
+      'export function ThemeToggle() { return null; }',
+    ].join("\n"),
+  });
+
+  try {
+    const snapshot = await createProjectMap(projectRoot);
+    const featureSettings = snapshot.features.find((f) => f.name === "Setting");
+    const featureDashboard = snapshot.features.find((f) => f.name === "Dashboard");
+
+    assert.ok(featureSettings, "Feature Settings should exist");
+    assert.ok(featureDashboard, "Feature Dashboard should exist");
+
+    // ThemeToggle.tsx should NOT be claimed by either page — the barrel file
+    // (ui/widgets.ts) is the BFS barrier.
+    assert.ok(
+      !featureSettings.files.some((f) => f.includes("ThemeToggle.tsx")),
+      "Settings should not include ThemeToggle.tsx via barrel"
+    );
+    assert.ok(
+      !featureDashboard.files.some((f) => f.includes("ThemeToggle.tsx")),
+      "Dashboard should not include ThemeToggle.tsx via barrel"
+    );
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

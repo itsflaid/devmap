@@ -1,5 +1,5 @@
 import type { RouteInfo } from "./routeDetector.js";
-import type { ScannedFile } from "../analysis/index.js";
+import type { FileAnalysis, ScannedFile } from "../analysis/index.js";
 import type { FileGraph } from "../graph/dependencyGraph.js";
 import { buildReverseGraph } from "../graph/index.js";
 import { singularize } from "../analysis/extractors/fallbackExtractor.js";
@@ -23,6 +23,43 @@ const NON_FEATURE_PAGE_SEGMENTS = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
+// Barrel file detection
+// ---------------------------------------------------------------------------
+
+/**
+ * isPureBarrelFile — heuristic for files that exist solely to re-export
+ * symbols from other modules (index.ts barrel files). Two checks:
+ * 1. No value-level symbols (functions, classes, consts) — only re-exports.
+ * 2. Export-dominance: majority of non-empty, non-comment lines are
+ *    `export * from` or `export { ... } from` re-export statements.
+ *
+ * A barrel file that also defines local values is NOT treated as a barrel —
+ * it has its own logic and should participate in ownership normally.
+ */
+function isPureBarrelFile(
+  analysis: FileAnalysis | undefined,
+  content: string
+): boolean {
+  if (!analysis) return false;
+  if (analysis.symbols.length > 0) return false;
+  if (analysis.imports.length === 0) return false;
+
+  // Export-dominance check: count re-export lines vs total meaningful lines
+  const lines = content.split("\n");
+  const meaningful = lines.filter((line) => {
+    const trimmed = line.trim();
+    return trimmed.length > 0 && !trimmed.startsWith("//") && !trimmed.startsWith("/*") && !trimmed.startsWith("*");
+  });
+  if (meaningful.length === 0) return false;
+
+  const reExportCount = meaningful.filter((line) =>
+    /^\s*export\s+(\*\s+from|{[^}]*}\s+from)/.test(line)
+  ).length;
+
+  return reExportCount / meaningful.length > 0.5;
+}
+
+// ---------------------------------------------------------------------------
 // Detector
 // ---------------------------------------------------------------------------
 
@@ -41,7 +78,9 @@ const NON_FEATURE_PAGE_SEGMENTS = new Set([
  */
 export function detectFrontendPageFeatures(
   routes: RouteInfo[],
-  fileGraph: FileGraph
+  fileGraph: FileGraph,
+  analyses: Record<string, FileAnalysis>,
+  files: ScannedFile[]
 ): FeatureInfo[] {
   const pageRoutes = routes.filter((route) => route.kind === "page");
   if (pageRoutes.length === 0) return [];
@@ -49,10 +88,16 @@ export function detectFrontendPageFeatures(
   const routesBySegment = groupBySegment(pageRoutes);
   const reverseGraph = buildReverseGraph(fileGraph);
 
+  const barrelFiles = new Set(
+    files
+      .filter((f) => isPureBarrelFile(analyses[f.path], f.content))
+      .map((f) => f.path)
+  );
+
   const features: FeatureInfo[] = [];
   for (const [segment, segmentRoutes] of routesBySegment) {
     const seedFiles = [...new Set(segmentRoutes.map((route) => route.file))].sort();
-    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph);
+    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph, barrelFiles);
     const name = singularize(segment);
 
     features.push({
@@ -236,7 +281,8 @@ function normalizeRoutePath(path: string): string {
  */
 export function detectClientRouteFeatures(
   files: ScannedFile[],
-  fileGraph: FileGraph
+  fileGraph: FileGraph,
+  analyses: Record<string, FileAnalysis>
 ): FeatureInfo[] {
   const routes = findClientRoutes(files);
   if (routes.length === 0) return [];
@@ -259,11 +305,18 @@ export function detectClientRouteFeatures(
   }
 
   const reverseGraph = buildReverseGraph(fileGraph);
+
+  const barrelFiles = new Set(
+    files
+      .filter((f) => isPureBarrelFile(analyses[f.path], f.content))
+      .map((f) => f.path)
+  );
+
   const features: FeatureInfo[] = [];
 
   for (const [segment, seedFiles] of bySegment) {
     if (seedFiles.length === 0) continue;
-    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph);
+    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph, barrelFiles);
     const name = singularize(segment);
 
     features.push({
@@ -293,13 +346,15 @@ export function detectClientRouteFeatures(
 function collectOwnedFiles(
   seedFiles: string[],
   graph: FileGraph,
-  reverseGraph: FileGraph
+  reverseGraph: FileGraph,
+  barrelFiles: Set<string>
 ): string[] {
   const reachable = new Set<string>(seedFiles);
   const queue = [...seedFiles];
 
   while (queue.length > 0) {
     const current = queue.shift() as string;
+    if (barrelFiles.has(current)) continue; // JANGAN ekspansi children barrel
     for (const next of graph[current] ?? []) {
       if (!reachable.has(next)) {
         reachable.add(next);

@@ -415,15 +415,16 @@ export function detectFeatures(
   }
 
   if (fileGraph) {
-    for (const feature of detectFrontendPageFeatures(routes, fileGraph)) {
+    for (const feature of detectFrontendPageFeatures(routes, fileGraph, analyses, scopedFiles)) {
       candidates.push(toFeatureCandidate("frontend-page", "file-page", feature, routes));
     }
-    for (const feature of detectClientRouteFeatures(scopedFiles, fileGraph)) {
+    for (const feature of detectClientRouteFeatures(scopedFiles, fileGraph, analyses)) {
       candidates.push(toFeatureCandidate("client-route", "client-route", feature, routes));
     }
   }
 
-  const features = projectFeatureCandidates(reconcileFeatureCandidates(candidates).clusters);
+  const reconciliation = reconcileFeatureCandidates(candidates);
+  const features = projectFeatureCandidates(reconciliation.clusters);
   return enrichAuthenticationFeature(features, scopedFiles, analyses)
     .sort((left, right) => left.name.localeCompare(right.name));
 }

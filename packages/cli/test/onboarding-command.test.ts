@@ -16,7 +16,7 @@ test("onboarding command renders a snapshot-based guide", async () => {
   const projectRoot = await createOnboardingProject();
 
   try {
-    const logs = await captureOutput(() => onboardingCommand({ projectRoot }));
+    const logs = await captureOutput(() => onboardingCommand({ projectRoot, language: "en" }));
     const plainLogs = stripAnsi(logs);
 
     assert.match(plainLogs, /DevMap Onboarding/);
@@ -41,7 +41,7 @@ test("onboarding command writes ONBOARDING.md when requested", async () => {
   const projectRoot = await createOnboardingProject();
 
   try {
-    const logs = await captureOutput(() => onboardingCommand({ projectRoot, write: true }));
+    const logs = await captureOutput(() => onboardingCommand({ projectRoot, write: true, language: "en" }));
     const outputPath = join(projectRoot, "ONBOARDING.md");
     await access(outputPath);
     const content = await readFile(outputPath, "utf8");

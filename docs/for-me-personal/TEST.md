@@ -15,6 +15,20 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Onboarding TTY flake (2026-10-03)
+
+Dua test onboarding (`renders a snapshot-based guide`,
+`writes ONBOARDING.md`) sekarang mengoper `language: "en"` eksplisit agar
+tidak membuka prompt bahasa saat `stdin.isTTY` true (PowerShell lokal —
+menggantung ~5 menit lalu fail). Targeted run:
+
+```powershell
+pnpm --filter @flaid/devmap exec tsx --test test/onboarding-command.test.ts
+```
+
+Expected: `3 pass / 0 fail` dalam hitungan detik. Kalau ada test baru yang
+memanggil `onboardingCommand`, selalu oper `language` atau prompt palsu.
+
 ## Custom Provider & Registry (2026-08-26)
 
 Focused automated tests:

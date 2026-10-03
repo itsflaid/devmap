@@ -1,6 +1,28 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-09-04
+Terakhir diperbarui: 2026-10-03
+
+## Update 2026-10-03
+
+### Analyzer Spinners + Welcome Trim — branch `ui-improve` (rilis 0.4.1)
+
+1. `output.spinner()` baru di `packages/cli/src/utils/output.ts`: animasi
+   TTY, fallback satu-baris untuk non-TTY, silent untuk `--json`.
+2. `createProjectMap` membungkus 5 tahap (scan, analyze, dependency map,
+   entity/feature extraction, AI domain inference) dengan spinner;
+   `analyze.ts` menghapus baris `Scanning` duplikat.
+3. Banner welcome dipangkas ke wordmark besar + separator (hapus label
+   `[ DEVMAP CLI ]` dan capabilities); `welcome.test.ts` disesuaikan.
+4. `CHANGELOG.md`: entry `[0.4.1] - 2026-10-03` (Added/Changed).
+5. Fix flake `onboarding-command.test.ts`: dua test pertama oper
+   `language: "en"` eksplisit agar tidak tergantung `stdin.isTTY`
+   (detail di `DEBUG.md` #29).
+
+**Verifikasi**: `pnpm test:cli` → 273 pass / 0 fail + type-check bersih.
+Rencana rilis: PR `ui-improve` → `main`, merge, lalu `npm version patch`
+di `main` + `push --follow-tags` (publish via OIDC).
+
+---
 
 ## Update 2026-09-04
 

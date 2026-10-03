@@ -48,7 +48,6 @@ async function runAnalyze(
   const projectRoot = resolve(target);
 
   output.section("DevMap Analyze");
-  output.step(`Scanning ${projectRoot}`);
 
   // Build callAI wrapper — dipakai oleh domain inference (Step 5) di createProjectMap.
   // Dibuat di sini biar analyze command yang kontrol config + client lifecycle,

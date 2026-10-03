@@ -26,6 +26,60 @@ function color(value: string | number, tone: keyof typeof theme): string {
   return `${theme[tone]}${value}${theme.reset}`;
 }
 
+export type Spinner = {
+  succeed(message?: string): void;
+  fail(message?: string): void;
+  stop(): void;
+};
+
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const SPINNER_INTERVAL_MS = 80;
+
+function createSpinner(label: string): Spinner {
+  if (process.stdout.isTTY !== true) {
+    // No live terminal to animate against (piped output, CI, etc.) — announce once
+    // and report completion as a second line instead of framing in place.
+    console.log(`${color("◆", "aqua")} ${label}`);
+    return {
+      succeed(message?: string): void {
+        console.log(`${color("◆", "green")} ${message ?? label}`);
+      },
+      fail(message?: string): void {
+        console.log(`${color("◆", "red")} ${message ?? label}`);
+      },
+      stop(): void {}
+    };
+  }
+
+  let frame = 0;
+  const render = (): void => {
+    const glyph = SPINNER_FRAMES[frame % SPINNER_FRAMES.length];
+    process.stdout.write(`\r\x1b[K${color(glyph, "aqua")} ${label}`);
+    frame += 1;
+  };
+  render();
+  const timer = setInterval(render, SPINNER_INTERVAL_MS);
+  timer.unref(); // never let a stray spinner keep the process alive
+
+  const finish = (symbol: string, tone: "green" | "red", message?: string): void => {
+    clearInterval(timer);
+    process.stdout.write(`\r\x1b[K${color(symbol, tone)} ${message ?? label}\n`);
+  };
+
+  return {
+    succeed(message?: string): void {
+      finish("◆", "green", message);
+    },
+    fail(message?: string): void {
+      finish("◆", "red", message);
+    },
+    stop(): void {
+      clearInterval(timer);
+      process.stdout.write("\r\x1b[K");
+    }
+  };
+}
+
 export type MarkdownStream = {
   write(chunk: string): void;
   end(): void;
@@ -41,6 +95,13 @@ export const output = {
   step(message: string): void {
     if (isJsonOutput()) return;
     console.log(`${color("◆", "aqua")} ${message}`);
+  },
+
+  spinner(label: string): Spinner {
+    if (isJsonOutput()) {
+      return { succeed(): void {}, fail(): void {}, stop(): void {} };
+    }
+    return createSpinner(label);
   },
 
   success(message: string): void {

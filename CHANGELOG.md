@@ -9,6 +9,22 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.4.1] - 2026-10-03
+
+### Added
+
+- Analyzer pipeline loading spinners in `createProjectMap`: scanning,
+  analyzing, dependency mapping, entity/feature extraction, and optional
+  AI domain inference, with TTY animation, non-TTY fallback, and silent
+  JSON output
+
+### Changed
+
+- Welcome banner trimmed to the big wordmark plus separator; removed the
+  `[ DEVMAP CLI ]` label and capabilities line
+- `devmap analyze` drops the duplicate scanning line now covered by the
+  pipeline spinner
+
 ## [0.4.0] - 2026-09-13
 
 ### Added

@@ -1553,3 +1553,46 @@ pm view @flaid/devmap version ->  .3.0.
   menagih tag, karena bump bisa merusak asumsi test.
 - Tag rilis yang belum ter-publish boleh digeser; setelah publish, tag
   bersifat permanen.
+
+## 29. Test Onboarding Flaky di PowerShell karena stdin Masih TTY
+
+**Tanggal:** 2026-10-03
+
+### Gejala
+
+`pnpm test:cli` lokal Windows: 272 pass / 1 fail.
+`onboarding command renders a snapshot-based guide` fail — output markdown
+berbahasa Indonesia (`Tentang project ini`) padahal assertion menunggu
+`/What this is/`. Durasi test 321 detik (menggantung). Di sandbox Linux dan
+CI, 273 pass semua.
+
+### Akar Masalah
+
+`resolveOnboardingLanguage()` (`packages/cli/src/commands/onboarding.ts`)
+kembali `en` hanya bila `!prompt && !process.stdin.isTTY`; selebihnya membuat
+prompt asli dan menunggu input. Di bawah pnpm di PowerShell, stdout sudah
+di-pipe (spinner jatuh ke fallback `console.log`) tetapi stdin tetap TTY,
+jadi test masuk jalur prompt interaktif dan menggantung. Dua test pertama
+tidak mengoper `language` maupun prompt palsu, sehingga hasilnya tergantung
+lingkungan — lolos di CI/sandbox secara kebetulan, bukan by design.
+
+### Solusi
+
+Buat kedua test hermetic dengan bahasa eksplisit:
+`onboardingCommand({ projectRoot, language: "en" })`. Source tidak diubah —
+prompt interaktif tanpa `--write` adalah intent dari commit `244373b`.
+Test ketiga (bahasa `id` via prompt palsu) sudah hermetic dan tidak diubah.
+
+### Verifikasi
+
+- Targeted: `tsx --test test/onboarding-command.test.ts` → 3 pass / 0 fail
+  dalam ~2 detik (sebelumnya 1 fail / 321 detik).
+- Full: `pnpm test:cli` → 273 pass / 0 fail + `tsc --noEmit` bersih.
+
+### Pelajaran
+
+- Test yang memanggil kode ber-cabang TTY harus menginjeksi input
+  (prompt palsu / flag eksplisit), jangan mengandalkan `stdin.isTTY`
+  lingkungan runner.
+- Durasi test yang melonjak (detik → menit) adalah sinyal test menunggu
+  input interaktif, bukan test yang lambat.

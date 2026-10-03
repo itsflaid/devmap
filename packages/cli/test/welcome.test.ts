@@ -2,26 +2,26 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { renderWelcomeBrandPanel, printStatusLine, printNextSteps } from "../src/utils/welcome.js";
 
-test("welcome brand panel renders an outlined block wordmark and tool identity", () => {
+test("welcome brand panel renders only the big outlined block wordmark", () => {
   const panel = stripAnsi(renderWelcomeBrandPanel(100));
   const lines = panel.split("\n");
 
-  assert.match(panel, /\[ DEVMAP CLI \]/);
   assert.match(panel, /██████╗ ███████╗/);
   assert.match(panel, /██╔══██╗██╔════╝/);
-  assert.match(panel, /CODEBASE MAP  \/  STATIC ANALYSIS  \/  AI CONTEXT/);
+  assert.doesNotMatch(panel, /DEVMAP CLI/);
+  assert.doesNotMatch(panel, /STATIC ANALYSIS/);
   assert.ok(lines.every((line) => line.length <= 76));
   assert.match(lines.at(-1) ?? "", /^━+$/);
-  assert.equal(lines[2]?.indexOf("█"), lines[3]?.indexOf("█"));
+  assert.equal(lines[0]?.indexOf("█"), lines[1]?.indexOf("█"));
 });
 
-test("welcome brand panel uses a compact tool identity on narrow terminals", () => {
+test("welcome brand panel uses a compact plain-text wordmark on narrow terminals", () => {
   const panel = stripAnsi(renderWelcomeBrandPanel(48));
   const lines = panel.split("\n");
 
-  assert.match(panel, /\[ DEVMAP CLI \]/);
   assert.match(panel, /DEVMAP/);
-  assert.match(panel, /CODEBASE INTELLIGENCE/);
+  assert.doesNotMatch(panel, /DEVMAP CLI/);
+  assert.doesNotMatch(panel, /CODEBASE INTELLIGENCE/);
   assert.ok(lines.every((line) => line.length <= 48));
   assert.doesNotMatch(panel, /██████╗/);
   assert.match(lines.at(-1) ?? "", /^━+$/);

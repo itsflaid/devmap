@@ -1,3 +1,4 @@
+import { output, type Spinner } from "../../utils/output.js";
 import { hashContent } from "../../cache/fileHash.js";
 import { REASON_TAGS } from "./reasonTags.js";
 import { analyzeFiles } from "./analyzerRegistry.js";
@@ -168,120 +169,142 @@ export async function createProjectMap(
    */
   callAI?: (prompt: string) => Promise<string>
 ): Promise<ProjectMap> {
-  const files = await scanFiles(projectRoot);
-  const analyses = await analyzeFiles(files);
-  const aliasMappings = await loadAliasMappings(projectRoot);
-  const { graph, diagnostics: graphDiagnostics } = buildDependencyGraph(files, analyses, aliasMappings);
-  const references = countReferences(graph);
-  const detectedFramework = detectFramework(files);
-  const frameworks = detectFrameworks(files);
-  const project = detectProjectMetadata(
-    projectRoot,
-    detectedFramework,
-    files,
-    frameworks
-  );
-  const framework = project.framework;
-  const entryPoints = detectEntryPoints(graph);
-  const routes = detectRoutes(files, project.frameworks, graph);
-  const database = detectDatabase(files);
+  let activeSpinner: Spinner | undefined;
 
-  // Step 1: Extract entities dari schema (Prisma dll) atau route fallback
-  const entityGraph = extractEntities(files, routes);
+  try {
+    activeSpinner = output.spinner(`Scanning ${projectRoot}`);
+    const files = await scanFiles(projectRoot);
+    activeSpinner.succeed(`Scanned ${files.length} files`);
 
-  // Step 2: Detect capabilities dari route patterns + HTTP methods
-  const capabilities = detectCapabilities(routes, entityGraph);
+    activeSpinner = output.spinner("Analyzing files");
+    const analyses = await analyzeFiles(files);
+    activeSpinner.succeed(`Analyzed ${files.length} files`);
 
-  // Step 3: Detect features — consume entityGraph + capabilities
-  const featureResult = detectFeatures(files, analyses, routes, database, entityGraph, capabilities, graph);
-  const features = attachFeatureEntryPoints(
-    featureResult.features,
-    routes,
-    entryPoints,
-    graph,
-    analyses
-  );
-  // Step 4: AI domain inference (optional — hanya jalan kalau callAI disediakan)
-  // Kirim structured metadata ke AI, dapat domain summary + domain-specific features.
-  // Kalau gagal atau callAI tidak ada, static features tetap lengkap.
-  let domain: DomainInferenceResult | undefined;
-  if (callAI) {
-    const inferenceInput = buildDomainInferenceInput(
-      entityGraph,
-      capabilities,
-      features,
-      framework,
-      routes.length
+    activeSpinner = output.spinner("Mapping dependencies");
+    const aliasMappings = await loadAliasMappings(projectRoot);
+    const { graph, diagnostics: graphDiagnostics } = buildDependencyGraph(files, analyses, aliasMappings);
+    const references = countReferences(graph);
+    const detectedFramework = detectFramework(files);
+    const frameworks = detectFrameworks(files);
+    const project = detectProjectMetadata(
+      projectRoot,
+      detectedFramework,
+      files,
+      frameworks
     );
-    const result = await inferDomain(inferenceInput, callAI, projectRoot);
-    if (result) {
-      domain = result;
-      // Merge domain-specific features ke features list.
-      // Pakai similarity engine — bukan name equality — sehingga
-      // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
-      // Canonical name (first-seen) dipertahankan oleh mergeDomainFeatures.
-      const domainFeatures = domainFeaturesToFeatureInfo(result.domainFeatures);
-      mergeDomainFeatures(features, domainFeatures);
-      features.sort((a, b) => a.name.localeCompare(b.name));
-    }
-  }
+    const framework = project.framework;
+    const entryPoints = detectEntryPoints(graph);
+    const routes = detectRoutes(files, project.frameworks, graph);
+    const database = detectDatabase(files);
+    activeSpinner.succeed("Dependencies mapped");
 
-  const criticalFiles = rankCriticalFiles(files, analyses, references, entryPoints);
-  const fileIndex = Object.fromEntries(files.map((file) => [
-    file.path,
-    createFileIndexEntry(
-      file,
-      analyses[file.path],
-      graph[file.path] ?? [],
-      references,
+    activeSpinner = output.spinner("Extracting entities & features");
+    // Step 1: Extract entities dari schema (Prisma dll) atau route fallback
+    const entityGraph = extractEntities(files, routes);
+
+    // Step 2: Detect capabilities dari route patterns + HTTP methods
+    const capabilities = detectCapabilities(routes, entityGraph);
+
+    // Step 3: Detect features — consume entityGraph + capabilities
+    const featureResult = detectFeatures(files, analyses, routes, database, entityGraph, capabilities, graph);
+    const features = attachFeatureEntryPoints(
+      featureResult.features,
+      routes,
+      entryPoints,
+      graph,
+      analyses
+    );
+    activeSpinner.succeed(`Detected ${features.length} features`);
+
+    // Step 4: AI domain inference (optional — hanya jalan kalau callAI disediakan)
+    // Kirim structured metadata ke AI, dapat domain summary + domain-specific features.
+    // Kalau gagal atau callAI tidak ada, static features tetap lengkap.
+    let domain: DomainInferenceResult | undefined;
+    if (callAI) {
+      activeSpinner = output.spinner("Inferring domain with AI");
+      const inferenceInput = buildDomainInferenceInput(
+        entityGraph,
+        capabilities,
+        features,
+        framework,
+        routes.length
+      );
+      const result = await inferDomain(inferenceInput, callAI, projectRoot);
+      if (result) {
+        domain = result;
+        // Merge domain-specific features ke features list.
+        // Pakai similarity engine — bukan name equality — sehingga
+        // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
+        // Canonical name (first-seen) dipertahankan oleh mergeDomainFeatures.
+        const domainFeatures = domainFeaturesToFeatureInfo(result.domainFeatures);
+        mergeDomainFeatures(features, domainFeatures);
+        features.sort((a, b) => a.name.localeCompare(b.name));
+      }
+      activeSpinner.succeed(domain ? `Domain inferred: ${domain.domain}` : "Domain inference skipped");
+    }
+
+    activeSpinner = output.spinner("Building project index");
+    const criticalFiles = rankCriticalFiles(files, analyses, references, entryPoints);
+    const fileIndex = Object.fromEntries(files.map((file) => [
+      file.path,
+      createFileIndexEntry(
+        file,
+        analyses[file.path],
+        graph[file.path] ?? [],
+        references,
+        entryPoints,
+        criticalFiles,
+        features
+      )
+    ]));
+
+    const flows = generateMinimalFlows(features, fileIndex, routes, graph);
+    activeSpinner.succeed("Project index built");
+
+    return {
+      version: SNAPSHOT_SCHEMA_VERSION,
+      generatedAt: new Date().toISOString(),
+      agentInstructions: createAgentInstructions(),
+      fingerprint: createProjectFingerprint(files),
+      projectRoot,
+      framework,
+      project,
+      stats: {
+        // A pre-filter filesystem count is not collected in schema v1.
+        totalFiles: files.length,
+        relevantFiles: files.length,
+        totalLines: files.reduce((sum, file) => sum + file.lines, 0)
+      },
       entryPoints,
       criticalFiles,
-      features
-    )
-  ]));
-
-  const flows = generateMinimalFlows(features, fileIndex, routes, graph);
-
-  return {
-    version: SNAPSHOT_SCHEMA_VERSION,
-    generatedAt: new Date().toISOString(),
-    agentInstructions: createAgentInstructions(),
-    fingerprint: createProjectFingerprint(files),
-    projectRoot,
-    framework,
-    project,
-    stats: {
-      // A pre-filter filesystem count is not collected in schema v1.
-      totalFiles: files.length,
-      relevantFiles: files.length,
-      totalLines: files.reduce((sum, file) => sum + file.lines, 0)
-    },
-    entryPoints,
-    criticalFiles,
-    routes,
-    apiRoutes: routes.filter((route) => route.kind === "api"),
-    externalServices: detectExternalServices(files),
-    ...(database ? { database } : {}),
-    features,
-    ...(entityGraph.source !== "empty" ? { entityGraph } : {}),
-    ...(capabilities.length > 0 ? { capabilities } : {}),
-    ...(domain ? { domain } : {}),
-    flows,
-    onboarding: {
-      recommendedPath: buildOnboardingPath(files, entryPoints, criticalFiles, fileIndex)
-    },
-    changeImpact: buildChangeImpact(fileIndex, features, flows, graph),
-    warnings: detectAnalysisWarnings(files, entryPoints, criticalFiles, features),
-    ...(graphDiagnostics.unresolvedAliases.length > 0 || graphDiagnostics.parserFallbacks.length > 0
-      ? { diagnostics: graphDiagnostics }
-      : {}),
-    ...(featureResult.mergeDecisions.length > 0 || featureResult.rejectedCandidateIds.length > 0
-      ? { featureDiagnostics: { mergeDecisions: featureResult.mergeDecisions, rejectedCandidateIds: featureResult.rejectedCandidateIds } }
-      : {}),
-    dependencies: readPackageDependencies(files),
-    fileGraph: graph,
-    fileIndex
-  };
+      routes,
+      apiRoutes: routes.filter((route) => route.kind === "api"),
+      externalServices: detectExternalServices(files),
+      ...(database ? { database } : {}),
+      features,
+      ...(entityGraph.source !== "empty" ? { entityGraph } : {}),
+      ...(capabilities.length > 0 ? { capabilities } : {}),
+      ...(domain ? { domain } : {}),
+      flows,
+      onboarding: {
+        recommendedPath: buildOnboardingPath(files, entryPoints, criticalFiles, fileIndex)
+      },
+      changeImpact: buildChangeImpact(fileIndex, features, flows, graph),
+      warnings: detectAnalysisWarnings(files, entryPoints, criticalFiles, features),
+      ...(graphDiagnostics.unresolvedAliases.length > 0 || graphDiagnostics.parserFallbacks.length > 0
+        ? { diagnostics: graphDiagnostics }
+        : {}),
+      ...(featureResult.mergeDecisions.length > 0 || featureResult.rejectedCandidateIds.length > 0
+        ? { featureDiagnostics: { mergeDecisions: featureResult.mergeDecisions, rejectedCandidateIds: featureResult.rejectedCandidateIds } }
+        : {}),
+      dependencies: readPackageDependencies(files),
+      fileGraph: graph,
+      fileIndex
+    };
+  } catch (error) {
+    activeSpinner?.fail();
+    throw error;
+  }
 }
 
 function createAgentInstructions(): ProjectMap["agentInstructions"] {

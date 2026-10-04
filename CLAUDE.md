@@ -28,11 +28,11 @@ devmap/
 │   │   ├── commands/      ← Command handlers (init, analyze, map, flow, explain, onboarding, config, doctor)
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 30 test files
+│   ├── test/              ← 33 test files
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
-├── guide/                 ← User guides
+│   └── guide/             ← User guides
 └── .agents/skills/        ← ECC skills
 ```
 
@@ -108,7 +108,7 @@ businessFlow, searchTerms, confidence(high|medium|low), evidence
 
 ## Testing
 
-30 test files in `packages/cli/test/`. Key covered areas:
+33 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors
 - Feature similarity/merge, frontend features, framework routes
 - Commands (init, analyze, map, flow, explain, onboarding, config, doctor)

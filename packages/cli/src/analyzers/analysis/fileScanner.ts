@@ -1,3 +1,4 @@
+import type { Dirent, Stats } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 import pLimit from "p-limit";
@@ -16,8 +17,20 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
   const files: ScannedFile[] = [];
   const limit = pLimit(50);
 
-  async function visit(directory: string): Promise<void> {
-    const entries = await readdir(directory, { withFileTypes: true });
+  // The limiter only guards actual filesystem I/O (readdir, stat + readFile).
+  // visit() must NOT run inside limit(): a directory task that awaits its
+  // children while holding a slot starves those children once 50 directories
+  // are open at the same time, and the whole scan deadlocks.
+  async function visit(directory: string, isRoot = false): Promise<void> {
+    let entries: Dirent[];
+    try {
+      entries = await limit(() => readdir(directory, { withFileTypes: true }));
+    } catch (error) {
+      // A missing/unreadable project root is a real error; an unreadable
+      // subdirectory (EACCES, removed mid-scan) must not abort the run.
+      if (isRoot) throw error;
+      return;
+    }
     entries.sort((a, b) => a.name.localeCompare(b.name));
 
     const tasks: Promise<void>[] = [];
@@ -31,12 +44,22 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
       }
 
       if (entry.isDirectory()) {
-        tasks.push(limit(() => visit(absolutePath)));
+        tasks.push(visit(absolutePath));
         continue;
       }
 
       tasks.push(limit(async () => {
-        const metadata = await stat(absolutePath);
+        let metadata: Stats;
+        try {
+          // stat() follows symlinks. Dangling links throw ENOENT; links to
+          // directories, FIFOs and sockets are not regular files and must not
+          // be read (readFile on a FIFO would block forever).
+          metadata = await stat(absolutePath);
+        } catch {
+          return;
+        }
+        if (!metadata.isFile()) return;
+
         const content = await readFile(absolutePath, "utf8").catch(() => "");
 
         files.push({
@@ -53,9 +76,9 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
     await Promise.all(tasks);
   }
 
-  await visit(projectRoot);
+  await visit(projectRoot, true);
 
-  // visit() recurses concurrently (pLimit), so files.push() order depends on
+  // visit() recurses concurrently, so files.push() order depends on
   // I/O completion timing, not directory structure. Sort here so every
   // downstream consumer (fileIndex ordering, onboarding path ties, etc.)
   // gets a stable, reproducible order across runs on an unchanged project.

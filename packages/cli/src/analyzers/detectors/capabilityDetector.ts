@@ -340,13 +340,17 @@ function deduplicateCapabilities(capabilities: CapabilityInfo[]): CapabilityInfo
   const seen = new Map<string, CapabilityInfo>();
 
   for (const cap of capabilities) {
-    const existing = seen.get(cap.kind);
+    // Key on kind AND name: every CRUD resource ("Post Management", "Invoice
+    // Management", ...) is its own capability. Keying on kind alone collapsed
+    // them into one capability named after the first resource.
+    const key = `${cap.kind}:${cap.name}`;
+    const existing = seen.get(key);
     if (!existing) {
-      seen.set(cap.kind, cap);
+      seen.set(key, cap);
       continue;
     }
 
-    seen.set(cap.kind, {
+    seen.set(key, {
       ...existing,
       entities: [...new Set([...existing.entities, ...cap.entities])],
       evidence: [...new Set([...existing.evidence, ...cap.evidence])].slice(0, 5),

@@ -227,3 +227,59 @@ test("high fan-in shared file does not merge unrelated candidates", () => {
 
   assert.equal(reconciliationControl.clusters.length, 1, "Low refcount file should still merge");
 });
+
+test("a bridge candidate cannot fuse two distinct entity features into one cluster", () => {
+  const reconciliation = reconcileFeatureCandidates([
+    candidate({
+      id: "capability:route-capability:bridge",
+      label: "Bridge",
+      source: "capability",
+      files: ["app/api/invoices/route.ts", "app/api/posts/route.ts"],
+    }),
+    candidate({
+      id: "entity:entity-Invoice Management:invoice-management",
+      label: "Invoice Management",
+      source: "entity",
+      files: ["app/api/invoices/route.ts"],
+      entityNames: ["Invoice"],
+    }),
+    candidate({
+      id: "entity:entity-Post Management:post-management",
+      label: "Post Management",
+      source: "entity",
+      files: ["app/api/posts/route.ts"],
+      entityNames: ["Post"],
+    }),
+  ]);
+
+  const labels = reconciliation.clusters
+    .map((cluster) => cluster.candidates.filter((item) => item.source === "entity").map((item) => item.label))
+    .sort();
+  assert.deepEqual(labels, [["Invoice Management"], ["Post Management"]]);
+  assert.ok(
+    reconciliation.mergeDecisions?.some((decision) =>
+      decision.outcome === "retained" && /distinct entities/.test(decision.reason)
+    )
+  );
+});
+
+test("entity candidates that name the same entity still merge", () => {
+  const reconciliation = reconcileFeatureCandidates([
+    candidate({
+      id: "entity:entity-Post Management:post-management",
+      label: "Post Management",
+      source: "entity",
+      files: ["lib/post.ts"],
+      entityNames: ["Post"],
+    }),
+    candidate({
+      id: "frontend-page:file-page:posts",
+      label: "Posts",
+      source: "frontend-page",
+      files: ["lib/post.ts"],
+      entityNames: ["Post"],
+    }),
+  ]);
+
+  assert.equal(reconciliation.clusters.length, 1);
+});

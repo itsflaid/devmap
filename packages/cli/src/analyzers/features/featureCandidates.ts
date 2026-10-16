@@ -104,6 +104,15 @@ export function reconcileFeatureCandidates(
   const anchorsByPair = new Map<string, string[]>();
   const structuredAnchorsByPair = new Map<string, Array<{ type: AnchorType; value: string }>>();
   const mergeDecisions: MergeDecision[] = [];
+  // Entity identity per union-find root. Anchors are pairwise, but union-find
+  // merging is transitive, so a single "bridge" candidate (e.g. a behavioral
+  // capability whose evidence touches two resources) could otherwise fuse two
+  // genuinely different entity features into one cluster.
+  const entityIdentities = new Map<number, Set<string>>();
+  deterministicCandidates.forEach((candidate, index) => {
+    const identity = entityIdentity(candidate);
+    if (identity.size > 0) entityIdentities.set(index, identity);
+  });
 
   for (const rejectedId of rejectedCandidateIds) {
     mergeDecisions.push({
@@ -130,7 +139,29 @@ export function reconcileFeatureCandidates(
       }
 
       const anchorStrings = structured.map((a) => `${a.type}:${a.value}`);
+      const leftRoot = unionFind.find(left);
+      const rightRoot = unionFind.find(right);
+      const leftIdentity = entityIdentities.get(leftRoot);
+      const rightIdentity = entityIdentities.get(rightRoot);
+      if (leftRoot !== rightRoot && entitiesConflict(leftIdentity, rightIdentity)) {
+        mergeDecisions.push({
+          candidateIds: [leftCandidate.id, rightCandidate.id],
+          outcome: "retained",
+          anchors: structured,
+          reason: `Anchors found (${anchorStrings.join(", ")}), but merging would join distinct entities `
+            + `(${[...leftIdentity!].join(", ")} / ${[...rightIdentity!].join(", ")}) through a shared candidate.`,
+        });
+        continue;
+      }
+
       unionFind.union(left, right);
+      const mergedRoot = unionFind.find(left);
+      if (leftIdentity || rightIdentity) {
+        entityIdentities.set(mergedRoot, new Set([...(leftIdentity ?? []), ...(rightIdentity ?? [])]));
+        for (const staleRoot of [leftRoot, rightRoot]) {
+          if (staleRoot !== mergedRoot) entityIdentities.delete(staleRoot);
+        }
+      }
       anchorsByPair.set(`${left}:${right}`, anchorStrings);
       structuredAnchorsByPair.set(`${left}:${right}`, structured);
       mergeDecisions.push({
@@ -271,6 +302,21 @@ function findStructuredAnchors(
   ).map((resource) => ({ type: "route-resource" as const, value: resource }));
 
   return [...entityAnchors, ...fileAnchors, ...routeAnchors];
+}
+
+/** Entity names a candidate vouches for. Only entity-sourced candidates define identity. */
+function entityIdentity(candidate: FeatureCandidate): Set<string> {
+  if (candidate.source !== "entity") return new Set();
+  return new Set(candidate.entityNames.map(normalizeAnchor).filter(Boolean));
+}
+
+/** Two clusters conflict when both name entities and share none of them. */
+function entitiesConflict(left: Set<string> | undefined, right: Set<string> | undefined): boolean {
+  if (!left || !right || left.size === 0 || right.size === 0) return false;
+  for (const name of left) {
+    if (right.has(name)) return false;
+  }
+  return true;
 }
 
 function routeResource(routePath: string): string {

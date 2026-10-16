@@ -10,6 +10,8 @@ export type {
 export {
   loadAliasMappings,
   resolveAlias,
+  resolveAliasCandidates,
+  isDeclaredAlias,
 } from "./aliasResolver.js";
 export type {
   AliasMapping,

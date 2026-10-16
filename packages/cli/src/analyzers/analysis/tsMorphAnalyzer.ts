@@ -94,10 +94,27 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       if (specifier) imports.add(specifier);
     }
     for (const call of sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-      if (call.getExpression().getText() !== "require") continue;
+      const callee = call.getExpression();
+      // require("x") and dynamic import("x"); lazy routes and code splitting
+      // are only reachable through the latter.
+      if (callee.getKind() !== SyntaxKind.ImportKeyword && callee.getText() !== "require") continue;
       const argument = call.getArguments()[0];
-      if (argument && Node.isStringLiteral(argument)) {
+      if (argument && (Node.isStringLiteral(argument) || Node.isNoSubstitutionTemplateLiteral(argument))) {
         imports.add(argument.getLiteralValue());
+      }
+    }
+    for (const declaration of sourceFile.getDescendantsOfKind(SyntaxKind.ImportEqualsDeclaration)) {
+      const reference = declaration.getModuleReference();
+      if (Node.isExternalModuleReference(reference)) {
+        const expression = reference.getExpression();
+        if (expression && Node.isStringLiteral(expression)) imports.add(expression.getLiteralValue());
+      }
+    }
+    for (const importType of sourceFile.getDescendantsOfKind(SyntaxKind.ImportType)) {
+      const argument = importType.getArgument();
+      if (Node.isLiteralTypeNode(argument)) {
+        const literal = argument.getLiteral();
+        if (Node.isStringLiteral(literal)) imports.add(literal.getLiteralValue());
       }
     }
 
@@ -109,6 +126,8 @@ export class TsMorphAnalyzer implements FileAnalyzer {
 
     for (const statement of sourceFile.getStatements()) {
       if (Node.isFunctionDeclaration(statement) && statement.getName()) {
+        // Overload signatures share the implementation's name; list it once.
+        if (statement.isOverload()) continue;
         symbols.push({
           name: statement.getNameOrThrow(),
           kind: "function",
@@ -128,6 +147,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
           exported: classExported
         });
         for (const method of statement.getMethods()) {
+          if (method.isOverload()) continue;
           symbols.push({
             name: method.getName(),
             kind: "method",
@@ -160,17 +180,21 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       ) {
         for (const declaration of statement.getDeclarations()) {
           const initializer = declaration.getInitializer();
-          symbols.push({
-            name: declaration.getName(),
-            kind: "const",
-            line: declaration.getStartLineNumber(),
-            exported: statement.isExported(),
-            async: Boolean(
-              initializer
-              && (Node.isArrowFunction(initializer) || Node.isFunctionExpression(initializer))
-              && initializer.isAsync()
-            )
-          });
+          const isAsyncFunction = Boolean(
+            initializer
+            && (Node.isArrowFunction(initializer) || Node.isFunctionExpression(initializer))
+            && initializer.isAsync()
+          );
+          // `const { a, b } = x` declares a and b, not a symbol named "{ a, b }".
+          for (const name of declaredNames(declaration.getNameNode())) {
+            symbols.push({
+              name,
+              kind: "const",
+              line: declaration.getStartLineNumber(),
+              exported: statement.isExported(),
+              async: isAsyncFunction
+            });
+          }
         }
       }
     }
@@ -206,6 +230,15 @@ export class TsMorphAnalyzer implements FileAnalyzer {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function declaredNames(nameNode: Node): string[] {
+  if (Node.isIdentifier(nameNode)) return [nameNode.getText()];
+  return nameNode
+    .getDescendantsOfKind(SyntaxKind.BindingElement)
+    .map((element) => element.getNameNode())
+    .filter((node) => Node.isIdentifier(node))
+    .map((node) => node.getText());
+}
 
 function replaceExtension(filePath: string, newExt: string): string {
   const lastDot = filePath.lastIndexOf(".");

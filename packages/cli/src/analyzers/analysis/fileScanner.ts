@@ -2,7 +2,7 @@ import type { Dirent, Stats } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
 import pLimit from "p-limit";
-import { shouldIgnorePath } from "./filterEngine.js";
+import { clearGitignoreCache, shouldIgnorePath } from "./filterEngine.js";
 
 export type ScannedFile = {
   path: string;
@@ -16,6 +16,9 @@ export type ScannedFile = {
 export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
   const files: ScannedFile[] = [];
   const limit = pLimit(50);
+
+  // Ignore files are cached per process; re-read them for every scan.
+  clearGitignoreCache();
 
   // The limiter only guards actual filesystem I/O (readdir, stat + readFile).
   // visit() must NOT run inside limit(): a directory task that awaits its

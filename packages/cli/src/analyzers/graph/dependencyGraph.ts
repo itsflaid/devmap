@@ -48,6 +48,9 @@ export function buildDependencyGraph(
         } else if (isDeclaredAlias(specifier, aliasMappings, file.path)) {
           diagnostics.unresolvedAliases.push({ file: file.path, specifier });
         }
+      } else if (file.path.endsWith(".py")) {
+        const resolved = resolvePythonModule(specifier, localPaths);
+        if (resolved && resolved !== file.path) edges.add(resolved);
       }
       // Non-relative, non-alias imports are silently skipped (npm packages etc.)
     }
@@ -94,6 +97,20 @@ function resolveImport(fromPath: string, specifier: string, localPaths: Set<stri
   return normalized === null ? null : matchLocalPath(normalized, localPaths);
 }
 
+// `from app.models import User` -> app/models.py or app/models/__init__.py,
+// looked up from the project root and from a conventional src/ layout.
+function resolvePythonModule(specifier: string, localPaths: Set<string>): string | null {
+  if (!/^[A-Za-z_][\w.]*$/.test(specifier)) return null;
+  const modulePath = specifier.replace(/\./g, "/");
+
+  for (const base of ["", "src/"]) {
+    for (const candidate of [`${base}${modulePath}.py`, `${base}${modulePath}/__init__.py`]) {
+      if (localPaths.has(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
 function firstResolved(rootRelativePaths: string[], localPaths: Set<string>): string | null {
   for (const rootRelativePath of rootRelativePaths) {
     const normalized = normalizePath(rootRelativePath);
@@ -105,10 +122,12 @@ function firstResolved(rootRelativePaths: string[], localPaths: Set<string>): st
 }
 
 const SOURCE_EXTENSIONS = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro"
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro",
+  ".py", ".rb", ".php"
 ];
 const INDEX_EXTENSIONS = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro"
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro",
+  ".py", ".rb", ".php"
 ];
 
 // TypeScript ESM writes the emitted extension in the specifier.
@@ -123,7 +142,8 @@ function matchLocalPath(normalized: string, localPaths: Set<string>): string | n
   const candidates = [
     normalized,
     ...SOURCE_EXTENSIONS.map((extension) => `${normalized}${extension}`),
-    ...INDEX_EXTENSIONS.map((extension) => `${normalized}/index${extension}`)
+    ...INDEX_EXTENSIONS.map((extension) => `${normalized}/index${extension}`),
+    `${normalized}/__init__.py`
   ];
 
   for (const [emitted, sources] of EMITTED_EXTENSION_SOURCES) {

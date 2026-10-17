@@ -16,7 +16,7 @@ labels: ["needs-review"]
 **Checklist sebelum submit**
 
 - [ ] `devmap doctor` lolos (tanpa error)
-- [ ] Test `pnpm test:cli` lolos (251 pass)
+- [ ] Test `pnpm test:cli` lolos (semua pass)
 - [ ] New commands diupdate di `docs/commands.md`
 - [ ] Tidak ada `console.log` di command files
 - [ ] Registry terms sesuai standar (baca `docs/guide/05-signal-registry.md`)

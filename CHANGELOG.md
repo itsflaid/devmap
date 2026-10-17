@@ -9,6 +9,52 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.5.0] - 2026-10-17
+
+### Fixed
+
+- `scanFiles` no longer deadlocks (exit code 13, no output) on projects with
+  50 or more directories open at once, and skips dangling symlinks and
+  unreadable subdirectories instead of aborting the scan
+- CRUD resources (`orders`, `users`, ...) are no longer merged into a single
+  feature: capabilities are deduplicated by kind and name, and the feature
+  merger refuses to union distinct entities
+- Import graph: tsconfig/jsconfig aliases now work with comments and trailing
+  commas, `extends`, `baseUrl`, project `references`, workspace sub-packages
+  and SvelteKit `$lib`; exact aliases no longer capture longer specifiers
+- Import graph: duplicate and self edges removed, dynamic `import()`,
+  `import x = require()` and `import("x")` types create edges, `.jsx`/`.mts`/
+  `.cts` specifiers resolve, and `../x` above the project root no longer
+  matches root files
+- Nested `.gitignore` files are honoured, binary extensions match
+  case-insensitively, `.env` matching is by file name (`.envrc` is kept), and
+  the ignore cache is reset on every scan
+- `package.json` with a UTF-8 BOM is parsed; `@vue/cli-service` marks a Vue
+  app; npm's default `"main"` no longer turns an Express/Next app into a
+  library with an unknown framework
+- Entry points no longer list barrel `index.ts` files that the app imports;
+  only production code counts as an importer
+- `src/features/demo` and `src/docs` are analysed as source; sample and docs
+  folders are only excluded at repo or workspace level
+- Routes: `pages/index` is `/`, `export { handler as GET }` and
+  `export const { GET } = handlers` report methods, Nuxt `server/api` and
+  `server/routes`, Express mounts with middleware, and multi-level routers
+- File scope: root `test/` folders are tests, `.svelte`/`.vue`/`.astro` and
+  SvelteKit `+page`/`+layout` files are UI, not API
+- Project fingerprint no longer depends on the machine locale
+
+### Added
+
+- Import and symbol extraction for Python, Ruby, PHP, Go, C# and Java
+  (previously always empty, with bogus symbols from docstrings), plus graph
+  edges for Python imports, Ruby `require_relative` and relative PHP
+  `require`/`include`
+
+### Changed
+
+- Dependencies updated within their semver ranges (`ignore`, `p-limit`,
+  `tsx`, `@types/node`, and web tooling)
+
 ## [0.4.1] - 2026-10-03
 
 ### Added

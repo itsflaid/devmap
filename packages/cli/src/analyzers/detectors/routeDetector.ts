@@ -97,7 +97,8 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
     }
 
     const isApi = pagesMatch[1].startsWith("api/");
-    const segments = pagesMatch[1].replace(/\/index$/, "").split("/").filter(Boolean);
+    // pages/index.tsx is "/" and pages/blog/index.tsx is "/blog".
+    const segments = pagesMatch[1].replace(/(^|\/)index$/, "").split("/").filter(Boolean);
     routes.push({
       path: toRoutePath(segments),
       file: file.path,
@@ -153,6 +154,31 @@ function detectNuxtRoutes(files: ScannedFile[]): RouteInfo[] {
   const routes: RouteInfo[] = [];
 
   for (const file of files.filter((item) => isArchitectureSource(item.path))) {
+    const serverMatch = file.path.match(/(?:^|\/)server\/(api|routes)\/(.+)\.[cm]?[jt]s$/);
+    if (serverMatch) {
+      // Nitro: server/api/** is mounted under /api, server/routes/** at the root,
+      // and a ".get"/".post" suffix pins the method (users/[id].get.ts).
+      const methodSuffix = serverMatch[2].match(/\.(get|post|put|patch|delete|options|head)$/i);
+      const withoutMethod = methodSuffix
+        ? serverMatch[2].slice(0, -methodSuffix[0].length)
+        : serverMatch[2];
+      const serverSegments = [
+        ...(serverMatch[1] === "api" ? ["api"] : []),
+        ...withoutMethod.split("/").filter(Boolean)
+      ];
+      const cleanServerSegments = serverSegments[serverSegments.length - 1] === "index"
+        ? serverSegments.slice(0, -1)
+        : serverSegments;
+
+      routes.push({
+        path: toRoutePath(cleanServerSegments),
+        file: file.path,
+        kind: "api",
+        ...(methodSuffix ? { methods: [methodSuffix[1].toUpperCase()] } : {})
+      });
+      continue;
+    }
+
     const match = file.path.match(/(?:^|\/)pages\/(.+)\.vue$/);
     if (!match) continue;
 
@@ -216,8 +242,11 @@ const ROUTE_METHOD_PATTERN =
 // HTTP-client calls like stripe.get() while catching mounted routers.
 const MOUNTED_ROUTER_PATTERN =
   /\b(?:app|\w*[Rr]outer)\.(get|post|put|patch|delete|options|head)\(\s*["'`]([^"'`]+)["'`]/gi;
+// app.use("/api", router) plus middleware before the router
+// (app.use("/api", auth, limiter(), router)) and member access (api.router).
+// The mounting object may be any app/server/*Router, not just "app".
 const MOUNT_PATTERN =
-  /\b(?:app|router)\.use\(\s*["'`]([^"'`]+)["'`]\s*,\s*(\w+)\s*\)/g;
+  /\b(?:app|server|\w*[Rr]outer)\.use\(\s*["'`]([^"'`]+)["'`]\s*,\s*(?:[\w.]+(?:\([^()]*\))?\s*,\s*)*(?:[\w]+\.)*(\w+)\s*\)/g;
 
 type ExpressMount = { prefix: string; identifier: string; file: string };
 
@@ -361,40 +390,71 @@ function detectExpressRoutes(
     }
   }
 
-  // Second pass: resolve mounted routers and compose prefix + sub-path.
-  const mountedFiles = new Set<string>();
-  for (const mount of mounts) {
-    const target = resolveRouterTarget(
+  // Second pass: resolve each mount to the router file it points at.
+  const resolvedMounts = mounts.map((mount) => ({
+    mount,
+    target: resolveRouterTarget(
       mount.identifier,
       mount.file,
       eligibleFiles,
       byPath,
       graph,
       (file) => collectRouteMethods(file.content, MOUNTED_ROUTER_PATTERN).length > 0
+    )
+  }));
+
+  // A router can itself be mounted (app -> /api -> v1 router -> /users -> users
+  // router), so a mount's effective prefix is the chain of mounts above its file.
+  const mountedBy = new Map<string, ExpressMount[]>();
+  for (const { mount, target } of resolvedMounts) {
+    if (target && target.path !== mount.file) {
+      mountedBy.set(target.path, [...(mountedBy.get(target.path) ?? []), mount]);
+    }
+  }
+
+  const prefixesOf = (file: string, seen: Set<string> = new Set()): string[] => {
+    const parents = mountedBy.get(file);
+    if (!parents || seen.has(file)) return [""];
+    const nextSeen = new Set(seen).add(file);
+    return parents.flatMap((parent) =>
+      prefixesOf(parent.file, nextSeen).map((outer) => composeMountPath(outer, parent.prefix))
     );
+  };
+
+  const mountsByFile = new Set(mounts.map((mount) => mount.file));
+  const mountedFiles = new Set<string>();
+  for (const { mount, target } of resolvedMounts) {
     const subRoutes = target
       ? collectRouteMethods(target.content, MOUNTED_ROUTER_PATTERN)
       : [];
 
-    if (target && subRoutes.length > 0) {
-      mountedFiles.add(target.path);
-      for (const [subPath, methods] of subRoutes) {
+    for (const outer of prefixesOf(mount.file)) {
+      const base = composeMountPath(outer, mount.prefix);
+
+      if (target && subRoutes.length > 0) {
+        mountedFiles.add(target.path);
+        for (const [subPath, methods] of subRoutes) {
+          routes.push({
+            path: composeMountPath(base, subPath),
+            file: mount.file,
+            kind: "api",
+            methods
+          });
+        }
+      } else if (target && mountsByFile.has(target.path)) {
+        // A router that only forwards to further routers: its children carry
+        // the full prefix, so a bare USE entry would be noise.
+        mountedFiles.add(target.path);
+      } else {
+        // Unresolvable or empty router — keep the mount itself as a USE route so
+        // the middleware prefix stays visible instead of silently disappearing.
         routes.push({
-          path: composeMountPath(mount.prefix, subPath),
+          path: base || "/",
           file: mount.file,
           kind: "api",
-          methods
+          methods: ["USE"]
         });
       }
-    } else {
-      // Unresolvable or empty router — keep the mount itself as a USE route so
-      // the middleware prefix stays visible instead of silently disappearing.
-      routes.push({
-        path: mount.prefix,
-        file: mount.file,
-        kind: "api",
-        methods: ["USE"]
-      });
     }
   }
 
@@ -483,14 +543,35 @@ function toRoutePath(segments: string[]): string {
   return `/${visible.join("/")}`.replace(/\/+/g, "/");
 }
 
+const HTTP_METHOD_NAMES = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
+
 function findHttpMethods(content: string): string[] {
   const methods = new Set<string>();
-  const pattern = /export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g;
-  let match = pattern.exec(content);
+  const add = (name: string | undefined) => {
+    if (name && HTTP_METHOD_NAMES.has(name)) methods.add(name);
+  };
 
-  while (match) {
-    methods.add(match[1]);
-    match = pattern.exec(content);
+  // export async function GET() {} / export const POST = ...
+  for (const match of content.matchAll(
+    /export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g
+  )) {
+    add(match[1]);
+  }
+
+  // export { handler as GET, handler as POST }, export { GET } from "./handlers"
+  for (const match of content.matchAll(/export\s*(?:type\s*)?\{([^}]*)\}/g)) {
+    for (const specifier of match[1].split(",")) {
+      const exported = specifier.trim().split(/\s+as\s+/).pop()?.trim();
+      add(exported);
+    }
+  }
+
+  // export const { GET, POST } = handlers;  (Auth.js and similar)
+  for (const match of content.matchAll(/export\s+const\s*\{([^}]*)\}\s*=/g)) {
+    for (const element of match[1].split(",")) {
+      const bound = element.trim().split(":").pop()?.trim().split("=")[0].trim();
+      add(bound);
+    }
   }
 
   return [...methods].sort();

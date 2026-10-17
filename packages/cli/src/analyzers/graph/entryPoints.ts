@@ -26,12 +26,28 @@ function entryPointScore(path: string): number {
 }
 
 export function detectEntryPoints(graph: FileGraph): string[] {
-  const imported = new Set(Object.values(graph).flat());
+  // Only production code counts as a consumer: a barrel that nothing but its
+  // own tests imports (or a root index.ts that tests import) is still an
+  // entry, while a barrel re-exported through the app is just plumbing.
+  const imported = new Set(
+    Object.entries(graph)
+      .filter(([path]) => isArchitectureSource(path))
+      .flatMap(([, imports]) => imports)
+  );
 
   return Object.keys(graph)
     .filter((path) => isSourceFile(path))
     .filter((path) => isArchitectureSource(path))
-    .filter((path) => ENTRY_PATTERNS.some((pattern) => pattern.test(path)) || (!imported.has(path) && (graph[path]?.length ?? 0) > 0))
+    .filter((path) => {
+      const unimportedWithImports = !imported.has(path) && (graph[path]?.length ?? 0) > 0;
+      // index.* is also the conventional barrel file; it is an entry only when
+      // nothing else imports it. A top-level index (index.ts, src/index.ts) is
+      // the package entry even when it has no imports of its own.
+      if (/(^|\/)index\.[cm]?[jt]sx?$/.test(path)) {
+        return !imported.has(path) && ((graph[path]?.length ?? 0) > 0 || path.split("/").length <= 2);
+      }
+      return ENTRY_PATTERNS.some((pattern) => pattern.test(path)) || unimportedWithImports;
+    })
     .sort((a, b) => entryPointScore(a) - entryPointScore(b) || a.localeCompare(b))
     .slice(0, 20);
 }

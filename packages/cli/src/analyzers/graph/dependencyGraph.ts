@@ -1,6 +1,6 @@
 import type { FileAnalysis, ScannedFile } from "../analysis/index.js";
 import type { AliasMapping } from "./aliasResolver.js";
-import { resolveAlias } from "./aliasResolver.js";
+import { isDeclaredAlias, resolveAliasCandidates } from "./aliasResolver.js";
 
 export type FileGraph = Record<string, string[]>;
 
@@ -9,7 +9,8 @@ export interface DependencyGraphDiagnostics {
   parserFallbacks: string[];
 }
 
-const IMPORT_RE = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
+// Static imports, re-exports, require() and dynamic import() with a literal.
+const IMPORT_RE = /(?:\bimport\s+(?:[^'"]+\s+from\s+)?|\bexport\s+[^'"]+\s+from\s+|\b(?:require|import)\s*\(\s*)['"]([^'"]+)['"]/g;
 
 export function buildDependencyGraph(
   files: ScannedFile[],
@@ -24,30 +25,37 @@ export function buildDependencyGraph(
   };
 
   for (const file of files) {
-    graph[file.path] = [];
+    // A file importing the same module twice (`import type` + value import,
+    // or a static and a dynamic import) is still one dependency edge.
+    const edges = new Set<string>();
 
     const importSpecifiers = analyses[file.path]?.imports ?? findImportSpecifiers(file.content);
     for (const specifier of importSpecifiers) {
       if (specifier.startsWith(".")) {
         const resolved = resolveImport(file.path, specifier, localPaths);
-        if (resolved) {
-          graph[file.path].push(resolved);
+        if (resolved && resolved !== file.path) {
+          edges.add(resolved);
         }
         continue;
       }
 
       // Try alias resolution for non-relative imports
-      const aliasResolved = resolveAlias(specifier, aliasMappings);
-      if (aliasResolved) {
-        const resolved = resolveAliasPath(aliasResolved, localPaths);
+      const candidates = resolveAliasCandidates(specifier, aliasMappings, file.path);
+      if (candidates.length > 0) {
+        const resolved = firstResolved(candidates, localPaths);
         if (resolved) {
-          graph[file.path].push(resolved);
-        } else {
+          if (resolved !== file.path) edges.add(resolved);
+        } else if (isDeclaredAlias(specifier, aliasMappings, file.path)) {
           diagnostics.unresolvedAliases.push({ file: file.path, specifier });
         }
+      } else if (file.path.endsWith(".py")) {
+        const resolved = resolvePythonModule(specifier, localPaths);
+        if (resolved && resolved !== file.path) edges.add(resolved);
       }
       // Non-relative, non-alias imports are silently skipped (npm packages etc.)
     }
+
+    graph[file.path] = [...edges];
 
     if (!analyses[file.path]) {
       diagnostics.parserFallbacks.push(file.path);
@@ -86,71 +94,70 @@ function resolveImport(fromPath: string, specifier: string, localPaths: Set<stri
   const baseParts = fromPath.split("/");
   baseParts.pop();
   const normalized = normalizePath([...baseParts, specifier].join("/"));
+  return normalized === null ? null : matchLocalPath(normalized, localPaths);
+}
+
+// `from app.models import User` -> app/models.py or app/models/__init__.py,
+// looked up from the project root and from a conventional src/ layout.
+function resolvePythonModule(specifier: string, localPaths: Set<string>): string | null {
+  if (!/^[A-Za-z_][\w.]*$/.test(specifier)) return null;
+  const modulePath = specifier.replace(/\./g, "/");
+
+  for (const base of ["", "src/"]) {
+    for (const candidate of [`${base}${modulePath}.py`, `${base}${modulePath}/__init__.py`]) {
+      if (localPaths.has(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+function firstResolved(rootRelativePaths: string[], localPaths: Set<string>): string | null {
+  for (const rootRelativePath of rootRelativePaths) {
+    const normalized = normalizePath(rootRelativePath);
+    if (normalized === null) continue;
+    const resolved = matchLocalPath(normalized, localPaths);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
+const SOURCE_EXTENSIONS = [
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro",
+  ".py", ".rb", ".php"
+];
+const INDEX_EXTENSIONS = [
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro",
+  ".py", ".rb", ".php"
+];
+
+// TypeScript ESM writes the emitted extension in the specifier.
+const EMITTED_EXTENSION_SOURCES: Array<[string, string[]]> = [
+  [".js", [".ts", ".tsx"]],
+  [".jsx", [".tsx"]],
+  [".mjs", [".mts"]],
+  [".cjs", [".cts"]]
+];
+
+function matchLocalPath(normalized: string, localPaths: Set<string>): string | null {
   const candidates = [
     normalized,
-    `${normalized}.ts`,
-    `${normalized}.tsx`,
-    `${normalized}.js`,
-    `${normalized}.jsx`,
-    `${normalized}.mjs`,
-    `${normalized}.cjs`,
-    `${normalized}.vue`,
-    `${normalized}.svelte`,
-    `${normalized}.astro`,
-    `${normalized}/index.ts`,
-    `${normalized}/index.tsx`,
-    `${normalized}/index.js`,
-    `${normalized}/index.jsx`,
-    `${normalized}/index.vue`,
-    `${normalized}/index.svelte`,
-    `${normalized}/index.astro`
+    ...SOURCE_EXTENSIONS.map((extension) => `${normalized}${extension}`),
+    ...INDEX_EXTENSIONS.map((extension) => `${normalized}/index${extension}`),
+    `${normalized}/__init__.py`
   ];
 
-  if (normalized.endsWith(".js")) {
-    const withoutExtension = normalized.slice(0, -3);
-    candidates.push(`${withoutExtension}.ts`, `${withoutExtension}.tsx`);
-  }
-  if (normalized.endsWith(".mjs")) {
-    candidates.push(`${normalized.slice(0, -4)}.mts`);
-  }
-  if (normalized.endsWith(".cjs")) {
-    candidates.push(`${normalized.slice(0, -4)}.cts`);
+  for (const [emitted, sources] of EMITTED_EXTENSION_SOURCES) {
+    if (normalized.endsWith(emitted)) {
+      const withoutExtension = normalized.slice(0, -emitted.length);
+      candidates.push(...sources.map((source) => `${withoutExtension}${source}`));
+    }
   }
 
   return candidates.find((candidate) => localPaths.has(candidate)) ?? null;
 }
 
-function resolveAliasPath(rootRelativePath: string, localPaths: Set<string>): string | null {
-  const normalized = normalizePath(rootRelativePath);
-  const candidates = [
-    normalized,
-    `${normalized}.ts`,
-    `${normalized}.tsx`,
-    `${normalized}.js`,
-    `${normalized}.jsx`,
-    `${normalized}.mjs`,
-    `${normalized}.cjs`,
-    `${normalized}.vue`,
-    `${normalized}.svelte`,
-    `${normalized}.astro`,
-    `${normalized}/index.ts`,
-    `${normalized}/index.tsx`,
-    `${normalized}/index.js`,
-    `${normalized}/index.jsx`,
-    `${normalized}/index.vue`,
-    `${normalized}/index.svelte`,
-    `${normalized}/index.astro`
-  ];
-
-  if (normalized.endsWith(".js")) {
-    const withoutExtension = normalized.slice(0, -3);
-    candidates.push(`${withoutExtension}.ts`, `${withoutExtension}.tsx`);
-  }
-
-  return candidates.find((candidate) => localPaths.has(candidate)) ?? null;
-}
-
-function normalizePath(path: string): string {
+/** Collapse `.` and `..`; null when the path climbs above the project root. */
+function normalizePath(path: string): string | null {
   const parts: string[] = [];
 
   for (const part of path.split("/")) {
@@ -159,6 +166,7 @@ function normalizePath(path: string): string {
     }
 
     if (part === "..") {
+      if (parts.length === 0) return null;
       parts.pop();
       continue;
     }

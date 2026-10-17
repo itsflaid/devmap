@@ -34,6 +34,10 @@ export {
 } from "./filterEngine.js";
 
 export {
+  parseJsonText,
+} from "./jsonText.js";
+
+export {
   PrismaExtractor,
 } from "./extractors/prismaExtractor.js";
 export {

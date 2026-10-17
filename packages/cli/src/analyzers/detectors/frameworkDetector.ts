@@ -1,4 +1,4 @@
-import type { ScannedFile } from "../analysis/index.js";
+import { parseJsonText, type ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 
 export const FRONTEND_FRAMEWORKS = [
@@ -65,6 +65,7 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     // Vue UI library (vue only in peerDependencies) from being labeled an app.
     const hasVueRuntime = "@vitejs/plugin-vue" in dependencies
       || "@vitejs/plugin-vue2" in dependencies
+      || "@vue/cli-service" in dependencies
       || "vue-cli-service" in dependencies;
     if (!("nuxt" in dependencies) && "vue" in dependencies && hasVueRuntime) {
       detected.add("vue");
@@ -158,7 +159,7 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
 
 function isParseableJson(content: string): boolean {
   try {
-    JSON.parse(content);
+    parseJsonText(content);
     return true;
   } catch {
     return false;
@@ -181,7 +182,7 @@ function readManifestDependencies(files: ScannedFile[]): Array<Record<string, st
 
 function readDependencies(content: string): Record<string, string> {
   try {
-    const parsed = JSON.parse(content) as {
+    const parsed = parseJsonText(content) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };

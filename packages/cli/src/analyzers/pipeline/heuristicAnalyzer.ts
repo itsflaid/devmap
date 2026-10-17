@@ -6,6 +6,7 @@ import type {
   SymbolInfo,
   ScannedFile,
 } from "../analysis/index.js";
+import { readLanguage, supportsLanguageReader } from "./languageReaders.js";
 
 // TS/JS extensions are intentionally excluded here.
 // TsMorphAnalyzer handles .ts/.tsx/.js/.jsx with full AST accuracy (confidence: "high").
@@ -36,8 +37,14 @@ export class HeuristicAnalyzer implements FileAnalyzer {
   }
 
   async analyze(file: ScannedFile, _context: AnalyzerContext): Promise<FileAnalysis> {
-    const imports = readImportSpecifiers(file.content);
-    const symbols = readSymbols(file.content);
+    // Python, Ruby, PHP, Go, C# and Java have their own import and declaration
+    // syntax; running the JS patterns over them yields nothing (imports) or
+    // noise (`class of` from a docstring). The JS family keeps the JS readers.
+    const reading = supportsLanguageReader(file.extension)
+      ? readLanguage(file.extension, file.content)
+      : undefined;
+    const imports = reading?.imports ?? readImportSpecifiers(file.content);
+    const symbols = reading?.symbols ?? readSymbols(file.content);
     const exports = symbols
       .filter((symbol) => symbol.exported)
       .map((symbol) => symbol.name)
@@ -88,7 +95,7 @@ export class FallbackAnalyzer implements FileAnalyzer {
 
 function readImportSpecifiers(content: string): string[] {
   const imports = new Set<string>();
-  const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
+  const pattern = /(?:\bimport\s+(?:[^'"]+\s+from\s+)?|\bexport\s+[^'"]+\s+from\s+|\b(?:require|import)\s*\(\s*)['"]([^'"]+)['"]/g;
   let match = pattern.exec(content);
 
   while (match) {

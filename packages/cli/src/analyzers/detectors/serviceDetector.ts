@@ -1,4 +1,4 @@
-import type { ScannedFile } from "../analysis/index.js";
+import { parseJsonText, type ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 import { SERVICES, SOURCE_SERVICE_SIGNALS } from "../registry/index.js";
 
@@ -28,7 +28,7 @@ function readPackageDependencyNames(files: ScannedFile[]): string[] {
 
   for (const file of packageFiles) {
     try {
-      const parsed = JSON.parse(file.content) as {
+      const parsed = parseJsonText(file.content) as {
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       };

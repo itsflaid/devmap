@@ -23,6 +23,7 @@ export {
 
 export {
   isArchitectureSource,
+  isTestPath,
 } from "./sourceScope.js";
 
 export {

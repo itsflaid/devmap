@@ -14,6 +14,7 @@ import {
   buildDependencyGraph, countReferences,
   detectEntryPoints,
   isArchitectureSource,
+  isTestPath,
   loadAliasMappings,
   type DependencyGraphDiagnostics,
 } from "../graph/index.js";
@@ -29,6 +30,7 @@ import {
 } from "../features/index.js";
 import {
   scanFiles,
+  parseJsonText,
   extractEntities,
   type ScannedFile,
   type EntityGraph,
@@ -321,7 +323,9 @@ function createAgentInstructions(): ProjectMap["agentInstructions"] {
 export function createProjectFingerprint(files: ScannedFile[]): string {
   const content = files
     .map((file) => [file.path, hashContent(file.content)] as const)
-    .sort(([left], [right]) => left.localeCompare(right))
+    // Plain code-unit order: localeCompare would change the fingerprint of an
+    // unchanged project when the machine locale differs.
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
     .map(([path, hash]) => `${path}:${hash}`)
     .join("\n");
 
@@ -402,7 +406,7 @@ function readPackageDependencies(files: ScannedFile[]): Record<string, string[]>
   }
 
   try {
-    const parsed = JSON.parse(packageJson.content) as {
+    const parsed = parseJsonText(packageJson.content) as {
       dependencies?: Record<string, string>;
       devDependencies?: Record<string, string>;
     };
@@ -473,7 +477,10 @@ function classifyFileScope(
   const text = `${path} ${name} ${exportedSymbols.join(" ")} ${imports.join(" ")}`.toLowerCase();
 
   if (isTestFile(path)) return "test";
-  if (path.endsWith(".md") || path.startsWith("docs/")) return "docs";
+  if (path.endsWith(".md") || path.endsWith(".mdx") || path.startsWith("docs/")) return "docs";
+  // Single-file components and SvelteKit page/layout files are UI even when they
+  // live under a routes/ folder; +server files stay API (matched below).
+  if (/\.(svelte|vue|astro)$/.test(path) || /(^|\/)\+(page|layout|error)(\.server)?\.[cm]?[jt]s$/.test(path)) return "ui";
   if (/(^|\/)(api|apis|routes?|controllers?|actions?)\//.test(path)) return "api";
   if (/(^|\/)(server|app|main|index)\.[cm]?[jt]sx?$/.test(path) && imports.some((specifier) => /routes?|controllers?|api/.test(specifier))) return "api";
   if (/(^|\/)(views?|pages?|components?|screens?|templates?|layouts?)\//.test(path)) return "ui";
@@ -631,12 +638,6 @@ function inferKnownFilePurpose(path: string): string | undefined {
   }
   if (/\/ai\/completion\.[cm]?[jt]s$/.test(path)) {
     return "coordinates streaming and non-streaming AI completion output.";
-  }
-  if (/\/analyzers\/projectmap\.[cm]?[jt]s$/.test(path)) {
-    return "orchestrates scanning, analysis, feature mapping, flows, and snapshot metadata.";
-  }
-  if (/\/analyzers\/filescanner\.[cm]?[jt]s$/.test(path)) {
-    return "scans eligible project files while applying ignore and safety rules.";
   }
   if (/(^|\/)types?\.[cm]?[jt]s$/.test(path)) {
     return "defines shared type contracts used by neighboring modules.";
@@ -839,14 +840,16 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     const entitySlug = featureName
       .toLowerCase()
       .replace(/\s+(management|system|module|feature)$/, "")
-      .replace(/\s+/g, "[-_]?");
+      .split(/\s+/)
+      .map(escapeRegExpSource)
+      .join("[-_]?");
 
-    const entityPattern = new RegExp(`\/${entitySlug}`, "i");
+    const entityPattern = new RegExp(`\\/${entitySlug}`, "i");
 
     steps.push(
       ["Handle API request", find(entityPattern, /\/(routes?|controllers?|api)\//i)],
       ["Apply business logic", find(/\/(services?|usecases?|actions?)\//i)],
-      ["Access data", find(/\/(repositories?|lib\/prisma|db\/)\//i)],
+      ["Access data", find(/\/(repositories?|lib\/prisma|lib\/db|db)\//i)],
     );
   }
 
@@ -1106,26 +1109,16 @@ export function renderMermaidFlow(steps: FlowInfo["steps"]): string {
   return lines.join("\n");
 }
 
+function escapeRegExpSource(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function escapeMermaidLabel(value: string): string {
   return value.replace(/"/g, "'");
 }
 
 function isTestFile(path: string): boolean {
-  const normalized = path.toLowerCase();
-  return (
-    normalized.includes("/test/")
-    || normalized.includes("/tests/")
-    || normalized.includes("/__tests__/")
-    || normalized.includes("/fixtures/")
-    || normalized.endsWith(".test.ts")
-    || normalized.endsWith(".test.tsx")
-    || normalized.endsWith(".test.js")
-    || normalized.endsWith(".test.jsx")
-    || normalized.endsWith(".spec.ts")
-    || normalized.endsWith(".spec.tsx")
-    || normalized.endsWith(".spec.js")
-    || normalized.endsWith(".spec.jsx")
-  );
+  return isTestPath(path);
 }
 
 function isVagueSearchTerm(term: string): boolean {
@@ -1168,7 +1161,7 @@ function detectAnalysisWarnings(
   }
 
   try {
-    JSON.parse(packageJson.content);
+    parseJsonText(packageJson.content);
   } catch {
     warnings.push("package.json could not be parsed. Dependency-based detection may be incomplete.");
   }

@@ -1,4 +1,4 @@
-import type { ScannedFile } from "../analysis/index.js";
+import { parseJsonText, type ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 
 export type DatabaseInfo = {
@@ -75,7 +75,7 @@ function readDependencies(files: ScannedFile[]): Set<string> {
 
   for (const file of files.filter((item) => item.path.endsWith("package.json"))) {
     try {
-      const parsed = JSON.parse(file.content) as {
+      const parsed = parseJsonText(file.content) as {
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       };

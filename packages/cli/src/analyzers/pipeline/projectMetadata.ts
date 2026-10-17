@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import type { ScannedFile } from "../analysis/fileScanner.js";
+import { parseJsonText } from "../analysis/jsonText.js";
 import {
   BACKEND_FRAMEWORK_SET,
   FRONTEND_FRAMEWORK_SET,
@@ -37,7 +38,7 @@ export function detectProjectMetadata(
   const projectTypes = detectProjectTypes(frameworks, manifests);
   const primaryManifest = selectPrimaryManifest(manifests, projectTypes);
   const workspaceType = detectWorkspaceType(projectRoot, manifests);
-  const primaryFramework = isRootCliOrLibrary(manifests) ? "unknown" : framework;
+  const primaryFramework = isRootCliOrLibrary(manifests, framework) ? "unknown" : framework;
 
   return {
     name: readProjectName(manifests) ?? basename(projectRoot),
@@ -70,7 +71,7 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
     .filter((file) => file.path.endsWith("package.json") && isArchitectureSource(file.path))
     .flatMap((file) => {
       try {
-        const parsed = JSON.parse(file.content) as Record<string, unknown>;
+        const parsed = parseJsonText(file.content) as Record<string, unknown>;
         return [{
           path: file.path,
           ...(typeof parsed.name === "string" ? { name: parsed.name } : {}),
@@ -100,12 +101,43 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
  * itself a CLI, and shouldn't have its correctly-detected framework (e.g.
  * an Astro app living in apps/web) blanked out to "unknown" because of it.
  */
-function isRootCliOrLibrary(manifests: PackageManifest[]): boolean {
+function isRootCliOrLibrary(manifests: PackageManifest[], framework: Framework): boolean {
   const rootManifest = manifests.find((manifest) => manifest.path === "package.json");
   if (!rootManifest) return false;
 
   if (rootManifest.bin) return true;
-  return Boolean((rootManifest.exports || rootManifest.main) && !rootManifest.bin);
+
+  // `npm init` writes "main": "index.js" into every package, including plain
+  // Express/Next apps. A root that itself declares the detected framework is
+  // that app, not a library, whatever its main/exports say.
+  if (framework !== "unknown" && declaresFramework(rootManifest, framework)) return false;
+
+  return Boolean(rootManifest.exports || rootManifest.main);
+}
+
+// Runtime dependency whose presence in a manifest means "this package is that app".
+const FRAMEWORK_DEPENDENCIES: Record<string, string[]> = {
+  nextjs: ["next"],
+  nuxt: ["nuxt"],
+  sveltekit: ["@sveltejs/kit"],
+  astro: ["astro"],
+  react: ["react-dom", "react-scripts"],
+  vue: ["vue"],
+  svelte: ["svelte"],
+  nestjs: ["@nestjs/core"],
+  fastify: ["fastify"],
+  express: ["express"],
+  koa: ["koa"]
+};
+
+function declaresFramework(manifest: PackageManifest, framework: Framework): boolean {
+  return (FRAMEWORK_DEPENDENCIES[framework] ?? []).some((dependency) =>
+    dependency in manifest.dependencies || dependency in manifest.devDependencies
+  );
+}
+
+function declaresAnyFramework(manifest: PackageManifest): boolean {
+  return Object.keys(FRAMEWORK_DEPENDENCIES).some((framework) => declaresFramework(manifest, framework as Framework));
 }
 
 function readProjectName(manifests: PackageManifest[]): string | null {
@@ -128,7 +160,11 @@ function detectProjectTypes(
   if (manifests.some((manifest) => manifest.bin)) {
     types.add("node-cli");
   }
-  if (manifests.some((manifest) => (manifest.exports || manifest.main) && !manifest.bin)) {
+  // A package that ships an app framework with its default "main" is an app,
+  // not a library.
+  if (manifests.some((manifest) =>
+    (manifest.exports || manifest.main) && !manifest.bin && !declaresAnyFramework(manifest)
+  )) {
     types.add("library");
   }
 

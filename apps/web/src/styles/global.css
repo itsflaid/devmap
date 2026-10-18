@@ -1,71 +1,71 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "@fontsource-variable/funnel-display";
+@import "@fontsource-variable/funnel-sans";
+@import "@fontsource-variable/geist-mono";
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
-  /* Color tokens */
-  --color-bg: #0a0d11;
-  --color-bg-soft: #0d1116;
-  --color-surface: #10151b;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-strong: rgba(255, 255, 255, 0.16);
-  --color-text: #eef1f4;
-  --color-text-muted: #8b95a1;
-  --color-text-subtle: #5b6470;
-  --color-aqua: #2ee6d6;
-  --color-aqua-soft: rgba(46, 230, 214, 0.1);
+  /* Color: white page, black type, one blue used only where something is
+     interactive or is the point of the line. */
+  --paper: #ffffff;
+  --ink: #000000;
+  --text: #2b2b2b;
+  --muted: #6a6a6a;
+  --rule: #e6e6e6;
+  --wash: #f5f5f5;
+  --accent: #0057ff;
+  --accent-wash: rgba(0, 87, 255, 0.07);
 
-  /* Inverted (light) palette — for the handful of sections that flip
-     to a light background amid the otherwise all-dark page. Cyan is
-     deliberately excluded here: the accent stays dark-section-only. */
-  --color-bg-invert: #f5f6f7;
-  --color-text-invert: #10151b;
-  --color-text-invert-muted: #4b5563;
-  --color-border-invert-strong: rgba(15, 20, 25, 0.16);
-
-  /* Typography */
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  /* Type */
+  --font-display: "Funnel Display Variable", "Funnel Display", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Funnel Sans Variable", "Funnel Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 
   /* Layout */
-  --page-max-width: 80rem;
-  --page-padding: clamp(1.25rem, 4vw, 2rem);
-  --section-spacing: clamp(4rem, 9vw, 8rem);
+  --page-max: 80rem;
+  --gutter: clamp(1.25rem, 5vw, 4rem);
+  --section-space: clamp(4.5rem, 10vw, 8rem);
+  --radius: 0.5rem;
 
-  /* Shape and effects */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --shadow-panel: 0 18px 42px rgba(0, 0, 0, 0.36);
-
-  background: var(--color-bg);
-  font-family: var(--font-sans);
+  background: var(--paper);
+  font-family: var(--font-body);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-aqua);
-  outline-offset: 3px;
-}
-
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 2rem;
 }
 
 body {
   min-width: 320px;
-  min-height: 100vh;
   margin: 0;
-  color: var(--color-text);
-  background: var(--color-bg);
+  color: var(--text);
+  background: var(--paper);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
 }
 
 a {
@@ -73,86 +73,48 @@ a {
   text-decoration: none;
 }
 
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+}
+
 button {
   font: inherit;
 }
 
 ::selection {
-  color: var(--color-bg);
-  background: var(--color-aqua);
+  color: #fff;
+  background: var(--accent);
 }
 
-.landing-page {
-  min-height: 100vh;
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
-.landing-section {
-  width: min(100% - (var(--page-padding) * 2), var(--page-max-width));
+.page {
+  width: min(100% - (var(--gutter) * 2), var(--page-max));
   margin-inline: auto;
 }
 
-.cta-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1.125rem;
-  border: none;
-  background: var(--color-text);
-  color: var(--color-bg);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 150ms ease;
+/* Text link: underlined, the underline turns blue on hover. */
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.25em;
+  transition: text-decoration-color 150ms ease;
 }
 
-.cta-primary:hover {
-  background: var(--color-aqua);
+.link:hover {
+  text-decoration-color: var(--accent);
 }
 
-.cta-primary .cta-prompt {
-  color: var(--color-text-subtle);
-}
-
-.cta-primary:hover .cta-prompt {
-  color: rgba(10, 13, 17, 0.55);
-}
-
-.cta-primary__copy-icon {
-  display: inline-flex;
-  align-items: center;
-  margin-inline-start: 0.125rem;
-}
-
-.cta-primary__copy-icon svg {
-  width: 1em;
-  height: 1em;
-}
-
-.cta-primary__copy-check {
-  display: none;
-}
-
-.cta-primary[data-copied] .cta-primary__copy-copy {
-  display: none;
-}
-
-.cta-primary[data-copied] .cta-primary__copy-check {
-  display: inline-block;
-}
-
-.cta-secondary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.75rem 0.375rem;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid transparent;
-  transition: color 150ms ease, border-color 150ms ease;
-}
-
-.cta-secondary:hover {
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

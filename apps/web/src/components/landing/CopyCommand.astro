@@ -1,0 +1,122 @@
+---
+interface Props {
+  command: string;
+  size?: "base" | "large";
+}
+
+const { command, size = "base" } = Astro.props;
+---
+
+<div class:list={["copy", `copy--${size}`]}>
+  <code class="copy__line">
+    <span class="copy__prompt" aria-hidden="true">$</span>
+    <span class="copy__text">{command}</span>
+  </code>
+  <button type="button" class="copy__button" aria-label={`Copy ${command}`}>
+    <span class="copy__idle">Copy</span>
+    <span class="copy__done" aria-hidden="true">Copied</span>
+  </button>
+</div>
+
+<script>
+  import { initCopyCommand } from "../../scripts/copy-command";
+
+  document.querySelectorAll<HTMLElement>(".copy").forEach((root) => {
+    const button = root.querySelector<HTMLElement>(".copy__button");
+    const text = root.querySelector<HTMLElement>(".copy__text");
+    if (button && text) initCopyCommand(button, text);
+  });
+</script>
+
+<style>
+  .copy {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+    border: 1px solid var(--ink);
+    border-radius: var(--radius);
+    background: var(--paper);
+  }
+
+  .copy__line {
+    display: flex;
+    align-items: center;
+    gap: 0.75ch;
+    min-width: 0;
+    padding: 0.8rem 1rem;
+    font-size: 0.9375rem;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .copy__prompt {
+    color: var(--accent);
+  }
+
+  .copy__button {
+    flex: none;
+    min-width: 5.5rem;
+    padding: 0 1rem;
+    border: 0;
+    border-left: 1px solid var(--ink);
+    border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .copy__button:hover {
+    background: var(--accent);
+  }
+
+  .copy__done,
+  .copy__button[data-copied] .copy__idle {
+    display: none;
+  }
+
+  .copy__button[data-copied] .copy__done {
+    display: inline;
+  }
+
+  /* On narrow screens let the command wrap instead of hiding its tail. */
+  @media (max-width: 40rem) {
+    .copy__line {
+      align-items: flex-start;
+      padding: 0.75rem;
+      font-size: 0.8125rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .copy__button {
+      min-width: 4.5rem;
+      padding: 0 0.75rem;
+    }
+  }
+
+  .copy--large .copy__line {
+    padding: 1.1rem 1.4rem;
+    font-size: clamp(1rem, 2.6vw, 1.75rem);
+  }
+
+  .copy--large .copy__button {
+    min-width: 7rem;
+    font-size: 1.0625rem;
+  }
+
+  @media (max-width: 40rem) {
+    .copy--large .copy__line {
+      padding: 0.9rem 0.75rem;
+      font-size: 1rem;
+    }
+
+    .copy--large .copy__button {
+      min-width: 4.5rem;
+    }
+  }
+</style>

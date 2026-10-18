@@ -1,12 +1,9 @@
 ---
-import AiAgentsSection from "../components/landing/AiAgentsSection.astro";
 import CommandsSection from "../components/landing/CommandsSection.astro";
-import ComparisonSection from "../components/landing/ComparisonSection.astro";
-import FeaturesSection from "../components/landing/FeaturesSection.astro";
-import FooterCtaSection from "../components/landing/FooterCtaSection.astro";
+import GetStartedSection from "../components/landing/GetStartedSection.astro";
 import HeroSection from "../components/landing/HeroSection.astro";
-import OnboardingSection from "../components/landing/OnboardingSection.astro";
-import OpenSourceSection from "../components/landing/OpenSourceSection.astro";
+import MethodSection from "../components/landing/MethodSection.astro";
+import OutputSection from "../components/landing/OutputSection.astro";
 import ProblemSection from "../components/landing/ProblemSection.astro";
 import SiteFooter from "../components/landing/SiteFooter.astro";
 import SiteHeader from "../components/landing/SiteHeader.astro";
@@ -14,36 +11,16 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout>
-  <div class="landing-page">
-    <!--
-      PAGE STRUCTURE
+  <SiteHeader />
 
-      01. Header
-      02. Hero - pahami codebase dalam menit
-      03. Problem - AI menulis kode lebih cepat dari developer memahaminya
-      04. Features - static analysis dahulu, AI untuk interpretasi
-      05. For AI Agents - agent membutuhkan project map
-      06. Commands - command palette menjawab pertanyaan kodebase
-      07. Onboarding - developer tahu harus mulai dari mana
-      08. Comparison - dengan DevMap versus going in blind
-      09. Open Source - gratis selamanya, dukungan opsional
-      10. Footer CTA - install DevMap dan baca dokumentasi
-      11. Footer
-    -->
-    <SiteHeader />
+  <main>
+    <HeroSection />
+    <ProblemSection />
+    <OutputSection />
+    <CommandsSection />
+    <MethodSection />
+    <GetStartedSection />
+  </main>
 
-    <main>
-      <HeroSection />
-      <ProblemSection />
-      <FeaturesSection />
-      <AiAgentsSection />
-      <CommandsSection />
-      <OnboardingSection />
-      <ComparisonSection />
-      <OpenSourceSection />
-      <FooterCtaSection />
-    </main>
-
-    <SiteFooter />
-  </div>
+  <SiteFooter />
 </BaseLayout>

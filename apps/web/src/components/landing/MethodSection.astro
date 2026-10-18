@@ -1,0 +1,161 @@
+---
+const steps = [
+  "Scan files",
+  "Analyze files",
+  "Build the dependency graph",
+  "Detect the framework",
+  "Detect routes",
+  "Detect the database",
+  "Extract entities",
+  "Detect capabilities",
+  "Detect features",
+  "Infer the domain",
+  "Rank critical files",
+  "Generate flows"
+];
+const optionalAi = "Infer the domain";
+
+const frameworks = ["Next.js", "Astro", "Nuxt", "SvelteKit", "Express", "Fastify", "NestJS"];
+---
+
+<section class="method page" aria-labelledby="method-title">
+  <div class="method__intro">
+    <h2 class="method__title" id="method-title">
+      The same code gives the same map.
+    </h2>
+    <p class="method__copy">
+      Files, imports, routes, features and flows come from static analysis, so
+      the result doesn't change between runs. AI is optional and is used in
+      three places: inferring what the project is for, describing files, and
+      answering questions. If the provider fails, <code>devmap analyze</code>{" "}
+      still finishes.
+    </p>
+  </div>
+
+  <ol class="method__steps" aria-label="What devmap analyze does, in order">
+    {steps.map((step) => (
+      <li>
+        {step}
+        {step === optionalAi && <span class="method__ai"> (optional AI)</span>}
+      </li>
+    ))}
+  </ol>
+
+  <div class="method__support">
+    <section>
+      <h3>Routes mapped for</h3>
+      <p>{frameworks.join(", ")}.</p>
+    </section>
+    <section>
+      <h3>Read with full syntax trees</h3>
+      <p>TypeScript, JavaScript, Vue, Svelte and Astro.</p>
+    </section>
+    <section>
+      <h3>Read with pattern matching</h3>
+      <p>Python, PHP, Go, Ruby, C# and Java: imports, exports and declarations.</p>
+    </section>
+  </div>
+</section>
+
+<style>
+  .method {
+    display: grid;
+    gap: clamp(2.5rem, 6vw, 4.5rem);
+    padding-block: var(--section-space);
+    border-top: 1px solid var(--rule);
+  }
+
+  .method__intro {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 62rem) {
+    .method__intro {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      align-items: start;
+    }
+  }
+
+  .method__title {
+    max-width: 11em;
+    font-size: clamp(2.25rem, 5vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+  }
+
+  .method__copy {
+    max-width: 38rem;
+    padding-top: 0.6rem;
+  }
+
+  .method__copy code {
+    font-size: 0.875em;
+    color: var(--ink);
+  }
+
+  .method__steps {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: step;
+    border-top: 1px solid var(--rule);
+  }
+
+  @media (min-width: 40rem) {
+    .method__steps {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 2rem;
+    }
+  }
+
+  @media (min-width: 62rem) {
+    .method__steps {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .method__steps li {
+    padding-block: 0.85rem;
+    border-bottom: 1px solid var(--rule);
+    color: var(--ink);
+    counter-increment: step;
+  }
+
+  .method__steps li::before {
+    content: counter(step, decimal-leading-zero);
+    display: inline-block;
+    width: 3ch;
+    margin-right: 1ch;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .method__ai {
+    color: var(--accent);
+  }
+
+  .method__support {
+    display: grid;
+    gap: 2rem 3rem;
+  }
+
+  @media (min-width: 52rem) {
+    .method__support {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .method__support h3 {
+    font-size: 1.125rem;
+    letter-spacing: -0.01em;
+  }
+
+  .method__support p {
+    margin-top: 0.4rem;
+    color: var(--text);
+  }
+</style>

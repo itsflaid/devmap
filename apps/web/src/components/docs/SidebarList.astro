@@ -44,22 +44,23 @@ const { items } = Astro.props;
     display: block;
     padding: var(--docs-link-padding, 0.3125rem 0 0.3125rem 0.75rem);
     border-inline-start: 2px solid transparent;
-    font-size: 0.84375rem;
-    color: var(--color-text-muted);
+    line-height: 1.4;
+    font-size: 0.9375rem;
+    color: var(--muted);
     transition: color 150ms ease, border-color 150ms ease;
   }
 
   a:hover {
-    color: var(--color-text);
+    color: var(--ink);
   }
 
   a.active {
-    border-inline-start-color: var(--color-aqua);
-    color: var(--color-text);
+    border-inline-start-color: var(--accent);
+    color: var(--ink);
   }
 
   li li a {
     padding-inline-start: var(--docs-link-nested-indent, 1.75rem);
-    font-size: 0.78125rem;
+    font-size: 0.875rem;
   }
 </style>

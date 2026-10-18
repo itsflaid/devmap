@@ -7,8 +7,8 @@ interface Props {
 }
 
 const {
-  description = "DevMap is an AI-powered CLI to understand any codebase in minutes.",
-  title = "DevMap - Understand any codebase in minutes"
+  description = "DevMap analyzes your codebase once and writes a map of entry points, critical files and features that developers and AI agents can start from.",
+  title = "DevMap: analyze once, reuse context everywhere"
 } = Astro.props;
 ---
 
@@ -16,14 +16,9 @@ const {
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <meta name="theme-color" content="#ffffff" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
@@ -32,8 +27,5 @@ const {
   </head>
   <body>
     <slot />
-    <script>
-      import "../scripts/lenis-init";
-    </script>
   </body>
 </html>

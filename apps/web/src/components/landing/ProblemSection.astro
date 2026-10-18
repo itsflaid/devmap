@@ -1,116 +1,28 @@
----
-
-const painPoints = [
-  {
-    number: "01",
-    text: "You point your AI agent at an unfamiliar codebase.",
-  },
-  {
-    number: "02",
-    text: "It reads dozens of files trying to piece the architecture together, burning tokens and time.",
-  },
-  {
-    number: "03",
-    text: "It still gets it wrong, and starts over from zero next session.",
-  },
-];
----
-
-<section id="problem" class="landing-section problem-section">
-  <h2 class="problem-section__title">
-    Modern AI writes code faster than you can <span class="problem-section__accent">understand</span> it.
+<section class="problem page" aria-labelledby="problem-title">
+  <h2 class="problem__text" id="problem-title">
+    Every new session, every new agent and every new teammate starts the same
+    way: open files, trace imports, guess which ones matter.{" "}
+    <span class="problem__rest">
+      The code didn't change. The understanding gets rebuilt anyway.
+    </span>
   </h2>
-
-  <div class="problem-section__cards">
-    {painPoints.map((point) => (
-      <div class="problem-card">
-        <span class="problem-card__number">{point.number}</span>
-        <p class="problem-card__text">{point.text}</p>
-      </div>
-    ))}
-  </div>
-
-  <p class="problem-section__bridge">
-    devmap fixes this: analyze once, reuse the map every session after.
-  </p>
 </section>
 
-<script>
-  import { revealOnScroll } from "../../scripts/scroll-reveal";
-
-  const section = document.querySelector<HTMLElement>(".problem-section");
-
-  revealOnScroll(section, ".problem-section__title", { y: 16 });
-  revealOnScroll(section, ".problem-card", {
-    y: 26,
-    stagger: 0.12,
-    start: "top 82%",
-  });
-  revealOnScroll(section, ".problem-section__bridge", {
-    y: 12,
-    start: "top 78%",
-    delay: 0.15,
-  });
-</script>
-
 <style>
-  .problem-section {
-    padding: var(--section-spacing) 0;
-    text-align: center;
+  .problem {
+    padding-block: var(--section-space);
+    border-top: 1px solid var(--rule);
   }
 
-  .problem-section__title {
-    max-width: 40rem;
-    margin: 0 auto 3rem;
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    font-weight: 700;
+  .problem__text {
+    max-width: 22em;
+    font-size: clamp(1.875rem, 4.6vw, 3.75rem);
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
   }
 
-  .problem-section__accent {
-    color: var(--color-aqua);
-  }
-
-  .problem-section__cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-    max-width: 58rem;
-    margin: 0 auto;
-  }
-
-  .problem-card {
-    padding: 1.5rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
-    text-align: left;
-  }
-
-  .problem-card__number {
-    display: block;
-    margin-bottom: 0.875rem;
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--color-text-subtle);
-  }
-
-  .problem-card__text {
-    margin: 0;
-    font-size: 0.9375rem;
-    line-height: 1.6;
-    color: var(--color-text-muted);
-  }
-
-  .problem-section__bridge {
-    margin: 2.5rem 0 0;
-    font-size: 1rem;
-    color: var(--color-text);
-  }
-
-  @media (max-width: 820px) {
-    .problem-section__cards {
-      grid-template-columns: 1fr;
-    }
+  .problem__rest {
+    color: var(--muted);
   }
 </style>

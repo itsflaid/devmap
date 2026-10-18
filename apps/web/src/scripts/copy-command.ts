@@ -31,6 +31,7 @@ export async function copyText(text: string): Promise<boolean> {
 export function initCopyCommand(button: HTMLElement, commandEl: HTMLElement): void {
   const command = commandEl.textContent?.trim() ?? "";
   if (!command) return;
+  const idleLabel = button.getAttribute("aria-label") ?? command;
 
   button.addEventListener("click", async () => {
     const ok = await copyText(command);
@@ -41,7 +42,7 @@ export function initCopyCommand(button: HTMLElement, commandEl: HTMLElement): vo
 
     window.setTimeout(() => {
       button.removeAttribute("data-copied");
-      button.setAttribute("aria-label", command);
+      button.setAttribute("aria-label", idleLabel);
     }, FEEDBACK_MS);
   });
 }

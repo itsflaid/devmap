@@ -1,270 +1,63 @@
 ---
-const navigationItems = [
-  { href: "/#problem", label: "Problem" },
+const links = [
   { href: "/#commands", label: "Commands" },
-  { href: "/#features", label: "Features" },
-  { href: "/#ai-agents", label: "AI Agents" },
-  { href: "/#comparison", label: "Comparison" }
+  { href: "/docs", label: "Docs" },
+  { href: "https://github.com/itsflaid/devmap", label: "GitHub" }
 ];
 ---
 
-<header class="site-header">
-  <nav class="site-header__nav" aria-label="Primary navigation">
-    <a class="site-header__brand" href="#hero" aria-label="DevMap home">
-      <img src="/logo.png" alt="" width="32" height="32" />
-      <span class="site-header__brand-wordmark">
-        dev<span class="site-header__brand-accent">map</span>
-      </span>
-    </a>
+<header class="header page">
+  <a class="header__brand" href="/" aria-label="DevMap home">
+    <img src="/logo-mark.png" alt="" width="28" height="28" />
+    <span>devmap</span>
+  </a>
 
-    <button
-      class="site-header__toggle"
-      aria-expanded="false"
-      aria-controls="site-header-menu"
-      aria-label="Menu"
-      type="button"
-    >
-      <span class="site-header__toggle-bar"></span>
-      <span class="site-header__toggle-bar"></span>
-    </button>
-
-    <div class="site-header__menu" id="site-header-menu">
-      <div class="site-header__links">
-        {navigationItems.map((item) => (
-          <a href={item.href}>{item.label}</a>
-        ))}
-      </div>
-
-      <div class="site-header__actions">
-        <a class="site-header__action" href="/docs">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M4 2.25h5.5l2.25 2.25v9a.5.5 0 0 1-.5.5h-7.25a.5.5 0 0 1-.5-.5v-10.75a.5.5 0 0 1 .5-.5z" stroke-linejoin="round"></path>
-            <path d="M9.5 2.25v2.25h2.25" stroke-linejoin="round"></path>
-            <path d="M5.5 8.25h5M5.5 10.75h5" stroke-linecap="round"></path>
-          </svg>
-          Docs
-        </a>
-        <a class="site-header__action" href="https://github.com/itsflaid/devmap">
-          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"></path>
-          </svg>
-          GitHub
-        </a>
-      </div>
-    </div>
+  <nav class="header__nav" aria-label="Primary">
+    {links.map((link) => <a href={link.href}>{link.label}</a>)}
   </nav>
 </header>
 
-<script>
-  const nav = document.querySelector<HTMLElement>(".site-header__nav");
-  const toggle = document.querySelector<HTMLButtonElement>(".site-header__toggle");
-
-  if (nav && toggle) {
-    const close = () => {
-      nav.classList.remove("is-open");
-      toggle.setAttribute("aria-expanded", "false");
-    };
-
-    toggle.addEventListener("click", () => {
-      const open = nav.classList.toggle("is-open");
-      toggle.setAttribute("aria-expanded", String(open));
-    });
-
-    nav.querySelectorAll<HTMLAnchorElement>(".site-header__menu a")
-      .forEach((link) => link.addEventListener("click", close));
-
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") close();
-    });
-  }
-</script>
-
 <style>
-  .site-header {
-    position: fixed;
-    inset-block-start: 0;
-    inset-inline: 0;
-    z-index: 50;
-    border-block-end: 1px solid var(--color-border);
-    background: rgba(10, 13, 17, 0.82);
-    backdrop-filter: blur(18px);
-  }
-
-  /*
-    Desktop is the base layout: a 3-column grid (brand | nav links |
-    actions) so the center nav group stays visually centered in the
-    bar regardless of how wide the brand or actions end up being.
-    `.site-header__menu` is `display: contents` here, so its two
-    children (`__links` and `__actions`) become the grid's real
-    2nd/3rd columns — the wrapper itself doesn't take a column.
-  */
-  .site-header__nav {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+  .header {
+    display: flex;
     align-items: center;
-    column-gap: 1.5rem;
-    width: min(100% - (var(--page-padding) * 2), var(--page-max-width));
-    min-height: 4rem;
-    margin-inline: auto;
+    justify-content: space-between;
+    min-height: 5rem;
   }
 
-  .site-header__brand {
+  .header__brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.625rem;
-    font-family: var(--font-sans);
+    gap: 0.6rem;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+
+  .header__brand img {
+    display: block;
+  }
+
+  .header__nav {
+    display: flex;
+    gap: clamp(1rem, 3vw, 2rem);
     font-size: 0.9375rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
   }
 
-  .site-header__brand-wordmark {
-    display: inline-flex;
-    align-items: center;
+  .header__nav a {
+    padding-block: 0.5rem;
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+    transition: text-decoration-color 150ms ease;
   }
 
-  .site-header__brand-accent {
-    color: var(--color-aqua);
-  }
-
-  .site-header__menu {
-    display: contents;
-  }
-
-  .site-header__links {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(1rem, 2vw, 1.75rem);
-  }
-
-  .site-header__links a {
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-    transition: color 150ms ease;
-  }
-
-  .site-header__links a:hover {
-    color: var(--color-text);
-  }
-
-  .site-header__actions {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 1.25rem;
-  }
-
-  .site-header__action {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-size: 0.875rem;
-    color: var(--color-text-muted);
-    transition: color 150ms ease;
-  }
-
-  .site-header__action:hover {
-    color: var(--color-text);
-  }
-
-  .site-header__action svg {
-    width: 15px;
-    height: 15px;
-    flex-shrink: 0;
-  }
-
-  .site-header__toggle {
-    display: none;
-  }
-
-  @media (max-width: 760px) {
-    .site-header__nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .site-header__toggle {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      padding: 0;
-      border: none;
-      border-radius: var(--radius-sm);
-      background: transparent;
-      cursor: pointer;
-    }
-
-    .site-header__toggle-bar {
-      display: block;
-      width: 18px;
-      height: 2px;
-      background: var(--color-text);
-      transition: transform 200ms ease;
-    }
-
-    .site-header__toggle-bar + .site-header__toggle-bar {
-      margin-top: 5px;
-    }
-
-    .site-header__nav.is-open .site-header__toggle-bar:first-child {
-      transform: translateY(3.5px) rotate(45deg);
-    }
-
-    .site-header__nav.is-open .site-header__toggle-bar:last-child {
-      transform: translateY(-3.5px) rotate(-45deg);
-    }
-
-    /* On mobile the menu becomes the collapsible dropdown panel —
-       both link groups stack full-width inside it. */
-    .site-header__menu {
-      display: block;
-      position: absolute;
-      inset-inline: 0;
-      top: 100%;
-      max-height: 0;
-      overflow: hidden;
-      background: var(--color-bg-soft);
-      border-top: 1px solid var(--color-border);
-      transition: max-height 250ms ease;
-    }
-
-    .site-header__nav.is-open .site-header__menu {
-      max-height: 28rem;
-      overflow-y: auto;
-    }
-
-    .site-header__links,
-    .site-header__actions {
-      display: block;
-    }
-
-    .site-header__links a,
-    .site-header__action {
-      padding: 0.875rem var(--page-padding);
-      border-block-end: 1px solid var(--color-border);
-      font-size: 0.9375rem;
-    }
-
-    .site-header__links a {
-      display: block;
-    }
-
-    .site-header__action {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .site-header__toggle-bar,
-    .site-header__menu {
-      transition: none;
-    }
+  .header__nav a:hover {
+    color: var(--ink);
+    text-decoration-color: var(--accent);
   }
 </style>

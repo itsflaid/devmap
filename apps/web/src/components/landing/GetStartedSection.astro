@@ -1,0 +1,57 @@
+---
+import CopyCommand from "./CopyCommand.astro";
+---
+
+<section class="start page" aria-labelledby="start-title">
+  <h2 class="start__title" id="start-title">Run it on the repo you have open.</h2>
+
+  <div class="start__command">
+    <CopyCommand command="npx @flaid/devmap analyze" size="large" />
+  </div>
+
+  <p class="start__copy">
+    Free and open source under the MIT license. Install it globally with{" "}
+    <code>npm install -g @flaid/devmap</code> when you want it on every project.
+  </p>
+
+  <p class="start__links">
+    <a class="link" href="/docs">Read the docs</a>
+    <a class="link" href="https://github.com/itsflaid/devmap">Star it on GitHub</a>
+  </p>
+</section>
+
+<style>
+  .start {
+    padding-block: var(--section-space);
+    border-top: 1px solid var(--rule);
+  }
+
+  .start__title {
+    max-width: 10em;
+    font-size: clamp(2.75rem, 8vw, 7rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+  }
+
+  .start__command {
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    max-width: 100%;
+  }
+
+  .start__copy {
+    max-width: 34rem;
+    margin-top: 1.75rem;
+  }
+
+  .start__copy code {
+    font-size: 0.875em;
+    color: var(--ink);
+  }
+
+  .start__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 2rem;
+    margin-top: 1.25rem;
+  }
+</style>

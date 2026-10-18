@@ -1,0 +1,178 @@
+---
+// Excerpt of the .devmap/index.json that `devmap analyze` wrote for this
+// repository. Lines marked `hot` are the ones an agent reads first.
+const lines: Array<{ text: string; hot?: boolean }> = [
+  { text: "{" },
+  { text: '  "project": {' },
+  { text: '    "name": "devmap-workspace",' },
+  { text: '    "framework": "astro",' },
+  { text: '    "language": "typescript",' },
+  { text: '    "workspaceType": "monorepo"' },
+  { text: "  }," },
+  { text: '  "entryPoints": [', hot: true },
+  { text: '    "packages/cli/src/index.ts",', hot: true },
+  { text: '    "apps/web/src/pages/docs.astro",', hot: true },
+  { text: '    "apps/web/src/pages/index.astro"', hot: true },
+  { text: "  ]," , hot: true },
+  { text: '  "criticalFiles": [' },
+  { text: '    "packages/cli/src/commands/analyze.ts",' },
+  { text: '    "packages/cli/src/commands/init.ts",' },
+  { text: '    "packages/cli/src/commands/map.ts"' },
+  { text: "  ]," },
+  { text: '  "features": [' },
+  { text: "    {" },
+  { text: '      "name": "CLI Commands",' },
+  { text: '      "map": ".devmap/features/cli-commands.json"' },
+  { text: "    }" },
+  { text: "  ]" },
+  { text: "}" }
+];
+
+const files = [
+  { name: "index.json", note: "Start here. Entry points, critical files and a pointer to each feature." },
+  { name: "features/*.json", note: "One map per feature, with the files that implement it." },
+  { name: "snapshot.json", note: "The full analysis, read only when the two above are not enough." }
+];
+---
+
+<section class="output page" aria-labelledby="output-title">
+  <div class="output__intro">
+    <h2 class="output__title" id="output-title">
+      Your project, as files an agent can read.
+    </h2>
+    <p class="output__copy">
+      <code>devmap analyze</code> writes a <code>.devmap</code> folder next to
+      your code. Agents open the small index first and follow it to the one
+      feature they need, instead of exploring the whole repository.
+    </p>
+
+    <dl class="output__files">
+      {files.map((file) => (
+        <div>
+          <dt><code>.devmap/{file.name}</code></dt>
+          <dd>{file.note}</dd>
+        </div>
+      ))}
+    </dl>
+  </div>
+
+  <figure class="output__figure">
+    <figcaption>
+      <code>.devmap/index.json</code>, trimmed, from analyzing this repository.
+      The highlighted lines are the entry points.
+    </figcaption>
+    <pre class="code" tabindex="0"><code>{lines.map((line) => (
+      <span class:list={["code__line", { "code__line--hot": line.hot }]}>{line.text}</span>
+    ))}</code></pre>
+  </figure>
+</section>
+
+<style>
+  .output {
+    display: grid;
+    gap: clamp(2.5rem, 6vw, 5rem);
+    padding-block: var(--section-space);
+    border-top: 1px solid var(--rule);
+  }
+
+  @media (min-width: 62rem) {
+    .output {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      align-items: start;
+    }
+  }
+
+  .output__title {
+    max-width: 12em;
+    font-size: clamp(2.25rem, 5vw, 4rem);
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+  }
+
+  .output__copy {
+    max-width: 30rem;
+    margin-top: 1.5rem;
+  }
+
+  .output__copy code,
+  .output__files code {
+    font-size: 0.875em;
+    color: var(--ink);
+  }
+
+  .output__files {
+    max-width: 30rem;
+    margin: 2.5rem 0 0;
+  }
+
+  .output__files > div {
+    padding-block: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .output__files dt {
+    color: var(--ink);
+  }
+
+  .output__files dd {
+    margin: 0.25rem 0 0;
+    font-size: 0.9375rem;
+    color: var(--muted);
+  }
+
+  .output__figure {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .output__figure figcaption {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .output__figure figcaption code {
+    color: var(--ink);
+  }
+
+  .code {
+    margin: 0;
+    padding: 1.25rem 0;
+    border-radius: var(--radius);
+    background: var(--wash);
+    font-size: clamp(0.75rem, 1.6vw, 0.875rem);
+    line-height: 1.75;
+    color: var(--ink);
+    overflow-x: auto;
+    counter-reset: line;
+  }
+
+  .code code {
+    display: block;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .code__line {
+    display: block;
+    padding-inline: 1.25rem 1.5rem;
+    border-left: 3px solid transparent;
+    white-space: pre;
+    counter-increment: line;
+  }
+
+  .code__line::before {
+    content: counter(line);
+    display: inline-block;
+    width: 2.25ch;
+    margin-right: 2ch;
+    text-align: right;
+    color: #a3a3a3;
+    user-select: none;
+  }
+
+  .code__line--hot {
+    border-left-color: var(--accent);
+    background: var(--accent-wash);
+  }
+</style>

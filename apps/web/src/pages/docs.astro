@@ -26,20 +26,20 @@ const { Content, headings } = await render(entry);
 
 <style>
   .docs-page {
-    width: min(100% - (var(--page-padding) * 2), var(--page-max-width));
+    width: min(100% - (var(--gutter) * 2), var(--page-max));
     margin-inline: auto;
-    padding-block: calc(4rem + 3rem) 4rem;
+    padding-block: 1.5rem 5rem;
   }
 
   @media (min-width: 760px) {
     .docs-page {
       display: grid;
-      grid-template-columns: 240px 1fr;
-      gap: 48px;
+      grid-template-columns: 15rem minmax(0, 1fr);
+      gap: clamp(3rem, 8vw, 7rem);
     }
 
     .docs-content {
-      max-width: 720px;
+      max-width: 44rem;
     }
   }
 </style>

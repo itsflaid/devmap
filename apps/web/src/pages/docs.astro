@@ -31,6 +31,17 @@ const { Content, headings } = await render(entry);
     padding-block: 1.5rem 5rem;
   }
 
+  /*
+   * Below the grid breakpoint the slot only wraps the mobile contents bar.
+   * Letting its children belong to .docs-page gives that bar the full page
+   * height to stick within; as a box of its own it would never stick.
+   */
+  @media (max-width: 759px) {
+    .docs-sidebar-slot {
+      display: contents;
+    }
+  }
+
   @media (min-width: 760px) {
     .docs-page {
       display: grid;

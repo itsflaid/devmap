@@ -26,6 +26,9 @@
   --gutter: clamp(1.25rem, 5vw, 4rem);
   --section-space: clamp(4.5rem, 10vw, 8rem);
   --radius: 0.5rem;
+  --header-height: 4.5rem;
+  /* Sticky elements sit below the site header only while it is showing. */
+  --sticky-offset: 0px;
 
   background: var(--paper);
   font-family: var(--font-body);
@@ -42,7 +45,12 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 2rem;
+  /* Anchors land below the site header, which may be showing when they scroll. */
+  scroll-padding-top: calc(var(--header-height) + 1.5rem);
+}
+
+html[data-header="shown"] {
+  --sticky-offset: var(--header-height);
 }
 
 body {

@@ -6,26 +6,148 @@ const links = [
 ];
 ---
 
-<header class="header page">
-  <a class="header__brand" href="/" aria-label="DevMap home">
-    <img src="/logo-mark.png" alt="" width="28" height="28" />
-    <span>devmap</span>
-  </a>
+<header class="site-header" data-site-header>
+  <div class="site-header__bar page">
+    <a class="site-header__brand" href="/" aria-label="DevMap home">
+      <img src="/logo-mark.png" alt="" width="28" height="28" />
+      <span>devmap</span>
+    </a>
 
-  <nav class="header__nav" aria-label="Primary">
-    {links.map((link) => <a href={link.href}>{link.label}</a>)}
-  </nav>
+    <nav class="site-header__nav" id="site-nav" aria-label="Primary">
+      {links.map((link) => <a href={link.href}>{link.label}</a>)}
+    </nav>
+
+    <button
+      type="button"
+      class="site-header__toggle"
+      aria-expanded="false"
+      aria-controls="site-nav"
+      aria-label="Open menu"
+    >
+      <span class="site-header__toggle-bar"></span>
+      <span class="site-header__toggle-bar"></span>
+    </button>
+  </div>
 </header>
 
+<script>
+  const header = document.querySelector<HTMLElement>("[data-site-header]");
+  const toggle = header?.querySelector<HTMLButtonElement>(".site-header__toggle");
+  const nav = header?.querySelector<HTMLElement>(".site-header__nav");
+  const root = document.documentElement;
+
+  if (header && toggle && nav) {
+    // Tuned so a small flick upward brings the bar back at once, while
+    // reading downward (even with a jittery trackpad) keeps it out of the way.
+    const HIDE_AFTER = 96;
+    const DOWN_STEP = 6;
+    const UP_STEP = 3;
+
+    let lastY = window.scrollY;
+    let ticking = false;
+    let menuOpen = false;
+
+    const setShown = (shown: boolean) => {
+      header.classList.toggle("is-hidden", !shown);
+      root.dataset.header = shown ? "shown" : "hidden";
+    };
+
+    const setMenu = (open: boolean) => {
+      menuOpen = open;
+      header.classList.toggle("is-open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      if (open) setShown(true);
+    };
+
+    const update = () => {
+      ticking = false;
+      // iOS rubber-banding reports values outside the scrollable range.
+      const maxY = document.documentElement.scrollHeight - window.innerHeight;
+      const y = Math.min(Math.max(window.scrollY, 0), Math.max(maxY, 0));
+      const delta = y - lastY;
+
+      header.classList.toggle("is-stuck", y > 0);
+
+      if (y <= HIDE_AFTER) {
+        setShown(true);
+      } else if (delta >= DOWN_STEP && !menuOpen) {
+        setShown(false);
+      } else if (delta <= -UP_STEP) {
+        setShown(true);
+      }
+
+      if (Math.abs(delta) >= UP_STEP) lastY = y;
+    };
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+
+    toggle.addEventListener("click", () => setMenu(!menuOpen));
+
+    nav.querySelectorAll("a").forEach((link) =>
+      link.addEventListener("click", () => setMenu(false))
+    );
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menuOpen) {
+        setMenu(false);
+        toggle.focus();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      if (menuOpen && event.target instanceof Node && !header.contains(event.target)) {
+        setMenu(false);
+      }
+    });
+
+    // Leaving the narrow layout while the menu is open would strand state.
+    window.matchMedia("(min-width: 40.01rem)").addEventListener("change", (event) => {
+      if (event.matches) setMenu(false);
+    });
+
+    root.dataset.header = "shown";
+    update();
+  }
+</script>
+
 <style>
-  .header {
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--paper);
+    border-bottom: 1px solid transparent;
+    transition:
+      transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      border-color 200ms ease;
+  }
+
+  .site-header.is-stuck {
+    border-bottom-color: var(--rule);
+  }
+
+  .site-header.is-hidden {
+    transform: translateY(-100%);
+  }
+
+  .site-header__bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 5rem;
+    min-height: var(--header-height);
   }
 
-  .header__brand {
+  .site-header__brand {
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
@@ -36,17 +158,17 @@ const links = [
     color: var(--ink);
   }
 
-  .header__brand img {
+  .site-header__brand img {
     display: block;
   }
 
-  .header__nav {
+  .site-header__nav {
     display: flex;
     gap: clamp(1rem, 3vw, 2rem);
     font-size: 0.9375rem;
   }
 
-  .header__nav a {
+  .site-header__nav a {
     padding-block: 0.5rem;
     color: var(--text);
     text-decoration: underline;
@@ -56,8 +178,94 @@ const links = [
     transition: text-decoration-color 150ms ease;
   }
 
-  .header__nav a:hover {
+  .site-header__nav a:hover {
     color: var(--ink);
     text-decoration-color: var(--accent);
+  }
+
+  .site-header__toggle {
+    display: none;
+  }
+
+  /* Narrow screens: the links move into a panel under the bar. */
+  @media (max-width: 40rem) {
+    .site-header__toggle {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      /* 44px square: the minimum comfortable touch target */
+      width: 2.75rem;
+      height: 2.75rem;
+      margin-right: -0.75rem;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .site-header__toggle-bar {
+      display: block;
+      width: 1.375rem;
+      height: 2px;
+      background: var(--ink);
+      transition: transform 200ms ease;
+    }
+
+    .site-header.is-open .site-header__toggle-bar:first-child {
+      transform: translateY(4px) rotate(45deg);
+    }
+
+    .site-header.is-open .site-header__toggle-bar:last-child {
+      transform: translateY(-4px) rotate(-45deg);
+    }
+
+    .site-header__nav {
+      position: absolute;
+      inset-inline: 0;
+      top: 100%;
+      flex-direction: column;
+      gap: 0;
+      padding: 0.5rem var(--gutter) 1.25rem;
+      background: var(--paper);
+      border-bottom: 1px solid var(--rule);
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      visibility: hidden;
+      opacity: 0;
+      transform: translateY(-0.5rem);
+      transition:
+        opacity 180ms ease,
+        transform 180ms ease,
+        visibility 0s linear 180ms;
+    }
+
+    .site-header.is-open .site-header__nav {
+      visibility: visible;
+      opacity: 1;
+      transform: none;
+      transition-delay: 0s;
+    }
+
+    .site-header__nav a {
+      padding-block: 0.75rem;
+      color: var(--ink);
+      border-top: 1px solid var(--rule);
+    }
+
+    .site-header__nav a:first-child {
+      border-top: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-header,
+    .site-header__nav,
+    .site-header__toggle-bar {
+      transition: none;
+    }
   }
 </style>

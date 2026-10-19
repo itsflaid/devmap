@@ -10,7 +10,16 @@
 .docs-prose h4 {
   font-family: var(--font-display);
   color: var(--ink);
-  scroll-margin-top: 2rem;
+}
+
+/* On phones the sticky contents bar also sits under the header. */
+@media (max-width: 759px) {
+  .docs-prose h1,
+  .docs-prose h2,
+  .docs-prose h3,
+  .docs-prose h4 {
+    scroll-margin-top: 4.5rem;
+  }
 }
 
 .docs-prose h1 {

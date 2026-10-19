@@ -13,8 +13,17 @@ const { command, size = "base" } = Astro.props;
     <span class="copy__text">{command}</span>
   </code>
   <button type="button" class="copy__button" aria-label={`Copy ${command}`}>
-    <span class="copy__idle">Copy</span>
-    <span class="copy__done" aria-hidden="true">Copied</span>
+    <svg class="copy__icon copy__icon--copy" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <rect x="5.25" y="5.25" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path d="M10.75 3.5v-.25A1.5 1.5 0 0 0 9.25 1.75h-5.5a1.5 1.5 0 0 0-1.5 1.5v5.5a1.5 1.5 0 0 0 1.5 1.5H4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+    <svg class="copy__icon copy__icon--check" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <path d="m3 8.5 3.25 3.25L13 4.75" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <span class="copy__label">
+      <span class="copy__idle">Copy</span>
+      <span class="copy__done" aria-hidden="true">Copied</span>
+    </span>
   </button>
 </div>
 
@@ -29,94 +38,123 @@ const { command, size = "base" } = Astro.props;
 </script>
 
 <style>
+  /*
+   * One line of type sitting on a rule, not a box. The whole row is the click
+   * target (the button stretches over it), and the rule turns blue on hover.
+   */
   .copy {
-    display: inline-flex;
-    align-items: stretch;
-    max-width: 100%;
-    border: 1px solid var(--ink);
-    border-radius: var(--radius);
-    background: var(--paper);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: min(100%, 30rem);
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid var(--ink);
+    transition: border-color 150ms ease;
+  }
+
+  .copy:hover,
+  .copy:has(.copy__button:focus-visible) {
+    border-bottom-color: var(--accent);
   }
 
   .copy__line {
-    display: flex;
-    align-items: center;
-    gap: 0.75ch;
     min-width: 0;
-    padding: 0.8rem 1rem;
-    font-size: 0.9375rem;
+    font-size: 1.0625rem;
     color: var(--ink);
-    overflow-x: auto;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .copy__prompt {
-    color: var(--accent);
+    margin-right: 0.9ch;
+    color: var(--muted);
   }
 
   .copy__button {
     flex: none;
-    min-width: 5.5rem;
-    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0;
     border: 0;
-    border-left: 1px solid var(--ink);
-    border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0;
-    background: var(--ink);
-    color: var(--paper);
+    background: none;
+    color: var(--muted);
     font-family: var(--font-body);
     font-size: 0.9375rem;
-    font-weight: 500;
     cursor: pointer;
-    transition: background 150ms ease;
+    transition: color 150ms ease;
   }
 
-  .copy__button:hover {
-    background: var(--accent);
+  /* Stretch the hit area over the whole row. */
+  .copy__button::after {
+    content: "";
+    position: absolute;
+    inset: -0.5rem 0 0;
   }
 
+  .copy__button:focus-visible {
+    outline: none;
+  }
+
+  .copy__button:focus-visible::after {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  .copy:hover .copy__button {
+    color: var(--accent);
+  }
+
+  .copy__icon {
+    flex: none;
+  }
+
+  .copy__icon--check,
   .copy__done,
+  .copy__button[data-copied] .copy__icon--copy,
   .copy__button[data-copied] .copy__idle {
     display: none;
+  }
+
+  .copy__button[data-copied] {
+    color: var(--accent);
+  }
+
+  .copy__button[data-copied] .copy__icon--check {
+    display: block;
   }
 
   .copy__button[data-copied] .copy__done {
     display: inline;
   }
 
-  /* On narrow screens let the command wrap instead of hiding its tail. */
-  @media (max-width: 40rem) {
-    .copy__line {
-      align-items: flex-start;
-      padding: 0.75rem;
-      font-size: 0.8125rem;
-      white-space: normal;
-      overflow-wrap: anywhere;
-    }
-
-    .copy__button {
-      min-width: 4.5rem;
-      padding: 0 0.75rem;
-    }
+  /* Large: the command is the headline of its section. */
+  .copy--large {
+    width: min(100%, 52rem);
+    padding-bottom: 1.1rem;
   }
 
   .copy--large .copy__line {
-    padding: 1.1rem 1.4rem;
-    font-size: clamp(1rem, 2.6vw, 1.75rem);
+    font-size: clamp(1.25rem, 4.6vw, 2.75rem);
+    letter-spacing: -0.03em;
   }
 
   .copy--large .copy__button {
-    min-width: 7rem;
     font-size: 1.0625rem;
   }
 
   @media (max-width: 40rem) {
-    .copy--large .copy__line {
-      padding: 0.9rem 0.75rem;
-      font-size: 1rem;
+    .copy {
+      gap: 1rem;
     }
 
-    .copy--large .copy__button {
-      min-width: 4.5rem;
+    .copy__line {
+      font-size: 0.9375rem;
+    }
+
+    .copy--large .copy__line {
+      font-size: clamp(0.9375rem, 4.2vw, 1.5rem);
     }
   }
 </style>

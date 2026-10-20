@@ -16,6 +16,8 @@ import {
   isArchitectureSource,
   isTestPath,
   loadAliasMappings,
+  manifestEntryPoints,
+  readPackageManifests,
   type DependencyGraphDiagnostics,
 } from "../graph/index.js";
 import {
@@ -195,7 +197,10 @@ export async function createProjectMap(
       frameworks
     );
     const framework = project.framework;
-    const entryPoints = detectEntryPoints(graph);
+    const entryPoints = detectEntryPoints(
+      graph,
+      manifestEntryPoints(readPackageManifests(files), new Set(files.map((file) => file.path)))
+    );
     const routes = detectRoutes(files, project.frameworks, graph);
     const database = detectDatabase(files);
     activeSpinner.succeed("Dependencies mapped");

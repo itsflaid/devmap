@@ -3,7 +3,8 @@ import {
   Project,
   ScriptTarget,
   SyntaxKind,
-  VariableDeclarationKind
+  VariableDeclarationKind,
+  type SourceFile
 } from "ts-morph";
 import type {
   AnalyzerContext,
@@ -119,7 +120,13 @@ export class TsMorphAnalyzer implements FileAnalyzer {
     }
 
     // --- Exports ---
-    const exports = [...sourceFile.getExportedDeclarations().keys()].sort();
+    // `module.exports = { a, b }` and `exports.c = ...` are what most Node
+    // packages and older JS codebases export; the ESM view above sees none of it.
+    const commonJs = readCommonJsExports(sourceFile);
+    const exports = [...new Set([
+      ...sourceFile.getExportedDeclarations().keys(),
+      ...commonJs.map((entry) => entry.name)
+    ])].sort();
 
     // --- Symbols ---
     const symbols: SymbolInfo[] = [];
@@ -199,6 +206,22 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       }
     }
 
+    for (const entry of commonJs) {
+      const existing = symbols.find((symbol) => symbol.name === (entry.alias ?? entry.name));
+      if (existing) {
+        existing.exported = true;
+      } else if (entry.name !== "default") {
+        symbols.push({
+          name: entry.name,
+          kind: entry.kind,
+          line: entry.line,
+          exported: true,
+          async: entry.async
+        });
+      }
+    }
+    symbols.sort((left, right) => left.line - right.line || left.name.localeCompare(right.name));
+
     // --- Top functions ---
     const topFunctions = symbols
       .filter((symbol): symbol is SymbolInfo & { kind: FunctionInfo["kind"] } =>
@@ -238,6 +261,88 @@ function declaredNames(nameNode: Node): string[] {
     .map((element) => element.getNameNode())
     .filter((node) => Node.isIdentifier(node))
     .map((node) => node.getText());
+}
+
+interface CommonJsExport {
+  name: string;
+  /** `module.exports = router`: the local binding the default export points at. */
+  alias?: string;
+  kind: "function" | "const";
+  line: number;
+  async: boolean;
+}
+
+/**
+ * Top-level `module.exports = ...`, `module.exports.x = ...` and `exports.x = ...`.
+ * An object literal contributes its keys; anything else is the default export.
+ */
+function readCommonJsExports(sourceFile: SourceFile): CommonJsExport[] {
+  const found: CommonJsExport[] = [];
+  const seen = new Set<string>();
+
+  const add = (name: string, node: Node, value?: Node) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const callable = value && (
+      Node.isFunctionExpression(value) || Node.isArrowFunction(value) || Node.isMethodDeclaration(value)
+    );
+    found.push({
+      name,
+      ...(name === "default" && value && Node.isIdentifier(value) ? { alias: value.getText() } : {}),
+      kind: callable || (value && Node.isClassExpression(value)) ? "function" : "const",
+      line: node.getStartLineNumber(),
+      async: Boolean(callable && (value as { isAsync(): boolean }).isAsync())
+    });
+  };
+
+  for (const statement of sourceFile.getStatements()) {
+    if (!Node.isExpressionStatement(statement)) continue;
+    const expression = statement.getExpression();
+    if (!Node.isBinaryExpression(expression)) continue;
+    if (expression.getOperatorToken().getKind() !== SyntaxKind.EqualsToken) continue;
+
+    const target = commonJsTarget(expression.getLeft());
+    if (!target) continue;
+    const value = expression.getRight();
+
+    if (target.kind === "named") {
+      add(target.name, statement, value);
+      continue;
+    }
+
+    if (Node.isObjectLiteralExpression(value)) {
+      for (const property of value.getProperties()) {
+        if (Node.isPropertyAssignment(property)) {
+          add(property.getName().replace(/^['"]|['"]$/g, ""), property, property.getInitializer());
+        } else if (Node.isShorthandPropertyAssignment(property)) {
+          add(property.getName(), property);
+        } else if (Node.isMethodDeclaration(property)) {
+          add(property.getName(), property, property);
+        }
+      }
+    } else {
+      add("default", statement, value);
+    }
+  }
+
+  return found;
+}
+
+function commonJsTarget(left: Node): { kind: "all" } | { kind: "named"; name: string } | null {
+  const isExportsObject = (node: Node) => ["module.exports", "exports"].includes(node.getText());
+
+  if (Node.isPropertyAccessExpression(left)) {
+    if (left.getText() === "module.exports") return { kind: "all" };
+    if (isExportsObject(left.getExpression())) return { kind: "named", name: left.getName() };
+    return null;
+  }
+
+  if (Node.isElementAccessExpression(left) && isExportsObject(left.getExpression())) {
+    const argument = left.getArgumentExpression();
+    if (argument && Node.isStringLiteral(argument)) return { kind: "named", name: argument.getLiteralValue() };
+  }
+
+  return null;
 }
 
 function replaceExtension(filePath: string, newExt: string): string {

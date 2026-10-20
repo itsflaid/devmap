@@ -188,6 +188,9 @@ function printSnapshot(
   if (snapshot.database) {
     output.section("Database");
     output.item(snapshot.database.provider);
+    for (const other of snapshot.database.additional ?? []) {
+      output.item(other);
+    }
   }
 
 }

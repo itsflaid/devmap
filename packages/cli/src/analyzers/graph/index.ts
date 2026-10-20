@@ -22,6 +22,19 @@ export {
 } from "./entryPoints.js";
 
 export {
+  indexPackages,
+  manifestEntryPoints,
+  readPackageManifests,
+  resolveSubpathImport,
+  resolveWorkspaceSpecifier,
+} from "./packageManifests.js";
+export type {
+  ManifestEntry,
+  PackageIndex,
+  PackageManifest,
+} from "./packageManifests.js";
+
+export {
   isArchitectureSource,
   isTestPath,
 } from "./sourceScope.js";

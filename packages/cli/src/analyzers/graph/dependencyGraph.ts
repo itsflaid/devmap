@@ -1,6 +1,14 @@
 import type { FileAnalysis, ScannedFile } from "../analysis/index.js";
 import type { AliasMapping } from "./aliasResolver.js";
 import { isDeclaredAlias, resolveAliasCandidates } from "./aliasResolver.js";
+import { matchLocalPath, normalizePath } from "./localPaths.js";
+import { addNuxtAutoImportEdges } from "./nuxtAutoImports.js";
+import {
+  indexPackages,
+  readPackageManifests,
+  resolveSubpathImport,
+  resolveWorkspaceSpecifier
+} from "./packageManifests.js";
 
 export type FileGraph = Record<string, string[]>;
 
@@ -19,6 +27,7 @@ export function buildDependencyGraph(
 ): { graph: FileGraph; diagnostics: DependencyGraphDiagnostics } {
   const graph: FileGraph = {};
   const localPaths = new Set(files.map((file) => file.path));
+  const packages = indexPackages(readPackageManifests(files));
   const diagnostics: DependencyGraphDiagnostics = {
     unresolvedAliases: [],
     parserFallbacks: [],
@@ -30,7 +39,11 @@ export function buildDependencyGraph(
     const edges = new Set<string>();
 
     const importSpecifiers = analyses[file.path]?.imports ?? findImportSpecifiers(file.content);
-    for (const specifier of importSpecifiers) {
+    for (const rawSpecifier of importSpecifiers) {
+      // Bundler suffixes (`./icon.svg?react`, `./worker.ts?worker`) are not
+      // part of the file name.
+      const specifier = stripQuery(rawSpecifier);
+
       if (specifier.startsWith(".")) {
         const resolved = resolveImport(file.path, specifier, localPaths);
         if (resolved && resolved !== file.path) {
@@ -39,13 +52,33 @@ export function buildDependencyGraph(
         continue;
       }
 
-      // Try alias resolution for non-relative imports
-      const candidates = resolveAliasCandidates(specifier, aliasMappings, file.path);
-      if (candidates.length > 0) {
-        const resolved = firstResolved(candidates, localPaths);
+      // package.json "imports": `#internal/db` is local by definition. Other
+      // `#` specifiers (Nuxt's `#shared/...`) are aliases and fall through.
+      if (specifier.startsWith("#")) {
+        const resolved = resolveSubpathImport(specifier, file.path, packages, localPaths);
         if (resolved) {
           if (resolved !== file.path) edges.add(resolved);
-        } else if (isDeclaredAlias(specifier, aliasMappings, file.path)) {
+          continue;
+        }
+      }
+
+      // Try alias resolution for non-relative imports
+      const candidates = resolveAliasCandidates(specifier, aliasMappings, file.path);
+      const aliasResolved = candidates.length > 0 ? firstResolved(candidates, localPaths) : null;
+      if (aliasResolved) {
+        if (aliasResolved !== file.path) edges.add(aliasResolved);
+        continue;
+      }
+
+      // A package that lives in this repo (workspace member): import by name.
+      const workspaceResolved = resolveWorkspaceSpecifier(specifier, packages, localPaths);
+      if (workspaceResolved) {
+        if (workspaceResolved !== file.path) edges.add(workspaceResolved);
+        continue;
+      }
+
+      if (candidates.length > 0) {
+        if (isDeclaredAlias(specifier, aliasMappings, file.path)) {
           diagnostics.unresolvedAliases.push({ file: file.path, specifier });
         }
       } else if (file.path.endsWith(".py")) {
@@ -62,6 +95,9 @@ export function buildDependencyGraph(
     }
   }
 
+  // Frameworks that connect files without import statements.
+  addNuxtAutoImportEdges(graph, files, analyses);
+
   return { graph, diagnostics };
 }
 
@@ -75,6 +111,11 @@ export function countReferences(graph: FileGraph): Record<string, number> {
   }
 
   return counts;
+}
+
+function stripQuery(specifier: string): string {
+  const query = specifier.indexOf("?");
+  return query === -1 ? specifier : specifier.slice(0, query);
 }
 
 function findImportSpecifiers(content: string): string[] {
@@ -119,60 +160,4 @@ function firstResolved(rootRelativePaths: string[], localPaths: Set<string>): st
     if (resolved) return resolved;
   }
   return null;
-}
-
-const SOURCE_EXTENSIONS = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro",
-  ".py", ".rb", ".php"
-];
-const INDEX_EXTENSIONS = [
-  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts", ".vue", ".svelte", ".astro",
-  ".py", ".rb", ".php"
-];
-
-// TypeScript ESM writes the emitted extension in the specifier.
-const EMITTED_EXTENSION_SOURCES: Array<[string, string[]]> = [
-  [".js", [".ts", ".tsx"]],
-  [".jsx", [".tsx"]],
-  [".mjs", [".mts"]],
-  [".cjs", [".cts"]]
-];
-
-function matchLocalPath(normalized: string, localPaths: Set<string>): string | null {
-  const candidates = [
-    normalized,
-    ...SOURCE_EXTENSIONS.map((extension) => `${normalized}${extension}`),
-    ...INDEX_EXTENSIONS.map((extension) => `${normalized}/index${extension}`),
-    `${normalized}/__init__.py`
-  ];
-
-  for (const [emitted, sources] of EMITTED_EXTENSION_SOURCES) {
-    if (normalized.endsWith(emitted)) {
-      const withoutExtension = normalized.slice(0, -emitted.length);
-      candidates.push(...sources.map((source) => `${withoutExtension}${source}`));
-    }
-  }
-
-  return candidates.find((candidate) => localPaths.has(candidate)) ?? null;
-}
-
-/** Collapse `.` and `..`; null when the path climbs above the project root. */
-function normalizePath(path: string): string | null {
-  const parts: string[] = [];
-
-  for (const part of path.split("/")) {
-    if (part === "." || part === "") {
-      continue;
-    }
-
-    if (part === "..") {
-      if (parts.length === 0) return null;
-      parts.pop();
-      continue;
-    }
-
-    parts.push(part);
-  }
-
-  return parts.join("/");
 }

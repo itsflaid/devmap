@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { ts } from "ts-morph";
+import { pickNuxtSrcDir } from "./nuxtAutoImports.js";
 
 export interface AliasMapping {
   /** Specifier prefix (`@/`), or the whole specifier when `exact` is set. */
@@ -134,6 +135,23 @@ function scopeDepth(scope: string): number {
 async function findConfigDirectories(root: string): Promise<string[]> {
   const directories = [root];
 
+  // A frontend/ or client/ next to the root config is as common as apps/*.
+  try {
+    const children = await readdir(root, { withFileTypes: true });
+    for (const entry of children.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (
+        entry.isDirectory()
+        && !entry.name.startsWith(".")
+        && entry.name !== "node_modules"
+        && !WORKSPACE_PARENTS.includes(entry.name)
+      ) {
+        directories.push(join(root, entry.name));
+      }
+    }
+  } catch {
+    // unreadable root: nothing to scan
+  }
+
   for (const parent of WORKSPACE_PARENTS) {
     try {
       const entries = await readdir(join(root, parent), { withFileTypes: true });
@@ -170,6 +188,53 @@ async function loadDirectoryMappings(root: string, directory: string): Promise<A
       queue.push(reference.endsWith(".json") ? reference : join(reference, "tsconfig.json"));
     }
   }
+
+  mappings.push(...(await loadNuxtMappings(root, directory, scope)));
+
+  return mappings;
+}
+
+const NUXT_CONFIGS = ["nuxt.config.ts", "nuxt.config.js", "nuxt.config.mjs", "nuxt.config.mts", "nuxt.config.cjs"];
+
+/**
+ * Nuxt generates its tsconfig (and so its aliases) into .nuxt/, which is
+ * gitignored and absent from a fresh checkout. Rebuild the documented ones:
+ * `~`/`@` = srcDir, `~~`/`@@` = project root.
+ */
+async function loadNuxtMappings(root: string, directory: string, scope: string): Promise<AliasMapping[]> {
+  const configName = NUXT_CONFIGS.find((name) => existsSync(join(directory, name)));
+  if (!configName) return [];
+
+  let configText = "";
+  try {
+    configText = await readFile(join(directory, configName), "utf8");
+  } catch {
+    // an unreadable config still leaves the default layout
+  }
+
+  const srcDir = pickNuxtSrcDir(configText, (relative) => {
+    const target = join(directory, relative);
+    return existsSync(target);
+  });
+
+  const toTarget = (sub: string) => {
+    const rootRelative = toRootRelative(join(directory, sub), root);
+    if (rootRelative === null) return null;
+    return rootRelative === "" ? "" : `${rootRelative}/`;
+  };
+
+  const mappings: AliasMapping[] = [];
+  const add = (prefix: string, sub: string) => {
+    const target = toTarget(sub);
+    if (target !== null) mappings.push({ prefix, target, scope, optional: true });
+  };
+
+  add("~/", srcDir);
+  add("@/", srcDir);
+  add("~~/", "");
+  add("@@/", "");
+  add("#shared/", "shared");
+  add("#server/", "server");
 
   return mappings;
 }

@@ -4,7 +4,39 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- JS/TS monorepos: imports of workspace packages by name (`@acme/ui`,
+  `@acme/ui/button`) now become dependency edges, resolved through the
+  package's `exports` (conditions and `*` patterns), `source`/`module`/`main`
+  and file layout; built output (`dist/`, `lib/`) is mapped back to `src/`
+- package.json `imports` (`#internal/*`) subpath imports resolve inside the
+  nearest package; bundler query suffixes (`./x.ts?raw`) are ignored
+- Nuxt: `~`, `@`, `~~`, `@@`, `#shared`, `#server` aliases (Nuxt 3 root layout,
+  Nuxt 4 `app/`, custom `srcDir`) and auto-import edges for components,
+  composables, utils, `shared/`, `server/utils/` and Pinia stores
+- Entry points are read from package.json (`bin`, published `main`, script
+  targets) and framework conventions (Nuxt `app.vue`/`pages`/`server/api`,
+  SvelteKit `+page`/`+server`, Remix `root`/`entry.*`, Next Pages Router)
+- CommonJS exports (`module.exports = { ... }`, `exports.x = ...`) are read as
+  exports and symbols
+- Database detection recognizes TypeORM, Sequelize, MikroORM, Kysely, Knex,
+  Firebase, Convex, PocketBase, MongoDB, Neon/Vercel Postgres, libSQL and
+  Redis, and reports secondary stores as `database.additional`
+
+### Fixed
+
+- A `models/` or `schemas/` folder no longer makes a project "Mongoose";
+  those folders only count once `mongoose` is installed
+- tsconfig/jsconfig files in root-level folders such as `frontend/` are found,
+  not only the ones under `apps/` and `packages/`
+- On real projects this cuts "isolated" source files from 43% to 14%
+  (create-t3-turbo) and from 87% to 8% (Nuxt app), so critical files and
+  change impact are no longer computed from a near-empty graph
+
 ### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
 
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta

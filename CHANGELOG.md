@@ -4,6 +4,16 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Framework support beyond today's list: Remix/React Router, TanStack,
+  Hono, Expo; aliases declared only in Vite/webpack config
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.6.0] - 2026-10-20
+
 ### Added
 
 - JS/TS monorepos: imports of workspace packages by name (`@acme/ui`,
@@ -33,13 +43,6 @@ All notable changes to DevMap are documented in this file.
 - On real projects this cuts "isolated" source files from 43% to 14%
   (create-t3-turbo) and from 87% to 8% (Nuxt app), so critical files and
   change impact are no longer computed from a near-empty graph
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.5.0] - 2026-10-17
 
@@ -223,7 +226,11 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/itsflaid/devmap/releases/tag/v0.6.0
+[0.5.0]: https://github.com/itsflaid/devmap/releases/tag/v0.5.0
+[0.4.1]: https://github.com/itsflaid/devmap/releases/tag/v0.4.1
+[0.4.0]: https://github.com/itsflaid/devmap/releases/tag/v0.4.0
 [0.3.0]: https://github.com/itsflaid/devmap/releases/tag/v0.3.0
 [0.2.0]: https://github.com/itsflaid/devmap/releases/tag/v0.2.0
 [0.1.0]: https://github.com/itsflaid/devmap/releases/tag/v0.1.0

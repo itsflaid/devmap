@@ -20,6 +20,14 @@ const FRAMEWORK_LOADED_PATTERNS = [
   /(^|\/)hooks\.(?:server|client)\.[jt]s$/,
   /(^|\/)app\/root\.[jt]sx?$/,
   /(^|\/)entry\.(?:client|server)\.[jt]sx?$/,
+  // React Router v7 route config and Remix / React Router route modules.
+  /(^|\/)app\/routes\.[cm]?[jt]s$/,
+  /(^|\/)app\/routes\/.+\.[jt]sx?$/,
+  // TanStack Router root route, and the router TanStack Start builds on boot.
+  /(^|\/)routes\/__root\.[jt]sx?$/,
+  /(^|\/)src\/(?:router|start)\.[jt]sx?$/,
+  // Expo Router layouts wrap every screen below them.
+  /(^|\/)_layout\.[jt]sx?$/,
   /(^|\/)pages\/.+\.(?:vue|astro)$/,
   /(^|\/)pages\/(?:_app|_document)\.[jt]sx?$/,
   /(^|\/)server\/(?:api|routes|middleware)\/.+\.[cm]?[jt]s$/
@@ -28,6 +36,11 @@ const FRAMEWORK_LOADED_PATTERNS = [
 const ENTRY_PATTERN_SCORES: Array<{ pattern: RegExp; score: number }> = [
   { pattern: /(^|\/)layout\.[jt]sx?$/, score: 0 },
   { pattern: /(^|\/)app\/root\.[jt]sx?$/, score: 0 },
+  { pattern: /(^|\/)app\/routes\.[cm]?[jt]s$/, score: 0 },
+  { pattern: /(^|\/)routes\/__root\.[jt]sx?$/, score: 0 },
+  { pattern: /(^|\/)_layout\.[jt]sx?$/, score: 0 },
+  { pattern: /(^|\/)src\/(?:router|start)\.[jt]sx?$/, score: 1 },
+  { pattern: /(^|\/)app\/routes\/.+\.[jt]sx?$/, score: 2 },
   { pattern: /(^|\/)\+layout\.svelte$/, score: 0 },
   { pattern: /(^|\/)app\.vue$/, score: 0 },
   { pattern: /(^|\/)pages\/(?:_app|_document)\.[jt]sx?$/, score: 0 },
@@ -69,9 +82,12 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
   // Only production code counts as a consumer: a barrel that nothing but its
   // own tests imports (or a root index.ts that tests import) is still an
   // entry, while a barrel re-exported through the app is just plumbing.
+  //
+  // Generated files (`routeTree.gen.ts`, `*.generated.ts`) import every file
+  // they index, so they would make every route look like shared plumbing.
   const imported = new Set(
     Object.entries(graph)
-      .filter(([path]) => isArchitectureSource(path))
+      .filter(([path]) => isArchitectureSource(path) && !isGeneratedFile(path))
       .flatMap(([, imports]) => imports)
   );
 
@@ -87,7 +103,7 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
 
   return Object.keys(graph)
     .filter((path) => isSourceFile(path))
-    .filter((path) => isArchitectureSource(path))
+    .filter((path) => isArchitectureSource(path) && !isGeneratedFile(path))
     .filter((path) => {
       if (declared.has(path)) return true;
       const unimportedWithImports = !imported.has(path) && (graph[path]?.length ?? 0) > 0;
@@ -103,6 +119,10 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
     })
     .sort((a, b) => scoreOf(a) - scoreOf(b) || a.localeCompare(b))
     .slice(0, 20);
+}
+
+function isGeneratedFile(path: string): boolean {
+  return /\.(?:gen|generated)\.[cm]?[jt]sx?$/.test(path);
 }
 
 function isSourceFile(path: string): boolean {

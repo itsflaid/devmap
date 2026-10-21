@@ -121,12 +121,18 @@ const FRAMEWORK_DEPENDENCIES: Record<string, string[]> = {
   nuxt: ["nuxt"],
   sveltekit: ["@sveltejs/kit"],
   astro: ["astro"],
+  remix: ["@remix-run/react", "@remix-run/dev", "@remix-run/node", "@remix-run/cloudflare"],
+  "react-router": ["@react-router/dev"],
+  "tanstack-start": ["@tanstack/react-start", "@tanstack/solid-start", "@tanstack/start"],
+  "tanstack-router": ["@tanstack/react-router", "@tanstack/solid-router"],
+  expo: ["expo-router", "expo"],
   react: ["react-dom", "react-scripts"],
   vue: ["vue"],
   svelte: ["svelte"],
   nestjs: ["@nestjs/core"],
   fastify: ["fastify"],
   express: ["express"],
+  hono: ["hono"],
   koa: ["koa"]
 };
 

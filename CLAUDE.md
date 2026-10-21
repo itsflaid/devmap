@@ -28,7 +28,7 @@ devmap/
 │   │   ├── commands/      ← Command handlers (init, analyze, map, flow, explain, onboarding, config, doctor)
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 39 test files (`*.test.ts`, auto-discovered by `run-tests.ts`)
+│   ├── test/              ← 40 test files (`*.test.ts`, auto-discovered by `run-tests.ts`)
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -65,6 +65,7 @@ Everything else (files, graph, routes, features, flows, critical files) is 100% 
 |---|---|---|
 | CLI entry | `src/index.ts` | Commander program, command dispatch |
 | Pipeline orchestrator | `src/analyzers/pipeline/projectMap.ts` | `createProjectMap()` — core 15-step pipeline |
+| Route detectors | `src/analyzers/detectors/routeDetector.ts` (+ `remix`, `reactRouter`, `tanstack`, `expo`, `hono`, `nest`, `trpc` modules, shared `routeUtils.ts`) | `detectRoutes()` — per-framework route extraction; newer detectors find their own projects so monorepos get every frontend |
 | Analyzer registry | `src/analyzers/pipeline/analyzerRegistry.ts` | `AnalyzerRegistry.analyze` — first-supports-wins |
 | Feature detector | `src/analyzers/features/featureDetector.ts` | 4-source feature merge via similarity engine |
 | Feature similarity | `src/analyzers/features/featureSimilarity.ts` | Weighted Jaccard/trigram scoring (threshold 0.35) |
@@ -98,7 +99,7 @@ businessFlow, searchTerms, confidence(high|medium|low), evidence
 
 ## Languages Supported
 
-**Focus: the JS/TS ecosystem first.** Depth of analysis for TypeScript/JavaScript projects (Next, Nuxt, SvelteKit, Astro, Express, Fastify, Nest, tRPC, monorepos) comes before breadth. Other languages stay at the level below until JS/TS is mature.
+**Focus: the JS/TS ecosystem first.** Depth of analysis for TypeScript/JavaScript projects (Next, Nuxt, SvelteKit, Astro, Remix, React Router v7, TanStack Router/Start, Expo Router, Express, Fastify, Hono, Nest, tRPC, monorepos) comes before breadth. Other languages stay at the level below until JS/TS is mature.
 
 **Native (ts-morph, high confidence)**: .ts, .tsx, .js, .jsx — ESM and CommonJS (`module.exports`, `exports.x`) exports are both read
 
@@ -115,17 +116,18 @@ Dependency-graph edges exist for JS/TS-family files, Python modules and relative
 Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsconfig/jsconfig aliases and framework aliases (`aliasResolver.ts`) → workspace package by name (`packageManifests.ts`) → skipped as an npm package.
 
 - **Aliases**: JSONC tsconfig, `extends`, `references`, `baseUrl`; configs are discovered at the root, in `apps|packages|libs|services/*` and in any root-level folder (`frontend/`, `client/`) and apply only below their own directory. SvelteKit `$lib`; Nuxt `~`, `@`, `~~`, `@@`, `#shared`, `#server` are rebuilt because `.nuxt/tsconfig` is not checked in.
+- **Bundler-config aliases** (`bundlerAliases.ts`): `resolve.alias` (Vite/Vitest/webpack/Rollup, Astro under `vite`), `kit.alias` (svelte.config), `alias` (nuxt.config) and `config.resolve.alias[...] =` (next.config webpack hook) are read from the syntax tree, never executed. Object and `[{ find, replacement }]` forms; values are folded from `path.resolve/join(__dirname, ...)`, `fileURLToPath(new URL(..., import.meta.url))`, template strings, `+` and top-level constants. Unknown values (env vars, unknown helpers) are skipped. Mappings are `optional` and come after tsconfig's, so tsconfig wins.
 - **Workspace packages**: `@scope/pkg` and `@scope/pkg/sub` resolve through the member's `exports` (conditions, `*` patterns), then `source`/`module`/`main`/`types`, then the file layout. Build output (`dist/index.mjs`, `dist/types/index.d.ts`, `lib/index.js`) is mapped back to `src/`.
 - **Nuxt auto-imports** (`nuxtAutoImports.ts`): components (by Nuxt naming rules), `composables/`, `utils/`, `shared/`, `server/utils/` and Pinia `stores/` become edges for the files that use them. camelCase helpers must be *called* to link; `use*`/PascalCase names link on any reference.
-- **Entry points** (`entryPoints.ts`): package.json `bin` > published/root `main` (only if no source file imports it) > file conventions (Next `page|layout|route`, SvelteKit `+page|+server`, Nuxt `app.vue`/`pages/`/`server/api`, Remix `root`/`entry.*`) > scripts targets (`tsx src/x.ts`). Config files are never entries; private workspace package roots are not entries.
+- **Entry points** (`entryPoints.ts`): package.json `bin` > published/root `main` (only if no source file imports it) > file conventions (Next `page|layout|route`, SvelteKit `+page|+server`, Nuxt `app.vue`/`pages/`/`server/api`, Remix/React Router `root`/`entry.*`/`app/routes.ts`/`app/routes/**`, TanStack `routes/__root`/`src/router`, Expo `_layout`) > scripts targets (`tsx src/x.ts`). Config files are never entries; private workspace package roots are not entries; generated files (`*.gen.ts`, `*.generated.ts`) are neither entries nor importers.
 - Bundler query suffixes (`./x.ts?raw`) are stripped before resolution.
 
 ## Testing
 
-39 test files in `packages/cli/test/`. Key covered areas:
+40 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors
-- Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`)
-- Feature similarity/merge, frontend features, framework routes, detector fixes
+- Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
+- Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`), detector fixes
 - Heuristic language readers (`heuristic-languages`), scanner robustness, project scope/metadata
 - Commands (init, analyze, map, flow, explain, onboarding, config, doctor)
 - Utils (markdown terminal, JSON output, prompts, errors)
@@ -172,7 +174,8 @@ pnpm devmap <command>
 - Regex-based heuristic analyzer is explicitly TODO'd toward tree-sitter
 - No AST-level analysis for non-JS/TS languages; Go/Java/C#/PHP-namespace imports produce no graph edges yet
 - Nuxt auto-import detection is name-based (no type information) and ignores layers and custom `imports.dirs`
-- Vite/webpack aliases that exist only in bundler config (not tsconfig) are not read
+- Bundler-config aliases are folded statically: values that depend on env vars, plugins or custom helpers are skipped, and Jest `moduleNameMapper` / Parcel aliases are not read
+- Hono apps built by a factory function, TanStack code-based routing and React Router `createBrowserRouter` trees are not followed by the route detectors
 - Feature similarity threshold (0.35) is tuned but may cause false merges
 - Domain inference is single-shot — no conversation context
 

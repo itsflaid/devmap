@@ -223,8 +223,13 @@ Use your preferred AI tool to change it.
 - Astro
 - Nuxt
 - SvelteKit
+- Remix
+- React Router v7 (framework mode)
+- TanStack Router and TanStack Start
+- Expo Router
 - Express
 - Fastify
+- Hono
 - NestJS
 
 ### SPA client-side routing — routes read from the client router

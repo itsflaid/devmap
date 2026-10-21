@@ -63,8 +63,15 @@ back to backend, for callers that only want one label.
 
 **Phase 1 — `package.json` dependencies.** This runs first and is treated
 as the highest-confidence signal. Straightforward cases check for the
-obvious package (`next`, `nuxt`, `astro`, `fastify`, `@sveltejs/kit`,
-`@nestjs/core`/`@nestjs/common`). Three cases are more careful:
+obvious package (`next`, `nuxt`, `astro`, `fastify`, `hono`, `@sveltejs/kit`,
+`@nestjs/core`/`@nestjs/common`). The React-based meta-frameworks are keyed on
+the package that makes them a framework rather than a library: `@remix-run/*`
+(except `@remix-run/router`, which is React Router's own internals) for Remix,
+`@react-router/dev` for React Router v7 framework mode (plain `react-router-dom`
+is a client-side router and stays "React"), `@tanstack/react-start` for TanStack
+Start, `@tanstack/react-router` for TanStack Router and `expo-router` for Expo.
+They sit before plain `react` in the frontend priority list because they all
+ship React too. Three cases are more careful:
 
 - **React**: only added if `react` is a dependency *and* a real runtime
   marker is present (`react-dom`, `react-scripts`, or a Vite React plugin)
@@ -89,6 +96,10 @@ directly rather than just the regexes:
 | Vue | `App.vue` at root/`src/` | Specific enough alone |
 | SvelteKit | `src/routes/**/+page.svelte` | The `+` prefix is SvelteKit-only |
 | NestJS | `nest-cli.json` | As specific as the other config-file signals |
+| Remix | `remix.config.*` | Specific to Remix v1/v2 |
+| React Router v7 | `react-router.config.*` | Specific to framework mode |
+| TanStack Router | `routeTree.gen.ts`, `tsr.config.json` | Written by the router plugin |
+| Expo Router | `app.json` / `app.config.*` naming `expo-router` | The config plugin is how Expo Router is enabled |
 | Express | **only** as a narrow fallback — see below | `server.ts`/`app.ts` are common filenames in Next.js and vanilla Node too |
 
 Express is the interesting one. `server.ts`/`app.ts` are such common
@@ -108,7 +119,7 @@ that a Next.js project's own `app.ts` utility file won't trigger it.
 
 ## Route detection: one detector per framework, merged
 
-**Source:** `routeDetector.ts` (+ `nestRouteDetector.ts`)
+**Source:** `routeDetector.ts` (+ one module per newer framework: `nestRouteDetector.ts`, `remixRouteDetector.ts`, `reactRouterRouteDetector.ts`, `tanstackRouteDetector.ts`, `expoRouteDetector.ts`, `honoRouteDetector.ts`; shared helpers in `routeUtils.ts`)
 
 `detectRoutes()` runs **every** detector whose framework was actually
 detected and concatenates the results — same "don't force a single winner"
@@ -128,6 +139,45 @@ Each framework gets its own convention-driven extractor:
   customized `srcDir` in `nuxt.config` isn't accounted for).
 - **SvelteKit** — the route unit is a **folder** under `src/routes/`, not a
   filename; only `+page.svelte` and `+server.[jt]s` count as routes.
+- **Remix** (`remixRouteDetector.ts`) — v2 flat routes under `app/routes/`
+  (`notes.$noteId.tsx` → `/notes/:noteId`, `_auth.login.tsx` pathless layouts,
+  `posts_.$id.tsx` un-nesting, `($lang)` optional segments, `files.$.tsx`
+  splats, `sitemap[.]xml.tsx` escapes) plus folder routes (`blog/route.tsx`) and
+  `remix-flat-routes` `+` folders. A module with no default export is a resource
+  route and is listed as an API route with `GET` (loader) / `POST` (action). A
+  layout that has an index sibling at the same URL is listed once, as the index.
+- **React Router v7** (`reactRouterRouteDetector.ts`) — reads `app/routes.ts`
+  from the syntax tree, so `route()`, `index()`, `layout()`, `prefix()`,
+  nesting, spreads and arrays held in variables compose the way React Router
+  composes them; `flatRoutes()` hands off to the Remix file-name rules.
+- **TanStack Router / Start** (`tanstackRouteDetector.ts`) — each file under
+  `routes/` declares its own id (`createFileRoute('/posts/$postId')`), which is
+  what gets listed (the file name is only a fallback). Pathless `_layout`
+  segments, `(group)` folders and trailing `_` are applied, `.lazy` files are
+  merged with their route, the generated `routeTree.gen.ts` is ignored, and
+  Start's `server: { handlers: { GET, POST } }` (or
+  `createServerFileRoute().methods()`) makes an API route with those methods.
+  Code-based routing (`createRoute({ getParentRoute })`) is not read.
+- **Expo Router** (`expoRouteDetector.ts`) — `app/` or `src/app/` of every
+  project that depends on `expo-router` (or the `root` set in `app.json`).
+  `(group)` folders add no URL, `[id]` / `[...rest]` are kept as written,
+  `_layout`, `+html` and `+not-found` are not screens, `hello+api.ts` is an API
+  route with its exported methods, and `about.web.tsx` is the same screen as
+  `about.tsx`.
+- **Hono** (`honoRouteDetector.ts`) — read from the syntax tree by following
+  values the way the runtime builds them: one app per `new Hono()`, chains
+  (`app.get().post()`), `basePath()`, `app.route('/book', book)` (also when
+  `book` is imported from another file), `app.on(['PUT','DELETE'], ...)`,
+  constrained params (`:id{[0-9]+}` is shown as `:id`) and `@hono/zod-openapi`
+  `app.openapi(createRoute({ method, path }), ...)`. Only apps nobody mounts are
+  walked from the top, so each endpoint appears once under its full URL.
+  Apps built by a factory function are not followed.
+
+  Remix, React Router, TanStack, Expo and Hono find their own projects (a
+  `routes.ts` that imports `@react-router/dev/routes`, a `createFileRoute()` call,
+  a package that depends on `expo-router`, a `new Hono()` imported from `hono`)
+  and run whether or not their framework won the single-winner slot, so the
+  second frontend of a monorepo still gets its routes.
 - **NestJS** — the only detector implemented with a real AST (`ts-morph`),
   not regex. Controllers are decorator + class based
   (`@Controller('users')` scoping `@Get(':id')` on a method), which flat

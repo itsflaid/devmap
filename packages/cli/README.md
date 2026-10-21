@@ -150,8 +150,8 @@ terminal decoration, or streamed partial output.
 
 ## Supported Stacks
 
-- Frontend: Next.js, Astro, SvelteKit, Nuxt, React, Vue, Svelte
-- Backend: Express, NestJS, Fastify, Koa
+- Frontend: Next.js, Astro, SvelteKit, Nuxt, Remix, React Router v7, TanStack Router/Start, Expo Router, React, Vue, Svelte
+- Backend: Express, NestJS, Fastify, Hono, Koa
 
 Detection covers the full list above; Next.js and Express receive the deepest
 analysis. Multi-package workspaces are classified per project type, so a

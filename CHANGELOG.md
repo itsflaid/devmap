@@ -4,11 +4,41 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Framework detection and route mapping for Remix (v2 flat routes, folder
+  routes, `remix-flat-routes`), React Router v7 framework mode (`app/routes.ts`
+  with `route`, `index`, `layout`, `prefix` and `flatRoutes`), TanStack Router
+  and TanStack Start (file routes, Start server handlers as API routes), Expo
+  Router (`app/` and `src/app/`, groups, dynamic segments, `+api` routes) and
+  Hono (`new Hono()` chains, `basePath`, `route()` mounts across files, `on`,
+  `@hono/zod-openapi`)
+- These route detectors find their own projects, so a monorepo now lists the
+  routes of each frontend (Next + Expo + TanStack Start, say) instead of only
+  the framework that won the single frontend slot
+- Aliases declared only in bundler config are read without running it:
+  `resolve.alias` in Vite, Vitest, webpack, Rollup and Astro (under `vite`),
+  `kit.alias` in svelte.config, `alias` in nuxt.config and
+  `config.resolve.alias[...] =` in a next.config webpack hook; object and
+  `[{ find, replacement }]` forms, `path.resolve(__dirname, ...)`,
+  `fileURLToPath(new URL(...))`, template strings and constants
+- Entry points: React Router `app/routes.ts` and route modules, Remix route
+  modules, TanStack `__root`/`router`, Expo `_layout`
+
+### Changed
+
+- Generated files (`routeTree.gen.ts`, `*.generated.ts`) no longer count as
+  importers, so the files they index still show up as entry points, and they are
+  never entries themselves
+
+### Fixed
+
+- A Remix folder route (`app/routes/blog/route.tsx`) is no longer mistaken for a
+  Next.js App Router route handler
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Framework support beyond today's list: Remix/React Router, TanStack,
-  Hono, Expo; aliases declared only in Vite/webpack config
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 

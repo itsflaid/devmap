@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { ts } from "ts-morph";
+import { loadBundlerAliases } from "./bundlerAliases.js";
 import { pickNuxtSrcDir } from "./nuxtAutoImports.js";
 
 export interface AliasMapping {
@@ -190,6 +191,8 @@ async function loadDirectoryMappings(root: string, directory: string): Promise<A
   }
 
   mappings.push(...(await loadNuxtMappings(root, directory, scope)));
+  // After tsconfig, so an alias declared in both places keeps tsconfig's target first.
+  mappings.push(...(await loadBundlerAliases(root, directory, scope)));
 
   return mappings;
 }

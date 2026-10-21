@@ -34,8 +34,13 @@ incomplete.
 - Astro
 - Nuxt
 - SvelteKit
+- Remix
+- React Router v7 (framework mode)
+- TanStack Router and TanStack Start
+- Expo Router
 - Express
 - Fastify
+- Hono
 - Nest (NestJS)
 
 **SPA client-side routing** — framework detected, and routes declared in the

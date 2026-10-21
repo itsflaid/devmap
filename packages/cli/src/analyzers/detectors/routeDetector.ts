@@ -1,7 +1,19 @@
 import type { ScannedFile } from "../analysis/index.js";
 import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
+import { detectExpoRoutes } from "./expoRouteDetector.js";
+import { detectHonoRoutes } from "./honoRouteDetector.js";
 import { detectNestRoutes } from "./nestRouteDetector.js";
+import { detectReactRouterRoutes } from "./reactRouterRouteDetector.js";
+import { detectRemixRoutes } from "./remixRouteDetector.js";
+import { detectTanStackRoutes } from "./tanstackRouteDetector.js";
+import {
+  composeMountPath,
+  escapeRegExp,
+  findHttpMethods,
+  resolveRouterTarget,
+  sortRoutes
+} from "./routeUtils.js";
 import { usesTrpc, detectTrpcRoutes } from "./trpcRouteDetector.js";
 
 export type RouteInfo = {
@@ -50,6 +62,15 @@ export function detectRoutes(
     routes.push(...detectSvelteKitRoutes(files));
   }
 
+  // The detectors below find their own projects (a `routes.ts` that imports
+  // `@react-router/dev/routes`, a package that depends on `expo-router`, a
+  // `createFileRoute()` call), so they also work for the second frontend of a
+  // monorepo, where `frameworks` only names the winner of each category.
+  routes.push(...detectRemixRoutes(files, frameworks.includes("remix")));
+  routes.push(...detectReactRouterRoutes(files));
+  routes.push(...detectTanStackRoutes(files));
+  routes.push(...detectExpoRoutes(files));
+
   if (frameworks.includes("nestjs")) {
     routes.push(...detectNestRoutes(files));
   }
@@ -61,6 +82,8 @@ export function detectRoutes(
   if (frameworks.includes("fastify")) {
     routes.push(...detectFastifyRoutes(files, graph));
   }
+
+  routes.push(...detectHonoRoutes(files, graph));
 
   return sortRoutes(routes);
 }
@@ -490,95 +513,9 @@ function collectRouteMethods(
     .sort(([left], [right]) => left.localeCompare(right));
 }
 
-function resolveRouterTarget(
-  identifier: string,
-  mountFile: string,
-  eligibleFiles: ScannedFile[],
-  byPath: Map<string, ScannedFile>,
-  graph?: Record<string, string[]>,
-  hasRouteMethods?: (file: ScannedFile) => boolean
-): ScannedFile | undefined {
-  if (!graph) {
-    return undefined;
-  }
-
-  const candidates = (graph[mountFile] ?? [])
-    .map((path) => byPath.get(path))
-    .filter((file): file is ScannedFile => Boolean(file))
-    .filter((file) => /\.[cm]?[jt]s$/.test(file.path));
-  if (candidates.length === 0) {
-    return undefined;
-  }
-
-  const identifierPattern = new RegExp(`\\b${escapeRegExp(identifier)}\\b`);
-  const identifierMatches = candidates.filter((file) =>
-    identifierPattern.test(file.content)
-  );
-  const withRouteMethods = hasRouteMethods
-    ? candidates.filter(hasRouteMethods)
-    : [];
-
-  // Identifier match wins; fall back to "the only imported file that defines
-  // route methods" — covers the common one-router-per-import case without
-  // precise import parsing.
-  const pool = identifierMatches.length > 0 ? identifierMatches : withRouteMethods;
-  return pool.length === 1 ? pool[0] : undefined;
-}
-
-function composeMountPath(prefix: string, subPath: string): string {
-  if (subPath === "/" || subPath === "") {
-    return prefix;
-  }
-  return `${prefix.replace(/\/$/, "")}/${subPath.replace(/^\//, "")}`;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function toRoutePath(segments: string[]): string {
   const visible = segments.filter(
     (segment) => !segment.startsWith("(") && !segment.startsWith("@")
   );
   return `/${visible.join("/")}`.replace(/\/+/g, "/");
-}
-
-const HTTP_METHOD_NAMES = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
-
-function findHttpMethods(content: string): string[] {
-  const methods = new Set<string>();
-  const add = (name: string | undefined) => {
-    if (name && HTTP_METHOD_NAMES.has(name)) methods.add(name);
-  };
-
-  // export async function GET() {} / export const POST = ...
-  for (const match of content.matchAll(
-    /export\s+(?:async\s+)?(?:function|const)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/g
-  )) {
-    add(match[1]);
-  }
-
-  // export { handler as GET, handler as POST }, export { GET } from "./handlers"
-  for (const match of content.matchAll(/export\s*(?:type\s*)?\{([^}]*)\}/g)) {
-    for (const specifier of match[1].split(",")) {
-      const exported = specifier.trim().split(/\s+as\s+/).pop()?.trim();
-      add(exported);
-    }
-  }
-
-  // export const { GET, POST } = handlers;  (Auth.js and similar)
-  for (const match of content.matchAll(/export\s+const\s*\{([^}]*)\}\s*=/g)) {
-    for (const element of match[1].split(",")) {
-      const bound = element.trim().split(":").pop()?.trim().split("=")[0].trim();
-      add(bound);
-    }
-  }
-
-  return [...methods].sort();
-}
-
-function sortRoutes(routes: RouteInfo[]): RouteInfo[] {
-  return routes.sort((left, right) =>
-    left.path.localeCompare(right.path) || left.file.localeCompare(right.file)
-  );
 }

@@ -1,11 +1,15 @@
 import { parseJsonText, type ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
 
+// Order is priority: the first detected framework of a category wins. The
+// meta-frameworks come before plain `react` because they all ship React too.
 export const FRONTEND_FRAMEWORKS = [
-  "nextjs", "nuxt", "sveltekit", "astro", "react", "vue", "svelte"
+  "nextjs", "nuxt", "sveltekit", "astro",
+  "remix", "react-router", "tanstack-start", "tanstack-router", "expo",
+  "react", "vue", "svelte"
 ] as const;
 export const BACKEND_FRAMEWORKS = [
-  "nestjs", "fastify", "express", "koa"
+  "nestjs", "fastify", "express", "hono", "koa"
 ] as const;
 
 export type FrontendFramework = typeof FRONTEND_FRAMEWORKS[number];
@@ -46,6 +50,18 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
       detected.add("nestjs");
     }
     if ("@sveltejs/kit" in dependencies) detected.add("sveltekit");
+    if ("hono" in dependencies) detected.add("hono");
+
+    // Remix v2 lives under `@remix-run/*`; `@remix-run/router` is React Router's
+    // own internal package and says nothing about Remix.
+    if (REMIX_PACKAGES.some((name) => name in dependencies)) detected.add("remix");
+    // React Router v7 "framework mode" (the Remix successor) is the dev tooling;
+    // `react-router-dom` alone is just a client-side router inside a React app.
+    if ("@react-router/dev" in dependencies) detected.add("react-router");
+    if (Object.keys(dependencies).some(isTanStackStartPackage)) detected.add("tanstack-start");
+    if (TANSTACK_ROUTER_PACKAGES.some((name) => name in dependencies)) detected.add("tanstack-router");
+    // Expo Router is what makes `app/` a route tree; bare Expo is just React Native.
+    if ("expo-router" in dependencies) detected.add("expo");
 
     const hasReactRuntime = "react-dom" in dependencies
       || "react-scripts" in dependencies
@@ -88,7 +104,8 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   if (
     files.some((file) => /(^|\/)next\.config\.[cm]?[jt]s$/.test(file.path))
     || sourceFiles.some((file) =>
-      /(^|\/)(?:src\/)?app\/(?:.+\/)?(?:page|layout|route)\.[jt]sx?$/.test(file.path)
+      // `app/routes/blog/route.tsx` is a Remix route folder, not a Next route handler.
+      /(^|\/)(?:src\/)?app\/(?!routes\/)(?:.+\/)?(?:page|layout|route)\.[jt]sx?$/.test(file.path)
       || /(^|\/)(?:src\/)?pages\/(?:_app|_document)/.test(file.path)
     )
   ) {
@@ -151,10 +168,51 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     detected.add("nestjs");
   }
 
+  // Remix / React Router v7: their config files are specific to each tool.
+  if (files.some((file) => /(^|\/)remix\.config\.[cm]?js$/.test(file.path))) {
+    detected.add("remix");
+  }
+  if (files.some((file) => /(^|\/)react-router\.config\.[cm]?[jt]s$/.test(file.path))) {
+    detected.add("react-router");
+  }
+
+  // TanStack Router writes `routeTree.gen.ts` (or the name set in `tsr.config.json`).
+  if (files.some((file) => /(^|\/)(?:routeTree\.gen\.[jt]sx?|tsr\.config\.json)$/.test(file.path))) {
+    detected.add("tanstack-router");
+  }
+
+  // Expo Router: the config plugin is declared in app.json / app.config.*.
+  if (files.some((file) =>
+    /(^|\/)app(?:\.config\.[cm]?[jt]s|\.json)$/.test(file.path) && file.content.includes("expo-router")
+  )) {
+    detected.add("expo");
+  }
+
+  // Hono: like Express, the import is only trusted when no manifest can confirm it.
+  if (!hasReliableManifest && sourceFiles.some((file) => /from\s+["']hono["']/.test(file.content))) {
+    detected.add("hono");
+  }
+
   return [
     FRONTEND_FRAMEWORKS.find((framework) => detected.has(framework)),
     BACKEND_FRAMEWORKS.find((framework) => detected.has(framework)),
   ].filter((framework): framework is FrontendFramework | BackendFramework => Boolean(framework));
+}
+
+const REMIX_PACKAGES = [
+  "@remix-run/dev", "@remix-run/react", "@remix-run/serve",
+  "@remix-run/node", "@remix-run/cloudflare", "@remix-run/deno"
+];
+
+const TANSTACK_ROUTER_PACKAGES = [
+  "@tanstack/react-router", "@tanstack/solid-router",
+  "@tanstack/router-plugin", "@tanstack/router-vite-plugin", "@tanstack/router-cli"
+];
+
+// `@tanstack/react-start`, `@tanstack/solid-start`, and the pre-1.0 `@tanstack/start`
+// (plus its `start-*` helper packages).
+function isTanStackStartPackage(name: string): boolean {
+  return /^@tanstack\/(?:react-start|solid-start|start)(?:-|$)/.test(name);
 }
 
 function isParseableJson(content: string): boolean {

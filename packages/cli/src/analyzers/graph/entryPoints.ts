@@ -20,6 +20,14 @@ const FRAMEWORK_LOADED_PATTERNS = [
   /(^|\/)hooks\.(?:server|client)\.[jt]s$/,
   /(^|\/)app\/root\.[jt]sx?$/,
   /(^|\/)entry\.(?:client|server)\.[jt]sx?$/,
+  // SolidStart and Qwik City entry modules.
+  /(^|\/)entry[-.](?:client|server|ssr|dev|preview)\.[jt]sx?$/,
+  /(^|\/)src\/root\.[jt]sx?$/,
+  // Angular bootstraps from main.ts and configures the app in app.config / app.routes.
+  /(^|\/)app\.(?:config|routes|module)\.ts$/,
+  /(^|\/)main\.server\.ts$/,
+  // AdonisJS route table and HTTP kernel.
+  /(^|\/)start\/(?:routes|kernel)\.[cm]?[jt]s$/,
   // React Router v7 route config and Remix / React Router route modules.
   /(^|\/)app\/routes\.[cm]?[jt]s$/,
   /(^|\/)app\/routes\/.+\.[jt]sx?$/,
@@ -52,7 +60,11 @@ const ENTRY_PATTERN_SCORES: Array<{ pattern: RegExp; score: number }> = [
   { pattern: /(^|\/)server\/(?:api|routes|middleware)\/.+\.[cm]?[jt]s$/, score: 2 },
   { pattern: /(^|\/)middleware\.[jt]s$/, score: 3 },
   { pattern: /(^|\/)hooks\.(?:server|client)\.[jt]s$/, score: 3 },
-  { pattern: /(^|\/)entry\.(?:client|server)\.[jt]sx?$/, score: 3 },
+  { pattern: /(^|\/)entry[-.](?:client|server|ssr|dev|preview)\.[jt]sx?$/, score: 3 },
+  { pattern: /(^|\/)src\/root\.[jt]sx?$/, score: 1 },
+  { pattern: /(^|\/)app\.(?:config|routes|module)\.ts$/, score: 1 },
+  { pattern: /(^|\/)start\/(?:routes|kernel)\.[cm]?[jt]s$/, score: 1 },
+  { pattern: /(^|\/)main\.server\.ts$/, score: 3 },
   { pattern: /(^|\/)(app|server)\.[cm]?[jt]sx?$/, score: 4 },
   { pattern: /(^|\/)(index|main)\.[cm]?[jt]sx?$/, score: 5 },
 ];

@@ -126,6 +126,9 @@ const FRAMEWORK_DEPENDENCIES: Record<string, string[]> = {
   "tanstack-start": ["@tanstack/react-start", "@tanstack/solid-start", "@tanstack/start"],
   "tanstack-router": ["@tanstack/react-router", "@tanstack/solid-router"],
   expo: ["expo-router", "expo"],
+  "solid-start": ["@solidjs/start", "solid-start"],
+  qwik: ["@builder.io/qwik-city", "@builder.io/qwik", "@qwik.dev/router", "@qwik.dev/core"],
+  angular: ["@angular/core"],
   react: ["react-dom", "react-scripts"],
   vue: ["vue"],
   svelte: ["svelte"],
@@ -133,6 +136,8 @@ const FRAMEWORK_DEPENDENCIES: Record<string, string[]> = {
   fastify: ["fastify"],
   express: ["express"],
   hono: ["hono"],
+  elysia: ["elysia"],
+  adonisjs: ["@adonisjs/core", "@adonisjs/framework"],
   koa: ["koa"]
 };
 

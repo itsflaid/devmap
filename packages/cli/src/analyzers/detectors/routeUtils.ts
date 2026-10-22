@@ -1,5 +1,6 @@
 import { posix } from "node:path";
-import type { ScannedFile } from "../analysis/index.js";
+import { parseJsonText, type ScannedFile } from "../analysis/index.js";
+import { isArchitectureSource } from "../graph/sourceScope.js";
 import { matchLocalPath, normalizePath } from "../graph/localPaths.js";
 
 // Helpers shared by the per-framework route detectors.
@@ -169,3 +170,35 @@ export function resolveImportedFile(
   });
   return matches.length === 1 ? matches[0] : undefined;
 }
+
+/**
+ * Folders (`""` for the repo root, else `apps/web/`) of every package.json
+ * that depends on one of `dependencies`: the projects a file-based router
+ * applies to, so a monorepo gets the routes of each app.
+ */
+export function findProjectDirs(files: ScannedFile[], dependencies: readonly string[]): string[] {
+  const dirs: string[] = [];
+
+  for (const file of files) {
+    if (!/(^|\/)package\.json$/.test(file.path) || !isArchitectureSource(file.path)) continue;
+    if (!dependencies.some((name) => file.content.includes(`"${name}"`))) continue;
+
+    try {
+      const manifest = parseJsonText(file.content) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const declared = { ...manifest.dependencies, ...manifest.devDependencies };
+      if (dependencies.some((name) => name in declared)) {
+        const dir = posix.dirname(file.path);
+        dirs.push(dir === "." ? "" : `${dir}/`);
+      }
+    } catch {
+      // An unreadable manifest names no project.
+    }
+  }
+
+  return dirs;
+}
+
+export const HANDLER_EXTENSION = /\.(?:[cm]?[jt]sx?)$/;

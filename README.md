@@ -227,9 +227,15 @@ Use your preferred AI tool to change it.
 - React Router v7 (framework mode)
 - TanStack Router and TanStack Start
 - Expo Router
+- SolidStart
+- Qwik City
+- Angular
 - Express
 - Fastify
 - Hono
+- Elysia
+- Koa
+- AdonisJS
 - NestJS
 
 ### SPA client-side routing — routes read from the client router

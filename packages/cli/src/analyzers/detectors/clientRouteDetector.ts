@@ -1,7 +1,7 @@
 import { ts } from "ts-morph";
 import type { ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
-import { parseSource, propertyKeyName, stringValue, unwrapExpression, walk } from "./astUtils.js";
+import { importCallSpecifier, parseSource, propertyKeyName, stringValue, unwrapExpression, walk } from "./astUtils.js";
 import type { RouteInfo } from "./routeDetector.js";
 import { dropShadowedLayouts, joinRoutePaths, resolveImportedFile, sortRoutes } from "./routeUtils.js";
 
@@ -122,21 +122,6 @@ function lazySpecifier(expression: ts.Expression): string | undefined {
     : ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : "";
   if (!LAZY_WRAPPERS.has(callee) || !node.arguments[0]) return undefined;
   return importCallSpecifier(node.arguments[0]);
-}
-
-/** `() => import("./x")` or `import("./x")`. */
-function importCallSpecifier(expression: ts.Expression): string | undefined {
-  let found: string | undefined;
-  walk(expression, (node) => {
-    if (
-      found === undefined
-      && ts.isCallExpression(node)
-      && node.expression.kind === ts.SyntaxKind.ImportKeyword
-    ) {
-      found = stringValue(node.arguments[0]);
-    }
-  });
-  return found;
 }
 
 function locateComponent(

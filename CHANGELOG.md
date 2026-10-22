@@ -4,6 +4,14 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.7.0] - 2026-10-22
+
 ### Added
 
 - Framework detection and route mapping for Remix (v2 flat routes, folder
@@ -35,12 +43,6 @@ All notable changes to DevMap are documented in this file.
 
 - A Remix folder route (`app/routes/blog/route.tsx`) is no longer mistaken for a
   Next.js App Router route handler
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.6.0] - 2026-10-20
 
@@ -256,7 +258,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/itsflaid/devmap/releases/tag/v0.7.0
 [0.6.0]: https://github.com/itsflaid/devmap/releases/tag/v0.6.0
 [0.5.0]: https://github.com/itsflaid/devmap/releases/tag/v0.5.0
 [0.4.1]: https://github.com/itsflaid/devmap/releases/tag/v0.4.1

@@ -6,10 +6,11 @@ import { isArchitectureSource } from "../graph/index.js";
 export const FRONTEND_FRAMEWORKS = [
   "nextjs", "nuxt", "sveltekit", "astro",
   "remix", "react-router", "tanstack-start", "tanstack-router", "expo",
+  "solid-start", "qwik", "angular",
   "react", "vue", "svelte"
 ] as const;
 export const BACKEND_FRAMEWORKS = [
-  "nestjs", "fastify", "express", "hono", "koa"
+  "nestjs", "adonisjs", "fastify", "express", "hono", "elysia", "koa"
 ] as const;
 
 export type FrontendFramework = typeof FRONTEND_FRAMEWORKS[number];
@@ -51,6 +52,21 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     }
     if ("@sveltejs/kit" in dependencies) detected.add("sveltekit");
     if ("hono" in dependencies) detected.add("hono");
+    if ("elysia" in dependencies) detected.add("elysia");
+    if ("koa" in dependencies) detected.add("koa");
+    if (ADONIS_PACKAGES.some((name) => name in dependencies)) detected.add("adonisjs");
+
+    // SolidStart, Qwik City and Angular are full frameworks with their own router;
+    // plain `solid-js` / `@builder.io/qwik` are just component libraries.
+    if ("@solidjs/start" in dependencies || "solid-start" in dependencies) detected.add("solid-start");
+    if (QWIK_PACKAGES.some((name) => name in dependencies)) detected.add("qwik");
+    // `@angular/core` alone is also what an Angular library lists, so an app needs its platform or CLI.
+    if (
+      "@angular/core" in dependencies
+      && ("@angular/platform-browser" in dependencies || "@angular/cli" in dependencies || "@angular/build" in dependencies)
+    ) {
+      detected.add("angular");
+    }
 
     // Remix v2 lives under `@remix-run/*`; `@remix-run/router` is React Router's
     // own internal package and says nothing about Remix.
@@ -188,6 +204,14 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     detected.add("expo");
   }
 
+  // Angular's workspace file and AdonisJS's rc file are specific to each framework.
+  if (files.some((file) => /(^|\/)angular\.json$/.test(file.path))) {
+    detected.add("angular");
+  }
+  if (files.some((file) => /(^|\/)\.?adonisrc\.(?:json|[cm]?[jt]s)$/.test(file.path))) {
+    detected.add("adonisjs");
+  }
+
   // Hono: like Express, the import is only trusted when no manifest can confirm it.
   if (!hasReliableManifest && sourceFiles.some((file) => /from\s+["']hono["']/.test(file.content))) {
     detected.add("hono");
@@ -203,6 +227,11 @@ const REMIX_PACKAGES = [
   "@remix-run/dev", "@remix-run/react", "@remix-run/serve",
   "@remix-run/node", "@remix-run/cloudflare", "@remix-run/deno"
 ];
+
+const QWIK_PACKAGES = ["@builder.io/qwik-city", "@builder.io/qwik", "@qwik.dev/router", "@qwik.dev/core"];
+
+// v6 ships `@adonisjs/core`; v4 and v5 ship `@adonisjs/framework` / `@adonisjs/core` too.
+const ADONIS_PACKAGES = ["@adonisjs/core", "@adonisjs/framework"];
 
 const TANSTACK_ROUTER_PACKAGES = [
   "@tanstack/react-router", "@tanstack/solid-router",

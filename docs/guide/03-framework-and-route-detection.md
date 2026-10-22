@@ -70,6 +70,10 @@ the package that makes them a framework rather than a library: `@remix-run/*`
 `@react-router/dev` for React Router v7 framework mode (plain `react-router-dom`
 is a client-side router and stays "React"), `@tanstack/react-start` for TanStack
 Start, `@tanstack/react-router` for TanStack Router and `expo-router` for Expo.
+`@solidjs/start` marks SolidStart, `@builder.io/qwik-city` (or `@qwik.dev/router`) Qwik City,
+and `@angular/core` together with `@angular/platform-browser` or `@angular/cli`
+Angular (a library that only lists `@angular/core` is not an app). On the backend
+`elysia`, `koa` and `@adonisjs/core` are keyed the same way.
 They sit before plain `react` in the frontend priority list because they all
 ship React too. Three cases are more careful:
 
@@ -100,6 +104,8 @@ directly rather than just the regexes:
 | React Router v7 | `react-router.config.*` | Specific to framework mode |
 | TanStack Router | `routeTree.gen.ts`, `tsr.config.json` | Written by the router plugin |
 | Expo Router | `app.json` / `app.config.*` naming `expo-router` | The config plugin is how Expo Router is enabled |
+| Angular | `angular.json` | The workspace file only Angular writes |
+| AdonisJS | `adonisrc.ts` / `.adonisrc.json` | The rc file only AdonisJS writes |
 | Express | **only** as a narrow fallback — see below | `server.ts`/`app.ts` are common filenames in Next.js and vanilla Node too |
 
 Express is the interesting one. `server.ts`/`app.ts` are such common
@@ -119,7 +125,7 @@ that a Next.js project's own `app.ts` utility file won't trigger it.
 
 ## Route detection: one detector per framework, merged
 
-**Source:** `routeDetector.ts` (+ one module per newer framework: `nestRouteDetector.ts`, `remixRouteDetector.ts`, `reactRouterRouteDetector.ts`, `tanstackRouteDetector.ts`, `expoRouteDetector.ts`, `honoRouteDetector.ts`, `clientRouteDetector.ts`; shared helpers in `routeUtils.ts`)
+**Source:** `routeDetector.ts` (+ one module per newer framework: `nestRouteDetector.ts`, `remixRouteDetector.ts`, `reactRouterRouteDetector.ts`, `tanstackRouteDetector.ts`, `expoRouteDetector.ts`, `honoRouteDetector.ts`, `clientRouteDetector.ts`, `solidStartRouteDetector.ts`, `qwikRouteDetector.ts`, `angularRouteDetector.ts`, `elysiaRouteDetector.ts`, `koaRouteDetector.ts`, `adonisRouteDetector.ts`; shared helpers in `routeUtils.ts`, `astUtils.ts` and `moduleBindings.ts`)
 
 `detectRoutes()` runs **every** detector whose framework was actually
 detected and concatenates the results — same "don't force a single winner"
@@ -197,6 +203,38 @@ Each framework gets its own convention-driven extractor:
   a package that depends on `expo-router`, a `new Hono()` imported from `hono`)
   and run whether or not their framework won the single-winner slot, so the
   second frontend of a monorepo still gets its routes.
+- **SolidStart** (`solidStartRouteDetector.ts`) — `src/routes/` of every project
+  that depends on `@solidjs/start`. `(group)` folders and `(group)name` parts add
+  no URL, `[id]` / `[...rest]` / `[[optional]]` are kept as written, `users.tsx`
+  beside `users/` is a layout that gives way to `users/index.tsx`, and a module
+  exporting `GET` / `POST` / ... is also an API route with those methods.
+- **Qwik City** (`qwikRouteDetector.ts`) — a folder under `src/routes/` is a URL
+  when it holds an `index` file: `index.tsx` / `.mdx` are pages (`index@admin.tsx`
+  is the same URL in another layout), `index.ts` exporting `onGet` / `onPost` /
+  `onRequest` is an endpoint, and `layout.tsx`, `plugin@*.ts` are not routes.
+- **Angular** (`angularRouteDetector.ts`) — `Routes` arrays, whether passed to
+  `provideRouter`, `RouterModule.forRoot` or only exported. `children` and
+  `loadChildren` compose their path onto the parent's, and `loadChildren` is
+  followed into the routes file (`.then(m => m.ADMIN_ROUTES)`) or the routing
+  module of an NgModule (`RouterModule.forChild`). `loadComponent` and component
+  imports locate the listed file, redirects are not pages, and `**` is listed.
+  Paths held in constants, `as const` objects and enums are resolved across files.
+- **Elysia** (`elysiaRouteDetector.ts`) — one instance per `new Elysia()`:
+  `prefix`, `group()`, `guard()`, `.use(plugin)` (an instance imported from another
+  file, or a `(app) => app.get(...)` function plugin), `all`, `route()` and `ws()`.
+  A mounted plugin is walked from its mount, so each endpoint appears once under
+  its full URL.
+- **Koa** (`koaRouteDetector.ts`) — `@koa/router` / `koa-router` instances (also
+  `require("koa-router")()`): `prefix` (option or `.prefix()`), array and named
+  paths, `del`, `router.use('/p', child.routes())`, `koa-mount`, and `koa-route`
+  helpers. A router that only the application mounts (`app.use(router.routes())`)
+  is a root.
+- **AdonisJS** (`adonisRouteDetector.ts`) — `router.get/post/...`, `route()`,
+  `on().render()`, `group(...).prefix()` (nested), and `resource()` expanded to its
+  REST actions minus `apiOnly()`, `only()` and `except()`. v6, v5 and v4 route files
+  are read. The listed file is the controller (`[Controller, 'method']`,
+  `'#controllers/x.method'` or a v5 `'XController.method'` string); a route is a
+  page when its action renders a view or Inertia response and an API route otherwise.
 - **NestJS** — the only detector implemented with a real AST (`ts-morph`),
   not regex. Controllers are decorator + class based
   (`@Controller('users')` scoping `@Get(':id')` on a method), which flat

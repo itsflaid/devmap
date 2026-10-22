@@ -6,6 +6,13 @@ All notable changes to DevMap are documented in this file.
 
 ### Added
 
+- Framework detection and route mapping for Angular (`Routes` arrays, `loadComponent`,
+  `children`, lazy `loadChildren` into routes files and NgModules), SolidStart,
+  Qwik City, Elysia (`prefix`, `group`, `guard`, `.use` plugins across files), Koa
+  (`@koa/router` / `koa-router` / `koa-route`, nested routers, `koa-mount`) and
+  AdonisJS (v4–v6 route files, groups, `resource()`)
+- Route paths and prefixes held in constants, `as const` objects, enums and template
+  strings are resolved across files by the new Angular, Elysia, Koa and Adonis detectors
 - Client-side router detection: React Router `<Routes>`/`<Route>` JSX and
   `createBrowserRouter` object trees, Vue Router route arrays, TanStack Router
   code-based routes (`getParentRoute`) and `svelte-spa-router` maps, including

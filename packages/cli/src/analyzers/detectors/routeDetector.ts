@@ -1,12 +1,18 @@
 import type { ScannedFile } from "../analysis/index.js";
 import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
+import { detectAdonisRoutes } from "./adonisRouteDetector.js";
+import { detectAngularRoutes } from "./angularRouteDetector.js";
 import { detectClientRoutes } from "./clientRouteDetector.js";
+import { detectElysiaRoutes } from "./elysiaRouteDetector.js";
 import { detectExpoRoutes } from "./expoRouteDetector.js";
 import { detectHonoRoutes } from "./honoRouteDetector.js";
+import { detectKoaRoutes } from "./koaRouteDetector.js";
 import { detectNestRoutes } from "./nestRouteDetector.js";
+import { detectQwikRoutes } from "./qwikRouteDetector.js";
 import { detectReactRouterRoutes } from "./reactRouterRouteDetector.js";
 import { detectRemixRoutes } from "./remixRouteDetector.js";
+import { detectSolidStartRoutes } from "./solidStartRouteDetector.js";
 import { detectTanStackRoutes } from "./tanstackRouteDetector.js";
 import {
   composeMountPath,
@@ -71,6 +77,9 @@ export function detectRoutes(
   routes.push(...detectReactRouterRoutes(files));
   routes.push(...detectTanStackRoutes(files));
   routes.push(...detectExpoRoutes(files));
+  routes.push(...detectSolidStartRoutes(files));
+  routes.push(...detectQwikRoutes(files));
+  routes.push(...detectAngularRoutes(files, graph));
 
   if (frameworks.includes("nestjs")) {
     routes.push(...detectNestRoutes(files));
@@ -85,6 +94,9 @@ export function detectRoutes(
   }
 
   routes.push(...detectHonoRoutes(files, graph));
+  routes.push(...detectElysiaRoutes(files, graph));
+  routes.push(...detectKoaRoutes(files, graph));
+  routes.push(...detectAdonisRoutes(files, graph));
   routes.push(...detectClientRoutes(files, graph));
 
   return sortRoutes(routes);

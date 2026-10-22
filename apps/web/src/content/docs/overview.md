@@ -38,9 +38,15 @@ incomplete.
 - React Router v7 (framework mode)
 - TanStack Router and TanStack Start
 - Expo Router
+- SolidStart
+- Qwik City
+- Angular
 - Express
 - Fastify
 - Hono
+- Elysia
+- Koa
+- AdonisJS
 - Nest (NestJS)
 
 **SPA client-side routing** — framework detected, and routes declared in the

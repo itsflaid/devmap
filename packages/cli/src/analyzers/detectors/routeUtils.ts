@@ -1,4 +1,6 @@
+import { posix } from "node:path";
 import type { ScannedFile } from "../analysis/index.js";
+import { matchLocalPath, normalizePath } from "../graph/localPaths.js";
 
 // Helpers shared by the per-framework route detectors.
 
@@ -140,4 +142,30 @@ export function dropShadowedLayouts<T extends { path: string; isIndex: boolean; 
 ): T[] {
   const indexPaths = new Set(entries.filter((entry) => entry.isIndex).map((entry) => entry.path));
   return entries.filter((entry) => entry.isIndex || !entry.isLayout || !indexPaths.has(entry.path));
+}
+
+/**
+ * File a specifier points at, as seen from `from`. Relative specifiers are
+ * resolved against the file's folder; an aliased one (`@/pages/Home`) is
+ * matched against the files `from` is known to import, and only when exactly
+ * one of them can be it.
+ */
+export function resolveImportedFile(
+  from: string,
+  specifier: string,
+  localPaths: Set<string>,
+  graph?: Record<string, string[]>
+): string | undefined {
+  if (specifier.startsWith(".")) {
+    const target = normalizePath(posix.join(posix.dirname(from), specifier));
+    return target === null ? undefined : matchLocalPath(target, localPaths) ?? undefined;
+  }
+
+  const tail = specifier.replace(/^[@~#$][^/]*\//, "").replace(/^\/+/, "");
+  if (!tail || tail === specifier) return undefined;
+  const matches = (graph?.[from] ?? []).filter((path) => {
+    const bare = path.replace(/\.[cm]?[jt]sx?$/, "").replace(/\/index$/, "");
+    return bare === tail || bare.endsWith(`/${tail}`);
+  });
+  return matches.length === 1 ? matches[0] : undefined;
 }

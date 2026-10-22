@@ -1,6 +1,7 @@
 import type { ScannedFile } from "../analysis/index.js";
 import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
+import { detectClientRoutes } from "./clientRouteDetector.js";
 import { detectExpoRoutes } from "./expoRouteDetector.js";
 import { detectHonoRoutes } from "./honoRouteDetector.js";
 import { detectNestRoutes } from "./nestRouteDetector.js";
@@ -84,30 +85,53 @@ export function detectRoutes(
   }
 
   routes.push(...detectHonoRoutes(files, graph));
+  routes.push(...detectClientRoutes(files, graph));
 
   return sortRoutes(routes);
 }
 
+// Files that Next serves at a fixed URL.
+const METADATA_ROUTES: Record<string, string | undefined> = {
+  sitemap: "sitemap.xml",
+  robots: "robots.txt",
+  manifest: "manifest.webmanifest"
+};
+
 function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
   const routes: RouteInfo[] = [];
+  const slotFiles = new Set<string>();
 
   for (const file of files.filter((item) => isArchitectureSource(item.path))) {
     // App Router — match anywhere in path, not just root.
     // Supports: src/app/, app/, apps/web/src/app/, packages/web/src/app/, dll.
     // Sebelumnya pakai ^(?:src\/)? yang miss monorepo prefix seperti apps/web/.
     const appMatch = file.path.match(
-      /(?:^|\/)(?:src\/)?app\/(.+\/)?(page|route)\.[jt]sx?$/
+      /(?:^|\/)(?:src\/)?app\/(.+\/)?(page|route|sitemap|robots|manifest)\.[jt]sx?$/
     );
     if (appMatch) {
       const segments = (appMatch[1] ?? "").split("/").filter(Boolean);
-      const routePath = toRoutePath(segments);
-      const kind = appMatch[2] === "route" ? "api" : "page";
+      // Folders that are not URLs of their own: `_private`, and intercepting
+      // routes (`(.)photo`, `(..)feed`, `(...)shop`), which re-render a URL that
+      // already has its own page.
+      if (segments.some((segment) => segment.startsWith("_") || /^\(\.{1,3}\)/.test(segment))) continue;
+
+      const type = appMatch[2];
+      const metadataFile = METADATA_ROUTES[type];
+      // robots and manifest only count at the root of the app folder (a `(group)` is not a folder).
+      if ((type === "robots" || type === "manifest") && segments.some((segment) => !/^\(.*\)$/.test(segment))) continue;
+      const isSlot = segments.some((segment) => segment.startsWith("@"));
+      const routePath = metadataFile
+        ? toRoutePath([...segments, metadataFile])
+        : toRoutePath(segments);
+      const kind = type === "page" ? "page" : "api";
       routes.push({
         path: routePath,
         file: file.path,
         kind,
-        ...(kind === "api" ? { methods: findHttpMethods(file.content) } : {})
+        ...(type === "route" ? { methods: findHttpMethods(file.content) } : {}),
+        ...(metadataFile ? { methods: ["GET"] } : {})
       });
+      if (isSlot) slotFiles.add(file.path);
       continue;
     }
 
@@ -129,7 +153,12 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
     });
   }
 
-  return sortRoutes(routes);
+  // `app/dashboard/@team/page.tsx` fills a slot of `/dashboard`: when the URL has a
+  // page of its own the slot is part of it, not another route.
+  const ownPaths = new Set(routes.filter((route) => !slotFiles.has(route.file)).map((route) => `${route.kind}:${route.path}`));
+  const visible = routes.filter((route) => !slotFiles.has(route.file) || !ownPaths.has(`${route.kind}:${route.path}`));
+
+  return sortRoutes(visible);
 }
 
 /**

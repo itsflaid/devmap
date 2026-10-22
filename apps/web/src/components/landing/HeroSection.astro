@@ -24,11 +24,15 @@ import CopyCommand from "./CopyCommand.astro";
 
 <style>
   .hero {
-    padding-block: clamp(3rem, 9vw, 7rem) var(--section-space);
+    /* The install command is the point of the page: it has to be on screen
+       without scrolling, so spacing also follows the viewport height. */
+    padding-block: clamp(1.5rem, 5vh, 5rem) var(--section-space);
   }
 
   .hero__title {
-    font-size: clamp(3.25rem, 11.2vw, 10.5rem);
+    /* Width alone made the headline 3 x 170px tall on a wide, short window and
+       pushed the install command below the fold; height caps it too. */
+    font-size: clamp(3.25rem, min(11.2vw, 18vh), 9rem);
     line-height: 0.93;
     letter-spacing: -0.04em;
   }
@@ -65,7 +69,7 @@ import CopyCommand from "./CopyCommand.astro";
 
   .hero__lede {
     max-width: 34rem;
-    margin-top: clamp(2rem, 4vw, 3.5rem);
+    margin-top: clamp(1.5rem, 3vh, 2.5rem);
     font-size: clamp(1.25rem, 2vw, 1.5rem);
     line-height: 1.4;
     color: var(--ink);
@@ -76,7 +80,7 @@ import CopyCommand from "./CopyCommand.astro";
     flex-wrap: wrap;
     align-items: baseline;
     gap: 1.25rem 2.5rem;
-    margin-top: 2.25rem;
+    margin-top: clamp(1.25rem, 3vh, 2rem);
   }
 
   .hero__note {

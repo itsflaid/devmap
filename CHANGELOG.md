@@ -4,6 +4,14 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.8.0] - 2026-10-23
+
 ### Added
 
 - Framework detection and route mapping for Angular (`Routes` arrays, `loadComponent`,
@@ -29,12 +37,6 @@ All notable changes to DevMap are documented in this file.
   router, controller, orchestrator, engine, dispatcher, scheduler, pipeline,
   registry or kernel, and non-index files that import eight or more local
   modules, get the execution-responsibility bonus
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.7.0] - 2026-10-22
 
@@ -284,7 +286,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/itsflaid/devmap/releases/tag/v0.8.0
 [0.7.0]: https://github.com/itsflaid/devmap/releases/tag/v0.7.0
 [0.6.0]: https://github.com/itsflaid/devmap/releases/tag/v0.6.0
 [0.5.0]: https://github.com/itsflaid/devmap/releases/tag/v0.5.0

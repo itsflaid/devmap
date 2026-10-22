@@ -1,11 +1,9 @@
-import { posix } from "node:path";
 import { ts } from "ts-morph";
 import type { ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/index.js";
-import { matchLocalPath, normalizePath } from "../graph/localPaths.js";
 import { parseSource, propertyKeyName, stringValue, unwrapExpression } from "./astUtils.js";
 import type { RouteInfo } from "./routeDetector.js";
-import { joinRoutePaths, sortRoutes } from "./routeUtils.js";
+import { joinRoutePaths, resolveImportedFile, sortRoutes } from "./routeUtils.js";
 
 /**
  * Hono apps are plain values, so they are followed the way the runtime builds
@@ -87,21 +85,8 @@ export function detectHonoRoutes(
     return app;
   };
 
-  const resolveImport = (from: string, specifier: string): string | undefined => {
-    if (specifier.startsWith(".")) {
-      const target = normalizePath(posix.join(posix.dirname(from), specifier));
-      return target === null ? undefined : matchLocalPath(target, localPaths) ?? undefined;
-    }
-
-    // Aliased specifier (`@/server/api`): pick the one graph edge it can be.
-    const tail = specifier.replace(/^[@~#$][^/]*\//, "").replace(/^\/+/, "");
-    if (!tail || tail === specifier) return undefined;
-    const matches = (graph?.[from] ?? []).filter((path) => {
-      const bare = path.replace(/\.[cm]?[jt]sx?$/, "").replace(/\/index$/, "");
-      return bare === tail || bare.endsWith(`/${tail}`);
-    });
-    return matches.length === 1 ? matches[0] : undefined;
-  };
+  const resolveImport = (from: string, specifier: string): string | undefined =>
+    resolveImportedFile(from, specifier, localPaths, graph);
 
   /** Follow identifiers (and imports) until an expression that is not a name. */
   const resolveValue = (

@@ -364,7 +364,7 @@ function rankCriticalFiles(
         reasons.push("application entry point");
       }
 
-      const executionBonus = calculateExecutionResponsibilityBonus(file.path);
+      const executionBonus = calculateExecutionResponsibilityBonus(file.path, analyses[file.path]);
       if (executionBonus > 0) {
         score += executionBonus;
         reasons.push(REASON_TAGS.CORE_EXECUTION_RESPONSIBILITY);
@@ -397,11 +397,22 @@ function rankCriticalFiles(
     .slice(0, 10);
 }
 
-function calculateExecutionResponsibilityBonus(path: string): number {
-  return /(^|\/)(projectmap|filescanner|analyzerregistry|router|controller|orchestrator|engine)\.[cm]?[jt]sx?$/i.test(path)
-    || /(^|\/)commands?\/[^/]+\.[cm]?[jt]sx?$/i.test(path)
-    ? 16
-    : 0;
+/**
+ * Files that run or coordinate the program rather than hold data: named for
+ * that job (router, controller, orchestrator, engine, dispatcher, scheduler,
+ * pipeline, registry, kernel), a CLI's command handlers, or a file that pulls
+ * together many of the project's own modules, which is what an orchestrator
+ * looks like whatever it is called.
+ */
+const EXECUTION_NAME = /(^|\/)(router|controller|orchestrator|engine|dispatcher|scheduler|pipeline|registry|kernel)\.[cm]?[jt]sx?$/i;
+const ORCHESTRATION_FAN_OUT = 8;
+
+function calculateExecutionResponsibilityBonus(path: string, analysis?: FileAnalysis): number {
+  if (EXECUTION_NAME.test(path) || /(^|\/)commands?\/[^/]+\.[cm]?[jt]sx?$/i.test(path)) return 16;
+  if (!analysis || /(^|\/)index\.[cm]?[jt]sx?$/.test(path)) return 0;
+
+  const localImports = new Set(analysis.imports.filter((specifier) => /^(?:\.|@\/|~\/)/.test(specifier)));
+  return localImports.size >= ORCHESTRATION_FAN_OUT ? 12 : 0;
 }
 
 function readPackageDependencies(files: ScannedFile[]): Record<string, string[]> {

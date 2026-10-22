@@ -28,7 +28,7 @@ devmap/
 │   │   ├── commands/      ← Command handlers (init, analyze, map, flow, explain, onboarding, config, doctor)
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 40 test files (`*.test.ts`, auto-discovered by `run-tests.ts`)
+│   ├── test/              ← 41 test files (`*.test.ts`, auto-discovered by `run-tests.ts`)
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -65,7 +65,7 @@ Everything else (files, graph, routes, features, flows, critical files) is 100% 
 |---|---|---|
 | CLI entry | `src/index.ts` | Commander program, command dispatch |
 | Pipeline orchestrator | `src/analyzers/pipeline/projectMap.ts` | `createProjectMap()` — core 15-step pipeline |
-| Route detectors | `src/analyzers/detectors/routeDetector.ts` (+ `remix`, `reactRouter`, `tanstack`, `expo`, `hono`, `nest`, `trpc` modules, shared `routeUtils.ts`) | `detectRoutes()` — per-framework route extraction; newer detectors find their own projects so monorepos get every frontend |
+| Route detectors | `src/analyzers/detectors/routeDetector.ts` (+ `remix`, `reactRouter`, `tanstack`, `expo`, `hono`, `client`, `nest`, `trpc` modules, shared `routeUtils.ts`) | `detectRoutes()` — per-framework route extraction; newer detectors find their own projects so monorepos get every frontend |
 | Analyzer registry | `src/analyzers/pipeline/analyzerRegistry.ts` | `AnalyzerRegistry.analyze` — first-supports-wins |
 | Feature detector | `src/analyzers/features/featureDetector.ts` | 4-source feature merge via similarity engine |
 | Feature similarity | `src/analyzers/features/featureSimilarity.ts` | Weighted Jaccard/trigram scoring (threshold 0.35) |
@@ -124,10 +124,10 @@ Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsco
 
 ## Testing
 
-40 test files in `packages/cli/test/`. Key covered areas:
+41 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors
 - Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
-- Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`), detector fixes
+- Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`; client-side routers, Hono factories, Next normalization and critical-file ranking in `js-ts-gaps`), detector fixes
 - Heuristic language readers (`heuristic-languages`), scanner robustness, project scope/metadata
 - Commands (init, analyze, map, flow, explain, onboarding, config, doctor)
 - Utils (markdown terminal, JSON output, prompts, errors)
@@ -175,7 +175,7 @@ pnpm devmap <command>
 - No AST-level analysis for non-JS/TS languages; Go/Java/C#/PHP-namespace imports produce no graph edges yet
 - Nuxt auto-import detection is name-based (no type information) and ignores layers and custom `imports.dirs`
 - Bundler-config aliases are folded statically: values that depend on env vars, plugins or custom helpers are skipped, and Jest `moduleNameMapper` / Parcel aliases are not read
-- Hono apps built by a factory function, TanStack code-based routing and React Router `createBrowserRouter` trees are not followed by the route detectors
+- Client router detection reads literal route arrays, JSX trees and `getParentRoute` chains; routes assembled by loops, spreads of computed values or runtime config are not followed
 - Feature similarity threshold (0.35) is tuned but may cause false merges
 - Domain inference is single-shot — no conversation context
 
@@ -190,3 +190,5 @@ pnpm devmap <command>
 - Database detection ranks ORM/BaaS above drivers; a cache (Redis) is only ever listed as `additional`
 - Singularize entity names for feature matching
 - REASON_TAGS constant for critical file ranking reasoning
+- Critical-file execution bonus (`projectMap.ts`) is name-based (router, controller, orchestrator, engine, dispatcher, scheduler, pipeline, registry, kernel, `commands/`) or fan-out-based (≥ 8 distinct local imports in a non-index file) — never tied to devmap's own file names
+- Client-side routes (`clientRouteDetector.ts`) are self-gated by router imports/types and run for every project, like the other self-gating detectors; Hono factory functions are modeled as one app per call

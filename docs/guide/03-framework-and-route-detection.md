@@ -119,7 +119,7 @@ that a Next.js project's own `app.ts` utility file won't trigger it.
 
 ## Route detection: one detector per framework, merged
 
-**Source:** `routeDetector.ts` (+ one module per newer framework: `nestRouteDetector.ts`, `remixRouteDetector.ts`, `reactRouterRouteDetector.ts`, `tanstackRouteDetector.ts`, `expoRouteDetector.ts`, `honoRouteDetector.ts`; shared helpers in `routeUtils.ts`)
+**Source:** `routeDetector.ts` (+ one module per newer framework: `nestRouteDetector.ts`, `remixRouteDetector.ts`, `reactRouterRouteDetector.ts`, `tanstackRouteDetector.ts`, `expoRouteDetector.ts`, `honoRouteDetector.ts`, `clientRouteDetector.ts`; shared helpers in `routeUtils.ts`)
 
 `detectRoutes()` runs **every** detector whose framework was actually
 detected and concatenates the results — same "don't force a single winner"
@@ -157,7 +157,8 @@ Each framework gets its own convention-driven extractor:
   merged with their route, the generated `routeTree.gen.ts` is ignored, and
   Start's `server: { handlers: { GET, POST } }` (or
   `createServerFileRoute().methods()`) makes an API route with those methods.
-  Code-based routing (`createRoute({ getParentRoute })`) is not read.
+  Code-based routing (`createRootRoute()` / `createRoute({ getParentRoute })`)
+  is read by the client router detector below.
 - **Expo Router** (`expoRouteDetector.ts`) — `app/` or `src/app/` of every
   project that depends on `expo-router` (or the `root` set in `app.json`).
   `(group)` folders add no URL, `[id]` / `[...rest]` are kept as written,
@@ -171,7 +172,25 @@ Each framework gets its own convention-driven extractor:
   constrained params (`:id{[0-9]+}` is shown as `:id`) and `@hono/zod-openapi`
   `app.openapi(createRoute({ method, path }), ...)`. Only apps nobody mounts are
   walked from the top, so each endpoint appears once under its full URL.
-  Apps built by a factory function are not followed.
+  A function that returns an app (`const create = () => new Hono()`) is one app
+  per call, `createFactory().createApp()` is followed, and a helper that
+  registers routes on an app it is given (`registerAuth(app.basePath('/auth'))`)
+  is replayed at each call site with that app's prefix.
+- **Client-side routers** (`clientRouteDetector.ts`) — apps that declare their
+  routes in code instead of the file system. React Router `<Routes>` /
+  `<Route>` JSX trees (including wrapper components such as route guards),
+  `createBrowserRouter` / `createHashRouter` / `createMemoryRouter` object
+  trees, Vue Router `routes: [...]` (`RouteRecordRaw`, lazy `import()`,
+  nested children, named views; redirects are not pages), TanStack Router
+  code-based routes composed through `getParentRoute`, and `svelte-spa-router`
+  path maps. A route table kept in its own file is found by its types or
+  router imports, the listed file is the page component the route renders
+  (resolved through aliases), and an array of `{ path, name }` that is not a
+  route table (a nav menu) is ignored. Pathless layouts are dropped when an
+  index route shares their URL.
+- **Next.js normalization** — private `_folders`, intercepting routes
+  (`(.)photo`, `(..)photo`), `@slot` parallel routes (listed once) and the
+  metadata routes `sitemap`, `robots` and `manifest` are handled.
 
   Remix, React Router, TanStack, Expo and Hono find their own projects (a
   `routes.ts` that imports `@react-router/dev/routes`, a `createFileRoute()` call,

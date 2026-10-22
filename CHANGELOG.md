@@ -4,6 +4,25 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Client-side router detection: React Router `<Routes>`/`<Route>` JSX and
+  `createBrowserRouter` object trees, Vue Router route arrays, TanStack Router
+  code-based routes (`getParentRoute`) and `svelte-spa-router` maps, including
+  route tables kept in their own file and lazy `import()` pages
+- Hono apps built by factory functions (`() => new Hono()`,
+  `createFactory().createApp()`) and helpers that register routes on an app
+  they are given
+- Next.js routes: private `_folders`, intercepting routes, `@slot` pages and
+  the `sitemap`/`robots`/`manifest` metadata routes are normalized
+
+### Changed
+
+- Critical-file ranking no longer keys on devmap's own file names. Files named
+  router, controller, orchestrator, engine, dispatcher, scheduler, pipeline,
+  registry or kernel, and non-index files that import eight or more local
+  modules, get the execution-responsibility bonus
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

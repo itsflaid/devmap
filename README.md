@@ -234,9 +234,9 @@ Use your preferred AI tool to change it.
 
 ### SPA client-side routing — routes read from the client router
 
-- React (Create React App, Vite)
-- Vue
-- Svelte
+- React (Create React App, Vite) — React Router `<Route>` trees and `createBrowserRouter`, TanStack Router code-based routes
+- Vue — Vue Router route arrays
+- Svelte — `svelte-spa-router` maps
 
 ### Databases
 

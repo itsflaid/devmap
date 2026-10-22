@@ -83,17 +83,17 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
     await writeFixtureFile(
       projectRoot,
       "packages/cli/src/commands/analyze.ts",
-      'import { createProjectMap } from "../analyzers/pipeline/projectMap.js";\nexport async function analyzeCommand() { return createProjectMap(); }\n'
+      'import { createPlan } from "../analyzers/pipeline/orchestrator.js";\nexport async function analyzeCommand() { return createPlan(); }\n'
     );
     await writeFixtureFile(
       projectRoot,
-      "packages/cli/src/analyzers/pipeline/projectMap.ts",
-      'import { scanFiles } from "../fileScanner.js";\nexport async function createProjectMap() { return scanFiles(); }\n'
+      "packages/cli/src/analyzers/pipeline/orchestrator.ts",
+      'import { runEngine } from "../engine.js";\nexport async function createPlan() { return runEngine(); }\n'
     );
     await writeFixtureFile(
       projectRoot,
-      "packages/cli/src/analyzers/fileScanner.ts",
-      "export async function scanFiles() { return []; }\n"
+      "packages/cli/src/analyzers/engine.ts",
+      "export async function runEngine() { return []; }\n"
     );
     await writeFixtureFile(
       projectRoot,
@@ -120,7 +120,7 @@ test("agent navigation identifies a CLI monorepo and prioritizes its main flow",
     assert.deepEqual(index.criticalFiles.slice(0, 3), [
       "packages/cli/src/index.ts",
       "packages/cli/src/commands/analyze.ts",
-      "packages/cli/src/analyzers/pipeline/projectMap.ts"
+      "packages/cli/src/analyzers/pipeline/orchestrator.ts"
     ]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -158,17 +158,17 @@ test("agent navigation describes mixed CLI workspaces without misleading agents"
     await writeFixtureFile(
       projectRoot,
       "packages/cli/src/commands/analyze.ts",
-      'import { createProjectMap } from "../analyzers/pipeline/projectMap.js"; import type { Project } from "../ai/types.js"; export function analyzeCommand(): Project { return createProjectMap() as Project; }\n'
+      'import { createPlan } from "../analyzers/pipeline/orchestrator.js"; import type { Project } from "../ai/types.js"; export function analyzeCommand(): Project { return createPlan() as Project; }\n'
     );
     await writeFixtureFile(
       projectRoot,
-      "packages/cli/src/analyzers/projectMap.ts",
-      'import { scanFiles } from "./fileScanner.js"; import type { Project } from "../ai/types.js"; export function createProjectMap(): Project { return scanFiles() as Project; }\n'
+      "packages/cli/src/analyzers/orchestrator.ts",
+      'import { runEngine } from "./engine.js"; import type { Project } from "../ai/types.js"; export function createPlan(): Project { return runEngine() as Project; }\n'
     );
     await writeFixtureFile(
       projectRoot,
-      "packages/cli/src/analyzers/fileScanner.ts",
-      "export function scanFiles() { return []; }\n"
+      "packages/cli/src/analyzers/engine.ts",
+      "export function runEngine() { return []; }\n"
     );
     await writeFixtureFile(
       projectRoot,
@@ -230,7 +230,7 @@ test("agent navigation describes mixed CLI workspaces without misleading agents"
     assert.match(aiIntegration.businessFlow.join(" "), /openrouter\.ts/i);
 
     const scanner = snapshot.criticalFiles.find((file) =>
-      file.path.endsWith("analyzers/fileScanner.ts")
+      file.path.endsWith("analyzers/engine.ts")
     );
     const sharedTypes = snapshot.criticalFiles.find((file) =>
       file.path.endsWith("ai/types.ts")

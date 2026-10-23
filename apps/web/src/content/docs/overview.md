@@ -1,8 +1,9 @@
 ---
-title: "Devmap Docs"
+title: "DevMap Docs: install, commands and supported frameworks"
+description: "Install DevMap, run devmap init and analyze, read the generated .devmap files and use them with AI agents. Commands, supported JS/TS frameworks and privacy."
 ---
 
-# Devmap Docs
+# DevMap Docs
 
 ## Quick Start
 

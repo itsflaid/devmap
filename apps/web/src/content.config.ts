@@ -6,6 +6,7 @@ const docs = defineCollection({
   loader: glob({ pattern: "**/*.md", base: "./src/content/docs" }),
   schema: z.object({
     title: z.string(),
+    description: z.string().min(50).max(300),
   }),
 });
 

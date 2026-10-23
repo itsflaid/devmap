@@ -8,9 +8,36 @@ import ProblemSection from "../components/landing/ProblemSection.astro";
 import SiteFooter from "../components/landing/SiteFooter.astro";
 import SiteHeader from "../components/landing/SiteHeader.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
+import { SITE } from "../lib/site";
+
+const jsonLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE.name,
+    url: `${SITE.url}/`,
+    description: SITE.description,
+    inLanguage: "en"
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: SITE.name,
+    description: SITE.description,
+    url: `${SITE.url}/`,
+    applicationCategory: "DeveloperApplication",
+    operatingSystem: "Any (requires Node.js 22.12 or newer)",
+    downloadUrl: SITE.npm,
+    installUrl: SITE.npm,
+    codeRepository: SITE.github,
+    license: "https://opensource.org/licenses/MIT",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    author: { "@type": "Person", name: SITE.author, url: SITE.authorUrl }
+  }
+];
 ---
 
-<BaseLayout>
+<BaseLayout jsonLd={jsonLd}>
   <SiteHeader />
 
   <main>

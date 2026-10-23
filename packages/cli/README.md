@@ -1,5 +1,16 @@
 # DevMap
 
+[![npm version](https://img.shields.io/npm/v/@flaid/devmap)](https://www.npmjs.com/package/@flaid/devmap)
+[![license](https://img.shields.io/npm/l/@flaid/devmap)](https://github.com/itsflaid/devmap/blob/main/LICENSE)
+[![node](https://img.shields.io/node/v/@flaid/devmap)](https://nodejs.org)
+
+**Analyze once. Reuse context everywhere.** A CLI that maps your codebase for
+developers and AI agents: entry points, critical files, features and routes.
+
+[Documentation](https://devmap-web.vercel.app/docs) ·
+[Website](https://devmap-web.vercel.app) ·
+[GitHub](https://github.com/itsflaid/devmap)
+
 Every new AI chat about your code starts from zero — you re-explain
 the same codebase every time. DevMap fixes that.
 

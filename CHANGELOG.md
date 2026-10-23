@@ -4,6 +4,15 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Website SEO: canonical URLs, Open Graph and Twitter cards with a 1200x630 preview
+  image, JSON-LD (`WebSite`, `SoftwareApplication`, `TechArticle`, breadcrumbs),
+  `robots.txt` and `sitemap.xml`, and a descriptive title and description for the docs page
+- npm package page: richer description and keywords, `homepage` points to the website,
+  and the README opens with badges, a tagline and links to the docs (shown on npm from the
+  next publish)
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

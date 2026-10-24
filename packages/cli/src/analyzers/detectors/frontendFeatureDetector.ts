@@ -17,6 +17,11 @@ import type { FeatureInfo } from "../features/featureDetector.js";
  * entities in capabilityDetector.ts) — "settings" or "profile" *are* real
  * pages users navigate to, so they stay in.
  */
+/** Map key for the page served at "/". */
+const ROOT_SEGMENT = "";
+
+export const HOME_FEATURE_NAME = "Home";
+
 const NON_FEATURE_PAGE_SEGMENTS = new Set([
   "auth", "oauth", "callback",
   "api", "static", "assets", "public",
@@ -94,20 +99,32 @@ export function detectFrontendPageFeatures(
       .map((f) => f.path)
   );
 
-  const features: FeatureInfo[] = [];
-  for (const [segment, segmentRoutes] of routesBySegment) {
+  const pages = [...routesBySegment].map(([segment, segmentRoutes]) => {
     const seedFiles = [...new Set(segmentRoutes.map((route) => route.file))].sort();
-    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph, barrelFiles);
-    const name = singularize(segment);
+    return {
+      segment,
+      segmentRoutes,
+      seedFiles,
+      ownedFiles: collectOwnedFiles(seedFiles, fileGraph, reverseGraph, barrelFiles)
+    };
+  });
+  dropSharedFiles(pages);
+
+  const features: FeatureInfo[] = [];
+  for (const { segment, segmentRoutes, seedFiles, ownedFiles } of pages) {
+    const isRoot = segment === ROOT_SEGMENT;
+    const name = isRoot ? HOME_FEATURE_NAME : pageFeatureName(segment);
 
     features.push({
       name,
-      purpose: `Frontend page${segmentRoutes.length > 1 ? "s" : ""} under "${segment}".`,
+      purpose: isRoot
+        ? "Frontend landing page served at the site root."
+        : `Frontend page${segmentRoutes.length > 1 ? "s" : ""} under "${segment}".`,
       files: ownedFiles,
       entryPoint: seedFiles[0],
       entryPoints: seedFiles.slice(0, 2),
       businessFlow: [],
-      searchTerms: [...new Set([segment.toLowerCase(), name.toLowerCase()])],
+      searchTerms: [...new Set([segment.toLowerCase(), name.toLowerCase()].filter(Boolean))],
       confidence: "medium",
       evidence: ownedFiles
     });
@@ -127,7 +144,13 @@ function groupBySegment(pageRoutes: RouteInfo[]): Map<string, RouteInfo[]> {
     const segments = route.path.split("/").filter(Boolean);
     const topSegment = segments[0];
 
-    if (!topSegment) continue; // root "/" — no distinct feature name to derive
+    if (!topSegment) {
+      // The root page is the "Home" feature; it has no segment to name it after.
+      const home = bySegment.get(ROOT_SEGMENT) ?? [];
+      home.push(route);
+      bySegment.set(ROOT_SEGMENT, home);
+      continue;
+    }
     if (topSegment.startsWith("[")) continue; // dynamic-only, e.g. /[locale]
     if (NON_FEATURE_PAGE_SEGMENTS.has(topSegment.toLowerCase())) continue;
 
@@ -312,12 +335,19 @@ export function detectClientRouteFeatures(
       .map((f) => f.path)
   );
 
+  const pages = [...bySegment]
+    .filter(([, seedFiles]) => seedFiles.length > 0)
+    .map(([segment, seedFiles]) => ({
+      segment,
+      seedFiles,
+      ownedFiles: collectOwnedFiles(seedFiles, fileGraph, reverseGraph, barrelFiles)
+    }));
+  dropSharedFiles(pages);
+
   const features: FeatureInfo[] = [];
 
-  for (const [segment, seedFiles] of bySegment) {
-    if (seedFiles.length === 0) continue;
-    const ownedFiles = collectOwnedFiles(seedFiles, fileGraph, reverseGraph, barrelFiles);
-    const name = singularize(segment);
+  for (const { segment, seedFiles, ownedFiles } of pages) {
+    const name = pageFeatureName(segment);
 
     features.push({
       name,
@@ -333,6 +363,30 @@ export function detectClientRouteFeatures(
   }
 
   return features;
+}
+
+/**
+ * A component reachable from two different pages belongs to neither: with
+ * auto-imported or app-wide components every page reaches the same big tree, and
+ * the first page would otherwise own all of it. A page keeps its own seed files.
+ */
+function dropSharedFiles(pages: Array<{ seedFiles: string[]; ownedFiles: string[] }>): void {
+  const claims = new Map<string, number>();
+  for (const page of pages) {
+    for (const file of page.ownedFiles) claims.set(file, (claims.get(file) ?? 0) + 1);
+  }
+  for (const page of pages) {
+    const seeds = new Set(page.seedFiles);
+    page.ownedFiles = page.ownedFiles.filter((file) => seeds.has(file) || claims.get(file) === 1);
+  }
+}
+
+/** `scheduled-posts` → "Scheduled Post", `domain_blocks` → "Domain Block", `settings` → "Settings". */
+export function pageFeatureName(segment: string): string {
+  const words = segment.split(/[-_.\s]+/).filter(Boolean);
+  if (words.length === 0) return segment;
+  words[words.length - 1] = singularize(words[words.length - 1]);
+  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
 }
 
 /**

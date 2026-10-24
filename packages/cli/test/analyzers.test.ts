@@ -411,6 +411,10 @@ test("feature detection keeps documentation and landing UI out of technical feat
       'const prompt = "Prefer auth provider config, middleware guard, session provider, and nextauth examples"; export function enrich() {}'
     ),
     createScannedFile(
+      "packages/cli/src/index.ts",
+      'import { Command } from "commander"; export const program = new Command();'
+    ),
+    createScannedFile(
       "packages/cli/src/commands/onboarding.ts",
       'const example = "Authentication flow"; export function onboardingCommand() {}'
     ),

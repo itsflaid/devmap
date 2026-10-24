@@ -11,5 +11,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
       "quirrel", "@upstash/qstash", "qstash",
       "queue", "worker", "job", "cron", "scheduler",
     ],
+    // Browser workers and PWA service workers are not job processors.
+    excludePaths: ["service-?worker", "web-?worker", "(^|/)sw\\.[cm]?[jt]s$"],
   },
 ];

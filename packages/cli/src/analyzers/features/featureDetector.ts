@@ -20,7 +20,8 @@ import {
   type FeatureCandidateSource,
   type FeatureCluster,
 } from "./featureCandidates.js";
-import { FEATURE_SIGNALS, hasAiProviderUrl, isAiProviderImport } from "../registry/index.js";
+import { HOME_FEATURE_NAME } from "../detectors/frontendFeatureDetector.js";
+import { FEATURE_SIGNALS, hasAiProviderUrl, isAiProviderImport, type FeatureSignal } from "../registry/index.js";
 
 export type FeatureInfo = {
   name: string;
@@ -149,7 +150,9 @@ function isFeatureEvidenceFile(path: string): boolean {
   const lower = path.toLowerCase();
 
   return !(
-    /\/prisma\/migrations\//.test(lower)
+    // Tool-generated and tool-owned folders (.adonisjs/, .github/, .storybook/, .nuxt/ ...)
+    /(^|\/)\.[^/]+\//.test(lower)
+    || /\/prisma\/migrations\//.test(lower)
     || /\/migrations\//.test(lower)
     || /\.sql$/.test(lower)
     || /\/generated\//.test(lower)
@@ -333,12 +336,16 @@ export function detectFeatures(
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
 
   // --- ROLE_FEATURES ---
+  const hasCliSource = scopedFiles.some(isCliSource);
   for (const definition of ROLE_FEATURES) {
+    // Folder names alone ("commands/", "src/main.ts") also fit web apps and libraries.
+    if (definition.role === "cli-command" && !hasCliSource) continue;
+
     const evidence = scopedFiles
       .filter((file) =>
-        classifyFileRole(file.path) === definition.role
-        || (definition.name === "CLI Commands"
-          && /(^|\/)src\/index\.[cm]?[jt]s$/.test(file.path.toLowerCase()))
+        definition.role === "cli-command"
+          ? isCliEvidence(file)
+          : classifyFileRole(file.path) === definition.role
       )
       .filter((file) => isFeatureEvidenceFile(file.path))
       .filter((file) =>
@@ -377,7 +384,7 @@ export function detectFeatures(
 
   for (const signal of FEATURE_SIGNALS) {
     const evidence = technicalFiles
-      .filter((file) => matchesSignal(file, analyses[file.path], signal.terms, signal.importOnly))
+      .filter((file) => matchesSignal(file, analyses[file.path], signal))
       .map((file) => file.path)
       .sort((left, right) =>
         featureFilePriority(signal.name, left) - featureFilePriority(signal.name, right)
@@ -423,12 +430,16 @@ export function detectFeatures(
 
   if (fileGraph) {
     for (const feature of detectFrontendPageFeatures(routes, fileGraph, analyses, scopedFiles)) {
-      candidates.push(toFeatureCandidate("frontend-page", "file-page", feature, routes));
+      const candidate = toFeatureCandidate("frontend-page", "file-page", feature, routes);
+      if (feature.name === HOME_FEATURE_NAME) candidate.standalone = true;
+      candidates.push(candidate);
     }
     for (const feature of detectClientRouteFeatures(scopedFiles, fileGraph, analyses)) {
       candidates.push(toFeatureCandidate("client-route", "client-route", feature, routes));
     }
   }
+
+  foldLandingIntoHome(candidates);
 
   const fileReferenceCounts = fileGraph ? countReferences(fileGraph) : {};
   const reconciliation = reconcileFeatureCandidates(candidates, fileReferenceCounts);
@@ -440,6 +451,48 @@ export function detectFeatures(
     mergeDecisions: reconciliation.mergeDecisions ?? [],
     rejectedCandidateIds: reconciliation.rejectedCandidateIds
   };
+}
+
+const CLI_LIBRARIES = "commander|yargs|citty|cac|clipanion|@oclif/core|oclif|meow|minimist|sade|cleye|gunshi|@clack/prompts|inquirer|mri|arg";
+const CLI_IMPORT = new RegExp(`(?:from\\s+|require\\(\\s*|import\\(\\s*)["'](?:${CLI_LIBRARIES.replace(/[/@]/g, (c) => `\\${c}`)})(?:/[^"']*)?["']`);
+
+/** A file that parses arguments: a shebang, `process.argv` or a command-line library import. */
+function isCliSource(file: ScannedFile): boolean {
+  if (!/\.[cm]?[jt]sx?$/.test(file.path)) return false;
+  return /^#!.*\b(?:node|bun|deno|tsx)\b/.test(file.content)
+    || /\bprocess\.argv\b|\bDeno\.args\b/.test(file.content)
+    || CLI_IMPORT.test(file.content);
+}
+
+/** CLI entry points (by content) and command handlers (by folder), in a project that has a CLI. */
+function isCliEvidence(file: ScannedFile): boolean {
+  const lower = file.path.toLowerCase();
+  if (/(^|\/)src\/(index|main|cli)\.[cm]?[jt]s$/.test(lower)) return isCliSource(file);
+  return classifyFileRole(file.path) === "cli-command";
+}
+
+/**
+ * "Web Landing" (landing-ui files) and "Home" (the page served at /) describe the same
+ * thing. When both exist and touch the same files, the landing components become part of
+ * Home and the separate landing candidate is dropped.
+ */
+function foldLandingIntoHome(candidates: FeatureCandidate[]): void {
+  const home = candidates.find((candidate) => candidate.standalone && candidate.label === HOME_FEATURE_NAME);
+  const landingIndex = candidates.findIndex((candidate) => candidate.id.startsWith("registry:role-landing-ui:"));
+  if (!home || landingIndex < 0 || !home.projection) return;
+
+  const landing = candidates[landingIndex];
+  const homeFiles = new Set(home.files);
+  if (!landing.files.some((file) => homeFiles.has(file))) return;
+
+  const files = [...new Set([...home.files, ...landing.files])].sort();
+  home.files = files;
+  home.projection = {
+    ...home.projection,
+    files,
+    evidence: [...new Set([...home.projection.evidence, ...landing.files])].sort()
+  };
+  candidates.splice(landingIndex, 1);
 }
 
 function toFeatureCandidate(
@@ -825,26 +878,28 @@ function createFeatureInfo(
 function matchesSignal(
   file: ScannedFile,
   analysis: FileAnalysis | undefined,
-  terms: string[],
-  importOnly?: boolean
+  signal: Pick<FeatureSignal, "terms" | "importTerms" | "excludePaths" | "importOnly">
 ): boolean {
-  if (importOnly) {
+  if (signal.importOnly) {
     if (analysis?.imports.some(isAiProviderImport)) return true;
     if (hasAiProviderUrl(file.content)) return true;
     return classifyFileRole(file.path) === "ai-integration";
   }
 
   const path = file.path.toLowerCase();
+  if (signal.excludePaths?.some((pattern) => pattern.test(path))) return false;
 
-  if (terms.some((term) => matchesPathTerm(path, term))) return true;
+  if (signal.terms.some((term) => matchesPathTerm(path, term))) return true;
 
-  if (analysis) {
-    return terms.some((term) =>
-      analysis.imports.some((specifier) => matchesImportTerm(specifier, term))
-    );
-  }
+  if (!analysis) return false;
+  if (signal.terms.some((term) =>
+    analysis.imports.some((specifier) => matchesImportTerm(specifier, term))
+  )) return true;
 
-  return false;
+  // Package-only terms: a relative import such as "./blob" is a local module, not the package.
+  return (signal.importTerms ?? []).some((term) =>
+    analysis.imports.some((specifier) => !specifier.startsWith(".") && matchesImportTerm(specifier, term))
+  );
 }
 
 /**

@@ -10,7 +10,8 @@ export const DESCRIPTORS: SignalDescriptor[] = [
       "contentlayer", "@contentlayer", "sanity", "@sanity",
       "contentful", "strapi", "payload", "keystatic",
       "notion", "@notionhq",
-      "cms", "content", "mdx",
+      "cms",
     ],
+    importTerms: ["astro:content", "@next/mdx", "mdx"],
   },
 ];

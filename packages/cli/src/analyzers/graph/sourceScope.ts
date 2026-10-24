@@ -3,7 +3,10 @@ const NON_PRODUCTION_SEGMENTS = new Set([
   "__fixtures__",
   "__mocks__",
   "__tests__",
+  "__e2e__",
   "coverage",
+  "cypress",
+  "e2e",
   "fixtures",
   "test",
   "tests"

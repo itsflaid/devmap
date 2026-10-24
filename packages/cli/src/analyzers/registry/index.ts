@@ -46,6 +46,8 @@ const descriptorByName = new Map(REGISTRY_DESCRIPTORS.map((descriptor) => [descr
 export type FeatureSignal = {
   name: string;
   terms: string[];
+  importTerms?: string[];
+  excludePaths?: RegExp[];
   purpose: string;
   importOnly?: true;
   minimumDistinctFiles?: number;
@@ -56,6 +58,10 @@ export const FEATURE_SIGNALS: FeatureSignal[] = REGISTRY_DESCRIPTORS
   .map((descriptor) => ({
     name: descriptor.name,
     terms: descriptor.genericTerms ?? [],
+    ...(descriptor.importTerms?.length ? { importTerms: descriptor.importTerms } : {}),
+    ...(descriptor.excludePaths?.length
+      ? { excludePaths: descriptor.excludePaths.map((source) => new RegExp(source, "i")) }
+      : {}),
     purpose: descriptor.purpose ?? `Identifies ${descriptor.name.toLowerCase()} capability in the project.`,
     ...(descriptor.importOnly ? { importOnly: true } : {}),
     ...(descriptor.minimumDistinctFiles !== undefined

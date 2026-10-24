@@ -202,7 +202,7 @@ test("barrel re-export file does not inflate page feature ownership", async () =
 
   try {
     const snapshot = await createProjectMap(projectRoot);
-    const featureSettings = snapshot.features.find((f) => f.name === "Setting");
+    const featureSettings = snapshot.features.find((f) => f.name === "Settings");
     const featureDashboard = snapshot.features.find((f) => f.name === "Dashboard");
 
     assert.ok(featureSettings, "Feature Settings should exist");

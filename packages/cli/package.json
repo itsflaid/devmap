@@ -1,7 +1,7 @@
 {
   "name": "@flaid/devmap",
   "version": "0.8.0",
-  "description": "CLI that maps codebases into a reusable context layer for developers and AI agents.",
+  "description": "CLI that maps your codebase into a reusable context layer for developers and AI agents: entry points, critical files, features and routes for JS/TS projects.",
   "bin": {
     "devmap": "./dist/index.js"
   },
@@ -24,12 +24,23 @@
   "keywords": [
     "devmap",
     "ai",
+    "ai-agents",
+    "llm",
     "cli",
     "codebase",
+    "codebase-map",
     "code-analysis",
-    "developer-tools",
     "static-analysis",
+    "developer-tools",
     "architecture",
+    "onboarding",
+    "reverse-engineering",
+    "context",
+    "claude-code",
+    "typescript",
+    "nextjs",
+    "route-detection",
+    "feature-detection",
     "groq",
     "openrouter"
   ],
@@ -43,7 +54,7 @@
   "bugs": {
     "url": "https://github.com/itsflaid/devmap/issues"
   },
-  "homepage": "https://github.com/itsflaid/devmap#readme",
+  "homepage": "https://devmap-web.vercel.app",
   "publishConfig": {
     "access": "public"
   },

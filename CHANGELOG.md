@@ -4,6 +4,19 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- A "Home" feature for the page served at `/`, kept separate so it does not absorb the
+  features it links to; the landing-UI role feature is folded into it
+
+### Changed
+
+- Website SEO: canonical URLs, Open Graph and Twitter cards with a 1200x630 preview
+  image, JSON-LD (`WebSite`, `SoftwareApplication`, `TechArticle`, breadcrumbs),
+  `robots.txt` and `sitemap.xml`, and a descriptive title and description for the docs page
+- npm package page: richer description and keywords, `homepage` points to the website,
+  and the README opens with badges, a tagline and links to the docs (shown on npm from the
+  next publish)
+
 ### Fixed
 
 - Feature detection no longer reports features from generic words: `index` no longer
@@ -21,11 +34,6 @@ All notable changes to DevMap are documented in this file.
   after whichever sorts first (this hid "Notes" in the Remix Indie Stack)
 - "CLI Commands" requires a real command-line program (shebang, `process.argv` or a CLI
   library) instead of any `src/main.ts`, `src/index.ts` or `commands/` folder
-
-### Added
-
-- A "Home" feature for the page served at `/`, kept separate so it does not absorb the
-  features it links to; the landing-UI role feature is folded into it
 
 ### Planned
 

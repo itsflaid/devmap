@@ -1,15 +1,31 @@
 ---
 import "../styles/global.css";
+import { SITE } from "../lib/site";
 
 interface Props {
   description?: string;
   title?: string;
+  /** Open Graph type: `website` for the home page, `article` for docs. */
+  type?: "website" | "article";
+  /** Keep the page out of search results. */
+  noindex?: boolean;
+  /** Schema.org objects for this page, serialized as JSON-LD. */
+  jsonLd?: Record<string, unknown>[];
 }
 
 const {
-  description = "DevMap analyzes your codebase once and writes a map of entry points, critical files and features that developers and AI agents can start from.",
-  title = "DevMap: analyze once, reuse context everywhere"
+  description = SITE.description,
+  title = SITE.title,
+  type = "website",
+  noindex = false,
+  jsonLd = []
 } = Astro.props;
+
+// One canonical URL per page: absolute, no query string, no trailing slash
+// except the root. Without it /docs and /docs/ count as two pages.
+const pathname = Astro.url.pathname.replace(/(.)\/+$/, "$1");
+const canonical = new URL(pathname, Astro.site ?? SITE.url).href;
+const image = new URL(SITE.ogImage, Astro.site ?? SITE.url).href;
 ---
 
 <!doctype html>
@@ -17,13 +33,38 @@ const {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="robots" content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1"} />
+    <meta name="author" content={SITE.author} />
     <meta name="theme-color" content="#ffffff" />
+
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:type" content={type} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={SITE.ogImageAlt} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+    <meta name="twitter:image:alt" content={SITE.ogImageAlt} />
+
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
-    <title>{title}</title>
+    <link rel="apple-touch-icon" href="/logo-mark.png" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
     <meta name="google-site-verification" content="GBAKYaOoWG8RG-vNSPAfDngKaM3j0efT0Mv_dy91CSI" />
+
+    {jsonLd.map((data) => <script type="application/ld+json" set:html={JSON.stringify(data)} />)}
   </head>
   <body>
     <slot />

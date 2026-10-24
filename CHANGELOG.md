@@ -4,7 +4,16 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.8.1] - 2026-10-25
+
 ### Added
+
 - A "Home" feature for the page served at `/`, kept separate so it does not absorb the
   features it links to; the landing-UI role feature is folded into it
 
@@ -34,12 +43,6 @@ All notable changes to DevMap are documented in this file.
   after whichever sorts first (this hid "Notes" in the Remix Indie Stack)
 - "CLI Commands" requires a real command-line program (shebang, `process.argv` or a CLI
   library) instead of any `src/main.ts`, `src/index.ts` or `commands/` folder
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.8.0] - 2026-10-23
 
@@ -317,7 +320,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/itsflaid/devmap/releases/tag/v0.8.1
 [0.8.0]: https://github.com/itsflaid/devmap/releases/tag/v0.8.0
 [0.7.0]: https://github.com/itsflaid/devmap/releases/tag/v0.7.0
 [0.6.0]: https://github.com/itsflaid/devmap/releases/tag/v0.6.0

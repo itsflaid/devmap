@@ -1,3 +1,4 @@
+import { isOperationalSegment } from "../../detectors/nonResourceSegments.js";
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityInfo, IRouteFallbackExtractor } from "./types.js";
 
@@ -31,6 +32,18 @@ const IRREGULAR_SINGULAR = new Map([
   ["feet", "foot"],
   ["mice", "mouse"],
   ["geese", "goose"],
+  // Plural-looking words that are already the singular name of a page or resource.
+  ["settings", "settings"],
+  ["analytics", "analytics"],
+  ["metrics", "metrics"],
+  ["statistics", "statistics"],
+  ["news", "news"],
+  ["series", "series"],
+  ["species", "species"],
+  ["status", "status"],
+  ["analysis", "analysis"],
+  ["bonus", "bonus"],
+  ["campus", "campus"],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -75,6 +88,7 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
         if (segment.length <= 2) continue;
         // Skip common non-entity prefixes
         if (ROUTE_NON_ENTITY_SEGMENTS.has(segment.toLowerCase())) continue;
+        if (isOperationalSegment(segment)) continue;
 
         entityNames.add(singularize(segment));
         prevWasDynamic = false;

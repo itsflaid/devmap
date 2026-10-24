@@ -9,8 +9,9 @@ export const DESCRIPTORS: SignalDescriptor[] = [
       "multer", "formidable", "busboy", "cloudinary", "uploadthing",
       "aws-sdk/s3", "@aws-sdk/client-s3", "minio", "backblaze",
       "firebase/storage", "@supabase/storage",
-      "upload", "bucket", "blob",
+      "upload", "bucket",
     ],
+    importTerms: ["blob"],
   },
   {
     name: "Cloudinary",

@@ -200,16 +200,16 @@ test("author-related entity candidate does not merge into Authentication cluster
 test("high fan-in shared file does not merge unrelated candidates", () => {
   const candidates = [
     candidate({
-      id: "frontend-page:chat",
+      id: "capability:chat",
       label: "Chat",
-      source: "frontend-page",
-      files: ["app/chat/page.tsx", "lib/shared-utils.ts"],
+      source: "capability",
+      files: ["app/chat/route.ts", "lib/shared-utils.ts"],
     }),
     candidate({
-      id: "frontend-page:dashboard",
+      id: "registry:dashboard",
       label: "Dashboard",
-      source: "frontend-page",
-      files: ["app/dashboard/page.tsx", "lib/shared-utils.ts"],
+      source: "registry",
+      files: ["app/dashboard/route.ts", "lib/shared-utils.ts"],
     }),
   ];
 
@@ -282,4 +282,72 @@ test("entity candidates that name the same entity still merge", () => {
   ]);
 
   assert.equal(reconciliation.clusters.length, 1);
+});
+
+test("two pages never merge through a shared component, and a signal does not glue pages together", () => {
+  const pages = [
+    candidate({
+      id: "frontend-page:notes",
+      label: "Note",
+      source: "frontend-page",
+      files: ["app/notes/page.tsx", "components/card.tsx"],
+    }),
+    candidate({
+      id: "frontend-page:join",
+      label: "Join",
+      source: "frontend-page",
+      files: ["app/join/page.tsx", "components/card.tsx"],
+    }),
+    candidate({
+      id: "registry:signal-Authentication",
+      label: "Authentication",
+      source: "registry",
+      files: ["app/join/page.tsx", "app/notes/page.tsx", "lib/session.ts"],
+      routePaths: ["/join", "/notes"],
+    }),
+  ];
+
+  const labels = reconcileFeatureCandidates(pages, { "components/card.tsx": 2 })
+    .clusters.map((cluster) => cluster.canonicalLabel).sort();
+
+  assert.deepEqual(labels, ["Authentication", "Join", "Note"]);
+});
+
+test("a page and a signal with the same name are the same feature", () => {
+  const labels = reconcileFeatureCandidates([
+    candidate({
+      id: "frontend-page:search",
+      label: "Search",
+      source: "frontend-page",
+      files: ["app/search/page.tsx"],
+    }),
+    candidate({
+      id: "registry:signal-Search",
+      label: "Search",
+      source: "registry",
+      files: ["lib/search.ts"],
+    }),
+  ]).clusters.map((cluster) => cluster.canonicalLabel);
+
+  assert.deepEqual(labels, ["Search"]);
+});
+
+test("a standalone candidate is never merged, even through an entity or file anchor", () => {
+  const home = { ...candidate({
+    id: "frontend-page:home",
+    label: "Home",
+    source: "frontend-page",
+    files: ["app/page.tsx", "lib/post.ts"],
+    entityNames: ["Post"],
+  }), standalone: true };
+  const post = candidate({
+    id: "entity:post",
+    label: "Post",
+    source: "entity",
+    files: ["lib/post.ts"],
+    entityNames: ["Post"],
+  });
+
+  const labels = reconcileFeatureCandidates([home, post]).clusters.map((cluster) => cluster.canonicalLabel).sort();
+  assert.deepEqual(labels, ["Home", "Post"]);
 });

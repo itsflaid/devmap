@@ -10,7 +10,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
       "meilisearch", "typesense", "algolia", "@algolia",
       "elasticsearch", "@elastic/elasticsearch",
       "orama", "@orama",
-      "search", "fulltext", "index", "facet",
+      "search", "fulltext", "facet",
     ],
   },
 ];

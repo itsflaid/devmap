@@ -9,7 +9,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
     genericTerms: [
       "web-push", "pusher", "ably", "soketi", "firebase-messaging",
       "@firebase/messaging", "onesignal", "novu", "@novu",
-      "notification", "push", "realtime", "websocket",
+      "notification", "realtime", "websocket",
     ],
   },
 ];

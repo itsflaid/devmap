@@ -1,3 +1,4 @@
+import { isOperationalSegment } from "./nonResourceSegments.js";
 import type { RouteInfo } from "./routeDetector.js";
 import type { EntityGraph } from "../analysis/index.js";
 
@@ -300,6 +301,7 @@ function extractResourceName(path: string): string | null {
   const segment = segments[0].toLowerCase();
 
   if (segment.length <= 2) return null;
+  if (isOperationalSegment(segment)) return null;
   if (NON_RESOURCE_SEGMENTS.has(segment)) return null;
 
   return segment;

@@ -10,7 +10,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
       "posthog", "mixpanel", "@mixpanel", "amplitude",
       "google-analytics", "gtag", "plausible",
       "segment", "@segment",
-      "analytics", "tracking", "event",
+      "analytics", "tracking",
     ],
   },
 ];

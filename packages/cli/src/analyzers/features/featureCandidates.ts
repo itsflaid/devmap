@@ -29,6 +29,12 @@ export interface FeatureCandidate {
   routePaths: string[];
   entityNames: string[];
   conclusionConfidence: "high" | "medium" | "low";
+  /**
+   * The candidate stands on its own and is never fused with another one. Used for the
+   * landing page, which imports pieces of every other feature and would otherwise
+   * absorb them through shared files.
+   */
+  standalone?: boolean;
   /** Internal compatibility payload used while the public snapshot remains V1. */
   projection?: FeatureInfo;
 }
@@ -114,6 +120,12 @@ export function reconcileFeatureCandidates(
     if (identity.size > 0) entityIdentities.set(index, identity);
   });
 
+  // Same guard for pages: a bridge candidate must not fuse two different pages.
+  const pageIdentities = new Map<number, Set<string>>();
+  deterministicCandidates.forEach((candidate, index) => {
+    if (isPageSource(candidate.source)) pageIdentities.set(index, new Set([normalizeAnchor(candidate.label)]));
+  });
+
   for (const rejectedId of rejectedCandidateIds) {
     mergeDecisions.push({
       candidateIds: [rejectedId, ""],
@@ -154,8 +166,27 @@ export function reconcileFeatureCandidates(
         continue;
       }
 
+      const leftPages = pageIdentities.get(leftRoot);
+      const rightPages = pageIdentities.get(rightRoot);
+      if (leftRoot !== rightRoot && entitiesConflict(leftPages, rightPages)) {
+        mergeDecisions.push({
+          candidateIds: [leftCandidate.id, rightCandidate.id],
+          outcome: "retained",
+          anchors: structured,
+          reason: `Anchors found (${anchorStrings.join(", ")}), but merging would join distinct pages `
+            + `(${[...leftPages!].join(", ")} / ${[...rightPages!].join(", ")}) through a shared candidate.`,
+        });
+        continue;
+      }
+
       unionFind.union(left, right);
       const mergedRoot = unionFind.find(left);
+      if (leftPages || rightPages) {
+        pageIdentities.set(mergedRoot, new Set([...(leftPages ?? []), ...(rightPages ?? [])]));
+        for (const staleRoot of [leftRoot, rightRoot]) {
+          if (staleRoot !== mergedRoot) pageIdentities.delete(staleRoot);
+        }
+      }
       if (leftIdentity || rightIdentity) {
         entityIdentities.set(mergedRoot, new Set([...(leftIdentity ?? []), ...(rightIdentity ?? [])]));
         for (const staleRoot of [leftRoot, rightRoot]) {
@@ -291,9 +322,26 @@ function findStructuredAnchors(
   right: FeatureCandidate,
   fileReferenceCounts: Record<string, number> = {}
 ): Array<{ type: AnchorType; value: string }> {
+  if (left.standalone || right.standalone) return [];
+
+  // A page is an area of the product; a registry signal (auth, email, caching ...) is a
+  // cross-cutting concern that many pages touch. Fusing them would let one signal glue
+  // unrelated pages together and name the result after whichever page sorts first.
+  const pageVsSignal =
+    (isPageSource(left.source) && isSignalCandidate(right))
+    || (isPageSource(right.source) && isSignalCandidate(left));
+  if (pageVsSignal) {
+    // Only a page that carries the signal's own name is the same feature ("Search").
+    return normalizeAnchor(left.label) === normalizeAnchor(right.label)
+      ? [{ type: "alias" as const, value: normalizeAnchor(left.label) }]
+      : [];
+  }
+
+  // Two different pages are two features, however many components they share.
+  const bothPages = isPageSource(left.source) && isPageSource(right.source);
   const entityAnchors = intersection(left.entityNames, right.entityNames)
     .map((entity) => ({ type: "entity" as const, value: entity }));
-  const fileAnchors = intersection(left.files, right.files)
+  const fileAnchors = bothPages ? [] : intersection(left.files, right.files)
     .filter((file) => (fileReferenceCounts[file] ?? 0) <= HUB_FILE_THRESHOLD)
     .map((file) => ({ type: "file" as const, value: file }));
   const routeAnchors = intersection(
@@ -302,6 +350,15 @@ function findStructuredAnchors(
   ).map((resource) => ({ type: "route-resource" as const, value: resource }));
 
   return [...entityAnchors, ...fileAnchors, ...routeAnchors];
+}
+
+/** A vocabulary signal (Authentication, Email ...), as opposed to a role feature such as Documentation. */
+function isSignalCandidate(candidate: FeatureCandidate): boolean {
+  return candidate.source === "registry" && !candidate.id.includes(":role-");
+}
+
+function isPageSource(source: FeatureCandidateSource): boolean {
+  return source === "frontend-page" || source === "client-route";
 }
 
 /** Entity names a candidate vouches for. Only entity-sourced candidates define identity. */

@@ -95,7 +95,7 @@ test("a bridge candidate reconciles components independently of insertion order"
     }),
     candidate({
       id: "capability:chat",
-      label: "Chat Operations",
+      label: "Chat Management",
       source: "capability",
       files: ["app/chat/page.tsx"],
       routePaths: ["/chat"],
@@ -142,14 +142,14 @@ test("nested route segment does not create standalone entity from subresource pa
   const reconciliation = reconcileFeatureCandidates([
     candidate({
       id: "capability:workspace",
-      label: "Workspace Operations",
+      label: "Workspace Management",
       source: "capability",
       files: ["app/api/workspaces/route.ts"],
       routePaths: ["/api/workspaces"],
     }),
     candidate({
       id: "capability:workspace-members",
-      label: "Member Operations",
+      label: "Member Management",
       source: "capability",
       files: ["app/api/workspaces/[id]/members/route.ts"],
       routePaths: ["/api/workspaces/[id]/members"],
@@ -203,7 +203,7 @@ test("high fan-in shared file does not merge unrelated candidates", () => {
   const candidates = [
     candidate({
       id: "capability:chat",
-      label: "Chat",
+      label: "Chat Management",
       source: "capability",
       files: ["app/chat/route.ts", "lib/shared-utils.ts"],
     }),
@@ -234,7 +234,7 @@ test("a bridge candidate cannot fuse two distinct entity features into one clust
   const reconciliation = reconcileFeatureCandidates([
     candidate({
       id: "capability:route-capability:bridge",
-      label: "Bridge",
+      label: "Bridge Management",
       source: "capability",
       files: ["app/api/invoices/route.ts", "app/api/posts/route.ts"],
     }),
@@ -397,4 +397,64 @@ test("a page and an entity that only share a component stay separate, but a shar
   const labels = reconcileFeatureCandidates([room, message, roomEntity])
     .clusters.map((cluster) => cluster.canonicalLabel).sort();
   assert.deepEqual(labels, ["Message Management", "Room"]);
+});
+
+test("a CRUD capability keeps its resource: it cannot be pulled into another resource's feature", () => {
+  const labels = reconcileFeatureCandidates([
+    candidate({
+      id: "capability:snippets",
+      label: "Snippet Management",
+      source: "capability",
+      files: ["api/snippets/route.ts", "api/snippets/[id]/collections/route.ts"],
+      routePaths: ["/api/snippets", "/api/snippets/[id]/collections"],
+      entityNames: ["Snippet"],
+    }),
+    candidate({
+      id: "entity:collection",
+      label: "Collection Management",
+      source: "entity",
+      files: ["api/snippets/[id]/collections/route.ts"],
+      routePaths: ["/api/snippets/[id]/collections"],
+      entityNames: ["Collection"],
+    }),
+    candidate({
+      id: "entity:snippet",
+      label: "Snippet Management",
+      source: "entity",
+      files: ["api/snippets/route.ts"],
+      entityNames: ["Snippet"],
+    }),
+  ]).clusters.map((cluster) => cluster.canonicalLabel).sort();
+
+  assert.deepEqual(labels, ["Collection Management", "Snippet Management"]);
+});
+
+test("a behavioral capability (sharing, publishing) never fuses a resource with its siblings through shared routes", () => {
+  const labels = reconcileFeatureCandidates([
+    candidate({
+      id: "capability:sharing",
+      label: "Content Sharing",
+      source: "capability",
+      files: ["api/snippets/[id]/share/route.ts"],
+      routePaths: ["/api/snippets/[id]/share"],
+    }),
+    candidate({
+      id: "capability:snippets",
+      label: "Snippet Management",
+      source: "capability",
+      files: ["api/snippets/route.ts"],
+      routePaths: ["/api/snippets"],
+      entityNames: ["Snippet"],
+    }),
+    candidate({
+      id: "capability:collections",
+      label: "Collection Management",
+      source: "capability",
+      files: ["api/collections/route.ts"],
+      routePaths: ["/api/collections", "/api/snippets"],
+      entityNames: ["Collection"],
+    }),
+  ]).clusters.map((cluster) => cluster.canonicalLabel).sort();
+
+  assert.deepEqual(labels, ["Collection Management", "Content Sharing", "Snippet Management"]);
 });

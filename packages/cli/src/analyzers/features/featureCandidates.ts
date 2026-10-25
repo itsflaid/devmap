@@ -337,6 +337,17 @@ function findStructuredAnchors(
     return sameName(left, right) ? [{ type: "alias" as const, value: normalizeAnchor(left.label) }] : [];
   }
 
+  // A behavioral capability ("Content Sharing", "Social Interactions") cuts across a resource.
+  // It touches the same routes as the resource's own CRUD capability, so a shared route or
+  // file would fuse the resource, its collections and every behavior into one giant feature.
+  // Only a shared entity (or the same name) makes it the same feature as something else.
+  if (isBehavioralCapability(left) || isBehavioralCapability(right)) {
+    const entities = intersection(left.entityNames, right.entityNames)
+      .map((entity) => ({ type: "entity" as const, value: entity }));
+    if (entities.length > 0) return entities;
+    return sameName(left, right) ? [{ type: "alias" as const, value: normalizeAnchor(left.label) }] : [];
+  }
+
   // A page imports components of whatever it shows, so sharing a file with an entity or
   // capability does not make them one feature; a shared route resource, entity name or the
   // same name does.
@@ -374,13 +385,23 @@ function sameName(left: FeatureCandidate, right: FeatureCandidate): boolean {
   return featureStem(left.label) === featureStem(right.label);
 }
 
+/** A capability that is not a CRUD resource: sharing, publishing, discovery, collaboration ... */
+function isBehavioralCapability(candidate: FeatureCandidate): boolean {
+  return candidate.source === "capability" && !/ management$/i.test(candidate.label);
+}
+
 function isPageSource(source: FeatureCandidateSource): boolean {
   return source === "frontend-page" || source === "client-route";
 }
 
-/** Entity names a candidate vouches for. Only entity-sourced candidates define identity. */
+/**
+ * Entity names a candidate vouches for. Entity-sourced candidates and CRUD capabilities
+ * ("Snippet Management") define identity; a capability that is not about one resource does not.
+ */
 function entityIdentity(candidate: FeatureCandidate): Set<string> {
-  if (candidate.source !== "entity") return new Set();
+  if (candidate.source !== "entity" && !(candidate.source === "capability" && !isBehavioralCapability(candidate))) {
+    return new Set();
+  }
   return new Set(candidate.entityNames.map(normalizeAnchor).filter(Boolean));
 }
 

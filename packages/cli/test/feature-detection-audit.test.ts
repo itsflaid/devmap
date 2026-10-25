@@ -230,3 +230,12 @@ test("a feature's entry point is its page, not a script that mentions it", async
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
+
+test("a VS Code extension is a feature of its own", async () => {
+  const names = await featureNames({
+    "package.json": JSON.stringify({ name: "ext", engines: { vscode: "^1.90.0" } }),
+    "src/extension.ts": "import * as vscode from 'vscode';\nexport function activate(context: vscode.ExtensionContext) { return context; }\n",
+    "src/commands.ts": "import { window } from 'vscode';\nexport const hello = () => window.showInformationMessage('hi');\n"
+  });
+  assert.ok(names.includes("VS Code Extension"), names.join(", "));
+});

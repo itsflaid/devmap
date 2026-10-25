@@ -4,6 +4,14 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.8.2] - 2026-10-25
+
 ### Fixed
 
 - Feature detection (found by running 0.8.1 on a real chat app): vocabulary signals such as
@@ -17,12 +25,6 @@ All notable changes to DevMap are documented in this file.
 - Scoped package terms (`@sentry/nextjs`, `@trigger.dev`) now match imports of that package
 - `node:crypto` alone no longer means Encryption (it is also used for hashing), and a single
   file importing `redis` is no longer Caching
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.8.1] - 2026-10-25
 
@@ -334,7 +336,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/itsflaid/devmap/releases/tag/v0.8.2
 [0.8.1]: https://github.com/itsflaid/devmap/releases/tag/v0.8.1
 [0.8.0]: https://github.com/itsflaid/devmap/releases/tag/v0.8.0
 [0.7.0]: https://github.com/itsflaid/devmap/releases/tag/v0.7.0

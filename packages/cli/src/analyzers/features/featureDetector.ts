@@ -373,6 +373,27 @@ export function detectFeatures(
     }
   }
 
+  // --- VS Code extension: files that use the `vscode` API ---
+  const extensionFiles = scopedFiles
+    .filter((file) => /\.[cm]?[jt]sx?$/.test(file.path) && VSCODE_IMPORT.test(file.content))
+    .filter((file) => isFeatureEvidenceFile(file.path))
+    .map((file) => file.path)
+    .sort()
+    .slice(0, 12);
+  if (extensionFiles.length > 0) {
+    candidates.push(toFeatureCandidate(
+      "registry",
+      "role-vscode-extension",
+      createFeatureInfo(
+        "VS Code Extension",
+        extensionFiles,
+        ["vscode", "extension", "command", "activate"],
+        "Contains the VS Code extension: activation, commands and editor integration.",
+        analyses
+      )
+    ));
+  }
+
   // --- FEATURE_SIGNALS ---
   // Pre-filter once here — avoids redundant isFeatureEvidenceFile calls inside each signal loop
   // Registry files (../registry/**) are excluded: they *define* the vocabulary,
@@ -452,6 +473,8 @@ export function detectFeatures(
     rejectedCandidateIds: reconciliation.rejectedCandidateIds
   };
 }
+
+const VSCODE_IMPORT = /(?:from\s+|require\(\s*|import\(\s*)["']vscode["']/;
 
 const CLI_LIBRARIES = "commander|yargs|citty|cac|clipanion|@oclif/core|oclif|meow|minimist|sade|cleye|gunshi|@clack/prompts|inquirer|mri|arg";
 const CLI_IMPORT = new RegExp(`(?:from\\s+|require\\(\\s*|import\\(\\s*)["'](?:${CLI_LIBRARIES.replace(/[/@]/g, (c) => `\\${c}`)})(?:/[^"']*)?["']`);

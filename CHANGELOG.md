@@ -4,6 +4,24 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- A "VS Code Extension" feature for files that use the `vscode` API
+
+### Fixed
+
+- Feature detection (found by running 0.8.2 on a snippet manager with a web app and an
+  editor extension): behavioral capabilities such as Content Sharing, Social Interactions
+  and Public Discovery no longer fuse a resource, its collections and every behavior into
+  one feature named after a page ("Share" held Snippet and Collection)
+- A CRUD capability (`Snippet Management`) keeps its resource: it can no longer be pulled
+  into another resource's feature through a shared route, so Snippet and Collection stay
+  separate with their own entry points
+- In an API with 10 or more routes, a single read-only endpoint (`GET /api/sidebar`,
+  `/api/user-stats`) is no longer a one-file "Management" feature; a small API keeps it
+- Resources named with a dash or underscore are named like models (`user-stats` is
+  `UserStat`, not "User-stat")
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

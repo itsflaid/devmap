@@ -20,3 +20,6 @@ export function isOperationalSegment(segment: string): boolean {
   const lower = segment.toLowerCase();
   return lower.includes(".") || OPERATIONAL_SEGMENTS.has(lower);
 }
+
+/** From this many API routes on, a lone read-only endpoint (`GET /api/sidebar`) is plumbing, not a feature. */
+export const LARGE_API_ROUTE_COUNT = 10;

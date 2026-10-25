@@ -261,7 +261,11 @@ function projectCompatibilityFeature(cluster: FeatureCluster): FeatureInfo | und
     .filter((candidate): candidate is FeatureInfo => Boolean(candidate));
   const files = uniqueSorted(projections.flatMap((feature) => feature.files));
   const evidence = uniqueSorted(projections.flatMap((feature) => feature.evidence));
-  const entryPoints = uniqueSorted(projections.flatMap((feature) => feature.entryPoints));
+  // The canonical candidate's entry points come first; the others follow in path order.
+  const entryPoints = [...new Set([
+    ...canonical.entryPoints,
+    ...uniqueSorted(projections.flatMap((feature) => feature.entryPoints))
+  ])];
   const searchTerms = uniqueSorted(projections.flatMap((feature) => feature.searchTerms)).slice(0, 8);
 
   return {
@@ -324,24 +328,28 @@ function findStructuredAnchors(
 ): Array<{ type: AnchorType; value: string }> {
   if (left.standalone || right.standalone) return [];
 
-  // A page is an area of the product; a registry signal (auth, email, caching ...) is a
-  // cross-cutting concern that many pages touch. Fusing them would let one signal glue
-  // unrelated pages together and name the result after whichever page sorts first.
-  const pageVsSignal =
-    (isPageSource(left.source) && isSignalCandidate(right))
-    || (isPageSource(right.source) && isSignalCandidate(left));
-  if (pageVsSignal) {
-    // Only a page that carries the signal's own name is the same feature ("Search").
-    return normalizeAnchor(left.label) === normalizeAnchor(right.label)
-      ? [{ type: "alias" as const, value: normalizeAnchor(left.label) }]
-      : [];
+  // A vocabulary signal (Authentication, Encryption, Caching ...) is a cross-cutting concern
+  // that many files and many features touch. Sharing a file with it, or with another signal,
+  // says nothing about being the same feature, and fusing them hides real features
+  // (Rate Limiting inside Caching, Reminders inside Background Jobs + Encryption). Only the
+  // same name makes a signal the same feature as something else.
+  if (isSignalCandidate(left) || isSignalCandidate(right)) {
+    return sameName(left, right) ? [{ type: "alias" as const, value: normalizeAnchor(left.label) }] : [];
+  }
+
+  // A page imports components of whatever it shows, so sharing a file with an entity or
+  // capability does not make them one feature; a shared route resource, entity name or the
+  // same name does.
+  const pageVsOther = isPageSource(left.source) !== isPageSource(right.source);
+  if (pageVsOther && sameName(left, right)) {
+    return [{ type: "alias" as const, value: normalizeAnchor(left.label) }];
   }
 
   // Two different pages are two features, however many components they share.
   const bothPages = isPageSource(left.source) && isPageSource(right.source);
   const entityAnchors = intersection(left.entityNames, right.entityNames)
     .map((entity) => ({ type: "entity" as const, value: entity }));
-  const fileAnchors = bothPages ? [] : intersection(left.files, right.files)
+  const fileAnchors = bothPages || pageVsOther ? [] : intersection(left.files, right.files)
     .filter((file) => (fileReferenceCounts[file] ?? 0) <= HUB_FILE_THRESHOLD)
     .map((file) => ({ type: "file" as const, value: file }));
   const routeAnchors = intersection(
@@ -355,6 +363,15 @@ function findStructuredAnchors(
 /** A vocabulary signal (Authentication, Email ...), as opposed to a role feature such as Documentation. */
 function isSignalCandidate(candidate: FeatureCandidate): boolean {
   return candidate.source === "registry" && !candidate.id.includes(":role-");
+}
+
+/** "Payment Management" and "Payments" are the same name. */
+function featureStem(label: string): string {
+  return normalizeAnchor(label).replace(/ management$/, "").replace(/s$/, "");
+}
+
+function sameName(left: FeatureCandidate, right: FeatureCandidate): boolean {
+  return featureStem(left.label) === featureStem(right.label);
 }
 
 function isPageSource(source: FeatureCandidateSource): boolean {

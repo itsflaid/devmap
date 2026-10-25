@@ -100,7 +100,7 @@ export function detectFrontendPageFeatures(
   );
 
   const pages = [...routesBySegment].map(([segment, segmentRoutes]) => {
-    const seedFiles = [...new Set(segmentRoutes.map((route) => route.file))].sort();
+    const seedFiles = byShallowPath([...new Set(segmentRoutes.map((route) => route.file))]);
     return {
       segment,
       segmentRoutes,
@@ -363,6 +363,13 @@ export function detectClientRouteFeatures(
   }
 
   return features;
+}
+
+/** The page closest to the segment root first: `room/[id]/page.tsx` before `room/[id]/info/page.tsx`. */
+function byShallowPath(files: string[]): string[] {
+  return [...files].sort((left, right) =>
+    left.split("/").length - right.split("/").length || left.localeCompare(right)
+  );
 }
 
 /**

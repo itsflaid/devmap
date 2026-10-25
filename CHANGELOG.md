@@ -4,6 +4,20 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Feature detection (found by running 0.8.1 on a real chat app): vocabulary signals such as
+  Rate Limiting, Background Jobs, Encryption and Caching no longer fuse with each other or
+  with a Reminder feature just because they share a file, so each stays visible
+- A page and an entity or capability that only share a component are separate features;
+  they still merge through the same route resource, entity or name (`Payments` and
+  `Payment Management` are the same name)
+- A feature's entry point is the page closest to the root, never a file under `scripts/`,
+  `tools/` or `bin/`
+- Scoped package terms (`@sentry/nextjs`, `@trigger.dev`) now match imports of that package
+- `node:crypto` alone no longer means Encryption (it is also used for hashing), and a single
+  file importing `redis` is no longer Caching
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

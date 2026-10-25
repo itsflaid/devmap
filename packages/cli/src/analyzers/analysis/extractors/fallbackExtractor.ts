@@ -1,4 +1,4 @@
-import { isOperationalSegment } from "../../detectors/nonResourceSegments.js";
+import { isOperationalSegment, LARGE_API_ROUTE_COUNT } from "../../detectors/nonResourceSegments.js";
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityInfo, IRouteFallbackExtractor } from "./types.js";
 
@@ -66,11 +66,13 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
   readonly name = "route-fallback";
 
   extract(routes: RouteInfo[]): EntityInfo[] {
-    const entityNames = new Set<string>();
+    const apiRoutes = routes.filter((r) => r.kind === "api");
+    const found = new Map<string, { writes: boolean; files: Set<string> }>();
 
-    for (const route of routes.filter((r) => r.kind === "api")) {
+    for (const route of apiRoutes) {
       const segments = route.path.split("/").filter(Boolean);
       let prevWasDynamic = false;
+      const writes = (route.methods ?? []).some((method) => method !== "GET" && method !== "HEAD" && method !== "QUERY");
 
       for (const segment of segments) {
         // Skip dynamic segments: [id], [slug], [...catchall]
@@ -90,18 +92,34 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
         if (ROUTE_NON_ENTITY_SEGMENTS.has(segment.toLowerCase())) continue;
         if (isOperationalSegment(segment)) continue;
 
-        entityNames.add(singularize(segment));
+        const name = resourceEntityName(segment);
+        const entry = found.get(name) ?? { writes: false, files: new Set<string>() };
+        entry.writes = entry.writes || writes || route.methods === undefined;
+        entry.files.add(route.file);
+        found.set(name, entry);
         prevWasDynamic = false;
       }
     }
 
-    return [...entityNames].map((name) => ({
-      name,
-      fields: [],
-      relations: [],
-      source: "route-hint" as const,
-    }));
+    const large = apiRoutes.length >= LARGE_API_ROUTE_COUNT;
+    return [...found]
+      // In a large API a single read-only endpoint is plumbing, not an entity.
+      .filter(([, { writes, files }]) => !large || writes || files.size >= 2)
+      .map(([name]) => ({
+        name,
+        fields: [],
+        relations: [],
+        source: "route-hint" as const,
+      }));
   }
+}
+
+/** `snippets` → "Snippet", `user-stats` → "UserStat". */
+function resourceEntityName(segment: string): string {
+  const words = segment.split(/[-_]+/).filter(Boolean);
+  if (words.length <= 1) return singularize(segment);
+  words[words.length - 1] = singularize(words[words.length - 1]);
+  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join("");
 }
 
 // ---------------------------------------------------------------------------

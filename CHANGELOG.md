@@ -17,6 +17,10 @@ All notable changes to DevMap are documented in this file.
 - A CRUD capability (`Snippet Management`) keeps its resource: it can no longer be pulled
   into another resource's feature through a shared route, so Snippet and Collection stay
   separate with their own entry points
+- In an API with 10 or more routes, a single read-only endpoint (`GET /api/sidebar`,
+  `/api/user-stats`) is no longer a one-file "Management" feature; a small API keeps it
+- Resources named with a dash or underscore are named like models (`user-stats` is
+  `UserStat`, not "User-stat")
 
 ### Planned
 

@@ -239,3 +239,30 @@ test("a VS Code extension is a feature of its own", async () => {
   });
   assert.ok(names.includes("VS Code Extension"), names.join(", "));
 });
+
+const route = (body = "return Response.json({ ok: true });") => `export async function GET() { ${body} }\n`;
+const writeRoute = "export async function GET() { return Response.json([]); }\nexport async function POST() { return Response.json({}); }\n";
+
+test("in a large API a lone read-only endpoint is not a Management feature", async () => {
+  const files: Record<string, string> = {
+    "package.json": JSON.stringify({ name: "big-api", dependencies: { next: "15.0.0" } }),
+    "app/api/sidebar/route.ts": route(),
+    "app/api/user-stats/route.ts": route(),
+    "app/api/notes/route.ts": writeRoute,
+    "app/api/notes/[id]/route.ts": writeRoute
+  };
+  for (const name of ["a", "b", "c", "d", "e", "f"]) files[`app/api/notes/[id]/${name}/route.ts`] = writeRoute;
+
+  const names = await featureNames(files);
+  assert.ok(!names.includes("Sidebar Management"), names.join(", "));
+  assert.ok(!names.some((name) => /user.?stat/i.test(name)), names.join(", "));
+  assert.ok(names.includes("Note Management"), names.join(", "));
+});
+
+test("a small API keeps its read-only resource", async () => {
+  const names = await featureNames({
+    "package.json": JSON.stringify({ name: "tiny-api", dependencies: { express: "5.0.0" } }),
+    "src/server.ts": "import express from 'express';\nconst app = express();\napp.get('/payments', (_req, res) => res.json([]));\nexport default app;\n"
+  });
+  assert.ok(names.includes("Payment Management"), names.join(", "));
+});

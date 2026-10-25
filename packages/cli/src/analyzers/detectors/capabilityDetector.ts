@@ -1,4 +1,4 @@
-import { isOperationalSegment } from "./nonResourceSegments.js";
+import { isOperationalSegment, LARGE_API_ROUTE_COUNT } from "./nonResourceSegments.js";
 import type { RouteInfo } from "./routeDetector.js";
 import type { EntityGraph } from "../analysis/index.js";
 
@@ -104,6 +104,10 @@ function detectCrudCapabilities(
     const hasDelete = methods.has("DELETE");
 
     if (!hasRead && !hasWrite) continue;
+
+    // In an API of any size, one read-only endpoint (`GET /api/sidebar`) is plumbing,
+    // not a resource someone manages. A small API keeps it: it may be the whole product.
+    if (!hasWrite && files.size < 2 && apiRoutes.length >= LARGE_API_ROUTE_COUNT) continue;
 
     const entityName = resolveEntityName(resource, entityGraph);
     const isFull = hasRead && hasWrite && hasDelete;
@@ -308,7 +312,8 @@ function extractResourceName(path: string): string | null {
 }
 
 function resolveEntityName(resource: string, entityGraph: EntityGraph): string {
-  const lower = resource.toLowerCase();
+  // `user-stats` and `user_stats` name the same thing as the model `UserStat`.
+  const lower = resource.toLowerCase().replace(/[-_]+/g, "");
 
   const direct = entityGraph.entityNames.find(
     (name) => name.toLowerCase() === lower
@@ -321,7 +326,11 @@ function resolveEntityName(resource: string, entityGraph: EntityGraph): string {
   );
   if (singularMatch) return singularMatch;
 
-  return singular.length === 0 ? singular : singular[0].toUpperCase() + singular.slice(1);
+  // No model: name it from the words of the segment, "user-stats" -> "UserStat".
+  const words = resource.toLowerCase().split(/[-_]+/).filter(Boolean);
+  if (words.length === 0) return "";
+  words[words.length - 1] = singularize(words[words.length - 1]);
+  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join("");
 }
 
 function singularize(word: string): string {

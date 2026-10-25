@@ -6,7 +6,7 @@ export const DESCRIPTORS: SignalDescriptor[] = [
     category: "feature",
     purpose: "Handles data-at-rest encryption and decryption.",
     genericTerms: [
-      "node:crypto", "crypto-js", "tweetnacl", "libsodium", "@noble/ciphers",
+      "crypto-js", "tweetnacl", "libsodium", "@noble/ciphers",
       "aes", "aes-256-gcm", "cipher", "encrypt", "decrypt", "encryption",
     ],
   },

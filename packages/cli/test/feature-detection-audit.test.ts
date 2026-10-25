@@ -181,3 +181,52 @@ test("CLI Commands needs a command line program, not just a folder or main.ts na
   });
   assert.ok(cli.includes("CLI Commands"), cli.join(", "));
 });
+
+test("rate limiting, background jobs and encryption are not swallowed by each other or by Reminders", async () => {
+  const names = await featureNames({
+    "package.json": JSON.stringify({ name: "chat", dependencies: { next: "15.0.0" } }),
+    "src/server/rateLimit.ts": "import { Ratelimit } from '@upstash/ratelimit';\nimport { Redis } from '@upstash/redis';\nexport const limit = new Ratelimit({ redis: Redis.fromEnv() });\n",
+    "src/lib/encryption.ts": "export const encrypt = (value: string) => value;\n",
+    "src/lib/qstash.ts": "import { Client } from '@upstash/qstash';\nexport const queue = new Client({});\n",
+    "src/app/api/reminders/trigger/route.ts": "import { encrypt } from '../../../../lib/encryption';\nimport { queue } from '../../../../lib/qstash';\nexport async function POST() { return Response.json([encrypt, queue].length); }\n",
+    "src/app/api/reminders/[id]/done/route.ts": "export async function POST() { return Response.json({ ok: true }); }\n"
+  });
+
+  for (const expected of ["Rate Limiting", "Background Jobs", "Encryption", "Reminder Management"]) {
+    assert.ok(names.includes(expected), `${expected} missing (got ${names.join(", ")})`);
+  }
+  assert.ok(!names.includes("Caching"), "a single redis import is not caching");
+});
+
+test("scoped package terms match the full package name", async () => {
+  const names = await featureNames({
+    "package.json": JSON.stringify({ name: "monitored" }),
+    "src/a.ts": "import * as Sentry from '@sentry/nextjs'; export const a = Sentry;\n",
+    "src/b.ts": "export const b = 1;\n"
+  });
+  assert.ok(names.includes("Logging & Monitoring"), names.join(", "));
+});
+
+test("a feature's entry point is its page, not a script that mentions it", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-feature-entry-"));
+  try {
+    const files: Record<string, string> = {
+      "package.json": JSON.stringify({ name: "rooms", dependencies: { next: "15.0.0" } }),
+      "app/room/[id]/page.tsx": page("RoomPage", "import { Bubble } from '../../../components/bubble';\n"),
+      "app/room/[id]/info/page.tsx": page("RoomInfo"),
+      "components/bubble.tsx": "export const Bubble = () => null;\n",
+      "scripts/generate-room-icons.mjs": "console.log('room icons');\n"
+    };
+    for (const [path, content] of Object.entries(files)) {
+      const target = join(projectRoot, path);
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, content, "utf8");
+    }
+    const snapshot = await createProjectMap(projectRoot);
+    const room = snapshot.features.find((feature) => feature.name === "Room");
+    assert.ok(room, snapshot.features.map((feature) => feature.name).join(", "));
+    assert.equal(room.entryPoint, "app/room/[id]/page.tsx");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

@@ -91,12 +91,14 @@ test("a bridge candidate reconciles components independently of insertion order"
       label: "Chat",
       source: "frontend-page",
       files: ["app/chat/page.tsx"],
+      routePaths: ["/chat"],
     }),
     candidate({
       id: "capability:chat",
       label: "Chat Operations",
       source: "capability",
       files: ["app/chat/page.tsx"],
+      routePaths: ["/chat"],
       entityNames: ["Message"],
     }),
   ];
@@ -206,9 +208,9 @@ test("high fan-in shared file does not merge unrelated candidates", () => {
       files: ["app/chat/route.ts", "lib/shared-utils.ts"],
     }),
     candidate({
-      id: "registry:dashboard",
+      id: "entity:dashboard",
       label: "Dashboard",
-      source: "registry",
+      source: "entity",
       files: ["app/dashboard/route.ts", "lib/shared-utils.ts"],
     }),
   ];
@@ -350,4 +352,49 @@ test("a standalone candidate is never merged, even through an entity or file anc
 
   const labels = reconcileFeatureCandidates([home, post]).clusters.map((cluster) => cluster.canonicalLabel).sort();
   assert.deepEqual(labels, ["Home", "Post"]);
+});
+
+test("signals that share a file stay separate features", () => {
+  const labels = reconcileFeatureCandidates([
+    candidate({ id: "registry:signal-Caching", label: "Caching", source: "registry", files: ["src/rateLimit.ts"] }),
+    candidate({ id: "registry:signal-Rate Limiting", label: "Rate Limiting", source: "registry", files: ["src/rateLimit.ts", "src/trpc.ts"] }),
+    candidate({
+      id: "capability:reminder-management",
+      label: "Reminder Management",
+      source: "capability",
+      files: ["src/rateLimit.ts", "src/reminders.ts"],
+      entityNames: ["Reminder"],
+    }),
+  ]).clusters.map((cluster) => cluster.canonicalLabel).sort();
+
+  assert.deepEqual(labels, ["Caching", "Rate Limiting", "Reminder Management"]);
+});
+
+test("a page and an entity that only share a component stay separate, but a shared route resource merges them", () => {
+  const room = candidate({
+    id: "frontend-page:room",
+    label: "Room",
+    source: "frontend-page",
+    files: ["app/room/page.tsx", "components/bubble.tsx"],
+    routePaths: ["/room/[id]"],
+  });
+  const message = candidate({
+    id: "entity:message",
+    label: "Message Management",
+    source: "entity",
+    files: ["components/bubble.tsx"],
+    entityNames: ["Message"],
+  });
+  const roomEntity = candidate({
+    id: "entity:room",
+    label: "Room Management",
+    source: "entity",
+    files: ["server/room.ts"],
+    routePaths: ["/api/room"],
+    entityNames: ["Room"],
+  });
+
+  const labels = reconcileFeatureCandidates([room, message, roomEntity])
+    .clusters.map((cluster) => cluster.canonicalLabel).sort();
+  assert.deepEqual(labels, ["Message Management", "Room"]);
 });

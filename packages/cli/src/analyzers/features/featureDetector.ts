@@ -918,6 +918,9 @@ function matchesSignal(
 function matchesImportTerm(specifier: string, term: string): boolean {
   const lower = specifier.toLowerCase();
 
+  // A term that names a scope or a full scoped package ("@sentry/nextjs", "@trigger.dev")
+  if (term.startsWith("@") && (lower === term || lower.startsWith(`${term}/`))) return true;
+
   // Scoped package: @org/name — match against the name segment
   const scopedMatch = lower.match(/^@[^/]+\/(.+)$/);
   if (scopedMatch) {

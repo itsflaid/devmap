@@ -677,10 +677,16 @@ function attachFeatureEntryPoints(
     const relatedRouteEntries = routes
       .filter((route) => feature.files.includes(route.file))
       .map((route) => route.file);
+    // Closest to the root first, tooling folders such as scripts/ last:
+    // `room/[id]/page.tsx` leads `room/[id]/info/page.tsx`, and no script leads anything.
     const relatedEntries = [...new Set([
       ...feature.files.filter((file) => entryPoints.includes(file)),
       ...relatedRouteEntries
-    ])].sort();
+    ])].sort((left, right) =>
+      Number(isToolingPath(left)) - Number(isToolingPath(right))
+      || left.split("/").length - right.split("/").length
+      || left.localeCompare(right)
+    );
     const orderedFiles = feature.name === "Authentication"
       ? orderAuthenticationFiles(feature.files)
       : feature.files;
@@ -743,7 +749,12 @@ function chooseFeatureEntryPoint(
     return sorted[0];
   }
 
-  return files[0];
+  return files.find((file) => !isToolingPath(file)) ?? files[0];
+}
+
+/** Build, release and maintenance scripts: evidence for a feature, never its entry. */
+function isToolingPath(path: string): boolean {
+  return /(^|\/)(scripts?|tools?|bin|\.?config)\//.test(path.toLowerCase());
 }
 
 function buildFeatureBusinessFlow(

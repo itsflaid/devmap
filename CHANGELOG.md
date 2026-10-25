@@ -4,6 +4,14 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.8.3] - 2026-10-25
+
 ### Added
 
 - A "VS Code Extension" feature for files that use the `vscode` API
@@ -21,12 +29,6 @@ All notable changes to DevMap are documented in this file.
   `/api/user-stats`) is no longer a one-file "Management" feature; a small API keeps it
 - Resources named with a dash or underscore are named like models (`user-stats` is
   `UserStat`, not "User-stat")
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.8.2] - 2026-10-25
 
@@ -354,7 +356,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/itsflaid/devmap/releases/tag/v0.8.3
 [0.8.2]: https://github.com/itsflaid/devmap/releases/tag/v0.8.2
 [0.8.1]: https://github.com/itsflaid/devmap/releases/tag/v0.8.1
 [0.8.0]: https://github.com/itsflaid/devmap/releases/tag/v0.8.0

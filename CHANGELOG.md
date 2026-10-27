@@ -17,6 +17,8 @@ All notable changes to DevMap are documented in this file.
   - In SvelteKit, Astro and Nuxt an `@` folder is a literal URL character (`/profile/@[user]`);
     only Next's App Router treats `@slot` as a parallel route
   - A snake_case table (`user_roles`) is the entity `UserRole`, not "User_role"
+  - A one-letter URL segment (`app/s/[subdomain]`) no longer crashes the whole analysis
+    (`singularize("s")` returned an empty string)
 
 ### Planned
 

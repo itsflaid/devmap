@@ -197,3 +197,24 @@ test("Fastify without autoload: routes keep their literal paths", async () => {
     assert.deepEqual(await routeTable(root), ["api /users [GET]"]);
   });
 });
+
+// -------------------------------------------------- one-letter URL segments
+
+test("a one-letter page segment (`/s/[subdomain]`) does not crash feature detection", async () => {
+  await withProject({
+    "package.json": pkg({ name: "multi-tenant", dependencies: { next: "15.0.0", react: "19.0.0" } }),
+    "app/page.tsx": "export default function Page() { return null; }\n",
+    "app/s/[subdomain]/page.tsx": "export default function Page() { return null; }\n"
+  }, async (root) => {
+    const map = await createProjectMap(root);
+    assert.ok(map.routes.some((route) => route.path === "/s/[subdomain]"));
+    assert.ok(map.features.some((feature) => feature.name === "S"), map.features.map((feature) => feature.name).join(", "));
+  });
+});
+
+test("route-hint entities: a one-letter API segment is kept, not emptied", () => {
+  const entities = new RouteFallbackExtractor().extract([
+    { path: "/api/s/tasks", file: "a.ts", kind: "api", methods: ["POST"] }
+  ]);
+  assert.ok(entities.every((entity) => entity.name.length > 0), JSON.stringify(entities));
+});

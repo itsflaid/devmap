@@ -394,7 +394,7 @@ export function pageFeatureName(segment: string): string {
   const words = segment.split(/[-_.\s]+/).filter(Boolean);
   if (words.length === 0) return segment;
   words[words.length - 1] = singularize(words[words.length - 1]);
-  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
 /**

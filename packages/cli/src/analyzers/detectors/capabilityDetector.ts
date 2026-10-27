@@ -330,7 +330,7 @@ function resolveEntityName(resource: string, entityGraph: EntityGraph): string {
   const words = resource.toLowerCase().split(/[-_]+/).filter(Boolean);
   if (words.length === 0) return "";
   words[words.length - 1] = singularize(words[words.length - 1]);
-  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join("");
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
 }
 
 function singularize(word: string): string {

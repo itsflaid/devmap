@@ -119,7 +119,7 @@ export function resourceEntityName(segment: string): string {
   const words = segment.split(/[-_]+/).filter(Boolean);
   if (words.length <= 1) return singularize(segment);
   words[words.length - 1] = singularize(words[words.length - 1]);
-  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join("");
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +143,9 @@ export function singularize(word: string): string {
   if (IRREGULAR_SINGULAR.has(lower)) {
     return capitalize(IRREGULAR_SINGULAR.get(lower) ?? lower);
   }
+
+  // A one or two letter word ("s", "us") is not a plural: stripping its "s" leaves nothing.
+  if (lower.length <= 2) return capitalize(lower);
 
   // "categories" → "category", "replies" → "reply"
   if (lower.endsWith("ies")) {

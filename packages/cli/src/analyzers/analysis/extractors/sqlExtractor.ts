@@ -1,7 +1,7 @@
 import { Project, ScriptTarget, SyntaxKind } from "ts-morph";
 import type { ScannedFile } from "../index.js";
 import type { EntityInfo, IEntityExtractor } from "./types.js";
-import { singularize } from "./fallbackExtractor.js";
+import { resourceEntityName } from "./fallbackExtractor.js";
 import { isArchitectureSource } from "../../graph/index.js";
 
 // ---------------------------------------------------------------------------
@@ -162,7 +162,8 @@ export class SQLExtractor implements IEntityExtractor {
 
     const filesByEntityName = new Map<string, Set<string>>();
     for (const [table, tableFiles] of filesByTable) {
-      const entityName = singularize(table);
+      // `user_roles` is the model `UserRole`, not "User_role".
+      const entityName = resourceEntityName(table);
       const existing = filesByEntityName.get(entityName) ?? new Set<string>();
       for (const file of tableFiles) existing.add(file);
       filesByEntityName.set(entityName, existing);

@@ -1,4 +1,4 @@
-import { isOperationalSegment, LARGE_API_ROUTE_COUNT } from "../../detectors/nonResourceSegments.js";
+import { isDynamicSegment, isOperationalSegment, LARGE_API_ROUTE_COUNT } from "../../detectors/nonResourceSegments.js";
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityInfo, IRouteFallbackExtractor } from "./types.js";
 
@@ -75,8 +75,8 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
       const writes = (route.methods ?? []).some((method) => method !== "GET" && method !== "HEAD" && method !== "QUERY");
 
       for (const segment of segments) {
-        // Skip dynamic segments: [id], [slug], [...catchall]
-        if (segment.startsWith("[")) {
+        // Skip dynamic segments: [id], [slug], [...catchall], :id
+        if (isDynamicSegment(segment)) {
           prevWasDynamic = true;
           continue;
         }
@@ -115,7 +115,7 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
 }
 
 /** `snippets` → "Snippet", `user-stats` → "UserStat". */
-function resourceEntityName(segment: string): string {
+export function resourceEntityName(segment: string): string {
   const words = segment.split(/[-_]+/).filter(Boolean);
   if (words.length <= 1) return singularize(segment);
   words[words.length - 1] = singularize(words[words.length - 1]);

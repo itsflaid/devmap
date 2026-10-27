@@ -1,4 +1,4 @@
-import { isOperationalSegment, LARGE_API_ROUTE_COUNT } from "./nonResourceSegments.js";
+import { isDynamicSegment, isOperationalSegment, LARGE_API_ROUTE_COUNT } from "./nonResourceSegments.js";
 import type { RouteInfo } from "./routeDetector.js";
 import type { EntityGraph } from "../analysis/index.js";
 
@@ -297,7 +297,7 @@ function extractResourceName(path: string): string | null {
   const segments = path
     .split("/")
     .filter(Boolean)
-    .filter((s) => !s.startsWith("["))
+    .filter((s) => !isDynamicSegment(s))
     .filter((s) => !["api", "v1", "v2", "v3"].includes(s.toLowerCase()));
 
   if (segments.length === 0) return null;

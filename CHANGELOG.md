@@ -4,6 +4,20 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Route and feature detection (found by running the analyzer on real Fastify, SvelteKit and
+  Express projects):
+  - `@fastify/autoload` is read: the folder path under the autoloaded `dir` prefixes every
+    route (`routes/api/tasks/index.ts` serves `/api/tasks`), plus the registration `prefix`,
+    `routeParams` and `dirNameRoutePrefix: false`. Before, every route was relative to `/`
+    and the resource was lost
+  - A `:id` or `{id}` URL parameter is never a resource, so `/:id` no longer becomes a
+    ":id Management" feature (a shared `isDynamicSegment` replaces three different checks)
+  - In SvelteKit, Astro and Nuxt an `@` folder is a literal URL character (`/profile/@[user]`);
+    only Next's App Router treats `@slot` as a parallel route
+  - A snake_case table (`user_roles`) is the entity `UserRole`, not "User_role"
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

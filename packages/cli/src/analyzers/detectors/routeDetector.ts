@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import type { ScannedFile } from "../analysis/index.js";
 import type { DetectedFramework } from "./frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
@@ -133,8 +134,8 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
       if ((type === "robots" || type === "manifest") && segments.some((segment) => !/^\(.*\)$/.test(segment))) continue;
       const isSlot = segments.some((segment) => segment.startsWith("@"));
       const routePath = metadataFile
-        ? toRoutePath([...segments, metadataFile])
-        : toRoutePath(segments);
+        ? toRoutePath([...segments, metadataFile], true)
+        : toRoutePath(segments, true);
       const kind = type === "page" ? "page" : "api";
       routes.push({
         path: routePath,
@@ -385,14 +386,97 @@ function detectFastifyRoutes(
     // Unresolvable plugin without routes — it is not a route, so drop it.
   }
 
+  // @fastify/autoload registers every plugin file of a folder with the folder path as its
+  // prefix, so a file's routes are relative to that path, not to "/".
+  const autoloads = findAutoloadRoots(eligibleFiles);
+
   // Emit standalone routes only for files that were not absorbed by a plugin.
   for (const [path, fileRoutes] of directRoutes) {
-    if (!mountedFiles.has(path)) {
+    if (mountedFiles.has(path)) continue;
+    const prefix = autoloadPrefix(path, autoloads);
+    if (prefix === undefined) {
       routes.push(...fileRoutes);
+      continue;
+    }
+    for (const route of fileRoutes) {
+      routes.push({ ...route, path: composeMountPath(prefix, route.path) });
     }
   }
 
   return routes;
+}
+
+type AutoloadRoot = {
+  /** Folder (project-relative, posix) whose plugin files autoload registers. */
+  dir: string;
+  /** Prefix of the registration itself (`options: { prefix: "/v1" }`). */
+  prefix: string;
+  dirNameRoutePrefix: boolean;
+  routeParams: boolean;
+};
+
+// `fastify.register(autoLoad, { dir: join(__dirname, "routes"), options: { prefix: "/v1" } })`
+const AUTOLOAD_IMPORT_PATTERN =
+  /import\s+(\w+)\s+from\s+["']@fastify\/autoload["']|(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*["']@fastify\/autoload["']\s*\)/;
+
+function findAutoloadRoots(files: ScannedFile[]): AutoloadRoot[] {
+  const roots: AutoloadRoot[] = [];
+
+  for (const file of files) {
+    const imported = AUTOLOAD_IMPORT_PATTERN.exec(file.content);
+    const local = imported?.[1] ?? imported?.[2];
+    if (!local) continue;
+
+    const registration = new RegExp(`\\.register\\(\\s*${escapeRegExp(local)}\\s*,\\s*\\{`, "g");
+    let match = registration.exec(file.content);
+    while (match) {
+      const body = readBalancedBraces(file.content, match.index + match[0].length - 1);
+      match = registration.exec(file.content);
+      if (!body) continue;
+
+      // dir: path.join(__dirname, "routes") / join(import.meta.dirname, "routes", "api")
+      const dirExpression = /\bdir:\s*[\w.]+\(([^)]*)\)/.exec(body);
+      const literals = [...(dirExpression?.[1] ?? "").matchAll(/["'`]([^"'`]+)["'`]/g)].map((item) => item[1]);
+      if (literals.length === 0) continue;
+
+      const base = posix.dirname(file.path);
+      const dir = posix.normalize(posix.join(base === "." ? "" : base, ...literals));
+      roots.push({
+        dir,
+        prefix: /\bprefix:\s*["'`]([^"'`]+)["'`]/.exec(body)?.[1] ?? "",
+        dirNameRoutePrefix: !/\bdirNameRoutePrefix:\s*false\b/.test(body),
+        routeParams: /\brouteParams:\s*true\b/.test(body)
+      });
+    }
+  }
+
+  return roots;
+}
+
+/** The text between the `{` at `open` and its matching `}`, or undefined when unbalanced. */
+function readBalancedBraces(content: string, open: number): string | undefined {
+  let depth = 0;
+  for (let index = open; index < content.length; index++) {
+    if (content[index] === "{") depth++;
+    else if (content[index] === "}" && --depth === 0) return content.slice(open + 1, index);
+  }
+  return undefined;
+}
+
+function autoloadPrefix(filePath: string, roots: AutoloadRoot[]): string | undefined {
+  // Files autoload skips: hooks files, tests and declarations.
+  const name = posix.basename(filePath);
+  if (/^autohooks\./.test(name) || /\.(?:test|spec)\.|\.d\.[cm]?ts$/.test(name)) return undefined;
+
+  for (const root of roots) {
+    if (!filePath.startsWith(`${root.dir}/`)) continue;
+    const folders = posix.dirname(filePath.slice(root.dir.length + 1)).split("/").filter((part) => part && part !== ".");
+    const segments = root.dirNameRoutePrefix
+      ? folders.map((folder) => (root.routeParams && folder.startsWith("_") ? `:${folder.slice(1)}` : folder))
+      : [];
+    return composeMountPath(root.prefix || "/", segments.length > 0 ? segments.join("/") : "/");
+  }
+  return undefined;
 }
 
 function collectFastifyRoutes(content: string): Array<[string, string[]]> {
@@ -554,9 +638,14 @@ function collectRouteMethods(
     .sort(([left], [right]) => left.localeCompare(right));
 }
 
-function toRoutePath(segments: string[]): string {
+/**
+ * Joins folder segments into a URL. `(group)` folders are never part of it. `@slot`
+ * folders are dropped only when `parallelSlots` is set (Next App Router): in SvelteKit,
+ * Astro and Nuxt `@` is a literal character, so `profile/@[user]` is `/profile/@[user]`.
+ */
+function toRoutePath(segments: string[], parallelSlots = false): string {
   const visible = segments.filter(
-    (segment) => !segment.startsWith("(") && !segment.startsWith("@")
+    (segment) => !segment.startsWith("(") && !(parallelSlots && segment.startsWith("@"))
   );
   return `/${visible.join("/")}`.replace(/\/+/g, "/");
 }

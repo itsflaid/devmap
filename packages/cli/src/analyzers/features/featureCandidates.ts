@@ -1,4 +1,5 @@
 import type { FeatureInfo } from "./featureDetector.js";
+import { isDynamicSegment } from "../detectors/nonResourceSegments.js";
 
 export type FeatureCandidateSource =
   | "registry"
@@ -418,7 +419,7 @@ function routeResource(routePath: string): string {
   const parts = routePath
     .split("/")
     .filter(Boolean)
-    .filter((part) => part !== "api" && !part.startsWith("[") && !part.startsWith(":"));
+    .filter((part) => part !== "api" && !isDynamicSegment(part));
   return parts[0]?.toLowerCase() ?? "";
 }
 

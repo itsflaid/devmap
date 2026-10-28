@@ -4,6 +4,7 @@ import type { FileGraph } from "../graph/dependencyGraph.js";
 import { buildReverseGraph } from "../graph/index.js";
 import { singularize } from "../analysis/extractors/fallbackExtractor.js";
 import type { FeatureInfo } from "../features/featureDetector.js";
+import { isDynamicSegment } from "./nonResourceSegments.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -151,7 +152,7 @@ function groupBySegment(pageRoutes: RouteInfo[]): Map<string, RouteInfo[]> {
       bySegment.set(ROOT_SEGMENT, home);
       continue;
     }
-    if (topSegment.startsWith("[")) continue; // dynamic-only, e.g. /[locale]
+    if (isDynamicSegment(topSegment)) continue; // dynamic-only, e.g. /[locale]
     if (NON_FEATURE_PAGE_SEGMENTS.has(topSegment.toLowerCase())) continue;
 
     const list = bySegment.get(topSegment) ?? [];
@@ -314,7 +315,7 @@ export function detectClientRouteFeatures(
   for (const route of routes) {
     const segments = route.path.split("/").filter(Boolean);
     const topSegment = segments[0];
-    if (!topSegment || topSegment.startsWith(":") || topSegment.startsWith("*")) continue;
+    if (!topSegment || isDynamicSegment(topSegment)) continue;
     if (NON_FEATURE_PAGE_SEGMENTS.has(topSegment.toLowerCase())) continue;
 
     const resolvedFile = route.specifier
@@ -393,7 +394,7 @@ export function pageFeatureName(segment: string): string {
   const words = segment.split(/[-_.\s]+/).filter(Boolean);
   if (words.length === 0) return segment;
   words[words.length - 1] = singularize(words[words.length - 1]);
-  return words.map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+  return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 }
 
 /**

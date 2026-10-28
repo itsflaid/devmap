@@ -23,3 +23,12 @@ export function isOperationalSegment(segment: string): boolean {
 
 /** From this many API routes on, a lone read-only endpoint (`GET /api/sidebar`) is plumbing, not a feature. */
 export const LARGE_API_ROUTE_COUNT = 10;
+
+/**
+ * A URL segment that is a parameter, not a name: `[id]` and `[...slug]` (Next, Nuxt,
+ * SvelteKit), `:id` (Express, Fastify, Hono, Koa), `*` (wildcards) and `{id}` (OpenAPI style).
+ * A parameter never names a resource, so `/tasks/:id` is the `tasks` resource.
+ */
+export function isDynamicSegment(segment: string): boolean {
+  return segment.startsWith("[") || segment.startsWith(":") || segment.startsWith("*") || segment.startsWith("{");
+}

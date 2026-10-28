@@ -1,0 +1,156 @@
+---
+import IconCard from "../ui/IconCard.astro";
+import { AGENTS } from "../../data/agents";
+import { agentIcon } from "../../lib/icons";
+
+// What each file is for, as an agent sees it.
+const reads = [
+  {
+    file: "AGENTS.md",
+    title: "Instructions",
+    text: "Tells the agent the reading order and where the map lives. Written once by init, never overwritten.",
+    code: ["Start at .devmap/index.json", "then the feature map", "then source files"]
+  },
+  {
+    file: ".devmap/index.json",
+    title: "Entry point",
+    text: "Entry points, critical files and a pointer to every feature. Small enough to read first.",
+    code: ['"entryPoints": [', '  "src/index.ts"', "],"]
+  },
+  {
+    file: ".devmap/features/*.json",
+    title: "Feature maps",
+    text: "One file per feature with the files that implement it, so the agent opens only what it needs.",
+    code: ['"name": "Billing",', '"files": [', '  "src/billing/…"']
+  }
+];
+---
+
+<section class="agents section page" id="agents" aria-labelledby="agents-title">
+  <div class="section__head" data-reveal>
+    <p class="eyebrow"><span class="eyebrow__dot"></span>Agent-agnostic</p>
+    <h2 class="section__title" id="agents-title">Works with every agent.</h2>
+    <p class="section__lede">
+      One <code>devmap analyze</code> for Claude Code, Codex, Cursor, Gemini CLI,
+      OpenCode and more. If a tool can read files, it can read the map.
+    </p>
+    <div class="agents__cta">
+      <a class="btn" href="/docs#3-using-devmap-with-ai-agents">Use it with your agent</a>
+      <a class="btn btn--ghost" href="https://github.com/itsflaid/devmap">GitHub</a>
+    </div>
+  </div>
+
+  <ul class="agents__grid" aria-label="Agents that can read the DevMap files">
+    {AGENTS.map((agent, i) => <IconCard name={agent.name} svg={agentIcon(agent.icon)} index={i % 6} />)}
+  </ul>
+
+  <ul class="agents__reads" aria-label="Files an agent reads">
+    {reads.map((item, i) => (
+      <li class="card reads__card" data-reveal style={`--i:${i}`}>
+        <div class="reads__demo" aria-hidden="true">
+          <span class="reads__file">{item.file}</span>
+          <pre>{item.code.join("\n")}</pre>
+        </div>
+        <h3>{item.title}</h3>
+        <p>{item.text}</p>
+      </li>
+    ))}
+  </ul>
+</section>
+
+<style>
+  .agents__cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .section__lede code {
+    font-size: 0.875em;
+    color: var(--ink);
+  }
+
+  .agents__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.5rem, 2vw, 0.9rem);
+    margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 40rem) {
+    .agents__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 62rem) {
+    .agents__grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  .agents__reads {
+    display: grid;
+    gap: 1rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 52rem) {
+    .agents__reads {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .reads__card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.6rem 1.6rem;
+  }
+
+  .reads__card h3 {
+    margin-top: 0.9rem;
+    padding-inline: 1rem;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  .reads__card p {
+    padding-inline: 1rem;
+    font-size: 0.9375rem;
+    color: var(--muted);
+  }
+
+  .reads__demo {
+    min-height: 9.5rem;
+    padding: 1rem 1.1rem;
+    border-radius: calc(var(--radius-lg) - 0.6rem);
+    background: var(--night);
+    color: var(--night-text);
+    overflow: hidden;
+  }
+
+  .reads__file {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--night-rule);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--night-muted);
+  }
+
+  .reads__demo pre {
+    margin: 0.9rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    white-space: pre;
+    overflow: hidden;
+  }
+</style>

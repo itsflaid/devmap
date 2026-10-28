@@ -12,13 +12,18 @@
   color: var(--ink);
 }
 
-/* On phones the sticky contents bar also sits under the header. */
+/* The header is always showing; on phones the sticky contents bar sits under it too. */
+.docs-prose h2,
+.docs-prose h3,
+.docs-prose h4 {
+  scroll-margin-top: calc(var(--header-height) + 1rem);
+}
+
 @media (max-width: 759px) {
-  .docs-prose h1,
   .docs-prose h2,
   .docs-prose h3,
   .docs-prose h4 {
-    scroll-margin-top: 4.5rem;
+    scroll-margin-top: calc(var(--header-height) + 4.5rem);
   }
 }
 
@@ -73,7 +78,7 @@
 .docs-prose a {
   color: var(--ink);
   text-decoration: underline;
-  text-decoration-color: var(--rule);
+  text-decoration-color: var(--rule-strong);
   text-decoration-thickness: 2px;
   text-underline-offset: 0.25em;
   transition: text-decoration-color 150ms ease;
@@ -89,9 +94,10 @@
 }
 
 .docs-prose code {
-  padding: 0.1rem 0.35rem;
-  border-radius: 0.3rem;
-  background: var(--wash);
+  padding: 0.1rem 0.4rem;
+  border: 1px solid var(--rule);
+  border-radius: 0.4rem;
+  background: var(--surface);
   font-size: 0.85em;
   color: var(--ink);
 }
@@ -101,30 +107,33 @@
   margin: 0 0 1.5rem;
   padding: 1.1rem 1.25rem;
   border-radius: var(--radius);
-  background: var(--wash);
+  background: var(--night);
+  color: var(--night-text);
   font-size: 0.875rem;
   line-height: 1.65;
 }
 
 .docs-prose pre code {
   padding: 0;
+  border: 0;
   background: transparent;
   font-size: inherit;
+  color: inherit;
 }
 
-/* Astro's syntax highlighter writes inline colors; keep code monochrome so the
-   page has a single accent. */
+/* Astro's syntax highlighter writes inline colors; keep code monochrome on the
+   dark card so the page has a single accent. */
 .docs-prose .astro-code {
-  background-color: var(--wash) !important;
+  background-color: var(--night) !important;
 }
 
 .docs-prose .astro-code span {
-  color: var(--ink) !important;
+  color: var(--night-text) !important;
   background: transparent !important;
 }
 
 .docs-prose .astro-code span[style*="italic"] {
-  color: var(--muted) !important;
+  color: var(--night-muted) !important;
 }
 
 .docs-prose table {

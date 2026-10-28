@@ -1,0 +1,92 @@
+---
+interface Props {
+  name: string;
+  /** Inline SVG markup. Omit to show a letter mark instead. */
+  svg?: string;
+  /** Small second line under the name. */
+  note?: string;
+  index?: number;
+}
+
+const { name, svg, note, index = 0 } = Astro.props;
+---
+
+<li class="icon-card" data-reveal style={`--i:${index}`}>
+  <span class="icon-card__icon" aria-hidden="true">
+    {svg ? <Fragment set:html={svg} /> : <span class="icon-card__mark">{name.charAt(0)}</span>}
+  </span>
+  <span class="icon-card__name">{name}</span>
+  {note && <span class="icon-card__note">{note}</span>}
+</li>
+
+<style>
+  .icon-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.9rem;
+    padding: clamp(1.1rem, 3vw, 1.6rem) 0.75rem clamp(1rem, 3vw, 1.3rem);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--surface);
+    text-align: center;
+    box-shadow: var(--shadow-card);
+    transition:
+      transform 220ms var(--ease),
+      border-color 150ms ease,
+      opacity 700ms var(--ease) calc(var(--i, 0) * 60ms),
+      translate 700ms var(--ease) calc(var(--i, 0) * 60ms);
+  }
+
+  .icon-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--ink);
+  }
+
+  .icon-card__icon {
+    display: grid;
+    place-items: center;
+    width: clamp(3rem, 8vw, 3.5rem);
+    height: clamp(3rem, 8vw, 3.5rem);
+    border-radius: 0.9rem;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    transition:
+      background 180ms ease,
+      color 180ms ease;
+  }
+
+  .icon-card:hover .icon-card__icon {
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .icon-card__icon :global(svg) {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .icon-card__mark {
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .icon-card__name {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+
+  .icon-card__note {
+    margin-top: -0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+</style>

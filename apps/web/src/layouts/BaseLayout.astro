@@ -38,7 +38,10 @@ const image = new URL(SITE.ogImage, Astro.site ?? SITE.url).href;
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large, max-snippet:-1"} />
     <meta name="author" content={SITE.author} />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#f5f4f2" />
+    <script is:inline>
+      document.documentElement.classList.add("js");
+    </script>
 
     <meta property="og:site_name" content={SITE.name} />
     <meta property="og:type" content={type} />
@@ -68,5 +71,9 @@ const image = new URL(SITE.ogImage, Astro.site ?? SITE.url).href;
   </head>
   <body>
     <slot />
+    <script>
+      import { initReveal } from "../scripts/reveal";
+      initReveal();
+    </script>
   </body>
 </html>

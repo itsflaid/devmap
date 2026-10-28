@@ -5,16 +5,26 @@
 :root {
   color-scheme: light;
 
-  /* Color: white page, black type, one blue used only where something is
-     interactive or is the point of the line. */
-  --paper: #ffffff;
-  --ink: #000000;
-  --text: #2b2b2b;
-  --muted: #6a6a6a;
-  --rule: #e6e6e6;
-  --wash: #f5f5f5;
+  /* Color: warm stone paper, near-black ink, white cards. One blue, used only
+     where something is interactive or is the point of the line. */
+  --paper: #f5f4f2;
+  --surface: #ffffff;
+  --ink: #141311;
+  --text: #3a3834;
+  --muted: #77736b;
+  --rule: #e4e1db;
+  --rule-strong: #d2cec5;
+  --wash: #edebe6;
   --accent: #0057ff;
-  --accent-wash: rgba(0, 87, 255, 0.07);
+  --accent-wash: rgba(0, 87, 255, 0.08);
+
+  /* Dark surfaces (terminal, code, CTA) */
+  --night: #12110f;
+  --night-2: #1b1a17;
+  --night-rule: rgba(255, 255, 255, 0.09);
+  --night-text: #d9d5cc;
+  --night-muted: #8d8980;
+  --ok: #4ade80;
 
   /* Type */
   --font-display: "Funnel Display Variable", "Funnel Display", ui-sans-serif, system-ui, sans-serif;
@@ -22,13 +32,18 @@
   --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
 
   /* Layout */
-  --page-max: 80rem;
-  --gutter: clamp(1.25rem, 5vw, 4rem);
-  --section-space: clamp(4.5rem, 10vw, 8rem);
-  --radius: 0.5rem;
-  --header-height: 4.5rem;
-  /* Sticky elements sit below the site header only while it is showing. */
-  --sticky-offset: 0px;
+  --page-max: 76rem;
+  --gutter: clamp(1.25rem, 5vw, 3.5rem);
+  --section-space: clamp(4.5rem, 9vw, 7.5rem);
+  --radius: 1rem;
+  --radius-lg: 1.75rem;
+  --radius-sm: 0.625rem;
+  --header-height: 5rem;
+  /* The header is always showing now, so sticky elements always clear it. */
+  --sticky-offset: var(--header-height);
+
+  --shadow-card: 0 1px 0 rgba(20, 19, 17, 0.04), 0 12px 32px -16px rgba(20, 19, 17, 0.18);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   background: var(--paper);
   font-family: var(--font-body);
@@ -45,12 +60,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* Anchors land below the site header, which may be showing when they scroll. */
-  scroll-padding-top: calc(var(--header-height) + 1.5rem);
-}
-
-html[data-header="shown"] {
-  --sticky-offset: var(--header-height);
+  scroll-padding-top: calc(var(--header-height) + 1rem);
 }
 
 body {
@@ -60,6 +70,7 @@ body {
   background: var(--paper);
   font-size: 1.0625rem;
   line-height: 1.6;
+  overflow-x: clip;
 }
 
 h1,
@@ -99,7 +110,7 @@ button {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 .page {
@@ -111,7 +122,7 @@ button {
 .link {
   color: var(--ink);
   text-decoration: underline;
-  text-decoration-color: var(--rule);
+  text-decoration-color: var(--rule-strong);
   text-decoration-thickness: 2px;
   text-underline-offset: 0.25em;
   transition: text-decoration-color 150ms ease;
@@ -121,8 +132,121 @@ button {
   text-decoration-color: var(--accent);
 }
 
+/* ---------- Shared building blocks ---------- */
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.eyebrow__dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.section {
+  padding-block: var(--section-space);
+}
+
+.section__head {
+  display: grid;
+  gap: 1.1rem;
+  justify-items: center;
+  max-width: 46rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.section__title {
+  font-size: clamp(2.25rem, 5.2vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.section__lede {
+  max-width: 36rem;
+  font-size: clamp(1.0625rem, 1.6vw, 1.25rem);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.9rem;
+  padding: 0 1.4rem;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    transform 180ms var(--ease),
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  background: #000;
+}
+
+.btn--ghost {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--rule-strong);
+}
+
+.btn--ghost:hover {
+  background: var(--surface);
+  border-color: var(--ink);
+}
+
+.card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* Scroll reveal. Hidden only when JS is going to reveal it again. */
+.js [data-reveal] {
+  opacity: 0;
+  translate: 0 1.25rem;
+  transition:
+    opacity 700ms var(--ease) calc(var(--i, 0) * 60ms),
+    translate 700ms var(--ease) calc(var(--i, 0) * 60ms);
+}
+
+.js [data-reveal].is-in {
+  opacity: 1;
+  translate: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .js [data-reveal] {
+    opacity: 1;
+    translate: none;
+    transition: none;
   }
 }

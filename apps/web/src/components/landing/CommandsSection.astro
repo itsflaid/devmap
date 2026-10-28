@@ -5,88 +5,95 @@ const commands = [
   { name: "devmap onboarding", text: "A reading order for someone new to the codebase: where to start and what to read next." },
   { name: "devmap map", text: "Show the dependency tree from the saved analysis, without scanning again." },
   { name: "devmap flow", text: "Walk a feature or request step by step, as a Mermaid diagram or in the terminal." },
-  { name: "devmap explain", text: "Ask about a file or feature and get an answer grounded in the analysis. Needs an AI provider." },
+  { name: "devmap explain", text: "Ask about a file or feature and get an answer grounded in the analysis.", ai: true },
   { name: "devmap doctor", text: "Check your setup and print a report you can paste into a bug report." },
-  { name: "devmap config model", text: "Pick the model used by the AI-powered commands." }
+  { name: "devmap config model", text: "Pick the model used by the AI-powered commands.", ai: true }
 ];
 ---
 
-<section class="commands page" id="commands" aria-labelledby="commands-title">
-  <h2 class="commands__title" id="commands-title">Eight commands.</h2>
+<section class="commands section page" id="commands" aria-labelledby="commands-title">
+  <div class="section__head" data-reveal>
+    <p class="eyebrow"><span class="eyebrow__dot"></span>CLI</p>
+    <h2 class="section__title" id="commands-title">Eight commands.</h2>
+    <p class="section__lede">Most of them need no API key at all.</p>
+  </div>
 
-  <dl class="commands__list">
-    {commands.map((command) => (
-      <div class="commands__row">
-        <dt><code>{command.name}</code></dt>
-        <dd>{command.text}</dd>
-      </div>
+  <ul class="commands__grid">
+    {commands.map((command, i) => (
+      <li class="card commands__card" data-reveal style={`--i:${i % 4}`}>
+        <span class="commands__n">{String(i + 1).padStart(2, "0")}</span>
+        <code class="commands__name">{command.name}</code>
+        <p>{command.text}</p>
+        {command.ai && <span class="commands__ai">needs an AI provider</span>}
+      </li>
     ))}
-  </dl>
+  </ul>
 </section>
 
 <style>
-  .commands {
+  .commands__grid {
     display: grid;
-    gap: clamp(2rem, 5vw, 4rem);
-    padding-block: var(--section-space);
-    border-top: 1px solid var(--rule);
+    gap: 1rem;
+    margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 36rem) {
+    .commands__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   @media (min-width: 62rem) {
-    .commands {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      align-items: start;
-    }
-
-    .commands__title {
-      position: sticky;
-      top: calc(2rem + var(--sticky-offset));
-      transition: top 260ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    .commands__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 
-  .commands__title {
-    font-size: clamp(2.25rem, 5vw, 4rem);
-    line-height: 1.02;
-    letter-spacing: -0.04em;
+  .commands__card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.4rem 1.4rem 1.5rem;
+    transition:
+      border-color 150ms ease,
+      translate 700ms var(--ease) calc(var(--i, 0) * 60ms),
+      opacity 700ms var(--ease) calc(var(--i, 0) * 60ms);
   }
 
-  .commands__list {
-    margin: 0;
+  .commands__card:hover {
+    border-color: var(--ink);
   }
 
-  .commands__row {
-    display: grid;
-    gap: 0.25rem 2rem;
-    padding-block: 1.1rem;
-    border-top: 1px solid var(--rule);
-    transition: border-color 150ms ease;
+  .commands__n {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
   }
 
-  .commands__row:last-child {
-    border-bottom: 1px solid var(--rule);
+  .commands__name {
+    align-self: flex-start;
+    padding: 0.25rem 0.65rem;
+    border-radius: 0.5rem;
+    background: var(--ink);
+    font-size: 0.8125rem;
+    color: #fff;
   }
 
-  .commands__row:hover {
-    border-top-color: var(--accent);
-  }
-
-  @media (min-width: 40rem) {
-    .commands__row {
-      grid-template-columns: 13.5rem minmax(0, 1fr);
-    }
-  }
-
-  .commands__row dt {
-    color: var(--ink);
-  }
-
-  .commands__row code {
+  .commands__card p {
     font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text);
   }
 
-  .commands__row dd {
-    margin: 0;
-    color: var(--text);
+  .commands__ai {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--accent);
   }
 </style>

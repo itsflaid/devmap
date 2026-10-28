@@ -15,16 +15,17 @@ const steps = [
 ];
 const optionalAi = "Infer the domain";
 
-const frameworks = [
-  "Next.js", "Astro", "Nuxt", "SvelteKit", "Remix", "React Router", "TanStack",
-  "Expo Router", "SolidStart", "Qwik City", "Angular", "Express", "Fastify", "Hono",
-  "Elysia", "Koa", "AdonisJS", "NestJS"
+const facts = [
+  { value: "12", label: "pipeline steps" },
+  { value: "3", label: "optional AI calls" },
+  { value: "0", label: "keys needed to analyze" }
 ];
 ---
 
-<section class="method page" aria-labelledby="method-title">
-  <div class="method__intro">
-    <h2 class="method__title" id="method-title">
+<section class="method section page" aria-labelledby="method-title">
+  <div class="method__intro" data-reveal>
+    <p class="eyebrow"><span class="eyebrow__dot"></span>Method</p>
+    <h2 class="section__title method__title" id="method-title">
       The same code gives the same map.
     </h2>
     <p class="method__copy">
@@ -34,63 +35,60 @@ const frameworks = [
       answering questions. If the provider fails, <code>devmap analyze</code>{" "}
       still finishes.
     </p>
+
+    <dl class="method__facts">
+      {facts.map((fact) => (
+        <div>
+          <dt>{fact.value}</dt>
+          <dd>{fact.label}</dd>
+        </div>
+      ))}
+    </dl>
   </div>
 
-  <ol class="method__steps" aria-label="What devmap analyze does, in order">
+  <ol class="method__steps card" aria-label="What devmap analyze does, in order" data-reveal style="--i:2">
     {steps.map((step) => (
       <li>
-        {step}
-        {step === optionalAi && <span class="method__ai"> (optional AI)</span>}
+        <span class="method__label">{step}</span>
+        {step === optionalAi && <span class="method__ai">optional AI</span>}
       </li>
     ))}
   </ol>
-
-  <div class="method__support">
-    <section>
-      <h3>Routes mapped for</h3>
-      <p>{frameworks.join(", ")}.</p>
-    </section>
-    <section>
-      <h3>Read with full syntax trees</h3>
-      <p>TypeScript, JavaScript, Vue, Svelte and Astro.</p>
-    </section>
-    <section>
-      <h3>Read with pattern matching</h3>
-      <p>Python, PHP, Go, Ruby, C# and Java: imports, exports and declarations.</p>
-    </section>
-  </div>
 </section>
 
 <style>
   .method {
     display: grid;
     gap: clamp(2.5rem, 6vw, 4.5rem);
-    padding-block: var(--section-space);
-    border-top: 1px solid var(--rule);
+    align-items: start;
+  }
+
+  @media (min-width: 62rem) {
+    .method {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    }
   }
 
   .method__intro {
     display: grid;
-    gap: 1.5rem;
+    justify-items: start;
+    gap: 1.25rem;
   }
 
   @media (min-width: 62rem) {
     .method__intro {
-      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-      align-items: start;
+      position: sticky;
+      top: calc(var(--sticky-offset) + 1.5rem);
     }
   }
 
   .method__title {
-    max-width: 11em;
-    font-size: clamp(2.25rem, 5vw, 4rem);
-    line-height: 1.02;
-    letter-spacing: -0.04em;
+    max-width: 10em;
   }
 
   .method__copy {
-    max-width: 38rem;
-    padding-top: 0.6rem;
+    max-width: 34rem;
+    color: var(--muted);
   }
 
   .method__copy code {
@@ -98,68 +96,82 @@ const frameworks = [
     color: var(--ink);
   }
 
-  .method__steps {
+  .method__facts {
     display: grid;
-    gap: 0;
+    grid-template-columns: repeat(3, minmax(0, auto));
+    gap: 1.5rem clamp(1.5rem, 4vw, 3rem);
+    margin: 1rem 0 0;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--rule);
+    width: 100%;
+    max-width: 32rem;
+  }
+
+  .method__facts dt {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+  }
+
+  .method__facts dd {
+    margin: 0.4rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.3;
+    color: var(--muted);
+  }
+
+  .method__steps {
     margin: 0;
-    padding: 0;
+    padding: 0.6rem 1.5rem;
     list-style: none;
     counter-reset: step;
-    border-top: 1px solid var(--rule);
-  }
-
-  @media (min-width: 40rem) {
-    .method__steps {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: 2rem;
-    }
-  }
-
-  @media (min-width: 62rem) {
-    .method__steps {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
   }
 
   .method__steps li {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     padding-block: 0.85rem;
     border-bottom: 1px solid var(--rule);
     color: var(--ink);
     counter-increment: step;
   }
 
+  .method__steps li:last-child {
+    border-bottom: 0;
+  }
+
   .method__steps li::before {
     content: counter(step, decimal-leading-zero);
-    display: inline-block;
-    width: 3ch;
-    margin-right: 1ch;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1px solid var(--rule);
     font-family: var(--font-mono);
-    font-size: 0.8125rem;
+    font-size: 0.6875rem;
     color: var(--muted);
   }
 
+  .method__label {
+    min-width: 0;
+  }
+
   .method__ai {
+    margin-left: auto;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    background: var(--accent-wash);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    white-space: nowrap;
     color: var(--accent);
-  }
-
-  .method__support {
-    display: grid;
-    gap: 2rem 3rem;
-  }
-
-  @media (min-width: 52rem) {
-    .method__support {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-
-  .method__support h3 {
-    font-size: 1.125rem;
-    letter-spacing: -0.01em;
-  }
-
-  .method__support p {
-    margin-top: 0.4rem;
-    color: var(--text);
   }
 </style>

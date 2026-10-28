@@ -1,99 +1,408 @@
 ---
-const commands = [
-  { name: "devmap init", text: "Set up DevMap for this project and choose an AI provider if you want one." },
-  { name: "devmap analyze", text: "Scan the project and write the .devmap folder. Static analysis, no AI required." },
-  { name: "devmap onboarding", text: "A reading order for someone new to the codebase: where to start and what to read next." },
-  { name: "devmap map", text: "Show the dependency tree from the saved analysis, without scanning again." },
-  { name: "devmap flow", text: "Walk a feature or request step by step, as a Mermaid diagram or in the terminal." },
-  { name: "devmap explain", text: "Ask about a file or feature and get an answer grounded in the analysis.", ai: true },
-  { name: "devmap doctor", text: "Check your setup and print a report you can paste into a bug report." },
-  { name: "devmap config model", text: "Pick the model used by the AI-powered commands.", ai: true }
-];
+import { COMMANDS, COMMAND_GROUPS, DEFAULT_COMMAND } from "../../data/commands";
+
+type Kind = "head" | "dim" | "hot" | "text";
+
+/** One-character prefixes in the data file pick the line style. */
+function parse(line: string): { kind: Kind; text: string } {
+  if (line.startsWith("§ ")) return { kind: "head", text: line.slice(2) };
+  if (line.startsWith("· ")) return { kind: "dim", text: line.slice(2) };
+  if (line.startsWith("+ ")) return { kind: "hot", text: line.slice(2) };
+  return { kind: "text", text: line || " " };
+}
 ---
 
 <section class="commands section page" id="commands" aria-labelledby="commands-title">
   <div class="section__head" data-reveal>
-    <p class="eyebrow"><span class="eyebrow__dot"></span>CLI</p>
     <h2 class="section__title" id="commands-title">Eight commands.</h2>
-    <p class="section__lede">Most of them need no API key at all.</p>
+    <p class="section__lede">Pick one and see what it prints. Most of them need no API key.</p>
   </div>
 
-  <ul class="commands__grid">
-    {commands.map((command, i) => (
-      <li class="card commands__card" data-reveal style={`--i:${i % 4}`}>
-        <span class="commands__n">{String(i + 1).padStart(2, "0")}</span>
-        <code class="commands__name">{command.name}</code>
-        <p>{command.text}</p>
-        {command.ai && <span class="commands__ai">needs an AI provider</span>}
-      </li>
+  <div class="cmdx" data-cmdx data-reveal>
+    {COMMAND_GROUPS.map((group) => (
+      <Fragment>
+        <h3 class="cmdx__group">{group}</h3>
+        {COMMANDS.filter((c) => c.group === group).map((c) => {
+          const active = c.id === DEFAULT_COMMAND;
+          const index = COMMANDS.indexOf(c) + 1;
+          return (
+            <Fragment>
+              <h4 class="cmdx__head">
+                <button
+                  type="button"
+                  class="cmdx__btn"
+                  id={`cmd-${c.id}`}
+                  aria-expanded={active ? "true" : "false"}
+                  aria-controls={`cmd-panel-${c.id}`}
+                  data-cmd={c.id}
+                >
+                  <span class="cmdx__n" aria-hidden="true">{String(index).padStart(2, "0")}</span>
+                  <span class="cmdx__text">
+                    <span class="cmdx__name">{c.name}</span>
+                    <span class="cmdx__sum">{c.summary}</span>
+                    {c.needsAi && <span class="cmdx__ai">needs an AI provider</span>}
+                  </span>
+                  <svg class="cmdx__chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path d="m4 6 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </h4>
+
+              <div
+                class="cmdx__panel"
+                id={`cmd-panel-${c.id}`}
+                role="region"
+                aria-labelledby={`cmd-${c.id}`}
+                data-inactive={active ? undefined : ""}
+              >
+                <div class="cx">
+                  <div class="cx__bar">
+                    <span></span><span></span><span></span>
+                    <b>~/devmap</b>
+                    <i>{c.source === "real" ? "output from this repo" : "illustrative"}</i>
+                  </div>
+                  <div class="cx__body" tabindex="0">
+                    <p class="cx__cmd"><span class="cx__prompt" aria-hidden="true">$</span> {c.cmd}</p>
+                    {c.out.map((raw, i) => {
+                      const line = parse(raw);
+                      return (
+                        <p class={`cx__line cx__line--${line.kind}`} style={`--n:${i}`}>{line.text}</p>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </Fragment>
+          );
+        })}
+      </Fragment>
     ))}
-  </ul>
+  </div>
 </section>
 
-<style>
-  .commands__grid {
-    display: grid;
-    gap: 1rem;
-    margin: clamp(2.5rem, 5vw, 4rem) 0 0;
-    padding: 0;
-    list-style: none;
-  }
+<script>
+  const root = document.querySelector<HTMLElement>("[data-cmdx]");
 
-  @media (min-width: 36rem) {
-    .commands__grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  if (root) {
+    const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>(".cmdx__btn"));
+    const wide = window.matchMedia("(min-width: 62rem)");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const panelFor = (button: HTMLButtonElement) =>
+      root.querySelector<HTMLElement>(`#${button.getAttribute("aria-controls")}`);
+
+    const activate = (target: HTMLButtonElement, opts: { replay?: boolean } = {}) => {
+      const already = target.getAttribute("aria-expanded") === "true";
+      if (already && !opts.replay) return;
+
+      for (const button of buttons) {
+        const on = button === target;
+        button.setAttribute("aria-expanded", String(on));
+        const panel = panelFor(button);
+        if (!panel) continue;
+        if (on) panel.removeAttribute("data-inactive");
+        else panel.setAttribute("data-inactive", "");
+      }
+
+      // Replay the line-by-line reveal.
+      const panel = panelFor(target);
+      if (panel && !reduced.matches) {
+        panel.classList.remove("is-playing");
+        void panel.offsetWidth;
+        panel.classList.add("is-playing");
+      }
+
+      // On phones the previous panel collapses above the row, so bring the row (and its terminal) to the top, under the header.
+      if (!wide.matches) {
+        requestAnimationFrame(() =>
+          target.scrollIntoView({ block: "start", behavior: reduced.matches ? "auto" : "smooth" })
+        );
+      }
+    };
+
+    buttons.forEach((button, i) => {
+      button.addEventListener("click", () => activate(button));
+
+      button.addEventListener("keydown", (event) => {
+        let next = -1;
+        if (event.key === "ArrowDown" || event.key === "ArrowRight") next = (i + 1) % buttons.length;
+        else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = (i - 1 + buttons.length) % buttons.length;
+        else if (event.key === "Home") next = 0;
+        else if (event.key === "End") next = buttons.length - 1;
+        if (next < 0) return;
+        event.preventDefault();
+        buttons[next].focus();
+        activate(buttons[next]);
+      });
+    });
+  }
+</script>
+
+<style>
+  /* ---------- Layout ----------
+     Phones and no-JS: a plain list. Each row is followed by its terminal.
+     Wide screens with JS: rows on the left, one sticky terminal on the right. */
+  .cmdx {
+    display: grid;
+    margin-top: clamp(2.5rem, 5vw, 4rem);
   }
 
   @media (min-width: 62rem) {
-    .commands__grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    :global(.js) .cmdx {
+      grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+      column-gap: clamp(2rem, 5vw, 4.5rem);
+      align-items: start;
+    }
+
+    :global(.js) .cmdx__group,
+    :global(.js) .cmdx__head {
+      grid-column: 1;
+    }
+
+    /* All panels share one cell on the right; only the open one shows. */
+    :global(.js) .cmdx__panel {
+      grid-column: 2;
+      grid-row: 1 / span 99;
+      position: sticky;
+      top: calc(var(--sticky-offset) + 1.5rem);
+      height: min(35rem, calc(100vh - var(--sticky-offset) - 3rem));
+      margin: 0;
     }
   }
 
-  .commands__card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    padding: 1.4rem 1.4rem 1.5rem;
+  :global(.js) .cmdx__panel[data-inactive] {
+    display: none;
+  }
+
+  /* ---------- Rows ---------- */
+  .cmdx__group {
+    margin: 1.75rem 0 0.4rem;
+    padding-inline: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .cmdx__group:first-child {
+    margin-top: 0;
+  }
+
+  .cmdx__head {
+    margin: 0;
+    font: inherit;
+  }
+
+  .cmdx__btn {
+    display: grid;
+    grid-template-columns: 2.25rem minmax(0, 1fr) auto;
+    align-items: start;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    scroll-margin-top: calc(var(--header-height) + 0.75rem);
     transition:
+      background 150ms ease,
       border-color 150ms ease,
-      translate 700ms var(--ease) calc(var(--i, 0) * 60ms),
-      opacity 700ms var(--ease) calc(var(--i, 0) * 60ms);
+      box-shadow 150ms ease;
   }
 
-  .commands__card:hover {
+  .cmdx__btn:hover {
+    background: var(--wash);
+  }
+
+  .cmdx__btn[aria-expanded="true"] {
     border-color: var(--ink);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
   }
 
-  .commands__n {
+  .cmdx__n {
+    padding-top: 0.2rem;
     font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--muted);
   }
 
-  .commands__name {
-    align-self: flex-start;
-    padding: 0.25rem 0.65rem;
-    border-radius: 0.5rem;
-    background: var(--ink);
-    font-size: 0.8125rem;
-    color: #fff;
+  .cmdx__text {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
   }
 
-  .commands__card p {
+  .cmdx__name {
+    font-family: var(--font-mono);
     font-size: 0.9375rem;
-    line-height: 1.5;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .cmdx__sum {
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .cmdx__btn[aria-expanded="true"] .cmdx__sum {
     color: var(--text);
   }
 
-  .commands__ai {
-    margin-top: auto;
-    padding-top: 0.5rem;
+  .cmdx__ai {
+    justify-self: start;
+    margin-top: 0.2rem;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     letter-spacing: 0.02em;
-    text-transform: uppercase;
     color: var(--accent);
+  }
+
+  .cmdx__chev {
+    margin-top: 0.15rem;
+    color: var(--muted);
+    transition: rotate 200ms var(--ease);
+  }
+
+  .cmdx__btn[aria-expanded="true"] .cmdx__chev {
+    rotate: 180deg;
+  }
+
+  @media (min-width: 62rem) {
+    :global(.js) .cmdx__chev {
+      display: none;
+    }
+
+    :global(.js) .cmdx__btn {
+      grid-template-columns: 2.25rem minmax(0, 1fr);
+    }
+  }
+
+  .cmdx__panel {
+    margin: 0.25rem 0 0.75rem;
+  }
+
+  /* ---------- Terminal ---------- */
+  .cx {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid var(--night-rule);
+    border-radius: var(--radius-lg);
+    background: var(--night);
+    box-shadow: 0 30px 60px -30px rgba(20, 19, 17, 0.55);
+    color: var(--night-text);
+    font-family: var(--font-mono);
+  }
+
+  .cx__bar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--night-rule);
+  }
+
+  .cx__bar span {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .cx__bar b {
+    margin-left: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--night-muted);
+  }
+
+  .cx__bar i {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    font-style: normal;
+    color: var(--night-muted);
+  }
+
+  .cx__body {
+    flex: 1;
+    min-height: 0;
+    max-height: 24rem;
+    overflow: auto;
+    padding: 1.25rem 1.4rem 1.5rem;
+    font-size: clamp(0.75rem, 1.5vw, 0.84rem);
+    line-height: 1.6;
+  }
+
+  @media (min-width: 62rem) {
+    :global(.js) .cx__body {
+      max-height: none;
+    }
+  }
+
+  .cx__body p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .cx__cmd {
+    margin-bottom: 0.6rem !important;
+    color: #fff;
+  }
+
+  .cx__prompt {
+    margin-right: 0.8ch;
+    color: var(--night-muted);
+  }
+
+  .cx__line--head {
+    margin-top: 0.15rem !important;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .cx__line--dim {
+    color: var(--night-muted);
+  }
+
+  .cx__line--hot {
+    color: #7aa7ff;
+  }
+
+  .is-playing .cx__line {
+    opacity: 0;
+    animation: cx-in 380ms var(--ease) forwards;
+    animation-delay: calc(60ms + var(--n) * 28ms);
+  }
+
+  @keyframes cx-in {
+    from {
+      opacity: 0;
+      translate: -0.4rem 0;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .is-playing .cx__line {
+      animation: none;
+      opacity: 1;
+    }
+
+    .cmdx__chev,
+    .cmdx__btn {
+      transition: none;
+    }
   }
 </style>

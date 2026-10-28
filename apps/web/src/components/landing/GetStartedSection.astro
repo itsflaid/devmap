@@ -4,7 +4,6 @@ import CopyCommand from "./CopyCommand.astro";
 
 <section class="start page" aria-labelledby="start-title">
   <div class="start__card" data-reveal>
-    <p class="start__eyebrow"><span></span>Get started</p>
     <h2 class="start__title" id="start-title">Run it on the repo you have open.</h2>
 
     <div class="start__command">
@@ -39,25 +38,6 @@ import CopyCommand from "./CopyCommand.astro";
       var(--night);
     text-align: center;
     color: var(--night-text);
-  }
-
-  .start__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.3rem 0.75rem;
-    border: 1px solid var(--night-rule);
-    border-radius: 999px;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    color: var(--night-muted);
-  }
-
-  .start__eyebrow span {
-    width: 0.4rem;
-    height: 0.4rem;
-    border-radius: 50%;
-    background: var(--ok);
   }
 
   .start__title {

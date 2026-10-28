@@ -1,28 +1,152 @@
-<section class="problem page" aria-labelledby="problem-title">
-  <h2 class="problem__text" id="problem-title">
-    Every new session, every new agent and every new teammate starts the same
-    way: open files, trace imports, guess which ones matter.{" "}
-    <span class="problem__rest">
-      The code didn't change. The understanding gets rebuilt anyway.
-    </span>
-  </h2>
+---
+const without = ["Claude explores files", "Codex explores files", "New session explores files"];
+const agents = ["Claude Code", "Codex", "Cursor", "Gemini CLI", "Windsurf"];
+---
+
+<section class="problem section page" aria-labelledby="problem-title">
+  <div class="section__head" data-reveal>
+    <p class="eyebrow"><span class="eyebrow__dot"></span>The problem</p>
+    <h2 class="section__title" id="problem-title">The code didn't change. The understanding gets rebuilt anyway.</h2>
+    <p class="section__lede">
+      Every new session, every new agent and every new teammate starts the same
+      way: open files, trace imports, guess which ones matter.
+    </p>
+  </div>
+
+  <div class="problem__grid">
+    <article class="card problem__card problem__card--without" data-reveal>
+      <h3>Without DevMap</h3>
+      <ul>
+        {without.map((item) => (
+          <li>
+            <span class="problem__step">Repository</span>
+            <span class="problem__arrow" aria-hidden="true">→</span>
+            <span class="problem__step">{item}</span>
+            <span class="problem__arrow" aria-hidden="true">→</span>
+            <span class="problem__bad">context rebuilt</span>
+          </li>
+        ))}
+      </ul>
+    </article>
+
+    <article class="card problem__card problem__card--with" data-reveal style="--i:1">
+      <h3>With DevMap</h3>
+      <div class="problem__flow">
+        <span class="problem__step">Repository</span>
+        <span class="problem__arrow" aria-hidden="true">→</span>
+        <code class="problem__cmd">devmap analyze</code>
+        <span class="problem__arrow" aria-hidden="true">→</span>
+        <span class="problem__good">shared project context</span>
+      </div>
+      <ul class="problem__chips" aria-label="Agents reading the same context">
+        {agents.map((agent) => <li>{agent}</li>)}
+        <li class="problem__chip--more">future agents</li>
+      </ul>
+    </article>
+  </div>
 </section>
 
 <style>
-  .problem {
-    padding-block: var(--section-space);
+  .problem__grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  @media (min-width: 52rem) {
+    .problem__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .problem__card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+  }
+
+  .problem__card h3 {
+    font-size: 1.375rem;
+    letter-spacing: -0.02em;
+  }
+
+  .problem__card ul {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .problem__card li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+  }
+
+  .problem__step,
+  .problem__bad,
+  .problem__good,
+  .problem__cmd,
+  .problem__chips li {
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 999px;
+    background: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--ink);
+  }
+
+  .problem__arrow {
+    color: var(--muted);
+  }
+
+  .problem__card--without .problem__bad {
+    border-style: dashed;
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--rule-strong);
+  }
+
+  .problem__card--with {
+    border-color: var(--ink);
+  }
+
+  .problem__cmd {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+
+  .problem__good {
+    border-color: var(--accent);
+    background: var(--accent-wash);
+  }
+
+  .problem__flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+  }
+
+  .problem__chips {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
+    padding-top: 1.25rem !important;
     border-top: 1px solid var(--rule);
   }
 
-  .problem__text {
-    max-width: 22em;
-    font-size: clamp(1.875rem, 4.6vw, 3.75rem);
-    font-weight: 500;
-    line-height: 1.12;
-    letter-spacing: -0.03em;
+  .problem__chips li {
+    background: var(--surface);
   }
 
-  .problem__rest {
-    color: var(--muted);
+  .problem__chip--more {
+    border-style: dashed !important;
+    color: var(--muted) !important;
   }
 </style>

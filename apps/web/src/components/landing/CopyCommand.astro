@@ -2,12 +2,13 @@
 interface Props {
   command: string;
   size?: "base" | "large";
+  tone?: "light" | "dark";
 }
 
-const { command, size = "base" } = Astro.props;
+const { command, size = "base", tone = "light" } = Astro.props;
 ---
 
-<div class:list={["copy", `copy--${size}`]}>
+<div class:list={["copy", `copy--${size}`, `copy--${tone}`]}>
   <code class="copy__line">
     <span class="copy__prompt" aria-hidden="true">$</span>
     <span class="copy__text">{command}</span>
@@ -39,36 +40,50 @@ const { command, size = "base" } = Astro.props;
 
 <style>
   /*
-   * One line of type sitting on a rule, not a box. The whole row is the click
-   * target (the button stretches over it), and the rule turns blue on hover.
+   * A pill holding one command. The whole pill is the click target (the
+   * button stretches over it) and the border turns blue on hover.
    */
   .copy {
+    --copy-bg: var(--surface);
+    --copy-border: var(--rule-strong);
+    --copy-text: var(--ink);
+    --copy-muted: var(--muted);
+
     position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1.5rem;
-    width: min(100%, 30rem);
-    padding-bottom: 0.7rem;
-    border-bottom: 1px solid var(--ink);
+    gap: 1.25rem;
+    width: min(100%, 28rem);
+    padding: 0.7rem 0.8rem 0.7rem 1.25rem;
+    border: 1px solid var(--copy-border);
+    border-radius: 999px;
+    background: var(--copy-bg);
     transition: border-color 150ms ease;
+  }
+
+  .copy--dark {
+    --copy-bg: var(--night-2);
+    --copy-border: var(--night-rule);
+    --copy-text: #fff;
+    --copy-muted: var(--night-muted);
   }
 
   .copy:hover,
   .copy:has(.copy__button:focus-visible) {
-    border-bottom-color: var(--accent);
+    border-color: var(--accent);
   }
 
   .copy__line {
     min-width: 0;
-    font-size: 1.0625rem;
-    color: var(--ink);
+    font-size: 0.9375rem;
+    color: var(--copy-text);
     overflow-wrap: anywhere;
   }
 
   .copy__prompt {
     margin-right: 0.9ch;
-    color: var(--muted);
+    color: var(--copy-muted);
   }
 
   .copy__button {
@@ -79,18 +94,19 @@ const { command, size = "base" } = Astro.props;
     padding: 0;
     border: 0;
     background: none;
-    color: var(--muted);
+    color: var(--copy-muted);
     font-family: var(--font-body);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
     cursor: pointer;
     transition: color 150ms ease;
   }
 
-  /* Stretch the hit area over the whole row. */
+  /* Stretch the hit area over the whole pill. */
   .copy__button::after {
     content: "";
     position: absolute;
-    inset: -0.5rem 0 0;
+    inset: 0;
+    border-radius: 999px;
   }
 
   .copy__button:focus-visible {
@@ -99,11 +115,15 @@ const { command, size = "base" } = Astro.props;
 
   .copy__button:focus-visible::after {
     outline: 2px solid var(--accent);
-    outline-offset: 4px;
+    outline-offset: 3px;
   }
 
   .copy:hover .copy__button {
     color: var(--accent);
+  }
+
+  .copy--dark:hover .copy__button {
+    color: #fff;
   }
 
   .copy__icon {
@@ -121,6 +141,10 @@ const { command, size = "base" } = Astro.props;
     color: var(--accent);
   }
 
+  .copy--dark .copy__button[data-copied] {
+    color: var(--ok);
+  }
+
   .copy__button[data-copied] .copy__icon--check {
     display: block;
   }
@@ -131,30 +155,26 @@ const { command, size = "base" } = Astro.props;
 
   /* Large: the command is the headline of its section. */
   .copy--large {
-    width: min(100%, 52rem);
-    padding-bottom: 1.1rem;
+    width: min(100%, 38rem);
+    padding: 1rem 1.1rem 1rem 1.6rem;
   }
 
   .copy--large .copy__line {
-    font-size: clamp(1.25rem, 4.6vw, 2.75rem);
-    letter-spacing: -0.03em;
+    font-size: clamp(0.9375rem, 3.6vw, 1.25rem);
   }
 
   .copy--large .copy__button {
-    font-size: 1.0625rem;
+    font-size: 0.9375rem;
   }
 
   @media (max-width: 40rem) {
     .copy {
-      gap: 1rem;
+      gap: 0.75rem;
+      padding-left: 1rem;
     }
 
     .copy__line {
-      font-size: 0.9375rem;
-    }
-
-    .copy--large .copy__line {
-      font-size: clamp(0.9375rem, 4.2vw, 1.5rem);
+      font-size: 0.8125rem;
     }
   }
 </style>

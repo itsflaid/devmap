@@ -1,8 +1,9 @@
 ---
 const links = [
+  { href: "/#agents", label: "Agents" },
   { href: "/#commands", label: "Commands" },
-  { href: "/docs", label: "Docs" },
-  { href: "https://github.com/itsflaid/devmap", label: "GitHub" }
+  { href: "/#frameworks", label: "Frameworks" },
+  { href: "/docs", label: "Docs" }
 ];
 ---
 
@@ -15,7 +16,15 @@ const links = [
 
     <nav class="site-header__nav" id="site-nav" aria-label="Primary">
       {links.map((link) => <a href={link.href}>{link.label}</a>)}
+      <a class="site-header__nav-cta" href="https://github.com/itsflaid/devmap">GitHub</a>
     </nav>
+
+    <a class="site-header__gh btn btn--ghost" href="https://github.com/itsflaid/devmap">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
+        <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.08-1.87 3.76-3.65 3.96.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+      </svg>
+      GitHub
+    </a>
 
     <button
       type="button"
@@ -34,68 +43,23 @@ const links = [
   const header = document.querySelector<HTMLElement>("[data-site-header]");
   const toggle = header?.querySelector<HTMLButtonElement>(".site-header__toggle");
   const nav = header?.querySelector<HTMLElement>(".site-header__nav");
-  const root = document.documentElement;
 
   if (header && toggle && nav) {
-    // Tuned so a small flick upward brings the bar back at once, while
-    // reading downward (even with a jittery trackpad) keeps it out of the way.
-    const HIDE_AFTER = 96;
-    const DOWN_STEP = 6;
-    const UP_STEP = 3;
-
-    let lastY = window.scrollY;
-    let ticking = false;
     let menuOpen = false;
-
-    const setShown = (shown: boolean) => {
-      header.classList.toggle("is-hidden", !shown);
-      root.dataset.header = shown ? "shown" : "hidden";
-    };
 
     const setMenu = (open: boolean) => {
       menuOpen = open;
       header.classList.toggle("is-open", open);
       toggle.setAttribute("aria-expanded", String(open));
       toggle.setAttribute("aria-label", open ? "Close menu" : "Open menu");
-      if (open) setShown(true);
     };
 
-    const update = () => {
-      ticking = false;
-      // iOS rubber-banding reports values outside the scrollable range.
-      const maxY = document.documentElement.scrollHeight - window.innerHeight;
-      const y = Math.min(Math.max(window.scrollY, 0), Math.max(maxY, 0));
-      const delta = y - lastY;
-
-      header.classList.toggle("is-stuck", y > 0);
-
-      if (y <= HIDE_AFTER) {
-        setShown(true);
-      } else if (delta >= DOWN_STEP && !menuOpen) {
-        setShown(false);
-      } else if (delta <= -UP_STEP) {
-        setShown(true);
-      }
-
-      if (Math.abs(delta) >= UP_STEP) lastY = y;
-    };
-
-    window.addEventListener(
-      "scroll",
-      () => {
-        if (!ticking) {
-          ticking = true;
-          window.requestAnimationFrame(update);
-        }
-      },
-      { passive: true }
-    );
+    const update = () => header.classList.toggle("is-stuck", window.scrollY > 8);
+    window.addEventListener("scroll", update, { passive: true });
+    update();
 
     toggle.addEventListener("click", () => setMenu(!menuOpen));
-
-    nav.querySelectorAll("a").forEach((link) =>
-      link.addEventListener("click", () => setMenu(false))
-    );
+    nav.querySelectorAll("a").forEach((link) => link.addEventListener("click", () => setMenu(false)));
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && menuOpen) {
@@ -105,18 +69,13 @@ const links = [
     });
 
     document.addEventListener("click", (event) => {
-      if (menuOpen && event.target instanceof Node && !header.contains(event.target)) {
-        setMenu(false);
-      }
+      if (menuOpen && event.target instanceof Node && !header.contains(event.target)) setMenu(false);
     });
 
     // Leaving the narrow layout while the menu is open would strand state.
-    window.matchMedia("(min-width: 40.01rem)").addEventListener("change", (event) => {
+    window.matchMedia("(min-width: 52.01rem)").addEventListener("change", (event) => {
       if (event.matches) setMenu(false);
     });
-
-    root.dataset.header = "shown";
-    update();
   }
 </script>
 
@@ -125,25 +84,22 @@ const links = [
     position: sticky;
     top: 0;
     z-index: 50;
-    background: var(--paper);
+    background: color-mix(in srgb, var(--paper) 82%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border-bottom: 1px solid transparent;
-    transition:
-      transform 260ms cubic-bezier(0.2, 0.7, 0.2, 1),
-      border-color 200ms ease;
+    transition: border-color 200ms ease;
   }
 
   .site-header.is-stuck {
     border-bottom-color: var(--rule);
   }
 
-  .site-header.is-hidden {
-    transform: translateY(-100%);
-  }
-
   .site-header__bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 1.5rem;
     min-height: var(--header-height);
   }
 
@@ -160,35 +116,52 @@ const links = [
 
   .site-header__brand img {
     display: block;
+    border-radius: 0.5rem;
   }
 
   .site-header__nav {
     display: flex;
-    gap: clamp(1rem, 3vw, 2rem);
+    gap: 0.25rem;
+    padding: 0.3rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--surface);
     font-size: 0.9375rem;
   }
 
   .site-header__nav a {
-    padding-block: 0.5rem;
+    padding: 0.45rem 1rem;
+    border-radius: 999px;
     color: var(--text);
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    text-decoration-thickness: 2px;
-    text-underline-offset: 0.3em;
-    transition: text-decoration-color 150ms ease;
+    transition:
+      background 150ms ease,
+      color 150ms ease;
   }
 
   .site-header__nav a:hover {
+    background: var(--paper);
     color: var(--ink);
-    text-decoration-color: var(--accent);
+  }
+
+  .site-header__nav-cta {
+    display: none;
+  }
+
+  .site-header__gh {
+    min-height: 2.5rem;
+    padding: 0 1.1rem;
   }
 
   .site-header__toggle {
     display: none;
   }
 
-  /* Narrow screens: the links move into a panel under the bar. */
-  @media (max-width: 40rem) {
+  /* Narrow screens: the pill becomes a panel under the bar. */
+  @media (max-width: 52rem) {
+    .site-header__gh {
+      display: none;
+    }
+
     .site-header__toggle {
       display: inline-flex;
       flex-direction: column;
@@ -228,10 +201,12 @@ const links = [
       flex-direction: column;
       gap: 0;
       padding: 0.5rem var(--gutter) 1.25rem;
-      background: var(--paper);
+      border: 0;
       border-bottom: 1px solid var(--rule);
+      border-radius: 0;
+      background: var(--paper);
       font-family: var(--font-display);
-      font-size: 2rem;
+      font-size: 1.875rem;
       font-weight: 600;
       letter-spacing: -0.03em;
       visibility: hidden;
@@ -251,13 +226,22 @@ const links = [
     }
 
     .site-header__nav a {
-      padding-block: 0.75rem;
-      color: var(--ink);
+      padding: 0.75rem 0;
+      border-radius: 0;
       border-top: 1px solid var(--rule);
+      color: var(--ink);
+    }
+
+    .site-header__nav a:hover {
+      background: transparent;
     }
 
     .site-header__nav a:first-child {
       border-top: 0;
+    }
+
+    .site-header__nav-cta {
+      display: block;
     }
   }
 

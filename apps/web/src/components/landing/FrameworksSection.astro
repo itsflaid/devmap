@@ -1,0 +1,104 @@
+---
+import IconCard from "../ui/IconCard.astro";
+import { FRAMEWORKS, LANGUAGE_TIERS } from "../../data/frameworks";
+import { frameworkIcon } from "../../lib/icons";
+---
+
+<section class="frameworks section page" id="frameworks" aria-labelledby="frameworks-title">
+  <div class="section__head" data-reveal>
+    <p class="eyebrow"><span class="eyebrow__dot"></span>Supported frameworks</p>
+    <h2 class="section__title" id="frameworks-title">Routes mapped for 18 frameworks.</h2>
+    <p class="section__lede">
+      Next.js to NestJS, in the same monorepo if that's what you have.
+      JavaScript and TypeScript come first; other languages are read with lighter tools.
+    </p>
+  </div>
+
+  <ul class="frameworks__grid" aria-label="Supported frameworks">
+    {FRAMEWORKS.map((fw, i) => (
+      <IconCard name={fw.name} svg={frameworkIcon(fw.icon)} note={fw.kind} index={i % 6} />
+    ))}
+  </ul>
+
+  <div class="frameworks__tiers">
+    {LANGUAGE_TIERS.map((tier, i) => (
+      <article class="card tier" data-reveal style={`--i:${i}`}>
+        <h3>{tier.title}</h3>
+        <p>{tier.note}</p>
+        <ul>
+          {tier.items.map((item) => <li>{item}</li>)}
+        </ul>
+      </article>
+    ))}
+  </div>
+</section>
+
+<style>
+  .frameworks__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.5rem, 2vw, 0.9rem);
+    margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 40rem) {
+    .frameworks__grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 62rem) {
+    .frameworks__grid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+  }
+
+  .frameworks__tiers {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  @media (min-width: 52rem) {
+    .frameworks__tiers {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .tier {
+    display: grid;
+    gap: 0.5rem;
+    padding: clamp(1.4rem, 3vw, 2rem);
+  }
+
+  .tier h3 {
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  .tier p {
+    font-size: 0.9375rem;
+    color: var(--muted);
+  }
+
+  .tier ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tier li {
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 999px;
+    background: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--ink);
+  }
+</style>

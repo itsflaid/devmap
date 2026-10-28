@@ -1,26 +1,144 @@
-<footer class="footer page">
-  <p>MIT licensed. Built by <a class="link" href="https://www.flaid.my.id">Muhammad Fadil</a>.</p>
-  <nav aria-label="Footer">
-    <a class="link" href="/docs">Docs</a>
-    <a class="link" href="https://github.com/itsflaid/devmap">GitHub</a>
-    <a class="link" href="https://www.npmjs.com/package/@flaid/devmap">npm</a>
-  </nav>
+---
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { href: "/docs", label: "Docs" },
+      { href: "/#commands", label: "Commands" },
+      { href: "/#frameworks", label: "Frameworks" }
+    ]
+  },
+  {
+    title: "Open source",
+    links: [
+      { href: "https://github.com/itsflaid/devmap", label: "GitHub" },
+      { href: "https://www.npmjs.com/package/@flaid/devmap", label: "npm" },
+      { href: "https://github.com/itsflaid/devmap/blob/main/CHANGELOG.md", label: "Changelog" }
+    ]
+  },
+  {
+    title: "Author",
+    links: [{ href: "https://www.flaid.my.id", label: "Muhammad Fadil" }]
+  }
+];
+---
+
+<footer class="footer">
+  <div class="footer__inner page">
+    <div class="footer__brand">
+      <a class="footer__logo" href="/" aria-label="DevMap home">
+        <img src="/logo-mark.png" alt="" width="28" height="28" />
+        <span>devmap</span>
+      </a>
+      <p>Analyze once. Reuse context everywhere.</p>
+    </div>
+
+    <nav class="footer__cols" aria-label="Footer">
+      {columns.map((col) => (
+        <div>
+          <h2>{col.title}</h2>
+          <ul>
+            {col.links.map((link) => (
+              <li><a href={link.href}>{link.label}</a></li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  </div>
+
+  <p class="footer__legal page">© 2026 DevMap. MIT licensed.</p>
 </footer>
 
 <style>
   .footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 2rem;
-    justify-content: space-between;
-    padding-block: 2.5rem 3rem;
     border-top: 1px solid var(--rule);
+    background: var(--paper);
+  }
+
+  .footer__inner {
+    display: grid;
+    gap: 2.5rem;
+    padding-block: clamp(2.5rem, 6vw, 4rem) 2rem;
+  }
+
+  @media (min-width: 52rem) {
+    .footer__inner {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 4rem;
+    }
+  }
+
+  .footer__logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+
+  .footer__logo img {
+    border-radius: 0.5rem;
+  }
+
+  .footer__brand p {
+    margin-top: 0.75rem;
+    max-width: 18rem;
     font-size: 0.9375rem;
     color: var(--muted);
   }
 
-  .footer nav {
-    display: flex;
-    gap: 1.5rem;
+  .footer__cols {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, auto));
+    gap: 2rem clamp(2rem, 6vw, 4.5rem);
+  }
+
+  @media (max-width: 36rem) {
+    .footer__cols {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .footer__cols h2 {
+    margin-bottom: 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .footer__cols ul {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9375rem;
+  }
+
+  .footer__cols a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.25em;
+    transition: text-decoration-color 150ms ease;
+  }
+
+  .footer__cols a:hover {
+    text-decoration-color: var(--accent);
+  }
+
+  .footer__legal {
+    padding-block: 1.25rem 2.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.8125rem;
+    color: var(--muted);
   }
 </style>

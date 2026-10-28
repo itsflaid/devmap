@@ -1,96 +1,271 @@
 ---
 import CopyCommand from "./CopyCommand.astro";
+
+// Illustrative output: the shape of what `devmap analyze` prints, not a
+// recording of one run.
+const log: Array<{ text: string; tone?: "ok" | "dim" | "hot" }> = [
+  { text: "scanning files", tone: "ok" },
+  { text: "building dependency graph", tone: "ok" },
+  { text: "detecting framework · routes · database", tone: "ok" },
+  { text: "ranking critical files", tone: "ok" },
+  { text: "writing .devmap/index.json", tone: "hot" }
+];
 ---
 
 <section class="hero page" id="top">
-  <h1 class="hero__title">
-    <span class="hero__line"><span>Analyze once.</span></span>
-    <span class="hero__line"><span>Reuse context</span></span>
-    <span class="hero__line"><span>everywhere.</span></span>
-  </h1>
+  <div class="hero__copy">
+    <p class="eyebrow" data-hero="0"><span class="eyebrow__dot"></span>Open source · MIT · npm</p>
 
-  <p class="hero__lede">
-    DevMap reads your codebase and writes a map that developers and AI agents
-    can start from: entry points, critical files, features and routes.
-  </p>
+    <h1 class="hero__title" data-hero="1">
+      Analyze once.<br />
+      <span class="hero__soft">Reuse context everywhere.</span>
+    </h1>
 
-  <div class="hero__install">
-    <CopyCommand command="npm install -g @flaid/devmap" />
-    <a class="link" href="https://github.com/itsflaid/devmap">Source on GitHub</a>
+    <p class="hero__lede" data-hero="2">
+      DevMap reads your codebase and writes a map that developers and AI agents
+      start from: entry points, critical files, features and routes.
+    </p>
+
+    <div class="hero__actions" data-hero="3">
+      <CopyCommand command="npm install -g @flaid/devmap" />
+      <a class="btn btn--ghost" href="/docs">Read the docs</a>
+    </div>
+
+    <p class="hero__note" data-hero="4">
+      Needs Node 22 or newer. An API key is optional and only adds the AI layer.
+    </p>
   </div>
 
-  <p class="hero__note">Needs Node 22 or newer. An API key is optional and only adds the AI layer.</p>
+  <div class="hero__stage" data-hero="5">
+    <div class="term" role="img" aria-label="Example output of devmap analyze: scanning, graph, framework detection, ranking, then writing the .devmap index.">
+      <div class="term__bar">
+        <span></span><span></span><span></span>
+        <b>~/your-project</b>
+      </div>
+      <div class="term__body">
+        <p class="term__cmd"><span class="term__prompt">$</span> npx @flaid/devmap analyze</p>
+        {log.map((line, i) => (
+          <p class:list={["term__line", `term__line--${line.tone}`]} style={`--n:${i}`}>
+            <span class="term__tick">{line.tone === "hot" ? "→" : "✓"}</span>
+            {line.text}
+          </p>
+        ))}
+        <p class="term__done" style={`--n:${log.length}`}>
+          <span class="term__cursor"></span> context ready for any agent
+        </p>
+      </div>
+    </div>
+    <p class="hero__caption">Illustrative output.</p>
+  </div>
 </section>
 
 <style>
   .hero {
-    /* The install command is the point of the page: it has to be on screen
-       without scrolling, so spacing also follows the viewport height. */
-    padding-block: clamp(1.5rem, 5vh, 5rem) var(--section-space);
+    display: grid;
+    gap: clamp(2.5rem, 6vw, 4rem);
+    align-items: center;
+    padding-block: clamp(2rem, 6vh, 4.5rem) clamp(1rem, 3vw, 2.5rem);
+  }
+
+  @media (min-width: 62rem) {
+    .hero {
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      gap: clamp(2.5rem, 5vw, 5rem);
+    }
+  }
+
+  .hero__copy {
+    display: grid;
+    justify-items: start;
+    gap: clamp(1.25rem, 2.6vh, 1.75rem);
   }
 
   .hero__title {
-    /* Width alone made the headline 3 x 170px tall on a wide, short window and
-       pushed the install command below the fold; height caps it too. */
-    font-size: clamp(3.25rem, min(11.2vw, 18vh), 9rem);
-    line-height: 0.93;
-    letter-spacing: -0.04em;
+    font-size: clamp(2.75rem, min(5.6vw, 11vh), 5.5rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
   }
 
-  .hero__line {
-    display: block;
-    overflow: hidden;
-    /* room for descenders so the reveal mask does not clip the "y" */
-    padding-bottom: 0.08em;
-    margin-bottom: -0.08em;
-  }
-
-  .hero__line > span {
-    display: block;
-    animation: rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-
-  .hero__line:nth-child(2) > span {
-    animation-delay: 90ms;
-  }
-
-  .hero__line:nth-child(3) > span {
-    animation-delay: 180ms;
-  }
-
-  @keyframes rise {
-    from {
-      transform: translateY(105%);
-    }
-    to {
-      transform: translateY(0);
-    }
-  }
-
-  .hero__lede {
-    max-width: 34rem;
-    margin-top: clamp(1.5rem, 3vh, 2.5rem);
-    font-size: clamp(1.25rem, 2vw, 1.5rem);
-    line-height: 1.4;
-    color: var(--ink);
-  }
-
-  .hero__install {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 1.25rem 2.5rem;
-    margin-top: clamp(1.25rem, 3vh, 2rem);
-  }
-
-  .hero__note {
-    margin-top: 1rem;
-    font-size: 0.9375rem;
+  .hero__soft {
     color: var(--muted);
   }
 
+  .hero__lede {
+    max-width: 32rem;
+    font-size: clamp(1.125rem, 1.7vw, 1.375rem);
+    line-height: 1.45;
+    color: var(--text);
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    width: 100%;
+  }
+
+  .hero__note {
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  /* Staggered entrance. Runs on load, so it does not depend on scrolling. */
+  [data-hero] {
+    animation: rise 800ms var(--ease) both;
+    animation-delay: calc(var(--d, 0) * 1ms);
+  }
+
+  [data-hero="1"] { --d: 70; }
+  [data-hero="2"] { --d: 150; }
+  [data-hero="3"] { --d: 220; }
+  [data-hero="4"] { --d: 280; }
+  [data-hero="5"] { --d: 200; }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      translate: 0 1.25rem;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  /* Terminal card */
+  .hero__stage {
+    min-width: 0;
+  }
+
+  .hero__caption {
+    margin-top: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    text-align: right;
+    color: var(--muted);
+  }
+
+  .term {
+    overflow: hidden;
+    border: 1px solid var(--night-rule);
+    border-radius: var(--radius-lg);
+    background: var(--night);
+    box-shadow: 0 30px 60px -30px rgba(20, 19, 17, 0.55);
+    color: var(--night-text);
+    font-family: var(--font-mono);
+  }
+
+  .term__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--night-rule);
+  }
+
+  .term__bar span {
+    width: 0.65rem;
+    height: 0.65rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  .term__bar b {
+    margin-left: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--night-muted);
+  }
+
+  .term__body {
+    display: grid;
+    gap: 0.55rem;
+    padding: 1.4rem 1.4rem 1.6rem;
+    font-size: clamp(0.78rem, 1.5vw, 0.9rem);
+    line-height: 1.5;
+  }
+
+  .term__body p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .term__cmd {
+    color: #fff;
+    margin-bottom: 0.35rem !important;
+  }
+
+  .term__prompt {
+    margin-right: 0.8ch;
+    color: var(--night-muted);
+  }
+
+  .term__line,
+  .term__done {
+    opacity: 0;
+    animation: log 500ms var(--ease) forwards;
+    animation-delay: calc(700ms + var(--n) * 420ms);
+  }
+
+  @keyframes log {
+    from {
+      opacity: 0;
+      translate: -0.5rem 0;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  .term__tick {
+    display: inline-block;
+    width: 2ch;
+    color: var(--ok);
+  }
+
+  .term__line--hot {
+    color: #fff;
+  }
+
+  .term__line--hot .term__tick {
+    color: #7aa7ff;
+  }
+
+  .term__done {
+    margin-top: 0.6rem !important;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--night-rule);
+    color: var(--night-muted);
+  }
+
+  .term__cursor {
+    display: inline-block;
+    width: 0.55ch;
+    height: 1.05em;
+    margin-right: 0.8ch;
+    vertical-align: -0.2em;
+    background: var(--ok);
+    animation: blink 1.1s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .hero__line > span {
+    [data-hero],
+    .term__line,
+    .term__done {
+      animation: none;
+      opacity: 1;
+    }
+
+    .term__cursor {
       animation: none;
     }
   }

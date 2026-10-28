@@ -3,55 +3,113 @@ import CopyCommand from "./CopyCommand.astro";
 ---
 
 <section class="start page" aria-labelledby="start-title">
-  <h2 class="start__title" id="start-title">Run it on the repo you have open.</h2>
+  <div class="start__card" data-reveal>
+    <p class="start__eyebrow"><span></span>Get started</p>
+    <h2 class="start__title" id="start-title">Run it on the repo you have open.</h2>
 
-  <div class="start__command">
-    <CopyCommand command="npx @flaid/devmap analyze" size="large" />
+    <div class="start__command">
+      <CopyCommand command="npx @flaid/devmap analyze" size="large" tone="dark" />
+    </div>
+
+    <p class="start__copy">
+      Free and open source under the MIT license. Install it globally with{" "}
+      <code>npm install -g @flaid/devmap</code> when you want it on every project.
+    </p>
+
+    <p class="start__links">
+      <a class="btn start__btn" href="/docs">Read the docs</a>
+      <a class="btn start__btn start__btn--ghost" href="https://github.com/itsflaid/devmap">Star it on GitHub</a>
+    </p>
   </div>
-
-  <p class="start__copy">
-    Free and open source under the MIT license. Install it globally with{" "}
-    <code>npm install -g @flaid/devmap</code> when you want it on every project.
-  </p>
-
-  <p class="start__links">
-    <a class="link" href="/docs">Read the docs</a>
-    <a class="link" href="https://github.com/itsflaid/devmap">Star it on GitHub</a>
-  </p>
 </section>
 
 <style>
   .start {
-    padding-block: var(--section-space);
-    border-top: 1px solid var(--rule);
+    padding-block: 0 var(--section-space);
+  }
+
+  .start__card {
+    display: grid;
+    justify-items: center;
+    gap: 1.5rem;
+    padding: clamp(2.5rem, 7vw, 5.5rem) clamp(1.25rem, 5vw, 4rem);
+    border-radius: clamp(1.5rem, 4vw, 2.5rem);
+    background:
+      radial-gradient(60rem 22rem at 50% -10%, rgba(255, 255, 255, 0.07), transparent 70%),
+      var(--night);
+    text-align: center;
+    color: var(--night-text);
+  }
+
+  .start__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--night-rule);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--night-muted);
+  }
+
+  .start__eyebrow span {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--ok);
   }
 
   .start__title {
-    max-width: 10em;
-    font-size: clamp(2.75rem, 8vw, 7rem);
+    max-width: 11em;
+    color: #fff;
+    font-size: clamp(2.5rem, 7vw, 5.5rem);
     line-height: 0.98;
     letter-spacing: -0.045em;
   }
 
   .start__command {
-    margin-top: clamp(2rem, 5vw, 3.5rem);
-    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 0.75rem;
   }
 
   .start__copy {
-    max-width: 34rem;
-    margin-top: 1.75rem;
+    max-width: 32rem;
+    color: var(--night-muted);
   }
 
   .start__copy code {
     font-size: 0.875em;
-    color: var(--ink);
+    color: #fff;
   }
 
   .start__links {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 2rem;
-    margin-top: 1.25rem;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+
+  .start__btn {
+    background: #fff;
+    border-color: #fff;
+    color: var(--ink);
+  }
+
+  .start__btn:hover {
+    background: #fff;
+  }
+
+  .start__btn--ghost {
+    background: transparent;
+    border-color: var(--night-rule);
+    color: #fff;
+  }
+
+  .start__btn--ghost:hover {
+    background: transparent;
+    border-color: #fff;
   }
 </style>

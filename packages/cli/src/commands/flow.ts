@@ -14,7 +14,7 @@ import {
   type FlowInfo,
   type ProjectMap
 } from "../analyzers/pipeline/index.js";
-import { loadSnapshot } from "../cache/snapshot.js";
+import { loadSnapshot, type LoadedSnapshot } from "../cache/snapshot.js";
 import { resolveEffectiveConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { buildMapMarkdown } from "../utils/mapRenderer.js";
@@ -30,6 +30,11 @@ export type FlowOptions = {
    * Pass `false` to compute flows without touching the disk.
    */
   write?: boolean;
+  /**
+   * A snapshot the caller already loaded (long-lived front-ends cache it).
+   * When set, the snapshot is not re-read and staleness is not re-scanned.
+   */
+  loaded?: LoadedSnapshot;
   /**
    * Add AI narration when an AI provider is configured. Defaults to true.
    * Pass `false` for a purely static, offline result.
@@ -98,7 +103,7 @@ export async function runFlow(
   dependencies: FlowDependencies
 ): Promise<FlowResult> {
   const projectRoot = resolve(options.projectRoot ?? ".");
-  const { snapshot, stale } = await loadSnapshot(projectRoot);
+  const { snapshot, stale } = options.loaded ?? await loadSnapshot(projectRoot);
 
   const flows = options.all
     ? buildAllFlows(snapshot)

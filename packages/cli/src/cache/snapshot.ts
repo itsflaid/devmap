@@ -36,6 +36,22 @@ export async function isSnapshotStale(
   return createProjectFingerprint(files) !== snapshot.fingerprint;
 }
 
+export type LoadedSnapshot = {
+  snapshot: ProjectMap;
+  /** True when the project files changed since the snapshot was generated. */
+  stale: boolean;
+};
+
+/**
+ * Read the snapshot (throwing a DevmapError with a hint when it is missing,
+ * corrupt, or unsupported) together with its staleness. Read-only.
+ */
+export async function loadSnapshot(projectRoot: string): Promise<LoadedSnapshot> {
+  const snapshot = await readSnapshotOrThrow(projectRoot);
+  const stale = await isSnapshotStale(projectRoot, snapshot);
+  return { snapshot, stale };
+}
+
 export async function readSnapshot(projectRoot: string): Promise<ProjectMap | null> {
   const result = await inspectSnapshot(projectRoot);
   return result.status === "valid" ? result.snapshot : null;

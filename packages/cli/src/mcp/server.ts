@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { runExplain, type ExplainDependencies } from "../commands/explain.js";
 import { runFlow } from "../commands/flow.js";
 import { runMap } from "../commands/map.js";
 import { DevmapError } from "../utils/errors.js";
@@ -33,6 +34,9 @@ const SERVER_INSTRUCTIONS = [
   "Prompts devmap_onboard and devmap_plan_change describe ready-made workflows."
 ].join(" ");
 
+const EXPLAIN_NOTE =
+  "devmap_explain sends excerpts of the project's source files to the user's configured AI provider, so it only exists when the server was started with --allow-ai.";
+
 const DEFAULT_ANALYZE_TIMEOUT_SECONDS = 120;
 const DEFAULT_HEARTBEAT_MS = 5_000;
 
@@ -55,6 +59,8 @@ export type DevmapServerOptions = {
   refresher?: Refresher;
   /** Inject the analysis function (tests). */
   analyze?: AnalyzeFn;
+  /** Inject the AI config/client used by devmap_explain (tests). */
+  explainDependencies?: ExplainDependencies;
   /** Interval of progress notifications while devmap_analyze runs. */
   heartbeatMs?: number;
 };
@@ -375,6 +381,49 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       }
     }
   );
+
+  if (options.allowAi) {
+    server.registerTool(
+      "devmap_explain",
+      {
+        title: "Explain code with AI",
+        description:
+          "Ask the user's configured AI provider to explain what a file, feature or top-level function does, "
+          + "using DevMap's index to pick the relevant code. Prefer devmap_map, devmap_flow and devmap_impact for structure; "
+          + "use this for \"what does this do and why\". "
+          + EXPLAIN_NOTE
+          + " Requires a provider configured with `devmap init`. Spends the user's AI quota.",
+        inputSchema: {
+          target: z.string().min(1).describe("A project-relative file path, a feature name, or a top-level function name.")
+        },
+        annotations: {
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true
+        }
+      },
+      ({ target }) => respond(async () => {
+        const loaded = await provider.get();
+        const result = await withJsonOutput(() => runExplain(
+          target,
+          { projectRoot, json: true, write: false, loaded },
+          options.explainDependencies ?? {}
+        ));
+        const answer = truncateText(result.answer);
+        return {
+          mode: result.mode,
+          target: result.target,
+          ...(result.resolvedFile ? { resolvedFile: result.resolvedFile } : {}),
+          answer: answer.text,
+          truncated: answer.truncated,
+          model: result.model,
+          contextFiles: result.contextFiles,
+          snapshot: snapshotMeta(loaded)
+        };
+      })
+    );
+  }
 
   // ── resources ────────────────────────────────────────────────────────────
 

@@ -13,6 +13,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 const execute = promisify(execFile);
 const executeShell = promisify(exec);
@@ -55,7 +57,7 @@ try {
   await verifyProject("express-project", "express");
   await verifyProject("react-project", "react");
 
-  console.log("Packed CLI E2E passed for Next.js, Express, and React fixtures.");
+  console.log("Packed CLI E2E passed for Next.js, Express, and React fixtures (CLI + MCP server).");
 
   async function verifyProject(fixtureName, expectedFramework) {
     const projectRoot = join(temporaryRoot, fixtureName);
@@ -142,6 +144,42 @@ try {
       "--json"
     ]));
     assert.equal(doctorJson.config, "missing");
+
+    await verifyMcpServer(projectRoot, expectedFramework);
+  }
+
+  async function verifyMcpServer(projectRoot, expectedFramework) {
+    // The packed package must start as an MCP server, keep stdout protocol-clean
+    // (the SDK transport reports any non-JSON-RPC line through onerror) and answer tools.
+    const transport = new StdioClientTransport({
+      command: npmExecutable,
+      args: ["exec", "--", "devmap", "mcp"],
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        HOME: isolatedHome,
+        USERPROFILE: isolatedHome,
+        NO_COLOR: "1"
+      },
+      stderr: "pipe"
+    });
+    const protocolErrors = [];
+    transport.onerror = (error) => protocolErrors.push(error);
+    const client = new Client({ name: "package-e2e", version: "0.0.0" });
+
+    try {
+      await client.connect(transport);
+      const { tools } = await client.listTools();
+      assert.ok(tools.some((tool) => tool.name === "devmap_overview"));
+
+      const overview = await client.callTool({ name: "devmap_overview", arguments: {} });
+      assert.notEqual(overview.isError, true);
+      const payload = JSON.parse(overview.content[0].text);
+      assert.equal(payload.project.framework, expectedFramework);
+      assert.deepEqual(protocolErrors, []);
+    } finally {
+      await client.close();
+    }
   }
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });

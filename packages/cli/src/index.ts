@@ -7,6 +7,7 @@ import { explainCommand } from "./commands/explain.js";
 import { flowCommand } from "./commands/flow.js";
 import { initCommand } from "./commands/init.js";
 import { mapCommand } from "./commands/map.js";
+import { mcpCommand } from "./commands/mcp.js";
 import { onboardingCommand } from "./commands/onboarding.js";
 import { printHelp } from "./utils/help.js";
 import { printWelcome } from "./utils/welcome.js";
@@ -95,6 +96,12 @@ configCommand
     json: options.json,
     local: options.local
   }));
+
+program
+  .command("mcp")
+  .description("Run DevMap as an MCP server (stdio) so AI agents can query the project map")
+  .option("--root <path>", "project root containing .devmap/snapshot.json", ".")
+  .action((options) => mcpCommand({ root: options.root }));
 
 program
   .command("doctor")

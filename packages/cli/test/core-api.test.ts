@@ -6,6 +6,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { loadSnapshot, saveSnapshot } from "../src/cache/snapshot.js";
+import { runAnalyze } from "../src/commands/analyze.js";
 import { runFlow } from "../src/commands/flow.js";
 import { runMap } from "../src/commands/map.js";
 import { DevmapError } from "../src/utils/errors.js";
@@ -161,6 +162,41 @@ test("runFlow writes .devmap/flows by default", async () => {
     assert.equal(result.writtenPaths.length, result.flows.length);
     const files = await readdir(join(projectRoot, ".devmap", "flows"));
     assert.ok(files.some((file) => file.endsWith(".md")));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("runAnalyze with offline:true never touches the AI provider, even when an API key is configured", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-offline-analyze-"));
+  const { cp } = await import("node:fs/promises");
+  await cp(nextFixture, projectRoot, { recursive: true });
+  let aiTouched = false;
+
+  try {
+    const { value: snapshot, written } = await captureStreams(
+      () => withJsonOutput(() => runAnalyze(
+        projectRoot,
+        { fresh: true, offline: true, json: true },
+        {
+          loadConfig: async () => {
+            aiTouched = true;
+            return { provider: "groq", apiKey: "gsk_fixture", model: "auto" };
+          },
+          createAiClient: () => {
+            aiTouched = true;
+            throw new Error("AI client must not be created in offline mode");
+          }
+        }
+      ))
+    );
+
+    assert.equal(aiTouched, false);
+    assert.equal(snapshot.domain, undefined);
+    assert.equal(snapshot.ai, undefined);
+    assert.ok(snapshot.features.length > 0, "static analysis still produces features");
+    assert.deepEqual(written, [], "offline analysis is silent in JSON mode");
+    assert.equal(await exists(join(projectRoot, ".devmap", "snapshot.json")), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

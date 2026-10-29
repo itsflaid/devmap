@@ -7,7 +7,7 @@ import {
   type MapTreeNode
 } from "../analyzers/graph/index.js";
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
-import { loadSnapshot } from "../cache/snapshot.js";
+import { loadSnapshot, type LoadedSnapshot } from "../cache/snapshot.js";
 import { DevmapError } from "../utils/errors.js";
 import { slugifyMapName } from "../utils/slug.js";
 import { resolveFileTarget } from "../utils/targetResolver.js";
@@ -35,6 +35,11 @@ export type MapOptions = {
    * Pass `false` to compute the map without touching the disk.
    */
   write?: boolean;
+  /**
+   * A snapshot the caller already loaded (long-lived front-ends cache it).
+   * When set, the snapshot is not re-read and staleness is not re-scanned.
+   */
+  loaded?: LoadedSnapshot;
 };
 
 export type MapResult = {
@@ -81,7 +86,7 @@ export async function runMap(
   options: MapOptions
 ): Promise<MapResult> {
   const projectRoot = resolve(options.projectRoot ?? ".");
-  const { snapshot, stale } = await loadSnapshot(projectRoot);
+  const { snapshot, stale } = options.loaded ?? await loadSnapshot(projectRoot);
 
   const resolved = resolveMapTarget(snapshot, target);
 

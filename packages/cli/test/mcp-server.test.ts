@@ -73,7 +73,7 @@ async function callTool(
   };
 }
 
-test("server lists the read-only tools with read-only annotations", async () => {
+test("server lists tools; only devmap_analyze is not read-only", async () => {
   const projectRoot = await projectFromFixture(nextFixture);
   const { client, close } = await connect(projectRoot);
 
@@ -81,6 +81,7 @@ test("server lists the read-only tools with read-only annotations", async () => 
     const { tools } = await client.listTools();
     const names = tools.map((tool) => tool.name).sort();
     assert.deepEqual(names, [
+      "devmap_analyze",
       "devmap_find",
       "devmap_flow",
       "devmap_impact",
@@ -89,7 +90,13 @@ test("server lists the read-only tools with read-only annotations", async () => 
       "devmap_routes"
     ]);
     for (const tool of tools) {
-      assert.equal(tool.annotations?.readOnlyHint, true, `${tool.name} must be read-only`);
+      // devmap_analyze is the only tool allowed to write (inside .devmap/ only).
+      assert.equal(
+        tool.annotations?.readOnlyHint,
+        tool.name === "devmap_analyze" ? false : true,
+        `${tool.name} read-only hint`
+      );
+      assert.equal(tool.annotations?.destructiveHint, false, `${tool.name} must not be destructive`);
       assert.ok(tool.description && tool.description.length > 20, `${tool.name} needs a description`);
     }
     assert.match(client.getInstructions() ?? "", /devmap_overview/);
@@ -263,7 +270,7 @@ test("results flag a stale snapshot after the project changes", async () => {
 
     const stale = await callTool(client, "devmap_overview");
     assert.equal(stale.data.snapshot.stale, true);
-    assert.match(stale.data.snapshot.note, /devmap analyze --fresh/);
+    assert.match(stale.data.snapshot.note, /devmap_analyze/);
   } finally {
     await client.close();
     await server.close();
@@ -348,6 +355,7 @@ test("query helpers: limits, path resolution, and truncation", async () => {
   assert.throws(() => resolveProjectFile(snapshot, ""), DevmapError);
   assert.equal(queryRoutes(snapshot, { method: "ZZZ" }).total, 0);
   assert.throws(() => queryImpact(snapshot, "nope/missing.ts"), DevmapError);
+  assert.equal(queryImpact(snapshot, Object.keys(snapshot.fileIndex)[0]!, { depth: 99 }).transitive.depth, 5);
   assert.ok(queryFind(snapshot, "route", 3).hits.length <= 3);
 });
 
@@ -369,7 +377,7 @@ test("devmap mcp over stdio keeps stdout protocol-clean and answers real request
 
     await client.connect(transport);
     const { tools } = await client.listTools();
-    assert.equal(tools.length, 6);
+    assert.equal(tools.length, 7);
 
     const overview = await callTool(client, "devmap_overview");
     assert.equal(overview.isError, false);

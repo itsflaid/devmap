@@ -151,27 +151,107 @@ export function resolveProjectFile(snapshot: ProjectMap, input: string): string 
   );
 }
 
+export type ImpactOptions = {
+  /** Max entries per list (default 50). */
+  limit?: number;
+  /** How many import hops to follow when collecting dependents (1-5, default 1). */
+  depth?: number;
+};
+
 export type ImpactResult = {
   file: string;
   purpose?: string;
   scope: string;
   features: string[];
   importance: number;
+  /** True when the file is ranked among the project's critical files. */
+  isCritical: boolean;
+  criticalReasons?: string[];
   /** Files/areas likely affected when this file changes. */
   impacts: string[];
   /** Files that import this file directly. */
   dependents: string[];
+  /** Number of direct dependents (before the list limit). */
+  dependentCount: number;
+  /** Everything that reaches this file through up to `depth` import hops. */
+  transitive: {
+    depth: number;
+    count: number;
+    files: Array<{ file: string; depth: number }>;
+    truncated: boolean;
+  };
+  /** Critical files among the transitive dependents. */
+  criticalDependents: string[];
+  /** Features that contain this file or any transitive dependent. */
+  affectedFeatures: string[];
   /** Local files this file imports. */
   imports: string[];
   truncated: boolean;
 };
 
-export function queryImpact(snapshot: ProjectMap, input: string, limit?: number): ImpactResult {
+const MAX_IMPACT_DEPTH = 5;
+const reverseGraphs = new WeakMap<ProjectMap, Map<string, string[]>>();
+
+/** file -> files that import it (built once per snapshot). */
+function reverseGraph(snapshot: ProjectMap): Map<string, string[]> {
+  const cachedGraph = reverseGraphs.get(snapshot);
+  if (cachedGraph) return cachedGraph;
+
+  const graph = new Map<string, string[]>();
+  for (const [importer, imports] of Object.entries(snapshot.fileGraph)) {
+    for (const imported of imports) {
+      const list = graph.get(imported);
+      if (list) list.push(importer);
+      else graph.set(imported, [importer]);
+    }
+  }
+  for (const list of graph.values()) list.sort();
+
+  reverseGraphs.set(snapshot, graph);
+  return graph;
+}
+
+export function queryImpact(
+  snapshot: ProjectMap,
+  input: string,
+  options: ImpactOptions = {}
+): ImpactResult {
   const file = resolveProjectFile(snapshot, input);
-  const cap = clampLimit(limit, 50);
+  const cap = clampLimit(options.limit, 50);
+  const depth = Math.max(1, Math.min(MAX_IMPACT_DEPTH, Math.floor(options.depth ?? 1)));
   const entry = snapshot.fileIndex[file]!;
   const impact = snapshot.changeImpact[file] ?? { impacts: [], dependents: [] };
   const imports = snapshot.fileGraph[file] ?? [];
+  const critical = snapshot.criticalFiles.find((candidate) => candidate.path === file);
+
+  // Breadth-first over "who imports me", cycle-safe, ordered by hop then path.
+  const reverse = reverseGraph(snapshot);
+  const seen = new Set<string>([file]);
+  const reached: Array<{ file: string; depth: number }> = [];
+  let frontier = [file];
+  for (let hop = 1; hop <= depth && frontier.length > 0; hop += 1) {
+    const next: string[] = [];
+    for (const current of frontier) {
+      for (const importer of reverse.get(current) ?? []) {
+        if (seen.has(importer)) continue;
+        seen.add(importer);
+        reached.push({ file: importer, depth: hop });
+        next.push(importer);
+      }
+    }
+    frontier = next;
+  }
+
+  const criticalPaths = new Set(snapshot.criticalFiles.map((candidate) => candidate.path));
+  const features = new Set<string>(entry.featureRefs);
+  for (const { file: reachedFile } of reached) {
+    for (const feature of snapshot.fileIndex[reachedFile]?.featureRefs ?? []) {
+      features.add(feature);
+    }
+  }
+  const criticalDependents = reached
+    .filter((candidate) => criticalPaths.has(candidate.file))
+    .map((candidate) => candidate.file);
 
   return {
     file,
@@ -179,11 +259,25 @@ export function queryImpact(snapshot: ProjectMap, input: string, limit?: number)
     scope: entry.scope,
     features: entry.featureRefs,
     importance: entry.importance,
+    isCritical: critical !== undefined,
+    ...(critical ? { criticalReasons: critical.reasons } : {}),
     impacts: impact.impacts.slice(0, cap),
     dependents: impact.dependents.slice(0, cap),
+    dependentCount: impact.dependents.length,
+    transitive: {
+      depth,
+      count: reached.length,
+      files: reached.slice(0, cap),
+      truncated: reached.length > cap
+    },
+    criticalDependents: criticalDependents.slice(0, cap),
+    affectedFeatures: [...features].sort(),
     imports: imports.slice(0, cap),
     truncated:
-      impact.impacts.length > cap || impact.dependents.length > cap || imports.length > cap
+      impact.impacts.length > cap
+      || impact.dependents.length > cap
+      || imports.length > cap
+      || reached.length > cap
   };
 }
 

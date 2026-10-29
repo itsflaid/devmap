@@ -4,6 +4,10 @@ import { createDevmapServer } from "../mcp/server.js";
 
 export type McpOptions = {
   root?: string;
+  /** Re-analyze automatically when the snapshot is stale or missing. Default off. */
+  autoRefresh?: boolean;
+  /** Allow analysis to use the configured AI provider. Default off. */
+  allowAi?: boolean;
 };
 
 /**
@@ -22,7 +26,11 @@ export async function mcpCommand(options: McpOptions = {}): Promise<void> {
   console.debug = redirect;
 
   const projectRoot = resolve(options.root ?? ".");
-  const { server } = createDevmapServer({ projectRoot });
+  const { server } = createDevmapServer({
+    projectRoot,
+    autoRefresh: options.autoRefresh === true,
+    allowAi: options.allowAi === true
+  });
   const transport = new StdioServerTransport();
 
   const shutdown = (): void => {
@@ -33,5 +41,11 @@ export async function mcpCommand(options: McpOptions = {}): Promise<void> {
   process.stdin.once("end", shutdown);
 
   await server.connect(transport);
-  console.error(`DevMap MCP server ready (root: ${projectRoot})`);
+  const modes = [
+    options.autoRefresh ? "auto-refresh" : undefined,
+    options.allowAi ? "ai-enabled" : undefined
+  ].filter(Boolean);
+  console.error(
+    `DevMap MCP server ready (root: ${projectRoot}${modes.length > 0 ? `, ${modes.join(", ")}` : ""})`
+  );
 }

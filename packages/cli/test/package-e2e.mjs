@@ -176,6 +176,13 @@ try {
       assert.notEqual(overview.isError, true);
       const payload = JSON.parse(overview.content[0].text);
       assert.equal(payload.project.framework, expectedFramework);
+
+      // Refresh path from the packed package: static analysis, protocol stays clean.
+      const refreshed = await client.callTool({ name: "devmap_analyze", arguments: { fresh: true } });
+      assert.notEqual(refreshed.isError, true);
+      const refreshPayload = JSON.parse(refreshed.content[0].text);
+      assert.equal(refreshPayload.status, "refreshed");
+      assert.equal(refreshPayload.mode, "static");
       assert.deepEqual(protocolErrors, []);
     } finally {
       await client.close();

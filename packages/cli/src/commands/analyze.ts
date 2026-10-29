@@ -17,6 +17,13 @@ import { output, withJsonOutput } from "../utils/output.js";
 export type AnalyzeOptions = {
   fresh?: boolean;
   json?: boolean;
+  /**
+   * Skip every AI call (domain inference, snapshot enrichment, architecture
+   * interpretation). The result is purely static analysis. Used by non-CLI
+   * front-ends such as the MCP server, which must not spend the user's AI
+   * quota or send metadata to a provider unless explicitly allowed.
+   */
+  offline?: boolean;
 };
 
 export type AnalyzeDependencies = {
@@ -40,7 +47,13 @@ export async function analyzeCommand(
   await runAnalyze(target, options, dependencies);
 }
 
-async function runAnalyze(
+/**
+ * Core analyze pipeline, shared by the CLI and other front-ends (e.g. an MCP server).
+ * Writes `.devmap/snapshot.json` and the agent navigation files. Human-facing
+ * output goes through `output.*`, so call it inside `withJsonOutput` to stay silent.
+ * Pass `offline: true` to run static analysis only.
+ */
+export async function runAnalyze(
   target: string,
   options: AnalyzeOptions,
   dependencies: AnalyzeDependencies
@@ -52,7 +65,7 @@ async function runAnalyze(
   // Build callAI wrapper — dipakai oleh domain inference (Step 5) di createProjectMap.
   // Dibuat di sini biar analyze command yang kontrol config + client lifecycle,
   // sementara projectMap tetap decoupled dari AI provider specifics.
-  const callAI = await buildCallAI(projectRoot, dependencies);
+  const callAI = options.offline ? undefined : await buildCallAI(projectRoot, dependencies);
 
   let snapshot = await createProjectMap(projectRoot, callAI);
   const previous = options.fresh ? { status: "missing" as const } : await inspectSnapshot(projectRoot);
@@ -69,7 +82,9 @@ async function runAnalyze(
     );
   }
 
-  snapshot = await enrichSnapshot(snapshot, projectRoot, options, dependencies);
+  if (!options.offline) {
+    snapshot = await enrichSnapshot(snapshot, projectRoot, options, dependencies);
+  }
   await saveSnapshot(projectRoot, snapshot);
   await writeAgentNavigationFiles(projectRoot, snapshot);
   printSnapshot(snapshot);
@@ -213,6 +228,10 @@ async function printOrGenerateInterpretation(
   options: AnalyzeOptions,
   dependencies: AnalyzeDependencies
 ): Promise<Awaited<ReturnType<typeof createProjectMap>>> {
+  if (options.offline) {
+    return snapshot;
+  }
+
   if (snapshot.ai && !options.fresh) {
     output.section("Architecture");
     output.markdown(snapshot.ai.architecture);

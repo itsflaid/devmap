@@ -62,7 +62,13 @@ export async function explainCommand(
   }
 }
 
-async function runExplain(
+/**
+ * Core explain computation, shared by the CLI and other front-ends (e.g. an MCP server).
+ * Requires a configured AI provider. Only writes `.devmap/explain/*` when
+ * `options.write` is true. Pass `json: true` (and call inside `withJsonOutput`)
+ * to disable terminal streaming.
+ */
+export async function runExplain(
   target: string,
   options: ExplainOptions,
   dependencies: ExplainDependencies

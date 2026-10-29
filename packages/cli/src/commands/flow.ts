@@ -14,7 +14,7 @@ import {
   type FlowInfo,
   type ProjectMap
 } from "../analyzers/pipeline/index.js";
-import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
+import { loadSnapshot } from "../cache/snapshot.js";
 import { resolveEffectiveConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { buildMapMarkdown } from "../utils/mapRenderer.js";
@@ -25,6 +25,16 @@ export type FlowOptions = {
   json?: boolean;
   projectRoot?: string;
   all?: boolean;
+  /**
+   * Persist flows under `.devmap/flows/`. Defaults to true (CLI behavior).
+   * Pass `false` to compute flows without touching the disk.
+   */
+  write?: boolean;
+  /**
+   * Add AI narration when an AI provider is configured. Defaults to true.
+   * Pass `false` for a purely static, offline result.
+   */
+  narrate?: boolean;
 };
 
 export type FlowDependencies = {
@@ -76,36 +86,47 @@ export async function flowCommand(
   }
 }
 
-async function runFlow(
+/**
+ * Core flow computation, shared by the CLI and other front-ends (e.g. an MCP server).
+ * Human-facing notes go through `output.*`, so call it inside `withJsonOutput`
+ * to keep stdout clean. Writes `.devmap/flows/*` unless `options.write === false`;
+ * skips AI entirely when `options.narrate === false`.
+ */
+export async function runFlow(
   target: string | undefined,
   options: FlowOptions,
   dependencies: FlowDependencies
 ): Promise<FlowResult> {
   const projectRoot = resolve(options.projectRoot ?? ".");
-  const snapshot = await readSnapshotOrThrow(projectRoot);
-  const stale = await isSnapshotStale(projectRoot, snapshot);
+  const { snapshot, stale } = await loadSnapshot(projectRoot);
 
   const flows = options.all
     ? buildAllFlows(snapshot)
     : snapshot.flows;
   const resolved = resolveFlowTarget(flows, target);
 
-  const loadConfig = dependencies.loadConfig
-    ?? (() => resolveEffectiveConfig(projectRoot));
-  const config = await loadConfig();
+  const shouldWrite = options.write !== false;
   let client: AiClient | undefined;
   let routing: { model: string; fallbackModels: readonly string[] } | undefined;
 
-  if (!config?.apiKey) {
-    output.note("AI flow narration is not configured. Run devmap init to enable it.");
-  } else {
-    const createAiClient = dependencies.createAiClient ?? createDefaultAiClient;
-    client = createAiClient(config);
-    routing = resolveAiRouting(config, "flowNarration");
+  if (options.narrate !== false) {
+    const loadConfig = dependencies.loadConfig
+      ?? (() => resolveEffectiveConfig(projectRoot));
+    const config = await loadConfig();
+
+    if (!config?.apiKey) {
+      output.note("AI flow narration is not configured. Run devmap init to enable it.");
+    } else {
+      const createAiClient = dependencies.createAiClient ?? createDefaultAiClient;
+      client = createAiClient(config);
+      routing = resolveAiRouting(config, "flowNarration");
+    }
   }
 
   const flowsDir = join(projectRoot, ".devmap", "flows");
-  await mkdir(flowsDir, { recursive: true });
+  if (shouldWrite) {
+    await mkdir(flowsDir, { recursive: true });
+  }
 
   const built: Array<{
     name: string;
@@ -137,8 +158,10 @@ async function runFlow(
     const mermaid = flow.mermaid ?? renderMermaidFlow(flow.steps);
     const slug = slugifyMapName(flow.name);
 
-    await writeFile(join(flowsDir, `${slug}.md`), markdown, "utf8");
-    await writeFile(join(flowsDir, `${slug}.mermaid`), `${mermaid}\n`, "utf8");
+    if (shouldWrite) {
+      await writeFile(join(flowsDir, `${slug}.md`), markdown, "utf8");
+      await writeFile(join(flowsDir, `${slug}.mermaid`), `${mermaid}\n`, "utf8");
+    }
 
     built.push({
       name: flow.name,
@@ -154,11 +177,13 @@ async function runFlow(
   return {
     status: "ok",
     flows: built.map(({ slug: _slug, ...rest }) => rest),
-    writtenPaths: built.map(({ name, slug }) => ({
-      name,
-      markdown: `.devmap/flows/${slug}.md`,
-      mermaid: `.devmap/flows/${slug}.mermaid`
-    })),
+    writtenPaths: shouldWrite
+      ? built.map(({ name, slug }) => ({
+        name,
+        markdown: `.devmap/flows/${slug}.md`,
+        mermaid: `.devmap/flows/${slug}.mermaid`
+      }))
+      : [],
     snapshot: { generatedAt: snapshot.generatedAt, stale }
   };
 }

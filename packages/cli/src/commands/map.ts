@@ -7,7 +7,7 @@ import {
   type MapTreeNode
 } from "../analyzers/graph/index.js";
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
-import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
+import { loadSnapshot } from "../cache/snapshot.js";
 import { DevmapError } from "../utils/errors.js";
 import { slugifyMapName } from "../utils/slug.js";
 import { resolveFileTarget } from "../utils/targetResolver.js";
@@ -30,6 +30,11 @@ export type MapOptions = {
   target?: string;
   depth?: number;
   all?: boolean;
+  /**
+   * Persist the map under `.devmap/maps/`. Defaults to true (CLI behavior).
+   * Pass `false` to compute the map without touching the disk.
+   */
+  write?: boolean;
 };
 
 export type MapResult = {
@@ -38,7 +43,8 @@ export type MapResult = {
   target: string;
   markdown: string;
   mermaid: string;
-  writtenPaths: { markdown: string; mermaid: string };
+  /** Absent when the map was computed with `write: false`. */
+  writtenPaths?: { markdown: string; mermaid: string };
   snapshot: { generatedAt: string; stale: boolean };
 };
 
@@ -60,17 +66,22 @@ export async function mapCommand(
     output.note("Run devmap analyze --fresh, then repeat devmap map.");
   }
   output.markdown(result.markdown);
-  output.success(`Wrote ${result.writtenPaths.markdown}`);
-  output.success(`Wrote ${result.writtenPaths.mermaid}`);
+  if (result.writtenPaths) {
+    output.success(`Wrote ${result.writtenPaths.markdown}`);
+    output.success(`Wrote ${result.writtenPaths.mermaid}`);
+  }
 }
 
-async function runMap(
+/**
+ * Core map computation, shared by the CLI and other front-ends (e.g. an MCP server).
+ * Never prints. Writes `.devmap/maps/*` unless `options.write === false`.
+ */
+export async function runMap(
   target: string | undefined,
   options: MapOptions
 ): Promise<MapResult> {
   const projectRoot = resolve(options.projectRoot ?? ".");
-  const snapshot = await readSnapshotOrThrow(projectRoot);
-  const stale = await isSnapshotStale(projectRoot, snapshot);
+  const { snapshot, stale } = await loadSnapshot(projectRoot);
 
   const resolved = resolveMapTarget(snapshot, target);
 
@@ -80,14 +91,19 @@ async function runMap(
       ? buildFeatureMap(snapshot, resolved.value, options.depth, options.all)
       : buildProjectMap(snapshot, options.all);
 
-  const slug = slugifyMapName(resolved.value);
-  const mapsDir = join(projectRoot, ".devmap", "maps");
-  await mkdir(mapsDir, { recursive: true });
+  let writtenPaths: MapResult["writtenPaths"];
+  if (options.write !== false) {
+    const slug = slugifyMapName(resolved.value);
+    const mapsDir = join(projectRoot, ".devmap", "maps");
+    await mkdir(mapsDir, { recursive: true });
 
-  const markdownPath = join(mapsDir, `${slug}.md`);
-  const mermaidPath = join(mapsDir, `${slug}.mermaid`);
-  await writeFile(markdownPath, built.markdown, "utf8");
-  await writeFile(mermaidPath, `${built.mermaid}\n`, "utf8");
+    await writeFile(join(mapsDir, `${slug}.md`), built.markdown, "utf8");
+    await writeFile(join(mapsDir, `${slug}.mermaid`), `${built.mermaid}\n`, "utf8");
+    writtenPaths = {
+      markdown: `.devmap/maps/${slug}.md`,
+      mermaid: `.devmap/maps/${slug}.mermaid`
+    };
+  }
 
   return {
     status: "ok",
@@ -95,10 +111,7 @@ async function runMap(
     target: resolved.value,
     markdown: built.markdown,
     mermaid: built.mermaid,
-    writtenPaths: {
-      markdown: `.devmap/maps/${slug}.md`,
-      mermaid: `.devmap/maps/${slug}.mermaid`
-    },
+    ...(writtenPaths ? { writtenPaths } : {}),
     snapshot: { generatedAt: snapshot.generatedAt, stale }
   };
 }

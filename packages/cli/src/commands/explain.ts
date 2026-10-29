@@ -9,7 +9,7 @@ import {
 import { buildExplainMessages } from "../ai/prompts.js";
 import type { AiClient } from "../ai/types.js";
 import type { FileIndexEntry, ProjectMap } from "../analyzers/pipeline/index.js";
-import { readSnapshotOrThrow } from "../cache/snapshot.js";
+import { readSnapshotOrThrow, type LoadedSnapshot } from "../cache/snapshot.js";
 import { resolveEffectiveConfig, type DevmapConfig } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
 import { output, withJsonOutput } from "../utils/output.js";
@@ -20,6 +20,11 @@ export type ExplainOptions = {
   json?: boolean;
   write?: boolean;
   projectRoot?: string;
+  /**
+   * A snapshot the caller already loaded (long-lived front-ends cache it).
+   * When set, the snapshot is not re-read from disk.
+   */
+  loaded?: LoadedSnapshot;
 };
 
 export type ExplainDependencies = {
@@ -74,7 +79,7 @@ export async function runExplain(
   dependencies: ExplainDependencies
 ): Promise<ExplainResult> {
   const projectRoot = resolve(options.projectRoot ?? ".");
-  const snapshot = await readSnapshotOrThrow(projectRoot);
+  const snapshot = options.loaded?.snapshot ?? await readSnapshotOrThrow(projectRoot);
 
   const loadConfig = dependencies.loadConfig
     ?? (() => resolveEffectiveConfig(projectRoot));

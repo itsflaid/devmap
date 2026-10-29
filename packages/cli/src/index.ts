@@ -101,7 +101,13 @@ program
   .command("mcp")
   .description("Run DevMap as an MCP server (stdio) so AI agents can query the project map")
   .option("--root <path>", "project root containing .devmap/snapshot.json", ".")
-  .action((options) => mcpCommand({ root: options.root }));
+  .option("--auto-refresh", "re-analyze automatically when the snapshot is stale or missing (default: off)")
+  .option("--allow-ai", "let analysis use the configured AI provider (default: off, static analysis only)")
+  .action((options) => mcpCommand({
+    root: options.root,
+    autoRefresh: options.autoRefresh,
+    allowAi: options.allowAi
+  }));
 
 program
   .command("doctor")

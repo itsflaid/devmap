@@ -8,14 +8,19 @@ import { runMap } from "../commands/map.js";
 import { DevmapError } from "../utils/errors.js";
 import { withJsonOutput } from "../utils/output.js";
 import { DEVMAP_VERSION } from "../utils/packageMetadata.js";
+import { registerPrompts } from "./prompts.js";
 import {
   buildOverview,
   queryFind,
   queryImpact,
-  queryRoutes,
-  type SnapshotMeta
+  queryRoutes
 } from "./queries.js";
-import { createSnapshotProvider, type SnapshotProvider } from "./snapshotProvider.js";
+import { createRefresher, type AnalyzeFn, type Refresher } from "./refresh.js";
+import {
+  createSnapshotProvider,
+  type ProviderSnapshot,
+  type SnapshotProvider
+} from "./snapshotProvider.js";
 
 export const MAX_TEXT_CHARS = 30_000;
 const FEATURE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -24,18 +29,40 @@ const SERVER_INSTRUCTIONS = [
   "DevMap gives you a precomputed map of this codebase (features, routes, flows, dependency graph).",
   "Start with devmap_overview, then drill into one feature with devmap_map or devmap_flow instead of reading many files.",
   "Call devmap_impact before changing a file, and devmap_find to locate code by keyword.",
-  "Every result includes snapshot.stale; when it is true the code changed after the last analysis, so treat results as approximate and ask the user to run `devmap analyze --fresh`."
+  "Every result includes snapshot.stale; when it is true the code changed after the last analysis, so results may be outdated: call devmap_analyze to refresh the snapshot, then repeat the query.",
+  "Prompts devmap_onboard and devmap_plan_change describe ready-made workflows."
 ].join(" ");
+
+const DEFAULT_ANALYZE_TIMEOUT_SECONDS = 120;
+const DEFAULT_HEARTBEAT_MS = 5_000;
 
 export type DevmapServerOptions = {
   projectRoot: string;
+  /**
+   * Re-analyze automatically when the snapshot is stale or missing, before
+   * answering a query. Off by default: queries never write to disk.
+   */
+  autoRefresh?: boolean;
+  /**
+   * Let analysis use the configured AI provider (domain inference, enrichment).
+   * Off by default: analysis is static, so agents cannot spend AI quota or send
+   * project metadata to a provider on their own.
+   */
+  allowAi?: boolean;
   /** Inject a provider (tests); defaults to a cached provider for `projectRoot`. */
   provider?: SnapshotProvider;
+  /** Inject a refresher (tests). */
+  refresher?: Refresher;
+  /** Inject the analysis function (tests). */
+  analyze?: AnalyzeFn;
+  /** Interval of progress notifications while devmap_analyze runs. */
+  heartbeatMs?: number;
 };
 
 export type DevmapServer = {
   server: McpServer;
   provider: SnapshotProvider;
+  refresher: Refresher;
 };
 
 export function truncateText(value: string, max = MAX_TEXT_CHARS): { text: string; truncated: boolean } {
@@ -46,14 +73,40 @@ export function truncateText(value: string, max = MAX_TEXT_CHARS): { text: strin
   };
 }
 
-function snapshotMeta(generatedAt: string, stale: boolean): SnapshotMeta & { note?: string } {
+function snapshotMeta(loaded: ProviderSnapshot): {
+  generatedAt: string;
+  stale: boolean;
+  refreshed?: boolean;
+  refreshError?: string;
+  note?: string;
+} {
   return {
-    generatedAt,
-    stale,
-    ...(stale
-      ? { note: "The code changed after this snapshot was generated. Results may be outdated; run `devmap analyze --fresh`." }
+    generatedAt: loaded.snapshot.generatedAt,
+    stale: loaded.stale,
+    ...(loaded.refreshed ? { refreshed: true } : {}),
+    ...(loaded.refreshError ? { refreshError: loaded.refreshError } : {}),
+    ...(loaded.stale
+      ? {
+        note: loaded.refreshError
+          ? `Auto-refresh failed (${loaded.refreshError}). Results come from an older snapshot.`
+          : "The code changed after this snapshot was generated. Results may be outdated; call devmap_analyze to refresh."
+      }
       : {})
   };
+}
+
+/** Wait for a promise, but give up waiting after `ms` (the promise keeps running). */
+async function waitFor<T>(promise: Promise<T>, ms: number): Promise<{ timedOut: false; value: T } | { timedOut: true }> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<{ timedOut: true }>((resolveTimeout) => {
+    timer = setTimeout(() => resolveTimeout({ timedOut: true }), ms);
+    timer.unref();
+  });
+  try {
+    return await Promise.race([promise.then((value) => ({ timedOut: false as const, value })), timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function ok(payload: unknown): CallToolResult {
@@ -78,8 +131,16 @@ async function respond(action: () => Promise<unknown>): Promise<CallToolResult> 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 
 export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
-  const provider = options.provider ?? createSnapshotProvider(options.projectRoot);
+  const refresher = options.refresher ?? createRefresher({
+    projectRoot: options.projectRoot,
+    allowAi: options.allowAi,
+    analyze: options.analyze
+  });
+  const provider = options.provider ?? createSnapshotProvider(options.projectRoot, {
+    autoRefresh: options.autoRefresh ? () => refresher.run() : undefined
+  });
   const projectRoot = provider.projectRoot;
+  const heartbeatMs = options.heartbeatMs ?? DEFAULT_HEARTBEAT_MS;
 
   const server = new McpServer(
     { name: "devmap", version: DEVMAP_VERSION },
@@ -98,10 +159,10 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       annotations: readOnly
     },
     () => respond(async () => {
-      const { snapshot, stale } = await provider.get();
+      const loaded = await provider.get();
       return {
-        ...buildOverview(snapshot),
-        snapshot: snapshotMeta(snapshot.generatedAt, stale)
+        ...buildOverview(loaded.snapshot),
+        snapshot: snapshotMeta(loaded)
       };
     })
   );
@@ -121,7 +182,8 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       annotations: readOnly
     },
     ({ target, depth, includeMermaid }) => respond(async () => {
-      const result = await withJsonOutput(() => runMap(target, { projectRoot, depth, write: false }));
+      const loaded = await provider.get();
+      const result = await withJsonOutput(() => runMap(target, { projectRoot, depth, write: false, loaded }));
       const markdown = truncateText(result.markdown);
       return {
         mode: result.mode,
@@ -129,7 +191,7 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
         markdown: markdown.text,
         ...(includeMermaid ? { mermaid: truncateText(result.mermaid).text } : {}),
         truncated: markdown.truncated,
-        snapshot: snapshotMeta(result.snapshot.generatedAt, result.snapshot.stale)
+        snapshot: snapshotMeta(loaded)
       };
     })
   );
@@ -148,9 +210,10 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       annotations: readOnly
     },
     ({ target, all }) => respond(async () => {
+      const loaded = await provider.get();
       const result = await withJsonOutput(() => runFlow(
         target,
-        { projectRoot, all, write: false, narrate: false },
+        { projectRoot, all, write: false, narrate: false, loaded },
         {}
       ));
       let truncated = false;
@@ -163,7 +226,7 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
         total: result.flows.length,
         truncated: truncated || result.flows.length > MAX_FLOWS,
         flows,
-        snapshot: snapshotMeta(result.snapshot.generatedAt, result.snapshot.stale)
+        snapshot: snapshotMeta(loaded)
       };
     })
   );
@@ -182,10 +245,10 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       annotations: readOnly
     },
     (input) => respond(async () => {
-      const { snapshot, stale } = await provider.get();
+      const loaded = await provider.get();
       return {
-        ...queryRoutes(snapshot, input),
-        snapshot: snapshotMeta(snapshot.generatedAt, stale)
+        ...queryRoutes(loaded.snapshot, input),
+        snapshot: snapshotMeta(loaded)
       };
     })
   );
@@ -195,19 +258,21 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
     {
       title: "Change impact",
       description:
-        "What is affected if a file changes: files that import it, areas likely impacted, features it belongs to, and what it imports. "
+        "What is affected if a file changes: direct and transitive dependents (follow imports up to `depth` hops), "
+        + "affected features, critical dependents, areas likely impacted, and what it imports. "
         + "Call this before editing a shared file.",
       inputSchema: {
         file: z.string().describe("Project-relative file path (a unique path suffix also works)."),
+        depth: z.number().int().min(1).max(5).optional().describe("Import hops to follow for dependents (default 1)."),
         limit: z.number().int().min(1).max(100).optional().describe("Max entries per list (default 50).")
       },
       annotations: readOnly
     },
-    ({ file, limit }) => respond(async () => {
-      const { snapshot, stale } = await provider.get();
+    ({ file, depth, limit }) => respond(async () => {
+      const loaded = await provider.get();
       return {
-        ...queryImpact(snapshot, file, limit),
-        snapshot: snapshotMeta(snapshot.generatedAt, stale)
+        ...queryImpact(loaded.snapshot, file, { depth, limit }),
+        snapshot: snapshotMeta(loaded)
       };
     })
   );
@@ -226,12 +291,89 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       annotations: readOnly
     },
     ({ query, limit }) => respond(async () => {
-      const { snapshot, stale } = await provider.get();
+      const loaded = await provider.get();
       return {
-        ...queryFind(snapshot, query, limit),
-        snapshot: snapshotMeta(snapshot.generatedAt, stale)
+        ...queryFind(loaded.snapshot, query, limit),
+        snapshot: snapshotMeta(loaded)
       };
     })
+  );
+
+  server.registerTool(
+    "devmap_analyze",
+    {
+      title: "Refresh the project map",
+      description:
+        "Re-analyze the project and refresh the DevMap snapshot (writes only inside .devmap/). Call it when a result "
+        + "reports snapshot.stale = true, or when no snapshot exists. Returns status \"unchanged\" without re-analyzing if no "
+        + "file changed (pass fresh: true to force a full rebuild). "
+        + (options.allowAi
+          ? "AI enrichment is enabled for this server, so the configured AI provider may be used."
+          : "Static analysis only: no AI is used, so AI-derived data (domain, architecture) is not regenerated and aiDataDropped is reported when it is lost. ")
+        + "If it takes longer than timeoutSeconds it keeps running in the background and status is \"running\"; call again to wait for it.",
+      inputSchema: {
+        fresh: z.boolean().optional().describe("Ignore the cache and rebuild from scratch."),
+        timeoutSeconds: z.number().int().min(1).max(600).optional()
+          .describe(`How long to wait for the analysis (default ${DEFAULT_ANALYZE_TIMEOUT_SECONDS}).`)
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: options.allowAi === true
+      }
+    },
+    async ({ fresh, timeoutSeconds }, extra) => {
+      const started = Date.now();
+      const progressToken = extra._meta?.progressToken;
+      let tick = 0;
+      let heartbeat: NodeJS.Timeout | undefined;
+
+      // Progress notifications keep clients from timing out on long analyses.
+      if (progressToken !== undefined) {
+        heartbeat = setInterval(() => {
+          tick += 1;
+          void extra.sendNotification({
+            method: "notifications/progress",
+            params: {
+              progressToken,
+              progress: tick,
+              message: `Analyzing project… ${Math.round((Date.now() - started) / 1000)}s elapsed`
+            }
+          }).catch(() => undefined);
+        }, heartbeatMs);
+        heartbeat.unref();
+      }
+
+      try {
+        const run = refresher.run({ fresh: fresh === true });
+        // Drop cached state whenever the analysis ends, even if we stopped waiting for it.
+        run.then(() => provider.invalidate(), () => undefined);
+
+        const waited = await waitFor(run, (timeoutSeconds ?? DEFAULT_ANALYZE_TIMEOUT_SECONDS) * 1000);
+        if (waited.timedOut) {
+          return ok({
+            status: "running",
+            elapsedSeconds: Math.round((Date.now() - started) / 1000),
+            hint: "The analysis is still running in the background. Call devmap_analyze again to wait for it; other tools use the previous snapshot until it finishes."
+          });
+        }
+
+        const outcome = waited.value;
+        return ok({
+          ...outcome,
+          ...(outcome.aiDataDropped
+            ? {
+              note: "The previous snapshot had AI-derived data (domain/architecture) that static analysis cannot regenerate. Run `devmap analyze` in a terminal, or start the server with --allow-ai, to restore it."
+            }
+            : {})
+        });
+      } catch (error) {
+        return fail(error);
+      } finally {
+        if (heartbeat) clearInterval(heartbeat);
+      }
+    }
   );
 
   // ── resources ────────────────────────────────────────────────────────────
@@ -302,7 +444,9 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
     }
   );
 
-  return { server, provider };
+  registerPrompts(server);
+
+  return { server, provider, refresher };
 }
 
 const MAX_FLOWS = 20;

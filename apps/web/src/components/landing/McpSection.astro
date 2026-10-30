@@ -1,0 +1,222 @@
+---
+import CopyCommand from "./CopyCommand.astro";
+import { MCP_ADD_COMMAND, MCP_CONFIG, MCP_TOOLS } from "../../data/mcp";
+
+const steps = [
+  { n: "1", title: "Analyze once", text: "Run devmap analyze in the project. It writes .devmap/snapshot.json." },
+  { n: "2", title: "Register the server", text: "Add the command below to Claude Code, or the config to Cursor, Codex and opencode." },
+  { n: "3", title: "Ask the agent", text: "It calls the tools it needs instead of reading the whole map up front." }
+];
+---
+
+<section class="mcp section page" id="mcp" aria-labelledby="mcp-title">
+  <div class="section__head" data-reveal>
+    <h2 class="section__title" id="mcp-title">Or let the agent ask.</h2>
+    <p class="section__lede">
+      <code>devmap mcp</code> runs DevMap as an MCP server. The agent calls a tool
+      and gets structured JSON back, so it reads only the part of the map it
+      needs. Read-only by default, and every answer says if the snapshot is stale.
+    </p>
+  </div>
+
+  <div class="mcp__setup">
+    <ol class="mcp__steps" aria-label="Set up the DevMap MCP server">
+      {steps.map((step, i) => (
+        <li class="card mcp__step" data-reveal style={`--i:${i}`}>
+          <span class="mcp__n" aria-hidden="true">{step.n}</span>
+          <div>
+            <h3>{step.title}</h3>
+            <p>{step.text}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+
+    <div class="mcp__code" data-reveal style="--i:1">
+      <p class="mcp__label">Claude Code</p>
+      <CopyCommand command={MCP_ADD_COMMAND} />
+      <div class="mcp__file" role="img" aria-label="MCP client configuration for DevMap">
+        <span class="mcp__filename">.mcp.json</span>
+        <pre>{MCP_CONFIG.join("\n")}</pre>
+      </div>
+      <p class="mcp__note">
+        Nothing is sent anywhere. <code>--auto-refresh</code> and <code>--allow-ai</code> are opt-in.
+      </p>
+    </div>
+  </div>
+
+  <ul class="mcp__tools" aria-label="Tools the DevMap MCP server provides">
+    {MCP_TOOLS.map((tool, i) => (
+      <li class="card mcp__tool" data-reveal style={`--i:${i % 4}`}>
+        <code>{tool.name}</code>
+        <p>{tool.text}</p>
+        {tool.needsAi && <span class="mcp__ai">needs --allow-ai</span>}
+      </li>
+    ))}
+  </ul>
+
+  <div class="mcp__cta" data-reveal>
+    <a class="btn" href="/docs#use-it-as-an-mcp-server">MCP setup for your client</a>
+  </div>
+</section>
+
+<style>
+  .section__lede code,
+  .mcp__note code {
+    font-size: 0.875em;
+    color: var(--ink);
+  }
+
+  .mcp__setup {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  @media (min-width: 62rem) {
+    .mcp__setup {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: stretch;
+    }
+  }
+
+  .mcp__steps {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mcp__step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1.25rem 1.4rem;
+  }
+
+  .mcp__n {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .mcp__step h3 {
+    font-size: 1.125rem;
+    letter-spacing: -0.02em;
+  }
+
+  .mcp__step p {
+    margin-top: 0.25rem;
+    font-size: 0.9375rem;
+    color: var(--muted);
+  }
+
+  .mcp__code {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 0.9rem;
+    min-width: 0;
+  }
+
+  .mcp__label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .mcp__file {
+    padding: 1rem 1.1rem 1.2rem;
+    border-radius: var(--radius-lg);
+    background: var(--night);
+    color: var(--night-text);
+    overflow: hidden;
+  }
+
+  .mcp__filename {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--night-rule);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--night-muted);
+  }
+
+  .mcp__file pre {
+    margin: 0.9rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .mcp__note {
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  .mcp__tools {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  @media (min-width: 40rem) {
+    .mcp__tools {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 62rem) {
+    .mcp__tools {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .mcp__tool {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    padding: 1.1rem 1.25rem 1.3rem;
+  }
+
+  .mcp__tool code {
+    font-size: 0.8125rem;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+  }
+
+  .mcp__tool p {
+    font-size: 0.9375rem;
+    color: var(--muted);
+  }
+
+  .mcp__ai {
+    justify-self: start;
+    padding: 0.15rem 0.55rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--muted);
+  }
+
+  .mcp__cta {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+</style>

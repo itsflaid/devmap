@@ -94,3 +94,31 @@ this repository and add a release workflow. The workflow should:
 4. Publish only `packages/cli`.
 5. Use a protected GitHub Environment with manual approval.
 6. Use short-lived OIDC credentials instead of a long-lived npm token.
+
+## MCP Registry
+
+`packages/cli/server.json` describes the MCP server for the
+[MCP Registry](https://modelcontextprotocol.io/registry/quickstart). The registry
+only stores metadata, so publish to npm first.
+
+Rules:
+
+- `name` in `server.json` must equal `mcpName` in `packages/cli/package.json`
+  (`io.github.itsflaid/devmap`). The registry checks the published npm package
+  for it.
+- `version` and `packages[0].version` in `server.json` must equal the version
+  just published to npm. Update both in the release PR, next to `package.json`.
+- The server starts with `devmap mcp`, which is the `mcp` positional entry in
+  `packageArguments`.
+
+After the `v*.*.*` tag has published the package:
+
+```bash
+npm view @flaid/devmap version        # must show the new version
+cd packages/cli
+mcp-publisher login github
+mcp-publisher publish
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.itsflaid/devmap"
+```
+
+`mcp-publisher publish` is manual and separate from `publish.yml`.

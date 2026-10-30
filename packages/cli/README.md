@@ -119,6 +119,7 @@ devmap onboarding --write
 devmap onboarding --write --language id
 devmap doctor
 devmap config model auto
+devmap mcp                    # run as an MCP server
 ```
 
 Groq and OpenRouter use the model selected during init. Change either
@@ -128,6 +129,41 @@ provider's model with:
 devmap config model <model-id>
 devmap config model auto
 ```
+
+## MCP Server
+
+`devmap mcp` runs DevMap as a [Model Context Protocol](https://modelcontextprotocol.io)
+server over stdio. An AI agent asks the project map questions with tool calls and
+gets structured JSON back, instead of reading a whole context file up front.
+
+```bash
+devmap analyze
+claude mcp add devmap -- npx -y @flaid/devmap mcp
+```
+
+Other clients launch the same command (`npx -y @flaid/devmap mcp`) as a stdio server:
+
+```json
+{
+  "mcpServers": {
+    "devmap": {
+      "command": "npx",
+      "args": ["-y", "@flaid/devmap", "mcp"]
+    }
+  }
+}
+```
+
+Tools: `devmap_overview`, `devmap_map`, `devmap_flow`, `devmap_routes`,
+`devmap_impact`, `devmap_find`, `devmap_analyze` and, only with `--allow-ai`,
+`devmap_explain`.
+
+The server is read-only and static by default: no AI provider is contacted unless
+you start it with `--allow-ai`, and it only writes inside `.devmap/` when the agent
+calls `devmap_analyze` or you start it with `--auto-refresh`. Every answer reports
+whether the snapshot is stale. See the
+[MCP guide](https://github.com/itsflaid/devmap/blob/main/docs/mcp.md) for client
+setup and tool inputs.
 
 ## Generated Context
 

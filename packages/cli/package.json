@@ -1,7 +1,7 @@
 {
   "name": "@flaid/devmap",
   "mcpName": "io.github.itsflaid/devmap",
-  "version": "0.8.4",
+  "version": "0.9.0",
   "description": "CLI that maps your codebase into a reusable context layer for developers and AI agents: entry points, critical files, features and routes for JS/TS projects.",
   "bin": {
     "devmap": "./dist/index.js"
@@ -38,6 +38,8 @@
     "reverse-engineering",
     "context",
     "claude-code",
+    "mcp",
+    "model-context-protocol",
     "typescript",
     "nextjs",
     "route-detection",

@@ -6,7 +6,7 @@ export const SITE = {
   url: SITE_URL,
   title: "DevMap: analyze once, reuse context everywhere",
   description:
-    "DevMap is a CLI that maps your codebase once: entry points, critical files, features and routes for developers and AI agents to start from.",
+    "DevMap is a CLI and MCP server that maps your codebase once: entry points, critical files, features and routes for developers and AI agents to start from.",
   ogImage: "/og.png",
   ogImageAlt: "DevMap: analyze once, reuse context everywhere",
   github: "https://github.com/itsflaid/devmap",

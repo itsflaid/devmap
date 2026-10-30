@@ -1,5 +1,5 @@
 /**
- * The eight commands shown in the command explorer.
+ * The nine commands shown in the command explorer.
  *
  * `out` lines use a one-character prefix for styling:
  *   "§ " section heading   "· " dim / secondary   "+ " highlighted
@@ -14,7 +14,7 @@
  * To refresh the real ones: build packages/cli, copy the repo somewhere outside git, run
  * `node packages/cli/dist/index.js <command>` there, and trim the output. Do not edit lines by hand.
  */
-export type CommandGroup = "Set up" | "Map" | "Read";
+export type CommandGroup = "Set up" | "Map" | "Read" | "Serve";
 
 export interface CommandEntry {
   id: string;
@@ -204,13 +204,24 @@ export const COMMANDS: CommandEntry[] = [
       "",
       "§ Answer",
       "The CLI entry point. It builds the commander program and hands",
-      "init, analyze, onboarding, map, flow, explain, config and doctor",
+      "init, analyze, onboarding, map, flow, explain, config, doctor and mcp",
       "to their command handlers."
+    ]
+  },
+  {
+    id: "mcp",
+    cmd: "devmap mcp",
+    name: "devmap mcp",
+    group: "Serve",
+    summary: "Run DevMap as an MCP server. Your agent starts it and calls tools; you rarely run it by hand.",
+    source: "illustrative",
+    out: [
+      "· DevMap MCP server ready (root: ~/your-project)"
     ]
   }
 ];
 
-export const COMMAND_GROUPS: CommandGroup[] = ["Set up", "Map", "Read"];
+export const COMMAND_GROUPS: CommandGroup[] = ["Set up", "Map", "Read", "Serve"];
 
 /** Which command is open when the page loads. */
 export const DEFAULT_COMMAND = "analyze";

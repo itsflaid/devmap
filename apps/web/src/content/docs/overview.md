@@ -1,6 +1,6 @@
 ---
 title: "DevMap Docs: install, commands and supported frameworks"
-description: "Install DevMap, run devmap init and analyze, read the generated .devmap files and use them with AI agents. Commands, supported JS/TS frameworks and privacy."
+description: "Install DevMap, run devmap init and analyze, read the generated .devmap files and use them with AI agents or as an MCP server. Commands, supported JS/TS frameworks and privacy."
 ---
 
 # DevMap Docs
@@ -147,6 +147,43 @@ Recommended reading order for agents (also written into `DEVMAP.md` / `AGENTS.md
 
 Works with Claude Code, OpenAI Codex, Gemini CLI, Cursor, GitHub Copilot, and any agent that can read files or consume `--json` output.
 
+### Use it as an MCP server
+
+`devmap mcp` runs DevMap as a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio. Instead of reading a context file at the start, the agent calls a tool and gets structured JSON for just the part it needs. Analyze once, then register the server:
+
+```bash
+devmap analyze
+claude mcp add devmap -- npx -y @flaid/devmap mcp
+```
+
+Other clients launch the same command (`npx -y @flaid/devmap mcp`). For Cursor, Codex, opencode and any stdio client:
+
+```json
+{
+  "mcpServers": {
+    "devmap": {
+      "command": "npx",
+      "args": ["-y", "@flaid/devmap", "mcp"]
+    }
+  }
+}
+```
+
+Most clients start the server in the folder you opened. If yours does not, add `--root /absolute/path/to/project`. The first `npx` download can exceed a client's startup timeout, so after `npm install -g @flaid/devmap` use `devmap` as the command with `mcp` as the argument.
+
+| Tool | What it does |
+|---|---|
+| `devmap_overview` | Framework, entry points, critical files, features and flows. Start here |
+| `devmap_map` | Dependency map of the project, one feature or one file |
+| `devmap_flow` | Trace a feature or API request end to end |
+| `devmap_routes` | List page and API routes |
+| `devmap_impact` | What is affected if a file changes |
+| `devmap_find` | Find features, files and routes by keyword |
+| `devmap_analyze` | Re-analyze and refresh the snapshot, writing only inside `.devmap/` |
+| `devmap_explain` | AI explanation of a file, feature or function. Only with `--allow-ai` |
+
+The server is read-only by default and runs static analysis only. Every answer includes `snapshot: { generatedAt, stale }` so the agent knows when to refresh. Full client setup and tool inputs: [docs/mcp.md](https://github.com/itsflaid/devmap/blob/main/docs/mcp.md).
+
 ---
 
 ## Why not just point my AI agent at the repo?
@@ -232,6 +269,22 @@ Diagnostics for a broken setup. Checks DevMap version, Node version, provider/AP
 devmap doctor
 ```
 
+### `devmap mcp`
+
+Runs DevMap as an MCP server over stdio. Started by your agent's client, not by hand. See [Use it as an MCP server](#use-it-as-an-mcp-server).
+
+```bash
+devmap mcp [--root <path>] [--auto-refresh] [--allow-ai]
+```
+
+| Flag | Default | Effect |
+|---|---|---|
+| `--root <path>` | current folder | Project root that contains `.devmap/snapshot.json` |
+| `--auto-refresh` | off | Re-analyze when the snapshot is stale or missing, before answering |
+| `--allow-ai` | off | Let analysis use your AI provider and expose `devmap_explain` |
+
+stdout carries the JSON-RPC stream only. Logs go to stderr.
+
 ### `devmap config model <model-id|auto>`
 
 Override the model used for AI-powered commands, or restore automatic routing.
@@ -255,6 +308,7 @@ devmap config model llama-3.1-8b-instant --local
 | `.devmap/index.json` | AI agent entry point |
 | `.devmap/features/*.json` | Feature-level navigation |
 | `.devmap/snapshot.json` | Full project intelligence, source of truth |
+| `.devmap/analyze.lock` | Temporary lock while the MCP server re-analyzes, removed when done |
 | `.devmap/maps/*` | `devmap map` output (`.md` + `.mermaid`) |
 | `.devmap/flows/*` | `devmap flow` output (`.md` + `.mermaid`) |
 | `.devmap/config.local.json` | Optional per-project model override, not committed (`.devmap/` is gitignored) |
@@ -276,6 +330,8 @@ Straight from `devmap doctor`'s real checks:
 - **Snapshot missing or corrupt** → `devmap analyze --fresh`
 - **Model unavailable** → `devmap init` or `devmap config model <model-id>`
 - **Node version unsupported** → upgrade to Node.js 22.12+
+- **MCP client times out on start** → install globally (`npm install -g @flaid/devmap`) and use `devmap` with the argument `mcp` instead of `npx`
+- **MCP answers say `stale: true`** → ask the agent to call `devmap_analyze`, or start the server with `--auto-refresh`
 
 ---
 

@@ -15,6 +15,48 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## MCP server (2026-10-30)
+
+Prasyarat: `pnpm install --frozen-lockfile`, Node 22.12+.
+
+```powershell
+# 1. Tes terarah (in-memory + proses stdio sungguhan)
+cd packages/cli
+node --import tsx --test test/core-api.test.ts test/mcp-server.test.ts test/mcp-freshness.test.ts test/mcp-explain.test.ts
+
+# 2. Seluruh suite + typecheck
+pnpm test:cli
+
+# 3. Build lalu smoke test hasil compile (server stdio sungguhan)
+pnpm build:cli
+node packages/cli/test/mcp-smoke.mjs
+
+# 4. Tarball: server MCP harus jalan dari package hasil pack
+pnpm test:package-e2e
+```
+
+Hasil yang diharapkan: semua hijau; smoke test mencetak
+`MCP smoke test passed (7 tools).` (tanpa `--allow-ai` tidak ada `devmap_explain`).
+
+Alur manual (belum dijalankan dengan client sungguhan, hanya JSON-RPC mentah):
+
+1. `devmap analyze` di project nyata, lalu daftarkan server
+   (`claude mcp add devmap -- node /path/ke/packages/cli/dist/index.js mcp`).
+2. Minta agent: "pakai DevMap, jelaskan alur auth dan dampak mengubah file X".
+   Harapan: `devmap_overview` → `devmap_flow` → `devmap_impact`.
+3. Ubah satu file, tanya lagi: hasil harus berisi `snapshot.stale: true`; panggil
+   `devmap_analyze` → `refreshed`, lalu `stale: false`.
+4. Start dengan `--auto-refresh`: hasil pertama setelah perubahan membawa
+   `refreshed: true`.
+5. Start dengan `--allow-ai` + provider terkonfigurasi: `devmap_explain` muncul.
+6. Opsional: MCP Inspector (`npx @modelcontextprotocol/inspector node dist/index.js mcp`).
+
+Timeout client: Codex `tool_timeout_sec` default 60 s dan opencode `timeout`
+default 5 s; `devmap_analyze` default menunggu 120 s. Uji di project besar.
+
+Lintas platform: tes yang memakai proses sungguhan (stdio, lock, smoke) belum
+dijalankan di Windows/macOS dari sini — andalkan matriks `ci.yml`.
+
 ## Onboarding TTY flake (2026-10-03)
 
 Dua test onboarding (`renders a snapshot-based guide`,

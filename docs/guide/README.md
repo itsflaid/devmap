@@ -63,7 +63,7 @@ Read them in order for a first pass; use them as reference after that.
 registered CLI command, focused on implementation (dependency injection
 pattern, JSON-mode branching, error handling), not user-facing usage:
 
-- [`init`](./commands/01-init.md) · [`analyze`](./commands/02-analyze.md) · [`onboarding`](./commands/03-onboarding.md) · [`map`](./commands/04-map.md) · [`flow`](./commands/05-flow.md) · [`explain`](./commands/06-explain.md) · [`config`](./commands/07-config.md) · [`doctor`](./commands/08-doctor.md)
+- [`init`](./commands/01-init.md) · [`analyze`](./commands/02-analyze.md) · [`onboarding`](./commands/03-onboarding.md) · [`map`](./commands/04-map.md) · [`flow`](./commands/05-flow.md) · [`explain`](./commands/06-explain.md) · [`config`](./commands/07-config.md) · [`doctor`](./commands/08-doctor.md) · [`mcp`](./commands/09-mcp.md)
 
 ## A running theme
 

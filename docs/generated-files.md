@@ -238,6 +238,34 @@ Purpose:
 
 ---
 
+## .devmap/analyze.lock
+
+Created while `devmap mcp` runs an analysis (`devmap_analyze` or
+`--auto-refresh`) and removed when it finishes.
+
+```json
+{ "pid": 12345, "startedAt": "2026-10-30T02:11:09.000Z" }
+```
+
+Purpose:
+
+- Stop two MCP servers (or editor windows) from writing the snapshot at once
+
+A lock whose process is gone, or that is older than 15 minutes, is taken over
+automatically. If no analysis is running and the file is still there, it is safe
+to delete. `devmap analyze` does not create or check this file.
+
+Like the rest of `.devmap/`, it is gitignored.
+
+## What the MCP server writes
+
+`devmap mcp` answers from the files above and writes nothing unless an analysis
+runs. `devmap_map`, `devmap_flow` and `devmap_explain` never write
+`.devmap/maps/`, `.devmap/flows/` or `.devmap/explain/`; those folders are only
+created by the CLI commands. See [mcp.md](./mcp.md).
+
+---
+
 # Next Phase — Not Generated Yet
 
 > The following files are planned for future phases.

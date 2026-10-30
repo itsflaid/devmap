@@ -1,6 +1,64 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-10-03
+Terakhir diperbarui: 2026-10-30
+
+## Update 2026-10-30
+
+### MCP Server (`devmap mcp`) — PR #130 s.d. #133, docs di branch `docs/mcp-server`
+
+Tujuan: DevMap terasa "for AI agent" — agent bertanya ke peta proyek lewat tool
+call, bukan membaca file context yang di-dump. Satu package, satu analyzer,
+MCP hanya lapisan tipis di atas snapshot.
+
+1. **Fase 0 (#130)** — `runMap`/`runFlow`/`runExplain` di-export; opsi `write`,
+   `narrate`; helper `loadSnapshot()` (`{ snapshot, stale }`).
+2. **Fase 1 (#131)** — command `devmap mcp` (stdio, read-only): tool
+   `devmap_overview/map/flow/routes/impact/find`, resource
+   `devmap://snapshot|devmap-md|feature/{id}`. Dependency baru
+   `@modelcontextprotocol/sdk` dan `zod`.
+3. **Fase 2 (#132)** — `devmap_analyze` (single-flight, lock
+   `.devmap/analyze.lock`, progress notification, status `running` setelah
+   timeout), `--auto-refresh` (default off), `devmap_impact` transitive
+   (`depth` 1–5), prompt `devmap_onboard` / `devmap_plan_change`,
+   `runAnalyze` di-export dengan opsi `offline`.
+4. **Fase 3 (#133)** — `devmap_explain` (hanya terdaftar dengan `--allow-ai`),
+   `test/mcp-smoke.mjs` dijalankan di `ci.yml` dan `publish.yml` sebelum
+   `npm publish`, `mcpName: io.github.itsflaid/devmap` di `package.json`.
+5. **Fase 4 (sedang jalan)** — `docs/mcp.md`, bagian MCP di README, `commands.md`,
+   `architecture.md` (bagian 15), `generated-files.md`, `docs/guide/commands/09-mcp.md`,
+   `CLAUDE.md`, `CHANGELOG.md` (Unreleased); lalu landing page.
+
+**Keputusan penting**
+- Nama command `devmap mcp`. `devmap_analyze` baru di Fase 2 (Fase 1 murni read-only).
+- Auto-refresh default **off**.
+- AI di MCP default **mati**, walaupun API key sudah di-set; hanya hidup dengan
+  `--allow-ai`. Alasan: yang memanggil tool adalah agent, bukan pemilik API key
+  (kuota dan metadata kode ke provider). `devmap_analyze` statis melaporkan
+  `aiDataDropped` kalau snapshot lama punya data AI.
+- `server.json` dan bump versi **tidak** dimasukkan ke PR Fase 3: versi di
+  `server.json` harus sama dengan versi yang benar-benar terbit. Bump hanya
+  setelah konfirmasi eksplisit (aturan `AGENTS.md`).
+
+**Verifikasi (Fase 3)**: `pnpm test:cli` → 482 pass / 0 fail, `pnpm build:cli`,
+`node packages/cli/test/mcp-smoke.mjs`, `pnpm test:package-e2e`.
+
+**Belum / sisa**
+- Landing page (`apps/web`) + halaman Docs MCP.
+- PR rilis: bump versi (tunggu konfirmasi level bump), `server.json`,
+  `packages/cli/README.md` (ikut tarball npm), tag + publish manual via OIDC,
+  lalu `mcp-publisher publish`.
+- `devmap analyze` di terminal belum memakai `.devmap/analyze.lock`.
+- Tes Windows/macOS untuk tes yang memakai proses sungguhan (stdio, lock,
+  smoke) baru akan tervalidasi oleh matriks CI; run CI terakhir yang terlihat
+  dari GitHub API bertanggal 2026-06 dan gagal (`Ubuntu / Node 20`), jadi
+  status CI perlu dicek langsung di tab Actions.
+
+**Catatan proses**: commit PR #130–#133 memakai format `feat(cli): ...` dan trailer
+co-author, padahal `AGENTS.md` meminta `<type>: <description>` tanpa scope dan
+tanpa trailer bila `.agents/config.local.md` tidak ada. Sudah ter-merge, tidak
+diubah; PR berikutnya mengikuti aturan.
+
+---
 
 ## Update 2026-10-03
 

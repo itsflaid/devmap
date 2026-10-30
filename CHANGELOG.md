@@ -4,6 +4,14 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.9.0] - 2026-10-30
+
 ### Added
 
 - `devmap mcp`: run DevMap as an MCP server over stdio so AI agents can query the project map
@@ -29,12 +37,7 @@ All notable changes to DevMap are documented in this file.
 - `runMap`, `runFlow`, `runAnalyze` and `runExplain` are exported; `map` and `flow` accept `write`
   and `loaded`, `flow` accepts `narrate`, and `analyze` accepts `offline`. CLI behavior is unchanged
 - The CI and publish workflows run `test/mcp-smoke.mjs` against the build before publishing
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
+- Website: MCP section on the landing page and an MCP section in the docs
 
 ## [0.8.4] - 2026-10-29
 

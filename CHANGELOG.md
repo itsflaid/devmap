@@ -4,6 +4,32 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `devmap mcp`: run DevMap as an MCP server over stdio so AI agents can query the project map
+  with tool calls (`--root`, `--auto-refresh`, `--allow-ai`)
+  - Tools: `devmap_overview`, `devmap_map`, `devmap_flow`, `devmap_routes`, `devmap_impact`
+    (direct and transitive dependents, affected features, critical dependents), `devmap_find`,
+    `devmap_analyze` and, only with `--allow-ai`, `devmap_explain`
+  - Resources `devmap://snapshot`, `devmap://devmap-md`, `devmap://feature/{id}` and prompts
+    `devmap_onboard`, `devmap_plan_change`
+  - Read-only and static by default: no AI provider is contacted unless `--allow-ai` is set;
+    every result reports whether the snapshot is stale; results are size-capped and say when
+    they are truncated
+  - `devmap_analyze` refreshes the snapshot (single analysis shared by concurrent calls,
+    progress notifications, `running` status past the timeout, `aiDataDropped` when a static
+    rebuild loses AI-derived data); `--auto-refresh` does it before answering and falls back to
+    the older snapshot when it fails
+  - `.devmap/analyze.lock` prevents two MCP servers from writing the snapshot at once
+- `mcpName` in `package.json` for the MCP Registry
+- `docs/mcp.md` and a landing-site docs page for the MCP server
+
+### Changed
+
+- `runMap`, `runFlow`, `runAnalyze` and `runExplain` are exported; `map` and `flow` accept `write`
+  and `loaded`, `flow` accepts `narrate`, and `analyze` accepts `offline`. CLI behavior is unchanged
+- The CI and publish workflows run `test/mcp-smoke.mjs` against the build before publishing
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

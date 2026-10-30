@@ -227,3 +227,12 @@ whatever's cached in `.devmap/snapshot.json` (so a stale snapshot becomes
 detectable rather than silently trusted), the live network check that
 confirms a stored API key/model still actually work today, and what
 populates the final `issues[]` list.
+
+### `09-mcp.md`
+Covers `commands/mcp.ts` and the `mcp/` folder — DevMap's first long-lived
+front-end. Explains why stdout becomes a protocol (the `console.*` redirect plus
+`withJsonOutput`), how the MCP tools reuse `runMap`/`runFlow`/`runAnalyze`/
+`runExplain` through `write`, `narrate`, `offline` and `loaded` options instead of
+a second analyzer, the snapshot provider's mtime and TTL caches, the single-flight
+refresher with a cross-process lock, why `devmap_explain` is registered only with
+`--allow-ai`, and what `aiDataDropped` protects.

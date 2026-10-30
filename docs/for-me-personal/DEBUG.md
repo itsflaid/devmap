@@ -1,6 +1,6 @@
 # Catatan Debugging DevMap
 
-Terakhir diperbarui: 2026-08-05
+Terakhir diperbarui: 2026-10-30
 
 Dokumen ini menyimpan masalah teknis yang pernah ditemukan selama development
 DevMap. Tujuannya supaya penyebab, solusi, dan cara verifikasinya tidak perlu
@@ -1596,3 +1596,44 @@ Test ketiga (bahasa `id` via prompt palsu) sudah hermetic dan tidak diubah.
   lingkungan runner.
 - Durasi test yang melonjak (detik → menit) adalah sinyal test menunggu
   input interaktif, bukan test yang lambat.
+---
+
+## 30. Semua Hasil MCP Melaporkan `stale: true` pada Snapshot yang Baru Dibuat
+
+**Tanggal:** 2026-10-29
+
+### Gejala
+
+Tes `devmap_overview` untuk server MCP gagal: `snapshot.stale` bernilai `true`
+padahal snapshot baru saja dibuat dari fixture yang sama dan tidak ada file yang
+diubah.
+
+### Akar Masalah
+
+Helper tes menganalisis fixture di tempatnya
+(`createProjectMap(test/fixtures/nextjs-project)`) lalu menyimpan snapshot ke
+direktori temp lain (`saveSnapshot(tempRoot, snapshot)`). Pemeriksaan stale
+memindai file di `projectRoot` yang diberikan ke server (direktori temp, yang
+hanya berisi `.devmap/`), sehingga fingerprint-nya tidak pernah sama dengan
+fingerprint di snapshot. Kodenya benar; fixture-nya yang tidak mewakili project
+yang nyata.
+
+### Solusi
+
+- Salin fixture ke direktori temp dengan `cp(..., { recursive: true })`, lalu
+  jalankan `createProjectMap` dan `saveSnapshot` pada salinan itu.
+- Tes baru yang butuh perubahan file (`addFile`) memakai project mini yang dibuat
+  langsung di direktori temp.
+
+### Verifikasi
+
+- `node --import tsx --test test/mcp-server.test.ts` → 13 pass / 0 fail.
+- Tes `results flag a stale snapshot after the project changes` membuktikan arah
+  sebaliknya: `stale` berubah menjadi `true` hanya setelah file ditambahkan.
+
+### Pelajaran
+
+- Fingerprint snapshot terikat pada isi `projectRoot`. Tes yang membandingkan
+  snapshot dengan project harus menganalisis dan menyimpan di direktori yang sama.
+- Jika semua hasil tiba-tiba `stale: true`, periksa dulu apakah snapshot dan project
+  yang dibandingkan memang folder yang sama sebelum mencurigai logika stale.

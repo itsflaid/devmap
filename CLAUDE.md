@@ -25,10 +25,11 @@ devmap/
 │   │   │   └── registry/  ← Feature signal vocabulary (18 files)
 │   │   ├── ai/            ← Provider abstraction (Groq, OpenRouter, Custom)
 │   │   ├── cache/         ← Snapshot, file hash, agent navigation files
-│   │   ├── commands/      ← Command handlers (init, analyze, map, flow, explain, onboarding, config, doctor)
+│   │   ├── commands/      ← Command handlers (init, analyze, map, flow, explain, onboarding, config, doctor, mcp)
+│   │   ├── mcp/           ← MCP server: tools, resources, prompts, snapshot provider, refresher + lock
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 42 test files (`*.test.ts`, auto-discovered by `run-tests.ts`)
+│   ├── test/              ← 48 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -72,6 +73,10 @@ Everything else (files, graph, routes, features, flows, critical files) is 100% 
 | Domain inference | `src/analyzers/inference/domainInference.ts` | AI call — structured metadata only |
 | Snapshot enrichment | `src/ai/snapshotEnrichment.ts` | AI call — file purposes + feature terms |
 | Agent navigation | `src/cache/agentNavigation.ts` | `writeAgentNavigationFiles()` — index.json + features/*.json |
+| MCP server | `src/mcp/server.ts` | `createDevmapServer()` — tools (`devmap_overview/map/flow/routes/impact/find/analyze`, `devmap_explain` only with `--allow-ai`), resources, prompts |
+| MCP queries | `src/mcp/queries.ts` | Pure read-only queries over a `ProjectMap` (overview, routes, impact, find) |
+| MCP snapshot provider | `src/mcp/snapshotProvider.ts` | mtime-cached snapshot, TTL-cached staleness, opt-in auto-refresh |
+| MCP refresher | `src/mcp/refresh.ts` | Single-flight analysis + `.devmap/analyze.lock` |
 
 ## Data Model
 
@@ -124,12 +129,13 @@ Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsco
 
 ## Testing
 
-42 test files in `packages/cli/test/`. Key covered areas:
+48 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors
 - Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
 - Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`; client-side routers, Hono factories, Next normalization and critical-file ranking in `js-ts-gaps`; SolidStart, Qwik City, Angular, Elysia, Koa, AdonisJS and constant-resolved paths in `js-ts-more-frameworks`), detector fixes
 - Heuristic language readers (`heuristic-languages`), scanner robustness, project scope/metadata
 - Commands (init, analyze, map, flow, explain, onboarding, config, doctor)
+- MCP server (`core-api`, `mcp-server`, `mcp-freshness`, `mcp-explain`): tools, resources, prompts, stale/missing snapshots, auto-refresh and lock, offline-never-touches-AI, stdio process with a clean protocol stream. `test/mcp-smoke.mjs` runs the compiled `dist/` as a server (CI and publish workflow)
 - Utils (markdown terminal, JSON output, prompts, errors)
 
 **No dedicated unit tests**: capability detector (exercised through feature/onboarding tests), cache layer internals. Domain inference is covered by `analyze-ai`; the pipeline orchestrator, service detector, filter engine, dependency graph builder and entry point detector are covered by `analyzers`, `graph-resolution` and `js-ts-ecosystem`.
@@ -159,6 +165,8 @@ pnpm dev
 pnpm devmap <command>
 ```
 
+MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
+
 ## Important Constraints
 
 - No source files should be modified during reverse-engineering tasks
@@ -167,6 +175,8 @@ pnpm devmap <command>
 - Snapshot is regenerated on every `devmap analyze` run
 - `AGENTS.md` is never overwritten by init (append-only)
 - `.devmap/` is always gitignored
+- `devmap mcp` owns stdout: it is the JSON-RPC stream. Never `console.log` from code the MCP server can reach; use `output.*` inside `withJsonOutput()` (silent) or stderr
+- The MCP server is read-only and static by default. Only `devmap_analyze` / `--auto-refresh` write, and only inside `.devmap/`. AI is reachable only with `--allow-ai`; `devmap_explain` is registered only then
 
 ## Known Limitations
 
@@ -179,12 +189,16 @@ pnpm devmap <command>
 - Elysia, Koa and Adonis detectors follow literal call chains and mounts; routers built inside factory functions, `.use()` of computed values and runtime-assembled paths are not followed. Angular reads literal `Routes` arrays and `loadChildren` imports
 - Feature similarity threshold (0.35) is tuned but may cause false merges
 - Domain inference is single-shot — no conversation context
+- `.devmap/analyze.lock` is taken by MCP-driven analysis only; `devmap analyze` does not take or check it
+- The MCP staleness check re-scans project files (cached for 10 s), so it is not free on very large repositories
 
 ## Engineering Notes
 
 - All commands take a Dependencies object for testability
 - `runSafely` wrapper handles errors and sets process.exitCode
 - `AsyncLocalStorage` used for output mode (human/json)
+- `runMap`, `runFlow`, `runAnalyze` and `runExplain` are exported and shared by the CLI and the MCP server; options `write:false`, `narrate:false`, `offline:true` and `loaded` make them safe for a long-lived process
+- MCP tests copy a fixture to a temp dir and analyze it there; analyzing in place and saving the snapshot elsewhere changes the fingerprint and every result reports `stale: true`
 - p-limit(50) concurrency for file scanning
 - MD5 content hashing for fingerprinting
 - `.js` → `.ts` extension swap in import resolution (shared in `graph/localPaths.ts`)

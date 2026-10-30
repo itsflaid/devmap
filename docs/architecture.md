@@ -534,3 +534,41 @@ aggregation, and fine-grained incremental derived-feature computation.
 required tests, work packages, acceptance criteria, verification commands, and
 repository delivery rules. Implementation must follow it incrementally; do not
 attempt this architecture as a single rewrite.
+
+## 15. Front-ends: CLI and MCP
+
+The analyzer has two front-ends over the same snapshot:
+
+```txt
+createProjectMap() ──▶ .devmap/snapshot.json ──┬──▶ CLI commands (init, analyze, map, flow, explain, ...)
+                                               └──▶ devmap mcp (tools, resources, prompts)
+```
+
+`devmap mcp` adds no analysis of its own. The command modules export their core
+(`runAnalyze`, `runMap`, `runFlow`, `runExplain`), and the MCP server calls them
+with options that make them safe for a long-lived process: `write: false`,
+`narrate: false`, `offline: true` and a preloaded snapshot. Reads are served by
+pure query functions over the `ProjectMap` (`mcp/queries.ts`).
+
+Consequences for the architecture:
+
+- **The AI boundary does not move.** The three call sites in section 9 stay the
+  only ones. The MCP server is static by default and reaches them only when the
+  user starts it with `--allow-ai`, because the caller is an agent and not the
+  person who owns the API key.
+- **stdout becomes a protocol.** Commands must never assume `console.log` is
+  free. All run functions already route output through `output.*`, which
+  `withJsonOutput()` silences; the MCP process also redirects `console.log` to stderr.
+- **Freshness is part of every answer.** A long-lived server cannot rely on the
+  user having just run `analyze`, so each result carries `snapshot.stale`, and the
+  snapshot can be refreshed on request (`devmap_analyze`) or automatically
+  (`--auto-refresh`).
+- **Concurrency now exists.** Two agents, or an agent and a terminal, can ask for
+  analysis at once. In-process calls are single-flight; MCP-driven analysis also
+  takes `.devmap/analyze.lock`. The CLI `analyze` does not take the lock yet.
+
+Deferred: a remote (HTTP) transport, serving several projects from one server, and
+watching files for changes instead of checking staleness per request.
+
+Implementation notes are in [guide/commands/09-mcp.md](./guide/commands/09-mcp.md);
+usage is in [mcp.md](./mcp.md).

@@ -199,6 +199,43 @@ Reusable across sessions, tools, and agents.
 
 ---
 
+## MCP Server
+
+Run DevMap as an [MCP](https://modelcontextprotocol.io) server and agents can
+query the project map with tool calls instead of reading a dumped context file.
+
+```bash
+# Claude Code
+claude mcp add devmap -- npx -y @flaid/devmap mcp
+```
+
+```json
+{
+  "mcpServers": {
+    "devmap": { "command": "npx", "args": ["-y", "@flaid/devmap", "mcp"] }
+  }
+}
+```
+
+The server is read-only and static by default (no AI provider is contacted unless
+you start it with `--allow-ai`).
+
+| Tool | Answers |
+| ---- | ------- |
+| `devmap_overview` | What is this project? Entry points, critical files, features, flows |
+| `devmap_map` | How is this feature or file wired? |
+| `devmap_flow` | How does this request or feature work end to end? |
+| `devmap_routes` | Which pages and API routes exist? |
+| `devmap_impact` | What breaks if I change this file? |
+| `devmap_find` | Where is the code for this concept? |
+| `devmap_analyze` | Refresh the snapshot when it is stale |
+| `devmap_explain` | Explain this file, feature or function (needs `--allow-ai`) |
+
+Every answer says whether the snapshot is stale. Setup for Claude Code, Cursor,
+opencode and Codex, plus the privacy model, is in [docs/mcp.md](./docs/mcp.md).
+
+---
+
 ## Vision
 
 DevMap is not an AI coding assistant.
@@ -313,6 +350,7 @@ Node.js 22.12+
 ## Documentation
 
 - [docs/commands.md](./docs/commands.md)
+- [docs/mcp.md](./docs/mcp.md)
 - [docs/architecture.md](./docs/architecture.md)
 - [docs/generated-files.md](./docs/generated-files.md)
 - [docs/design.md](./docs/design.md)

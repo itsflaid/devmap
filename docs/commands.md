@@ -4,7 +4,8 @@
 
 ## Overview
 
-DevMap ships the following core project commands and one configuration command:
+DevMap ships the following core project commands, a server command, and one
+configuration command:
 
 * `devmap init`
 * `devmap analyze`
@@ -12,6 +13,7 @@ DevMap ships the following core project commands and one configuration command:
 * `devmap map`
 * `devmap flow`
 * `devmap explain`
+* `devmap mcp`
 * `devmap doctor`
 * `devmap config model`
 
@@ -441,6 +443,51 @@ The `<target>` argument is required.
 
 ---
 
+## `devmap mcp`
+
+Run DevMap as an MCP (Model Context Protocol) server over stdio, so AI agents
+can query the project map with tool calls. Full reference: [mcp.md](./mcp.md).
+
+### Purpose
+
+> Let an agent ask "what does this feature touch?" or "what breaks if I change
+> this file?" without reading the whole repository first.
+
+### Usage
+
+```bash
+devmap mcp                       # serve the project in the current folder
+devmap mcp --root <path>         # serve another project
+devmap mcp --auto-refresh        # rebuild a stale or missing snapshot before answering
+devmap mcp --allow-ai            # let analysis use the AI provider; adds devmap_explain
+```
+
+Clients start it for you; see [mcp.md](./mcp.md#client-setup) for Claude Code,
+Cursor, opencode and Codex.
+
+### Responsibilities
+
+* Serve tools over stdio: `devmap_overview`, `devmap_map`, `devmap_flow`,
+  `devmap_routes`, `devmap_impact`, `devmap_find`, `devmap_analyze`, and
+  `devmap_explain` (only with `--allow-ai`)
+* Serve resources (`devmap://snapshot`, `devmap://devmap-md`,
+  `devmap://feature/{id}`) and prompts (`devmap_onboard`, `devmap_plan_change`)
+* Answer from `.devmap/snapshot.json`; every result reports `snapshot.stale`
+* Never print to stdout except the protocol stream; logs go to stderr
+
+### Rules
+
+* Read-only, except `devmap_analyze` (and `--auto-refresh`), which write only
+  inside `.devmap/`
+* Static by default: no AI provider is contacted, and the AI config is not read,
+  unless `--allow-ai` is set
+* `--auto-refresh` is off by default: a question never writes to disk
+* Analysis takes `.devmap/analyze.lock` so two servers do not write the snapshot
+  at once
+* `devmap mcp` has no `--json` flag; its output is the protocol
+
+---
+
 ## `devmap doctor`
 
 Run diagnostics for DevMap setup.
@@ -630,6 +677,8 @@ Contract:
 * progress sections and Markdown rendering are omitted
 * AI responses are buffered instead of streamed
 * runtime failures return a JSON object with `status`, `error`, and optional `hint`
+* `devmap mcp` is the exception: it has no `--json` flag because stdout is the
+  MCP protocol stream
 * `init --json` never prompts and therefore requires `GROQ_API_KEY`,
   `OPENROUTER_API_KEY`, or an existing API key
 * package-manager wrapper warnings may appear on stderr and are not part of the

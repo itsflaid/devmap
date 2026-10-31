@@ -80,7 +80,7 @@ export function createSnapshotProvider(
     }
 
     const currentMtime = cached.mtimeMs;
-    if (!staleCache || staleCache.mtimeMs !== currentMtime || now() - staleCache.at > ttl) {
+    if (!staleCache || staleCache.mtimeMs !== currentMtime || now() - staleCache.at >= ttl) {
       staleCache = {
         value: await isSnapshotStale(projectRoot, cached.snapshot),
         at: now(),

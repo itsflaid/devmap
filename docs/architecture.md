@@ -564,8 +564,8 @@ Consequences for the architecture:
   snapshot can be refreshed on request (`devmap_analyze`) or automatically
   (`--auto-refresh`).
 - **Concurrency now exists.** Two agents, or an agent and a terminal, can ask for
-  analysis at once. In-process calls are single-flight; MCP-driven analysis also
-  takes `.devmap/analyze.lock`. The CLI `analyze` does not take the lock yet.
+  analysis at once. In-process calls are single-flight; MCP-driven analysis and
+  the CLI `analyze` both take `.devmap/analyze.lock`.
 
 Deferred: a remote (HTTP) transport, serving several projects from one server, and
 watching files for changes instead of checking staleness per request.

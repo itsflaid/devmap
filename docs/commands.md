@@ -482,8 +482,8 @@ Cursor, opencode and Codex.
 * Static by default: no AI provider is contacted, and the AI config is not read,
   unless `--allow-ai` is set
 * `--auto-refresh` is off by default: a question never writes to disk
-* Analysis takes `.devmap/analyze.lock` so two servers do not write the snapshot
-  at once
+* Analysis takes `.devmap/analyze.lock` (as does `devmap analyze`) so two analyses
+  do not write the snapshot at once
 * `devmap mcp` has no `--json` flag; its output is the protocol
 
 ---

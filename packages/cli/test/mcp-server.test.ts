@@ -339,6 +339,24 @@ test("snapshot provider re-reads only when snapshot.json changes", async () => {
   }
 });
 
+test("staleTtlMs: 0 re-checks staleness on every call, even within the same millisecond", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-mcp-ttl-"));
+  await mkdir(join(projectRoot, "src"), { recursive: true });
+  await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "ttl-app", version: "1.0.0" }));
+  await writeFile(join(projectRoot, "src", "index.ts"), "export const a = 1;\n");
+  await saveSnapshot(projectRoot, await createProjectMap(projectRoot));
+  // A frozen clock stands in for a fast machine where both calls land in one millisecond.
+  const provider = createSnapshotProvider(projectRoot, { staleTtlMs: 0, now: () => 1_000 });
+
+  try {
+    assert.equal((await provider.get()).stale, false);
+    await writeFile(join(projectRoot, "src", "extra.ts"), "export const b = 2;\n");
+    assert.equal((await provider.get()).stale, true);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("query helpers: limits, path resolution, and truncation", async () => {
   assert.equal(clampLimit(undefined, 20), 20);
   assert.equal(clampLimit(0), 1);

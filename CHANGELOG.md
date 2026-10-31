@@ -4,6 +4,12 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `devmap analyze` takes `.devmap/analyze.lock`, like the MCP server does, so a terminal analysis
+  and an MCP refresh can no longer write the snapshot at the same time. A second analysis fails with
+  "Another DevMap analysis is already running" instead of racing
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

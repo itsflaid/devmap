@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { completeWithOptionalStreaming } from "../ai/completion.js";
 import {
@@ -8,6 +9,7 @@ import { buildAnalyzeMessages } from "../ai/prompts.js";
 import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
 import { createProjectMap } from "../analyzers/pipeline/index.js";
+import { acquireLock } from "../cache/analysisLock.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
 import { writeAgentNavigationFiles } from "../cache/agentNavigation.js";
 import { resolveEffectiveConfig, type DevmapConfig } from "../utils/config.js";
@@ -38,13 +40,34 @@ export async function analyzeCommand(
 ): Promise<void> {
   if (options.json) {
     await withJsonOutput(async () => {
-      const snapshot = await runAnalyze(target, options, dependencies);
+      const snapshot = await withAnalysisLock(target, () => runAnalyze(target, options, dependencies));
       output.json(snapshot);
     });
     return;
   }
 
-  await runAnalyze(target, options, dependencies);
+  await withAnalysisLock(target, () => runAnalyze(target, options, dependencies));
+}
+
+/**
+ * Hold `.devmap/analyze.lock` while the CLI analyzes, so it never writes the
+ * snapshot at the same time as another `devmap analyze` or an MCP server's
+ * refresh. Only `analyzeCommand` takes it: `runAnalyze` is also called by the MCP
+ * refresher, which holds the same lock itself.
+ */
+async function withAnalysisLock<T>(target: string, run: () => Promise<T>): Promise<T> {
+  const projectRoot = resolve(target);
+  const isDirectory = await stat(projectRoot).then((info) => info.isDirectory(), () => false);
+  // A missing target keeps failing in the analyzer with its own message
+  // instead of getting a stray .devmap folder from the lock.
+  if (!isDirectory) return run();
+
+  const release = await acquireLock(projectRoot);
+  try {
+    return await run();
+  } finally {
+    await release();
+  }
 }
 
 /**

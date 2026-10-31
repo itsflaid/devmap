@@ -215,8 +215,23 @@ export const COMMANDS: CommandEntry[] = [
     group: "Serve",
     summary: "Run DevMap as an MCP server. Your agent starts it and calls tools; you rarely run it by hand.",
     source: "illustrative",
+    // The ready line is the real stderr of `devmap mcp`. The call below it is protocol
+    // traffic from a client, not terminal output: values come from calling devmap_impact
+    // on this repository over stdio, trimmed.
     out: [
-      "· DevMap MCP server ready (root: ~/your-project)"
+      "· DevMap MCP server ready (root: ~/devmap)",
+      "",
+      "§ Agent calls devmap_impact",
+      "→ file: packages/cli/src/commands/analyze.ts, depth: 2",
+      "",
+      "§ DevMap answers",
+      "Features           CLI Commands, Caching",
+      "Dependents         6 direct, 7 within 2 steps",
+      "◆ packages/cli/src/index.ts",
+      "◆ packages/cli/src/mcp/refresh.ts",
+      "· … 4 more",
+      "",
+      "+ ◆ snapshot.stale: false"
     ]
   }
 ];

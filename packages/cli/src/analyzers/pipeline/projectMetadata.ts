@@ -12,7 +12,7 @@ import { isArchitectureSource } from "../graph/index.js";
 
 export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
-export type ProjectType = "node-cli" | "web-app" | "api-service" | "library" | "unknown";
+export type ProjectType = "node-cli" | "web-app" | "api-service" | "library" | "vscode-extension" | "unknown";
 
 export type WorkspaceType = "monorepo" | "single-package";
 
@@ -60,6 +60,8 @@ type PackageManifest = {
   bin?: unknown;
   main?: unknown;
   exports?: unknown;
+  engines?: unknown;
+  contributes?: unknown;
   workspaces?: unknown;
   packageManager?: unknown;
   dependencies: Record<string, string>;
@@ -79,6 +81,8 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
           bin: parsed.bin,
           main: parsed.main,
           exports: parsed.exports,
+          engines: parsed.engines,
+          contributes: parsed.contributes,
           workspaces: parsed.workspaces,
           packageManager: parsed.packageManager,
           dependencies: isStringRecord(parsed.dependencies) ? parsed.dependencies : {},
@@ -171,15 +175,29 @@ function detectProjectTypes(
   if (manifests.some((manifest) => manifest.bin)) {
     types.add("node-cli");
   }
+  if (manifests.some(isVscodeExtension)) {
+    types.add("vscode-extension");
+  }
   // A package that ships an app framework with its default "main" is an app,
-  // not a library.
+  // not a library. An editor extension's "main" is its activation entry, not a public API.
   if (manifests.some((manifest) =>
-    (manifest.exports || manifest.main) && !manifest.bin && !declaresAnyFramework(manifest)
+    (manifest.exports || manifest.main)
+    && !manifest.bin
+    && !declaresAnyFramework(manifest)
+    && !isVscodeExtension(manifest)
   )) {
     types.add("library");
   }
 
   return types.size > 0 ? [...types] : ["unknown"];
+}
+
+function isVscodeExtension(manifest: PackageManifest): boolean {
+  const engines = manifest.engines;
+  const declaresVscodeEngine = typeof engines === "object"
+    && engines !== null
+    && "vscode" in engines;
+  return declaresVscodeEngine || Boolean(manifest.contributes);
 }
 
 function selectPrimaryManifest(

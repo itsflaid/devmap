@@ -273,6 +273,7 @@ function describeProjectKind(snapshot: ProjectMap): string {
   if (types.includes("web-app")) kinds.push("web application");
   if (types.includes("api-service")) kinds.push("API service");
   if (types.includes("library")) kinds.push("reusable library");
+  if (types.includes("vscode-extension")) kinds.push("VS Code extension");
 
   if (kinds.length === 0) return workspace;
   if (kinds.length === 1) {

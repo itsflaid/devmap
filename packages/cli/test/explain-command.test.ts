@@ -94,7 +94,7 @@ test("explain fails fast with a DevmapError when no provider is configured", asy
       (error) => {
         assert.ok(error instanceof DevmapError);
         assert.match(error.message, /requires an AI provider/);
-        assert.match(error.hint ?? "", /devmap init/);
+        assert.match(error.hint ?? "", /devmap config key/);
         return true;
       }
     );

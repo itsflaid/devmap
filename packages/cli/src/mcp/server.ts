@@ -392,7 +392,7 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
           + "using DevMap's index to pick the relevant code. Prefer devmap_map, devmap_flow and devmap_impact for structure; "
           + "use this for \"what does this do and why\". "
           + EXPLAIN_NOTE
-          + " Requires a provider configured with `devmap init`. Spends the user's AI quota.",
+          + " Requires a provider key set with `devmap config key`. Spends the user's AI quota.",
         inputSchema: {
           target: z.string().min(1).describe("A project-relative file path, a feature name, or a top-level function name.")
         },

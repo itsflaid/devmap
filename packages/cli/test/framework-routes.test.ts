@@ -559,6 +559,45 @@ test("detectRoutes extracts tRPC procedures as routes", () => {
   assert.ok(routes.some((r) => r.path === "/trpc/message.create" && r.methods?.includes("MUTATION")));
 });
 
+test("detectRoutes reads tRPC procedures built on custom base procedures", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({
+      dependencies: { next: "^15.0.0", "@trpc/server": "^11.0.0" }
+    })),
+    createScannedFile("src/server/trpc.ts", [
+      'import { initTRPC } from "@trpc/server";',
+      "const t = initTRPC.create();",
+      "export const router = t.router;",
+      "export const publicProcedure = t.procedure;",
+      "export const protectedProcedure = t.procedure.use(({ next }) => next());",
+      "export const rateLimitedProcedure = protectedProcedure.use(({ next }) => next());"
+    ].join("\n")),
+    createScannedFile("src/server/routers/room.ts", [
+      'import { router, protectedProcedure, rateLimitedProcedure } from "../trpc";',
+      "export const roomRouter = router({",
+      "  list: protectedProcedure.query(async ({ ctx }) => ctx.prisma.room.findMany()),",
+      "  watch: protectedProcedure.subscription(async function* () {}),",
+      "  create: rateLimitedProcedure",
+      "    .input(z.object({ name: z.string() }))",
+      "    .mutation(async ({ ctx, input }) => ctx.prisma.room.create({ data: input })),",
+      "  inline: t.procedure.query(() => []),",
+      "});"
+    ].join("\n")),
+    createScannedFile("src/server/routers/_app.ts", [
+      'import { router } from "../trpc";',
+      'import { roomRouter } from "./room";',
+      "export const appRouter = router({ room: roomRouter });"
+    ].join("\n"))
+  ];
+
+  const routes = detectRoutes(files, []);
+  const byPath = new Map(routes.map((route) => [route.path, route.methods]));
+  assert.deepEqual(byPath.get("/trpc/room.list"), ["QUERY"]);
+  assert.deepEqual(byPath.get("/trpc/room.create"), ["MUTATION"]);
+  assert.deepEqual(byPath.get("/trpc/room.inline"), ["QUERY"]);
+  assert.equal(byPath.has("/trpc/room.watch"), false);
+});
+
 test("tRPC routes surface as features through project map", async () => {
   try {
     const snapshot = await createProjectMap(trpcFixture);

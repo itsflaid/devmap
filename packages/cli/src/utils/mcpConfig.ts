@@ -135,3 +135,22 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+export async function detectMcpRegistrations(projectRoot: string): Promise<McpClient[]> {
+  const registered: McpClient[] = [];
+
+  for (const client of MCP_CLIENTS) {
+    const target = MCP_TARGETS[client];
+    try {
+      const parsed = parseJsonText(await readFile(join(projectRoot, target.file), "utf8"));
+      const container = isRecord(parsed) ? parsed[target.containerKey] : undefined;
+      if (isRecord(container) && SERVER_NAME in container) {
+        registered.push(client);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return registered;
+}

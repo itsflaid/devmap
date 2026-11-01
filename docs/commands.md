@@ -521,10 +521,18 @@ devmap doctor
 * API key status
 * Selected model, annotated with its source: `(project override)` when a
   `.devmap/config.local.json` model is active, `(global)` otherwise
-* Snapshot status
+* Snapshot status and age (`up to date` or `stale`)
+* MCP server self-check: the server is started in-process and its tools are listed
+  (nothing is written, stdio is not touched)
+* MCP clients: which of `opencode.json`, `.mcp.json` and `.cursor/mcp.json`
+  already register `devmap`
 * Project detection
 * OS/platform
 * Permission issues
+
+A missing API key is not an issue because AI is optional; it is reported as a
+note with the command that fixes it (`devmap config key`). A failing MCP
+self-check is an issue.
 
 ### Output — No Issues
 
@@ -541,6 +549,9 @@ Package Manager     npm
 Provider            groq
 Config              exists
 Snapshot            valid
+Snapshot age        up to date
+MCP server          ready (7 tools)
+MCP clients         opencode
 API key             valid
 Model               openai/gpt-oss-20b (project override)
 
@@ -559,19 +570,23 @@ Project             my-app
 Framework           next.js
 Workspace Frameworks express
 Package Manager     npm
-Provider            not configured
-Config              missing
-Snapshot            stale
-API key             missing
-Model               not configured
+Provider            groq
+Config              exists
+Snapshot            valid
+Snapshot age        stale
+MCP server          failed
+MCP clients         none registered
+API key             invalid or unreachable
+Model               openai/gpt-oss-20b (global)
 
-Issues found:
+Notes
 
-Provider is not configured
-  Run devmap init to set up an AI provider.
+The code changed since the last analysis. Run devmap analyze, or let your agent call devmap_analyze.
+No agent is registered for the MCP server. Run: devmap init --mcp opencode|claude|cursor
 
-Snapshot is stale
-  Run devmap analyze to refresh the snapshot.
+Issues
+
+The MCP server failed its self-check: <reason>.
 ```
 
 ### Rules

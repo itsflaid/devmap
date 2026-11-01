@@ -208,7 +208,7 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       title: "Trace a flow",
       description:
         "Trace how a feature or API request works end to end (ordered steps with file paths). "
-        + "Omit target to list the curated top flows. Static analysis only, no AI.",
+        + "Omit target to list the curated top flows; a target that is not curated is looked up among all flows. Static analysis only, no AI.",
       inputSchema: {
         target: z.string().optional().describe("Flow name (case-insensitive, partial match allowed)."),
         all: z.boolean().optional().describe("Include lower-confidence features and non-API routes.")

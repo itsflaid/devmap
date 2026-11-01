@@ -13,7 +13,7 @@ import type {
   AiCompletionRequest,
   AiCompletionResult
 } from "../src/ai/types.js";
-import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
+import { createProjectMap, generateFeatureFlows } from "../src/analyzers/pipeline/projectMap.js";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { flowCommand } from "../src/commands/flow.js";
 import { resolveEffectiveConfig } from "../src/utils/config.js";
@@ -137,6 +137,32 @@ test("flow <target> resolves a feature flow by case-insensitive name", async () 
 
     assert.match(logs, /Wrote \.devmap\/flows\/authentication-flow\.md/);
     assert.doesNotMatch(logs, /Wrote \.devmap\/flows\/request-api-session\.md/);
+    assert.equal(await flowCount(projectRoot), 1);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("flow <target> falls back to uncapped flows when the curated list lacks it", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-flow-test-"));
+
+  try {
+    const snapshot = await createProjectMap(nextFixture);
+    const uncapped = generateFeatureFlows(snapshot.features, snapshot.fileIndex, {
+      limit: Infinity,
+      minConfidence: "medium"
+    });
+    assert.ok(uncapped.length > 0, "fixture should yield at least one feature flow");
+
+    snapshot.flows = [];
+    await saveSnapshot(projectRoot, snapshot);
+
+    const target = uncapped[0].name.replace(/ flow$/i, "").toUpperCase();
+    const logs = stripAnsi(
+      await captureOutput(() => flowCommand(target, { projectRoot }, { loadConfig: async () => null }))
+    );
+
+    assert.match(logs, /Wrote \.devmap\/flows\//);
     assert.equal(await flowCount(projectRoot), 1);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });

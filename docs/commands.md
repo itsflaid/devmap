@@ -360,7 +360,7 @@ It should help answer:
 ```bash
 devmap flow                    # curated top flows from the snapshot
 devmap flow --all              # uncapped: also medium-confidence features and non-API routes
-devmap flow authentication     # one specific flow (match is case-insensitive)
+devmap flow authentication     # one specific flow (case-insensitive; falls back to the uncapped list when it isn't curated)
 devmap flow --json
 ```
 

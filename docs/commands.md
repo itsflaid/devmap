@@ -15,6 +15,7 @@ configuration command:
 * `devmap explain`
 * `devmap mcp`
 * `devmap doctor`
+* `devmap config key`
 * `devmap config model`
 
 ---
@@ -33,13 +34,19 @@ It should be run once per machine/project, or again when changing provider crede
 
 ```bash
 devmap init
+devmap init --mcp opencode,claude,cursor   # also register the MCP server
 ```
+
+The API key is optional. Press Enter at the key prompt (or run without
+`GROQ_API_KEY` / `OPENROUTER_API_KEY` in a non-interactive shell) to skip AI
+setup: the project files are still created and nothing is written to
+`~/.devmap/config.json`. Add a key later with `devmap config key`.
 
 ### Responsibilities
 
 * Confirm AI provider
-* Input API key or read environment variable
-* Validate API key
+* Input API key or read environment variable (optional, Enter skips)
+* Validate API key when one is given
 * Ask for a Groq model from the provider model list
 * Ask for an OpenRouter model; Enter defaults to `openrouter/free`
 * Save global configuration to `~/.devmap/config.json`
@@ -48,6 +55,9 @@ devmap init
 * Add `.devmap/` to `.gitignore`
 * Generate `DEVMAP.md`
 * Handle `AGENTS.md` safely
+* Optionally register the MCP server (`--mcp`, or the interactive prompt):
+  `opencode.json`, `.mcp.json` or `.cursor/mcp.json`. An existing file is merged,
+  never overwritten, and a file that is not plain JSON is left alone
 
 ### Flow
 
@@ -573,6 +583,24 @@ Snapshot is stale
 
 ---
 
+## `devmap config key`
+
+Set or replace the AI provider API key. AI is optional, so this is how a key
+gets added after `devmap init` was run without one.
+
+```bash
+devmap config key                    # reads GROQ_API_KEY / OPENROUTER_API_KEY, else prompts
+devmap config key gsk_xxx
+devmap config key sk-or-xxx --provider openrouter
+```
+
+The key is validated against the provider before it is saved. The configured
+provider and model are kept; with no config yet it defaults to Groq and
+automatic model routing. A custom endpoint needs `devmap init` first because it
+needs a base URL.
+
+---
+
 ## `devmap config model`
 
 Set a global model override for AI-powered commands.
@@ -679,8 +707,8 @@ Contract:
 * runtime failures return a JSON object with `status`, `error`, and optional `hint`
 * `devmap mcp` is the exception: it has no `--json` flag because stdout is the
   MCP protocol stream
-* `init --json` never prompts and therefore requires `GROQ_API_KEY`,
-  `OPENROUTER_API_KEY`, or an existing API key
+* `init --json` never prompts; without `GROQ_API_KEY`, `OPENROUTER_API_KEY` or an
+  existing API key it skips AI setup (`aiConfigured: false`)
 * package-manager wrapper warnings may appear on stderr and are not part of the
   DevMap JSON document
 

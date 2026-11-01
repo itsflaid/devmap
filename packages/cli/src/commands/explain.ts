@@ -87,7 +87,7 @@ export async function runExplain(
   if (!config?.apiKey) {
     throw new DevmapError(
       "devmap explain requires an AI provider, but none is configured.",
-      "Run devmap init to set up Groq or OpenRouter, then try again."
+      "Run devmap config key to set up Groq or OpenRouter, then try again."
     );
   }
 

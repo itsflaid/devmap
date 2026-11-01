@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { analyzeCommand } from "./commands/analyze.js";
-import { configModelCommand } from "./commands/config.js";
+import { configKeyCommand, configModelCommand } from "./commands/config.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { explainCommand } from "./commands/explain.js";
 import { flowCommand } from "./commands/flow.js";
@@ -10,8 +10,9 @@ import { mapCommand } from "./commands/map.js";
 import { mcpCommand } from "./commands/mcp.js";
 import { onboardingCommand } from "./commands/onboarding.js";
 import { printHelp } from "./utils/help.js";
+import { parseMcpClients } from "./utils/mcpConfig.js";
 import { printWelcome } from "./utils/welcome.js";
-import { runSafely } from "./utils/errors.js";
+import { DevmapError, runSafely } from "./utils/errors.js";
 import { DEVMAP_VERSION } from "./utils/packageMetadata.js";
 
 const program = new Command();
@@ -24,8 +25,12 @@ program
 program
   .command("init")
   .description("Initialize DevMap configuration")
+  .option("--mcp <clients>", "also register the MCP server (comma-separated: opencode, claude, cursor)")
   .option("--json", "output machine-readable JSON")
-  .action((options) => initCommand({ json: options.json }));
+  .action(async (options) => initCommand({
+    json: options.json,
+    ...(options.mcp ? { mcpClients: parseMcpClients(options.mcp) } : {})
+  }));
 
 program
   .command("analyze")
@@ -96,6 +101,25 @@ configCommand
     json: options.json,
     local: options.local
   }));
+
+configCommand
+  .command("key")
+  .description("Set or replace the AI provider API key (AI is optional)")
+  .argument("[apiKey]", "API key; omit to read it from the provider env var or be prompted")
+  .option("--provider <provider>", "groq, openrouter or custom (defaults to the configured provider)")
+  .option("--json", "output machine-readable JSON")
+  .action(async (apiKey, options) => {
+    if (options.provider && !["groq", "openrouter", "custom"].includes(options.provider)) {
+      throw new DevmapError(
+        `Unknown provider: ${options.provider}.`,
+        "Use groq, openrouter or custom."
+      );
+    }
+    await configKeyCommand(apiKey, {
+      json: options.json,
+      ...(options.provider ? { provider: options.provider } : {})
+    });
+  });
 
 program
   .command("mcp")

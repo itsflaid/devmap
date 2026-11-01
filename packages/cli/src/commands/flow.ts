@@ -120,7 +120,7 @@ export async function runFlow(
     const config = await loadConfig();
 
     if (!config?.apiKey) {
-      output.note("AI flow narration is not configured. Run devmap init to enable it.");
+      output.note("AI flow narration is not configured. Run devmap config key to enable it.");
     } else {
       const createAiClient = dependencies.createAiClient ?? createDefaultAiClient;
       client = createAiClient(config);

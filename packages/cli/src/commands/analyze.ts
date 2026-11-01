@@ -243,7 +243,7 @@ async function printOrGenerateInterpretation(
     ?? (() => resolveEffectiveConfig(projectRoot));
   const config = await loadConfig();
   if (!config?.apiKey) {
-    output.note("AI architecture interpretation is not configured. Run devmap init to enable it.");
+    output.note("AI architecture interpretation is not configured. Run devmap config key to enable it.");
     return snapshot;
   }
 

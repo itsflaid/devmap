@@ -16,6 +16,7 @@ import {
 } from "../src/utils/config.js";
 import { buildDevmapFile, ensureDevmapFile } from "../src/utils/devmapFile.js";
 import { DevmapError, handleError } from "../src/utils/errors.js";
+import { ensureMcpConfig, parseMcpClients } from "../src/utils/mcpConfig.js";
 import type { Prompt } from "../src/utils/prompt.js";
 
 test("DEVMAP.md contains workflow and AI-agent guidance", () => {
@@ -285,7 +286,7 @@ test("interactive init selects Groq with the provider menu", async () => {
       apiKey: "gsk_fixture",
       model: "llama-3.3-70b-versatile"
     });
-    assert.deepEqual(prompt.selections, ["AI provider", "Groq model"]);
+    assert.deepEqual(prompt.selections, ["AI provider", "Groq model", "Register the DevMap MCP server for an agent?"]);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -320,7 +321,7 @@ test("interactive init stores the OpenRouter model selected by the user", async 
       apiKey: "sk-or-fixture",
       model: "anthropic/claude-3.5-haiku"
     });
-    assert.deepEqual(prompt.selections, ["AI provider"]);
+    assert.deepEqual(prompt.selections, ["AI provider", "Register the DevMap MCP server for an agent?"]);
     assert.ok(prompt.questions.some((question) => /OpenRouter model/i.test(question)));
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -354,25 +355,174 @@ test("interactive OpenRouter init defaults to the free router on Enter", async (
   }
 });
 
-test("non-interactive init explains how to provide an API key", async () => {
-  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-key-test-"));
+test("non-interactive init without an API key still sets up the project and skips AI", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-nokey-test-"));
+  let persisted = false;
+  let validated = false;
 
   try {
-    await assert.rejects(
-      initCommand({
-        projectRoot,
-        isInteractive: false,
-        loadConfig: async () => null,
-        persistConfig: async () => undefined,
-        validateApiKey: async () => undefined
-      }),
-      (error: unknown) => error instanceof DevmapError
-        && /API key is required/.test(error.message)
-        && error.hint?.includes("GROQ_API_KEY") === true
-    );
+    await initCommand({
+      projectRoot,
+      isInteractive: false,
+      environmentApiKey: "",
+      loadConfig: async () => null,
+      persistConfig: async () => {
+        persisted = true;
+      },
+      validateApiKey: async () => {
+        validated = true;
+      }
+    });
+
+    assert.equal(persisted, false);
+    assert.equal(validated, false);
+    assert.match(await readFile(join(projectRoot, ".gitignore"), "utf8"), /\.devmap\//);
+    assert.match(await readFile(join(projectRoot, "DEVMAP.md"), "utf8"), /Navigation Order/);
+    assert.match(await readFile(join(projectRoot, "AGENTS.md"), "utf8"), /DevMap Context/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
+});
+
+test("interactive init lets the user skip the API key with Enter", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-skip-test-"));
+  const prompt = createFakePrompt([""]);
+  let persisted = false;
+
+  try {
+    await initCommand({
+      projectRoot,
+      prompt,
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async () => {
+        persisted = true;
+      },
+      validateApiKey: async () => {
+        throw new Error("must not validate an empty key");
+      }
+    });
+
+    assert.equal(persisted, false);
+    assert.deepEqual(prompt.selections, ["AI provider", "Register the DevMap MCP server for an agent?"]);
+    await access(join(projectRoot, "DEVMAP.md"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("init keeps an existing key when run again without one in the environment", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-existing-test-"));
+  let validatedKey = "";
+
+  try {
+    await initCommand({
+      projectRoot,
+      isInteractive: false,
+      environmentApiKey: "",
+      loadConfig: async () => ({ provider: "groq", apiKey: "gsk_saved", model: "auto" }),
+      persistConfig: async () => undefined,
+      validateApiKey: async (apiKey) => {
+        validatedKey = apiKey;
+      }
+    });
+
+    assert.equal(validatedKey, "gsk_saved");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("init --mcp registers the MCP server for the requested clients", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-mcp-test-"));
+
+  try {
+    await initCommand({
+      projectRoot,
+      isInteractive: false,
+      environmentApiKey: "",
+      loadConfig: async () => null,
+      persistConfig: async () => undefined,
+      mcpClients: ["opencode", "claude", "cursor"]
+    });
+
+    const opencode = JSON.parse(await readFile(join(projectRoot, "opencode.json"), "utf8"));
+    assert.equal(opencode.mcp.devmap.type, "local");
+    assert.deepEqual(opencode.mcp.devmap.command, ["npx", "-y", "@flaid/devmap", "mcp"]);
+
+    const claude = JSON.parse(await readFile(join(projectRoot, ".mcp.json"), "utf8"));
+    assert.deepEqual(claude.mcpServers.devmap, { command: "npx", args: ["-y", "@flaid/devmap", "mcp"] });
+
+    const cursor = JSON.parse(await readFile(join(projectRoot, ".cursor", "mcp.json"), "utf8"));
+    assert.ok(cursor.mcpServers.devmap.args.includes("${workspaceFolder}"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("interactive init offers MCP registration and honours the choice", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-init-mcp-choice-test-"));
+
+  try {
+    await initCommand({
+      projectRoot,
+      prompt: createFakePrompt([""], ["groq", "opencode"]),
+      isInteractive: true,
+      loadConfig: async () => null,
+      persistConfig: async () => undefined
+    });
+
+    await access(join(projectRoot, "opencode.json"));
+    await assert.rejects(access(join(projectRoot, ".mcp.json")));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("MCP config merges into an existing file without touching other entries", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-mcp-merge-test-"));
+
+  try {
+    await writeFile(join(projectRoot, "opencode.json"), JSON.stringify({
+      $schema: "https://opencode.ai/config.json",
+      theme: "dark",
+      mcp: { other: { type: "local", command: ["other"] } }
+    }), "utf8");
+
+    const first = await ensureMcpConfig(projectRoot, "opencode");
+    assert.equal(first.status, "added");
+
+    const merged = JSON.parse(await readFile(join(projectRoot, "opencode.json"), "utf8"));
+    assert.equal(merged.theme, "dark");
+    assert.deepEqual(merged.mcp.other, { type: "local", command: ["other"] });
+    assert.ok(merged.mcp.devmap);
+
+    const second = await ensureMcpConfig(projectRoot, "opencode");
+    assert.equal(second.status, "unchanged");
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("MCP config never overwrites a file it cannot parse", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-mcp-jsonc-test-"));
+  const original = '{\n  // keep my comment\n  "mcp": {}\n}\n';
+
+  try {
+    await writeFile(join(projectRoot, "opencode.json"), original, "utf8");
+
+    const result = await ensureMcpConfig(projectRoot, "opencode");
+    assert.equal(result.status, "skipped");
+    assert.equal(await readFile(join(projectRoot, "opencode.json"), "utf8"), original);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("parseMcpClients validates and de-duplicates the client list", () => {
+  assert.deepEqual(parseMcpClients("opencode, claude,opencode"), ["opencode", "claude"]);
+  assert.throws(() => parseMcpClients("vim"), DevmapError);
+  assert.throws(() => parseMcpClients(""), DevmapError);
 });
 
 test("global error handler returns an exit code without exposing stack output", () => {

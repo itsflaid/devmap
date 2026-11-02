@@ -108,7 +108,7 @@ export async function runFlow(
   const flows = options.all
     ? buildAllFlows(snapshot)
     : snapshot.flows;
-  const resolved = resolveFlowTarget(flows, target);
+  const resolved = resolveFlowTarget(flows, target, options.all ? undefined : () => buildAllFlows(snapshot));
 
   const shouldWrite = options.write !== false;
   let client: AiClient | undefined;
@@ -120,7 +120,7 @@ export async function runFlow(
     const config = await loadConfig();
 
     if (!config?.apiKey) {
-      output.note("AI flow narration is not configured. Run devmap init to enable it.");
+      output.note("AI flow narration is not configured. Run devmap config key to enable it.");
     } else {
       const createAiClient = dependencies.createAiClient ?? createDefaultAiClient;
       client = createAiClient(config);
@@ -208,14 +208,34 @@ function buildAllFlows(snapshot: ProjectMap): FlowInfo[] {
 
 function resolveFlowTarget(
   flows: FlowInfo[],
-  target: string | undefined
+  target: string | undefined,
+  fallback?: () => FlowInfo[]
 ): FlowInfo[] {
   if (!target || target.trim() === "") return flows;
 
-  const exact = flows.filter(f => f.name.toLowerCase() === target.toLowerCase());
+  const direct = matchFlows(flows, target);
+  if (direct.length > 0) return direct;
+
+  const candidates = fallback ? fallback() : flows;
+  if (fallback) {
+    const expanded = matchFlows(candidates, target);
+    if (expanded.length > 0) return expanded;
+  }
+
+  const names = candidates.map(f => f.name).join(", ") || "(none detected)";
+  throw new DevmapError(
+    `"${target}" isn't a known flow.`,
+    `Known flows: ${names}.`
+  );
+}
+
+function matchFlows(flows: FlowInfo[], target: string): FlowInfo[] {
+  const needle = target.toLowerCase();
+
+  const exact = flows.filter(f => f.name.toLowerCase() === needle);
   if (exact.length > 0) return exact;
 
-  const partial = flows.filter(f => f.name.toLowerCase().includes(target.toLowerCase()));
+  const partial = flows.filter(f => f.name.toLowerCase().includes(needle));
   if (partial.length === 1) return partial;
   if (partial.length > 1) {
     throw new DevmapError(
@@ -224,11 +244,7 @@ function resolveFlowTarget(
     );
   }
 
-  const names = flows.map(f => f.name).join(", ") || "(none detected)";
-  throw new DevmapError(
-    `"${target}" isn't a known flow.`,
-    `Known flows: ${names}. Run devmap flow --all to see the full list.`
-  );
+  return [];
 }
 
 async function narrateFlow(

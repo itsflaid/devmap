@@ -928,17 +928,19 @@ function generateMinimalFlows(
   ];
 }
 
+const CONFIDENCE_RANK: Record<FeatureInfo["confidence"], number> = { low: 0, medium: 1, high: 2 };
+
 export function generateFeatureFlows(
   features: FeatureInfo[],
   fileIndex: Record<string, FileIndexEntry>,
   options: { limit?: number; minConfidence?: "high" | "medium" } = {}
 ): FlowInfo[] {
   const limit = options.limit ?? 3;
-  const minConfidence = options.minConfidence ?? "high";
+  const minimumRank = CONFIDENCE_RANK[options.minConfidence ?? "high"];
 
   return features
     .filter((feature) =>
-      feature.confidence === minConfidence
+      CONFIDENCE_RANK[feature.confidence] >= minimumRank
       && feature.businessFlow.length > 1
       && !feature.businessFlow.some((step) => /^Identify files related to /i.test(step))
     )

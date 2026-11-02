@@ -7,6 +7,7 @@ import test from "node:test";
 import { saveSnapshot } from "../src/cache/snapshot.js";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { doctorCommand } from "../src/commands/doctor.js";
+import { checkMcpServer } from "../src/mcp/health.js";
 import { getLocalConfigPath } from "../src/utils/config.js";
 
 test("doctor reports project, provider, model, and snapshot diagnostics", async () => {
@@ -75,7 +76,7 @@ test("doctor reports unavailable models without exposing provider errors", async
     }));
 
     assert.match(logs, /Model\s+unavailable: retired-model/);
-    assert.match(logs, /Run devmap init/i);
+    assert.match(logs, /devmap config model/i);
     assert.doesNotMatch(logs, /gsk_fixture/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -99,7 +100,9 @@ test("doctor skips network diagnostics when config is missing", async () => {
     assert.equal(providerCalled, false);
     assert.match(logs, /Provider\s+not configured/);
     assert.match(logs, /Snapshot\s+missing/);
-    assert.match(logs, /Run devmap init/);
+    assert.match(logs, /AI is optional and not configured/);
+    assert.match(logs, /devmap config key/);
+    assert.match(logs, /No issues found/);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
@@ -272,3 +275,89 @@ function stripAnsi(value: string): string {
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+test("doctor does not treat a missing API key as an issue and reports it as JSON", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-nokey-test-"));
+
+  try {
+    const logs = await captureOutput(() => doctorCommand({
+      projectRoot,
+      json: true,
+      loadConfig: async () => ({ provider: "groq", model: "auto" }),
+      checkMcp: async () => ({ ok: true, tools: 7 })
+    }));
+
+    const report = JSON.parse(logs) as { status: string; apiKey: string; issues: string[]; notes: string[] };
+    assert.equal(report.status, "ok");
+    assert.equal(report.apiKey, "missing");
+    assert.deepEqual(report.issues, []);
+    assert.ok(report.notes.some((note) => /devmap config key/.test(note)));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("doctor reports the MCP server, registered clients and snapshot age", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-mcp-test-"));
+
+  try {
+    await writeFile(join(projectRoot, "package.json"), JSON.stringify({ name: "mcp-fixture" }), "utf8");
+    await writeFile(join(projectRoot, "server.ts"), "export const app = true;\n", "utf8");
+    await writeFile(
+      join(projectRoot, ".mcp.json"),
+      JSON.stringify({ mcpServers: { devmap: { command: "npx" } } }),
+      "utf8"
+    );
+    await saveSnapshot(projectRoot, await createProjectMap(projectRoot));
+
+    const fresh = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => null,
+      checkMcp: async () => ({ ok: true, tools: 7 })
+    }));
+    assert.match(fresh, /MCP server\s+ready \(7 tools\)/);
+    assert.match(fresh, /MCP clients\s+claude/);
+    assert.match(fresh, /Snapshot age\s+up to date/);
+
+    await writeFile(join(projectRoot, "server.ts"), "export const app = false;\n", "utf8");
+    const stale = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => null,
+      checkMcp: async () => ({ ok: true, tools: 7 })
+    }));
+    assert.match(stale, /Snapshot age\s+stale/);
+    assert.match(stale, /devmap_analyze/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("doctor flags a failing MCP self-check as an issue", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-mcp-fail-test-"));
+
+  try {
+    const logs = await captureOutput(() => doctorCommand({
+      projectRoot,
+      loadConfig: async () => null,
+      checkMcp: async () => ({ ok: false, tools: 0, error: "boom" })
+    }));
+
+    assert.match(logs, /MCP server\s+failed/);
+    assert.match(logs, /failed its self-check: boom/);
+    assert.doesNotMatch(logs, /No issues found/);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("the real MCP self-check starts the server and lists every tool", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "devmap-doctor-mcp-real-test-"));
+
+  try {
+    const health = await checkMcpServer(projectRoot);
+    assert.equal(health.ok, true, health.error);
+    assert.equal(health.tools, 7);
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});

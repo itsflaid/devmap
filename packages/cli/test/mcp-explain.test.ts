@@ -184,7 +184,7 @@ test("devmap_explain returns an actionable error when no AI provider is configur
     const result = await callTool(client, "devmap_explain", { target: "lib/auth.ts" });
     assert.equal(result.isError, true);
     assert.match(result.data.error, /requires an AI provider/);
-    assert.match(result.data.hint, /devmap init/);
+    assert.match(result.data.hint, /devmap config key/);
   } finally {
     await close();
     await rm(projectRoot, { recursive: true, force: true });

@@ -796,7 +796,9 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
       .slice(0, 2)
       .map((e) => e.file);
 
-    let confidence: FeatureInfo["confidence"] = entityGraph.source === "prisma" ? "high" : "medium";
+    // An entity read from a real schema (fields known) is as trustworthy as a Prisma
+    // model; a table name pulled from a query string or a URL segment is a hint.
+    let confidence: FeatureInfo["confidence"] = entity.fields.length > 0 ? "high" : "medium";
     if (entityFiles.length === 1) {
       const tier = classifyFileTier(entityFiles[0]);
       if (tier === "reference") confidence = "low";

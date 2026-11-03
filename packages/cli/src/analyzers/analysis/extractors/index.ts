@@ -2,6 +2,10 @@ import type { ScannedFile } from "../index.js";
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityGraph, EntityInfo, IEntityExtractor, RelationInfo } from "./types.js";
 import { PrismaExtractor } from "./prismaExtractor.js";
+import { DrizzleExtractor } from "./drizzleExtractor.js";
+import { TypeORMExtractor } from "./typeormExtractor.js";
+import { MongooseExtractor } from "./mongooseExtractor.js";
+import { SQLSchemaExtractor } from "./sqlSchemaExtractor.js";
 import { SQLExtractor } from "./sqlExtractor.js";
 import { RouteFallbackExtractor } from "./fallbackExtractor.js";
 
@@ -17,18 +21,20 @@ import { RouteFallbackExtractor } from "./fallbackExtractor.js";
  *
  * Order penting: lebih reliable = lebih atas.
  *   1. Prisma    — high confidence, full field + relation data
- *   2. [future] Drizzle  → import { DrizzleExtractor } from "./drizzleExtractor.js"
- *   3. [future] TypeORM  → import { TypeORMExtractor } from "./typeormExtractor.js"
- *   4. [future] Mongoose → import { MongooseExtractor } from "./mongooseExtractor.js"
- *   5. SQL       — raw pg/mysql2/better-sqlite3, table names as pseudo-entities
+ *   2. Drizzle   — pgTable/mysqlTable/sqliteTable, columns + references()
+ *   3. TypeORM   — @Entity classes, columns + relation decorators
+ *   4. Mongoose  — model()/Schema, fields + ref
+ *   5. SQL DDL   — CREATE TABLE in .sql migrations (Supabase, Knex, Flyway), columns + FKs
+ *   6. SQL       — raw pg/mysql2/better-sqlite3, table names as pseudo-entities
  *                  (no field/relation data — lowest confidence of the schema sources,
- *                  stays last so any ORM extractor above gets first refusal)
+ *                  stays last so any schema extractor above gets first refusal)
  */
 const EXTRACTORS: IEntityExtractor[] = [
   new PrismaExtractor(),
-  // new DrizzleExtractor(),
-  // new TypeORMExtractor(),
-  // new MongooseExtractor(),
+  new DrizzleExtractor(),
+  new TypeORMExtractor(),
+  new MongooseExtractor(),
+  new SQLSchemaExtractor(),
   new SQLExtractor(),
 ];
 
@@ -61,7 +67,12 @@ export function extractEntities(
     if (raw.length === 0) continue;
 
     const entities = deduplicateEntities(raw);
-    const relations = buildRelationGraph(entities);
+    // Prisma declares both sides of a relation, so the graph is derived from its
+    // fields. The other sources only know the foreign-key side: their extractor
+    // already worked out which side is the "many" one, so that is used as-is.
+    const relations = extractor.name === "prisma"
+      ? buildRelationGraph(entities)
+      : entities.flatMap((entity) => entity.relations).filter(uniqueRelation());
 
     return {
       entities,
@@ -142,6 +153,16 @@ function buildRelationGraph(entities: EntityInfo[]): RelationInfo[] {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function uniqueRelation(): (relation: RelationInfo) => boolean {
+  const seen = new Set<string>();
+  return (relation) => {
+    const key = `${relation.from}→${relation.to}:${relation.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  };
+}
 
 /**
  * deduplicateEntities — filter duplicate entity names.

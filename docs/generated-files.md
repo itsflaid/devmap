@@ -240,8 +240,8 @@ Purpose:
 
 ## .devmap/analyze.lock
 
-Created while `devmap mcp` runs an analysis (`devmap_analyze` or
-`--auto-refresh`) and removed when it finishes.
+Created while an analysis runs, either `devmap analyze` or the MCP server
+(`devmap_analyze`, `--auto-refresh`), and removed when it finishes.
 
 ```json
 { "pid": 12345, "startedAt": "2026-10-30T02:11:09.000Z" }
@@ -249,7 +249,7 @@ Created while `devmap mcp` runs an analysis (`devmap_analyze` or
 
 Purpose:
 
-- Stop two MCP servers (or editor windows) from writing the snapshot at once
+- Stop two analyses (a terminal `devmap analyze`, or MCP servers in different editor windows) from writing the snapshot at once
 
 A lock whose process is gone, or that is older than 15 minutes, is taken over
 automatically. If no analysis is running and the file is still there, it is safe

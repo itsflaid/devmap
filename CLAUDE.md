@@ -29,7 +29,7 @@ devmap/
 │   │   ├── mcp/           ← MCP server: tools, resources, prompts, snapshot provider, refresher + lock
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 48 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
+│   ├── test/              ← 49 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -76,7 +76,7 @@ Everything else (files, graph, routes, features, flows, critical files) is 100% 
 | MCP server | `src/mcp/server.ts` | `createDevmapServer()` — tools (`devmap_overview/map/flow/routes/impact/find/analyze`, `devmap_explain` only with `--allow-ai`), resources, prompts |
 | MCP queries | `src/mcp/queries.ts` | Pure read-only queries over a `ProjectMap` (overview, routes, impact, find) |
 | MCP snapshot provider | `src/mcp/snapshotProvider.ts` | mtime-cached snapshot, TTL-cached staleness, opt-in auto-refresh |
-| MCP refresher | `src/mcp/refresh.ts` | Single-flight analysis + `.devmap/analyze.lock` |
+| MCP refresher | `src/mcp/refresh.ts` | Single-flight analysis; holds `.devmap/analyze.lock` (lock code in `src/cache/analysisLock.ts`) |
 
 ## Data Model
 
@@ -129,12 +129,12 @@ Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsco
 
 ## Testing
 
-48 test files in `packages/cli/test/`. Key covered areas:
+49 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors
 - Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
 - Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`; client-side routers, Hono factories, Next normalization and critical-file ranking in `js-ts-gaps`; SolidStart, Qwik City, Angular, Elysia, Koa, AdonisJS and constant-resolved paths in `js-ts-more-frameworks`), detector fixes
 - Heuristic language readers (`heuristic-languages`), scanner robustness, project scope/metadata
-- Commands (init, analyze, map, flow, explain, onboarding, config, doctor)
+- Commands (init, analyze, map, flow, explain, onboarding, config, doctor); `analyze-lock` covers `devmap analyze` holding `.devmap/analyze.lock`
 - MCP server (`core-api`, `mcp-server`, `mcp-freshness`, `mcp-explain`): tools, resources, prompts, stale/missing snapshots, auto-refresh and lock, offline-never-touches-AI, stdio process with a clean protocol stream. `test/mcp-smoke.mjs` runs the compiled `dist/` as a server (CI and publish workflow)
 - Utils (markdown terminal, JSON output, prompts, errors)
 
@@ -174,6 +174,7 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - Domain inference is cached for idempotency (`.devmap/domain-cache.json`)
 - Snapshot is regenerated on every `devmap analyze` run
 - `AGENTS.md` is never overwritten by init (append-only)
+- `analyzeCommand` (CLI) holds `.devmap/analyze.lock` around `runAnalyze`; `runAnalyze` itself never takes it, because the MCP refresher already holds the lock when it calls it
 - `.devmap/` is always gitignored
 - `devmap mcp` owns stdout: it is the JSON-RPC stream. Never `console.log` from code the MCP server can reach; use `output.*` inside `withJsonOutput()` (silent) or stderr
 - The MCP server is read-only and static by default. Only `devmap_analyze` / `--auto-refresh` write, and only inside `.devmap/`. AI is reachable only with `--allow-ai`; `devmap_explain` is registered only then
@@ -189,7 +190,6 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - Elysia, Koa and Adonis detectors follow literal call chains and mounts; routers built inside factory functions, `.use()` of computed values and runtime-assembled paths are not followed. Angular reads literal `Routes` arrays and `loadChildren` imports
 - Feature similarity threshold (0.35) is tuned but may cause false merges
 - Domain inference is single-shot — no conversation context
-- `.devmap/analyze.lock` is taken by MCP-driven analysis only; `devmap analyze` does not take or check it
 - The MCP staleness check re-scans project files (cached for 10 s), so it is not free on very large repositories
 
 ## Engineering Notes

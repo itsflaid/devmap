@@ -203,6 +203,8 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - MD5 content hashing for fingerprinting
 - `.js` → `.ts` extension swap in import resolution (shared in `graph/localPaths.ts`)
 - Database detection ranks ORM/BaaS above drivers; a cache (Redis) is only ever listed as `additional`
+- Entity extractors (`analysis/extractors/`) run as an ordered chain that stops at the first non-empty result: Prisma, Drizzle, TypeORM, Mongoose, SQL `CREATE TABLE`, raw SQL client, then route hints. Everything except Prisma only knows the foreign-key side, so each extractor sets `entity.relations` itself (the table holding the FK is the "many" side) and `extractEntities` uses those as the graph; ts-morph-based ones share `astSupport.ts`
+- SFC preprocessors (`preprocessors/scriptBlocks.ts`) merge every `<script>` block of a Vue/Svelte file into one source
 - Singularize entity names for feature matching
 - REASON_TAGS constant for critical file ranking reasoning
 - Critical-file execution bonus (`projectMap.ts`) is name-based (router, controller, orchestrator, engine, dispatcher, scheduler, pipeline, registry, kernel, `commands/`) or fan-out-based (≥ 8 distinct local imports in a non-index file) — never tied to devmap's own file names

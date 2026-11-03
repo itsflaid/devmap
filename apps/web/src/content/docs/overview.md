@@ -60,13 +60,15 @@ svelte-spa-router) surface as features:
 **Databases & ORMs** — schema/entity extraction, full field + relation
 fidelity:
 - Prisma
-
-**Detected as dependency (badge "uses X"), schema extraction not yet
-implemented:** Drizzle, Mongoose, Supabase, TypeORM — on the roadmap.
+- Drizzle (`pgTable`, `mysqlTable`, `sqliteTable`)
+- TypeORM (`@Entity` classes)
+- Mongoose (`model()` + `Schema`)
+- SQL migrations (`CREATE TABLE` in `.sql` files, e.g. Supabase, Knex, Flyway)
 
 **Raw SQL** (table names from query strings, no fields/relations — lowest
-confidence of the three): PostgreSQL (`pg`), MySQL (`mysql2`), SQLite
-(`better-sqlite3`)
+confidence of the sources): PostgreSQL (`pg`), MySQL (`mysql2`), SQLite
+(`better-sqlite3`). Sequelize and MikroORM are detected as a dependency
+only.
 
 **Anything else** (Laravel, Django, Go, ...): DevMap still
 scans your files, dependencies, and import graph — you just won't get

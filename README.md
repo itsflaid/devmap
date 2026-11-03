@@ -288,8 +288,11 @@ Use your preferred AI tool to change it.
 ### Databases
 
 - Prisma — full field + relation extraction
+- Drizzle (`pgTable`, `mysqlTable`, `sqliteTable`) — columns, `references()` and `relations()`
+- TypeORM (`@Entity` classes) — columns and relation decorators
+- Mongoose (`model()` + `Schema`) — fields and `ref` relations
+- SQL migrations (`CREATE TABLE` in `.sql` files: Supabase, Knex, Flyway) — columns and foreign keys
 - Raw SQL (`pg`, `mysql2`, `better-sqlite3`) — table names only
-- Drizzle, Mongoose, Supabase, TypeORM — detected as dependency only
 
 ### Planned
 

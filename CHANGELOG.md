@@ -4,6 +4,30 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Entity extraction for Drizzle (`pgTable`/`mysqlTable`/`sqliteTable`, object and callback column
+  forms, `references()`, `relations()`), TypeORM (`@Entity` classes and relation decorators),
+  Mongoose (`model()` + `Schema`, `ref`, refs inside inline sub-documents) and `CREATE TABLE`
+  statements in `.sql` files (Supabase, Knex, Flyway). Each yields real fields and relations
+  instead of route-hint names. Order: Prisma, Drizzle, TypeORM, Mongoose, SQL migrations,
+  raw SQL client
+
+### Fixed
+
+- Vue SFCs with both `<script>` and `<script setup>`, and Svelte components with an instance
+  and a module script (`context="module"` or Svelte 5 `module`), now read every script block.
+  Before, only the first was read, so the imports of the other were missing from the graph
+  and components imported there were reported as entry points
+- `workspaceType` is `monorepo` only when a declared workspace has a member (or several
+  package manifests exist outside tooling folders). A `pnpm-workspace.yaml` with only
+  `onlyBuiltDependencies` or `packages: ["."]` is single-package
+- `remix.init/package.json` no longer adds a `library` label to a Remix app
+- A root package that declares a detected secondary framework (an Express server next to a
+  React `frontend/`) is no longer treated as a library, which blanked the framework
+- Ambient `.d.ts` files are no longer reported as entry points
+- Features built from a schema entity are `high` confidence when the entity has fields
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

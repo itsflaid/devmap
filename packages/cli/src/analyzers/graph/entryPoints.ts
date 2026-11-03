@@ -137,6 +137,12 @@ function isGeneratedFile(path: string): boolean {
   return /\.(?:gen|generated)\.[cm]?[jt]sx?$/.test(path);
 }
 
+// Ambient type declarations (`user-request.d.ts`, `env.d.ts`) carry no runtime
+// code, so nothing "starts" there even when no file imports them.
+function isDeclarationFile(path: string): boolean {
+  return /\.d\.[cm]?ts$/.test(path);
+}
+
 function isSourceFile(path: string): boolean {
-  return /\.[cm]?[jt]sx?$|\.vue$|\.svelte$|\.astro$/.test(path);
+  return /\.[cm]?[jt]sx?$|\.vue$|\.svelte$|\.astro$/.test(path) && !isDeclarationFile(path);
 }

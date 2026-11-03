@@ -35,10 +35,12 @@ export function detectProjectMetadata(
   frameworks: DetectedFramework[] = framework === "unknown" ? [] : [framework]
 ): ProjectMetadata {
   const manifests = readPackageManifests(files);
-  const projectTypes = detectProjectTypes(frameworks, manifests);
+  // `remix.init/package.json` is a template hook that runs once after scaffolding.
+  // Its `main` would otherwise label a Remix app as a library as well.
+  const projectTypes = detectProjectTypes(frameworks, manifests.filter((manifest) => !SCAFFOLD_HOOK_MANIFEST.test(manifest.path)));
   const primaryManifest = selectPrimaryManifest(manifests, projectTypes);
-  const workspaceType = detectWorkspaceType(projectRoot, manifests);
-  const primaryFramework = isRootCliOrLibrary(manifests, framework) ? "unknown" : framework;
+  const workspaceType = detectWorkspaceType(files, manifests);
+  const primaryFramework = isRootCliOrLibrary(manifests, framework, frameworks) ? "unknown" : framework;
 
   return {
     name: readProjectName(manifests) ?? basename(projectRoot),
@@ -105,16 +107,23 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
  * itself a CLI, and shouldn't have its correctly-detected framework (e.g.
  * an Astro app living in apps/web) blanked out to "unknown" because of it.
  */
-function isRootCliOrLibrary(manifests: PackageManifest[], framework: Framework): boolean {
+function isRootCliOrLibrary(
+  manifests: PackageManifest[],
+  framework: Framework,
+  frameworks: DetectedFramework[]
+): boolean {
   const rootManifest = manifests.find((manifest) => manifest.path === "package.json");
   if (!rootManifest) return false;
 
   if (rootManifest.bin) return true;
 
   // `npm init` writes "main": "index.js" into every package, including plain
-  // Express/Next apps. A root that itself declares the detected framework is
-  // that app, not a library, whatever its main/exports say.
-  if (framework !== "unknown" && declaresFramework(rootManifest, framework)) return false;
+  // Express/Next apps. A root that itself declares one of the detected
+  // frameworks is that app, not a library, whatever its main/exports say. The
+  // primary framework can live elsewhere: in a MERN repo the root is the
+  // Express server while React, which wins the frontend slot, is in `frontend/`.
+  const candidates = framework === "unknown" ? frameworks : [framework, ...frameworks];
+  if (candidates.some((candidate) => declaresFramework(rootManifest, candidate))) return false;
 
   return Boolean(rootManifest.exports || rootManifest.main);
 }
@@ -211,16 +220,100 @@ function selectPrimaryManifest(
   return manifests.find((manifest) => manifest.path === "package.json") ?? manifests[0];
 }
 
+// Package manifests that live in tooling or sample folders are not workspace
+// members: Remix's `remix.init/package.json`, a `scripts/` helper, fixtures.
+const NON_MEMBER_MANIFEST_DIR =
+  /(^|\/)(?:[^/]+\.init|scripts?|tools?|e2e|cypress|docs?|examples?|fixtures?|templates?|tests?|__tests__|\.[^/]+)(?:\/|$)/i;
+
+const SCAFFOLD_HOOK_MANIFEST = /(^|\/)[^/]+\.init\/package\.json$/;
+
 function detectWorkspaceType(
-  projectRoot: string,
+  files: ScannedFile[],
   manifests: PackageManifest[]
 ): WorkspaceType {
   const rootManifest = manifests.find((manifest) => manifest.path === "package.json");
-  return existsSync(join(projectRoot, "pnpm-workspace.yaml"))
-    || Boolean(rootManifest?.workspaces)
-    || manifests.length > 1
+  const nestedDirs = manifests
+    .filter((manifest) => manifest.path !== "package.json")
+    .map((manifest) => manifest.path.slice(0, -"/package.json".length));
+
+  // A declared workspace is a monorepo only when it actually has a member.
+  // `packages: ["."]` or a lone `onlyBuiltDependencies` key in
+  // pnpm-workspace.yaml is just single-package pnpm configuration. Declared
+  // members are trusted as written, so `apps/docs` still counts.
+  const patterns = [
+    ...readManifestWorkspacePatterns(rootManifest?.workspaces),
+    ...readPnpmWorkspacePatterns(files.find((file) => file.path === "pnpm-workspace.yaml")?.content)
+  ];
+  if (patterns.length > 0) {
+    return nestedDirs.some((directory) => matchesWorkspacePatterns(directory, patterns))
+      ? "monorepo"
+      : "single-package";
+  }
+
+  // Nothing declared: several manifests still make a multi-package repo
+  // (`frontend/` + `backend/`), unless the extra one is tooling or a sample.
+  return nestedDirs.some((directory) => !NON_MEMBER_MANIFEST_DIR.test(directory))
     ? "monorepo"
     : "single-package";
+}
+
+function readManifestWorkspacePatterns(workspaces: unknown): string[] {
+  const list = Array.isArray(workspaces)
+    ? workspaces
+    : typeof workspaces === "object" && workspaces !== null && "packages" in workspaces
+      ? (workspaces as { packages?: unknown }).packages
+      : [];
+  return Array.isArray(list) ? list.filter((item): item is string => typeof item === "string") : [];
+}
+
+/**
+ * Reads the `packages:` list of pnpm-workspace.yaml without a YAML parser:
+ * block items (`- apps/*`) and the inline form (`packages: ["a", "b"]`).
+ */
+function readPnpmWorkspacePatterns(content: string | undefined): string[] {
+  if (!content) return [];
+
+  const unquote = (value: string) => value.trim().replace(/^["']|["']$/g, "");
+  const lines = content.split(/\r?\n/);
+  const patterns: string[] = [];
+  let inPackages = false;
+
+  for (const line of lines) {
+    const withoutComment = line.replace(/\s+#.*$/, "");
+    if (/^\S/.test(withoutComment)) {
+      inPackages = /^packages\s*:/.test(withoutComment);
+      const inline = withoutComment.match(/^packages\s*:\s*\[(.*)\]\s*$/);
+      if (inline) {
+        patterns.push(...inline[1].split(",").map(unquote).filter(Boolean));
+        inPackages = false;
+      }
+      continue;
+    }
+    const item = inPackages ? withoutComment.match(/^\s+-\s+(.+)$/) : null;
+    if (item) patterns.push(unquote(item[1]));
+  }
+
+  return patterns;
+}
+
+function matchesWorkspacePatterns(directory: string, patterns: string[]): boolean {
+  const toRegExp = (pattern: string) => {
+    const source = pattern
+      .replace(/^\.\//, "")
+      .replace(/\/+$/, "")
+      .split("/")
+      .map((segment) => segment === "**"
+        ? ".*"
+        : segment.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*"))
+      .join("/");
+    return new RegExp(`^${source}$`);
+  };
+
+  const included = patterns.filter((pattern) => !pattern.startsWith("!") && pattern !== ".");
+  const excluded = patterns.filter((pattern) => pattern.startsWith("!")).map((pattern) => pattern.slice(1));
+
+  return included.some((pattern) => toRegExp(pattern).test(directory))
+    && !excluded.some((pattern) => toRegExp(pattern).test(directory));
 }
 
 function hasDependency(manifests: PackageManifest[], dependency: string): boolean {

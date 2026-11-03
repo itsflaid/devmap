@@ -1,6 +1,30 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-10-30
+Terakhir diperbarui: 2026-10-31
+
+## Update 2026-10-31
+
+### Rilis 0.9.0 dan perbaikan setelahnya
+
+- **Rilis (#136)**: `@flaid/devmap` 0.9.0 (`devmap mcp`). Publish pertama gagal di
+  langkah `Test CLI` karena test flaky (lihat DEBUG #31, perbaikan #138); tag
+  `v0.9.0` dipindah ke merge commit #138, lalu terbit ke npm dengan GitHub Release.
+- **MCP Registry**: `server.json` di `packages/cli`, dipublikasikan manual dengan
+  `mcp-publisher login github` lalu `mcp-publisher publish`; muncul sebagai
+  `io.github.itsflaid/devmap`.
+- **Landing page**: bagian MCP dan docs MCP (#135), tombol npm di navbar (#137), lalu
+  GitHub + npm digabung jadi satu pill putih/hitam (#139).
+- **Lock analisis (#140)**: `devmap analyze` sekarang ikut memegang
+  `.devmap/analyze.lock`. Kode lock pindah ke `src/cache/analysisLock.ts`; lock diambil
+  di `analyzeCommand`, bukan `runAnalyze`, karena refresher MCP sudah memegangnya.
+  Belum dirilis; level bump menunggu keputusan (usulan: patch 0.9.1).
+- **Docs**: `docs/roadmap.md` dibuat (README sudah menautkannya tetapi filenya tidak
+  ada).
+- **CI sengaja dinonaktifkan** (`ci.yml` disabled) untuk menghemat jatah Actions gratis.
+  Test tetap jalan di Linux lewat `publish.yml` sebelum tiap rilis. Test proses MCP di
+  Windows dan macOS belum pernah teruji di runner.
+- Catatan lokal Windows: error `ENOENT ...@fontsource-variable\funnel-display` saat
+  `astro dev` berarti `node_modules` lama; jalankan `pnpm install` dari root.
 
 ## Update 2026-10-30
 
@@ -24,7 +48,7 @@ MCP hanya lapisan tipis di atas snapshot.
 4. **Fase 3 (#133)** — `devmap_explain` (hanya terdaftar dengan `--allow-ai`),
    `test/mcp-smoke.mjs` dijalankan di `ci.yml` dan `publish.yml` sebelum
    `npm publish`, `mcpName: io.github.itsflaid/devmap` di `package.json`.
-5. **Fase 4 (sedang jalan)** — `docs/mcp.md`, bagian MCP di README, `commands.md`,
+5. **Fase 4 (selesai: #134 docs, #135 landing page)** — `docs/mcp.md`, bagian MCP di README, `commands.md`,
    `architecture.md` (bagian 15), `generated-files.md`, `docs/guide/commands/09-mcp.md`,
    `CLAUDE.md`, `CHANGELOG.md` (Unreleased); lalu landing page.
 

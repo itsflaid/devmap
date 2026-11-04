@@ -1,8 +1,9 @@
 import type { Dirent, Stats } from "node:fs";
-import { readdir, readFile, stat } from "node:fs/promises";
-import { extname, join, relative } from "node:path";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
+import { extname, join, relative, sep } from "node:path";
 import pLimit from "p-limit";
 import { clearGitignoreCache, shouldIgnorePath } from "./filterEngine.js";
+import { compareText } from "../../utils/compare.js";
 
 export type ScannedFile = {
   path: string;
@@ -11,11 +12,21 @@ export type ScannedFile = {
   size: number;
   lines: number;
   content: string;
+  /** The file is larger than MAX_READ_BYTES: it is listed, but its content was not read. */
+  oversize?: boolean;
 };
+
+/**
+ * Past this size a text file is a dataset, a dump or a generated bundle, and
+ * reading it whole is what exhausts the heap: six 400 MB CSV files in one
+ * project crashed the process before any analysis started.
+ */
+export const MAX_READ_BYTES = 5 * 1024 * 1024;
 
 export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
   const files: ScannedFile[] = [];
   const limit = pLimit(50);
+  const realRoot = await realpath(projectRoot).catch(() => projectRoot);
 
   // Ignore files are cached per process; re-read them for every scan.
   clearGitignoreCache();
@@ -34,7 +45,7 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
       if (isRoot) throw error;
       return;
     }
-    entries.sort((a, b) => a.name.localeCompare(b.name));
+    entries.sort((a, b) => compareText(a.name, b.name));
 
     const tasks: Promise<void>[] = [];
 
@@ -62,16 +73,20 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
           return;
         }
         if (!metadata.isFile()) return;
+        // A link that leaves the project would put someone else's file in the map.
+        if (entry.isSymbolicLink() && !(await resolvesInside(absolutePath, realRoot))) return;
 
-        const content = await readFile(absolutePath, "utf8").catch(() => "");
+        const oversize = metadata.size > MAX_READ_BYTES;
+        const content = oversize ? "" : await readFile(absolutePath, "utf8").catch(() => "");
 
         files.push({
           path: relativePath,
           absolutePath,
           extension: extname(entry.name).toLowerCase(),
           size: metadata.size,
-          lines: content.length === 0 ? 0 : content.split(/\r?\n/).length,
-          content
+          lines: countLines(content),
+          content,
+          ...(oversize ? { oversize: true } : {})
         });
       }));
     }
@@ -85,5 +100,22 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
   // I/O completion timing, not directory structure. Sort here so every
   // downstream consumer (fileIndex ordering, onboarding path ties, etc.)
   // gets a stable, reproducible order across runs on an unchanged project.
-  return files.sort((a, b) => a.path.localeCompare(b.path));
+  return files.sort((a, b) => compareText(a.path, b.path));
+}
+
+async function resolvesInside(path: string, realRoot: string): Promise<boolean> {
+  try {
+    const target = await realpath(path);
+    return target === realRoot || target.startsWith(realRoot + sep);
+  } catch {
+    return false;
+  }
+}
+
+// Same count as content.split(/\r?\n/).length without allocating a string per line.
+function countLines(content: string): number {
+  if (content.length === 0) return 0;
+  let lines = 1;
+  for (let at = content.indexOf("\n"); at !== -1; at = content.indexOf("\n", at + 1)) lines += 1;
+  return lines;
 }

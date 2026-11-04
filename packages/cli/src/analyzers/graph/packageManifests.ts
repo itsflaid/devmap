@@ -1,6 +1,7 @@
 import { parseJsonText, type ScannedFile } from "../analysis/index.js";
 import { matchLocalPath, normalizePath } from "./localPaths.js";
 import { isArchitectureSource } from "./sourceScope.js";
+import { compareText } from "../../utils/compare.js";
 
 /**
  * package.json knowledge the dependency graph needs: which workspace package a
@@ -80,7 +81,7 @@ export function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
     });
   }
 
-  return manifests.sort((a, b) => a.dir.localeCompare(b.dir));
+  return manifests.sort((a, b) => compareText(a.dir, b.dir));
 }
 
 export function indexPackages(manifests: PackageManifest[]): PackageIndex {

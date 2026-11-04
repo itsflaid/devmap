@@ -1,6 +1,7 @@
 import type { FileAnalysis, ScannedFile } from "../analysis/index.js";
 import type { FileGraph } from "./dependencyGraph.js";
 import { isArchitectureSource } from "./sourceScope.js";
+import { compareText } from "../../utils/compare.js";
 
 /**
  * Nuxt wires files together without import statements: components, composables
@@ -63,7 +64,7 @@ export function detectNuxtApps(files: ScannedFile[]): NuxtApp[] {
     });
   }
 
-  return apps.sort((a, b) => a.dir.localeCompare(b.dir));
+  return apps.sort((a, b) => compareText(a.dir, b.dir));
 }
 
 /**
@@ -226,7 +227,7 @@ function renderedComponents(content: string): Set<string> {
 function splitByCase(value: string): string[] {
   return value
     .replace(/([a-z\d])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, " ")
     .split(/[\s\-_./]+/)
     .filter(Boolean);
 }

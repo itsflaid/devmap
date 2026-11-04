@@ -1,5 +1,6 @@
 import type { FeatureInfo } from "./featureDetector.js";
 import { isDynamicSegment } from "../detectors/nonResourceSegments.js";
+import { compareText } from "../../utils/compare.js";
 
 export type FeatureCandidateSource =
   | "registry"
@@ -102,7 +103,7 @@ export function reconcileFeatureCandidates(
   const deterministicCandidates = candidates
     .filter((candidate) => candidate.source !== "ai")
     .map(normalizeCandidate)
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort((left, right) => compareText(left.id, right.id));
   const rejectedCandidateIds = candidates
     .filter((candidate) => candidate.source === "ai")
     .map((candidate) => candidate.id)
@@ -215,14 +216,14 @@ export function reconcileFeatureCandidates(
 
   const clusters = [...componentIndexes.values()]
     .map((indexes) => createCluster(indexes, deterministicCandidates, anchorsByPair))
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort((left, right) => compareText(left.id, right.id));
 
   return { clusters, rejectedCandidateIds, mergeDecisions };
 }
 
 /** Project only deterministic clusters to the established public snapshot shape. */
 export function projectFeatureCandidates(clusters: FeatureCluster[]): FeatureInfo[] {
-  return clusters
+  const features = clusters
     .filter((cluster) => cluster.candidates.some((candidate) => candidate.source !== "ai"))
     .map((cluster) => {
       const projection = projectCompatibilityFeature(cluster);
@@ -247,8 +248,47 @@ export function projectFeatureCandidates(clusters: FeatureCluster[]): FeatureInf
         confidence: clusterConfidence(cluster.candidates),
         evidence,
       };
-    })
-    .sort((left, right) => left.name.localeCompare(right.name));
+    });
+
+  return uniqueFeatureNames(features).sort((left, right) => compareText(left.name, right.name));
+}
+
+const GENERIC_DIRECTORIES = new Set([
+  "src", "app", "apps", "pages", "routes", "components", "lib", "features", "modules", "views", "screens"
+]);
+
+/**
+ * Two clusters can end up with the same canonical label: a root "Home" page and a
+ * `pages/homes/` demo folder both singularize to "Home". Under one name, lookups by
+ * feature name and the per-feature map files become ambiguous, so the later cluster
+ * is renamed after the folder that tells the two apart.
+ */
+function uniqueFeatureNames(features: FeatureInfo[]): FeatureInfo[] {
+  const used = new Set<string>();
+  return features.map((feature) => {
+    let name = feature.name;
+    if (used.has(name.toLowerCase())) {
+      const hint = directoryHint(feature);
+      const base = hint ? `${feature.name} (${hint})` : feature.name;
+      name = base;
+      for (let suffix = 2; used.has(name.toLowerCase()); suffix += 1) name = `${base} ${suffix}`;
+    }
+    used.add(name.toLowerCase());
+    return name === feature.name ? feature : { ...feature, name };
+  });
+}
+
+function directoryHint(feature: FeatureInfo): string | undefined {
+  const paths = feature.entryPoints.length > 0 ? feature.entryPoints : feature.files;
+  const directories = paths.map((path) => path.split("/").slice(0, -1));
+  if (directories.length === 0) return undefined;
+
+  const common = directories.reduce((shared, current) => {
+    let length = 0;
+    while (length < shared.length && length < current.length && shared[length] === current[length]) length += 1;
+    return shared.slice(0, length);
+  });
+  return [...common].reverse().find((segment) => !GENERIC_DIRECTORIES.has(segment.toLowerCase()));
 }
 
 function projectCompatibilityFeature(cluster: FeatureCluster): FeatureInfo | undefined {
@@ -285,7 +325,7 @@ function createCluster(
   candidates: FeatureCandidate[],
   anchorsByPair: Map<string, string[]>
 ): FeatureCluster {
-  const members = indexes.map((index) => candidates[index]).sort((left, right) => left.id.localeCompare(right.id));
+  const members = indexes.map((index) => candidates[index]).sort((left, right) => compareText(left.id, right.id));
   const canonical = [...members].sort(compareCanonicalCandidates)[0];
   const anchors = uniqueSorted(indexes.flatMap((left) => indexes.flatMap((right) =>
     left < right ? anchorsByPair.get(`${left}:${right}`) ?? [] : []
@@ -315,7 +355,7 @@ function compareCanonicalCandidates(left: FeatureCandidate, right: FeatureCandid
   const evidence = right.evidence.length - left.evidence.length;
   if (evidence !== 0) return evidence;
 
-  return left.id.localeCompare(right.id);
+  return compareText(left.id, right.id);
 }
 
 function findHardAnchors(left: FeatureCandidate, right: FeatureCandidate): string[] {
@@ -431,7 +471,7 @@ function normalizeCandidate(candidate: FeatureCandidate): FeatureCandidate {
       files: uniqueSorted(item.files),
       ...(item.routePaths ? { routePaths: uniqueSorted(item.routePaths) } : {}),
       ...(item.entityNames ? { entityNames: uniqueSorted(item.entityNames) } : {}),
-    })).sort((left, right) => left.ruleId.localeCompare(right.ruleId)),
+    })).sort((left, right) => compareText(left.ruleId, right.ruleId)),
     files: uniqueSorted(candidate.files),
     routePaths: uniqueSorted(candidate.routePaths),
     entityNames: uniqueSorted(candidate.entityNames),
@@ -462,7 +502,7 @@ function normalizeAnchor(value: string): string {
 }
 
 function uniqueSorted(values: string[]): string[] {
-  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
+  return [...new Set(values)].sort((left, right) => compareText(left, right));
 }
 
 class UnionFind {

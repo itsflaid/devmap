@@ -14,8 +14,10 @@ import type {
   SymbolInfo
 } from "./fileAnalysis.js";
 import type { ScannedFile } from "./fileScanner.js";
+import { LineIndex } from "./lineIndex.js";
 import { AstroPreprocessor, SveltePreprocessor, VuePreprocessor } from "./preprocessors/index.js";
 import type { LanguagePreprocessor } from "./preprocessors/index.js";
+import { compareText } from "../../utils/compare.js";
 
 // Native extensions — ts-morph parses these directly, no preprocessing needed.
 const NATIVE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
@@ -83,6 +85,8 @@ export class TsMorphAnalyzer implements FileAnalyzer {
     _originalPath: string
   ): FileAnalysis {
     const sourceFile = this.project.createSourceFile(parsePath, content, { overwrite: true });
+    const lines = new LineIndex(sourceFile.getFullText());
+    const lineOf = (node: Node) => lines.lineAt(node.getStart());
 
     // --- Imports ---
     const imports = new Set<string>();
@@ -122,7 +126,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
     // --- Exports ---
     // `module.exports = { a, b }` and `exports.c = ...` are what most Node
     // packages and older JS codebases export; the ESM view above sees none of it.
-    const commonJs = readCommonJsExports(sourceFile);
+    const commonJs = readCommonJsExports(sourceFile, lineOf);
     const exports = [...new Set([
       ...sourceFile.getExportedDeclarations().keys(),
       ...commonJs.map((entry) => entry.name)
@@ -138,7 +142,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
         symbols.push({
           name: statement.getNameOrThrow(),
           kind: "function",
-          line: statement.getStartLineNumber(),
+          line: lineOf(statement),
           exported: statement.isExported() || statement.isDefaultExport(),
           async: statement.isAsync()
         });
@@ -150,7 +154,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
         symbols.push({
           name: statement.getNameOrThrow(),
           kind: "class",
-          line: statement.getStartLineNumber(),
+          line: lineOf(statement),
           exported: classExported
         });
         for (const method of statement.getMethods()) {
@@ -158,7 +162,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
           symbols.push({
             name: method.getName(),
             kind: "method",
-            line: method.getStartLineNumber(),
+            line: lineOf(method),
             exported: false,
             async: method.isAsync()
           });
@@ -167,17 +171,17 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       }
 
       if (Node.isInterfaceDeclaration(statement)) {
-        symbols.push(createDeclarationSymbol(statement, "interface"));
+        symbols.push(createDeclarationSymbol(statement, "interface", lineOf(statement)));
         continue;
       }
 
       if (Node.isTypeAliasDeclaration(statement)) {
-        symbols.push(createDeclarationSymbol(statement, "type"));
+        symbols.push(createDeclarationSymbol(statement, "type", lineOf(statement)));
         continue;
       }
 
       if (Node.isEnumDeclaration(statement)) {
-        symbols.push(createDeclarationSymbol(statement, "enum"));
+        symbols.push(createDeclarationSymbol(statement, "enum", lineOf(statement)));
         continue;
       }
 
@@ -197,7 +201,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
             symbols.push({
               name,
               kind: "const",
-              line: declaration.getStartLineNumber(),
+              line: lineOf(declaration),
               exported: statement.isExported(),
               async: isAsyncFunction
             });
@@ -206,8 +210,12 @@ export class TsMorphAnalyzer implements FileAnalyzer {
       }
     }
 
+    const symbolsByName = new Map<string, SymbolInfo>();
+    for (const symbol of symbols) {
+      if (!symbolsByName.has(symbol.name)) symbolsByName.set(symbol.name, symbol);
+    }
     for (const entry of commonJs) {
-      const existing = symbols.find((symbol) => symbol.name === (entry.alias ?? entry.name));
+      const existing = symbolsByName.get(entry.alias ?? entry.name);
       if (existing) {
         existing.exported = true;
       } else if (entry.name !== "default") {
@@ -220,7 +228,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
         });
       }
     }
-    symbols.sort((left, right) => left.line - right.line || left.name.localeCompare(right.name));
+    symbols.sort((left, right) => left.line - right.line || compareText(left.name, right.name));
 
     // --- Top functions ---
     const topFunctions = symbols
@@ -276,7 +284,7 @@ interface CommonJsExport {
  * Top-level `module.exports = ...`, `module.exports.x = ...` and `exports.x = ...`.
  * An object literal contributes its keys; anything else is the default export.
  */
-function readCommonJsExports(sourceFile: SourceFile): CommonJsExport[] {
+function readCommonJsExports(sourceFile: SourceFile, lineOf: (node: Node) => number): CommonJsExport[] {
   const found: CommonJsExport[] = [];
   const seen = new Set<string>();
 
@@ -290,7 +298,7 @@ function readCommonJsExports(sourceFile: SourceFile): CommonJsExport[] {
       name,
       ...(name === "default" && value && Node.isIdentifier(value) ? { alias: value.getText() } : {}),
       kind: callable || (value && Node.isClassExpression(value)) ? "function" : "const",
-      line: node.getStartLineNumber(),
+      line: lineOf(node),
       async: Boolean(callable && (value as { isAsync(): boolean }).isAsync())
     });
   };
@@ -368,16 +376,16 @@ function emptyAnalysis(
 function createDeclarationSymbol(
   declaration: {
     getName(): string;
-    getStartLineNumber(): number;
     isExported(): boolean;
     isDefaultExport(): boolean;
   },
-  kind: "interface" | "type" | "enum"
+  kind: "interface" | "type" | "enum",
+  line: number
 ): SymbolInfo {
   return {
     name: declaration.getName(),
     kind,
-    line: declaration.getStartLineNumber(),
+    line,
     exported: declaration.isExported() || declaration.isDefaultExport()
   };
 }
@@ -385,5 +393,5 @@ function createDeclarationSymbol(
 function compareFunctions(left: FunctionInfo, right: FunctionInfo): number {
   return Number(right.exported) - Number(left.exported)
     || left.line - right.line
-    || left.name.localeCompare(right.name);
+    || compareText(left.name, right.name);
 }

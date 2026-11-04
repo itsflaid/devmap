@@ -5,6 +5,7 @@ import { buildReverseGraph } from "../graph/index.js";
 import { singularize } from "../analysis/extractors/fallbackExtractor.js";
 import type { FeatureInfo } from "../features/featureDetector.js";
 import { isDynamicSegment } from "./nonResourceSegments.js";
+import { compareText } from "../../utils/compare.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -369,7 +370,7 @@ export function detectClientRouteFeatures(
 /** The page closest to the segment root first: `room/[id]/page.tsx` before `room/[id]/info/page.tsx`. */
 function byShallowPath(files: string[]): string[] {
   return [...files].sort((left, right) =>
-    left.split("/").length - right.split("/").length || left.localeCompare(right)
+    left.split("/").length - right.split("/").length || compareText(left, right)
   );
 }
 

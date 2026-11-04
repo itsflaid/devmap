@@ -1,4 +1,5 @@
 import type { SymbolInfo } from "../analysis/index.js";
+import { compareText } from "../../utils/compare.js";
 
 export interface LanguageReading {
   imports: string[];
@@ -350,5 +351,5 @@ function readJava(code: string): LanguageReading {
 }
 
 function byLine(left: SymbolInfo, right: SymbolInfo): number {
-  return left.line - right.line || left.name.localeCompare(right.name);
+  return left.line - right.line || compareText(left.name, right.name);
 }

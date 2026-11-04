@@ -23,6 +23,7 @@ import {
   sortRoutes
 } from "./routeUtils.js";
 import { usesTrpc, detectTrpcRoutes } from "./trpcRouteDetector.js";
+import { compareText } from "../../utils/compare.js";
 
 export type RouteInfo = {
   path: string;
@@ -485,7 +486,7 @@ function collectFastifyRoutes(content: string): Array<[string, string[]]> {
   addRouteMethods(methodsByPath, content, FASTIFY_OBJECT_ROUTE_PATTERN);
   return [...methodsByPath]
     .map(([path, methods]) => [path, [...methods].sort()] as [string, string[]])
-    .sort(([left], [right]) => left.localeCompare(right));
+    .sort(([left], [right]) => compareText(left, right));
 }
 
 function addRouteMethods(
@@ -635,7 +636,7 @@ function collectRouteMethods(
 
   return [...methodsByPath]
     .map(([path, methods]) => [path, [...methods].sort()] as [string, string[]])
-    .sort(([left], [right]) => left.localeCompare(right));
+    .sort(([left], [right]) => compareText(left, right));
 }
 
 /**

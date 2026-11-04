@@ -1,4 +1,5 @@
 import { parseJsonText, type ScannedFile } from "../analysis/index.js";
+import { IMPORT_CLAUSE } from "../analysis/importClause.js";
 import { isArchitectureSource } from "../graph/index.js";
 import { SERVICES, SOURCE_SERVICE_SIGNALS } from "../registry/index.js";
 
@@ -50,7 +51,10 @@ function readPackageDependencyNames(files: ScannedFile[]): string[] {
 
 function readImportedPackageNames(files: ScannedFile[]): string[] {
   const names = new Set<string>();
-  const importPattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|export\s+[^'"]+\s+from\s+|require\()\s*['"]([^'"]+)['"]/g;
+  const importPattern = new RegExp(
+    String.raw`(?:import\s+(?:${IMPORT_CLAUSE}\s+from\s+)?|export\s+${IMPORT_CLAUSE}\s+from\s+|require\()\s*['"]([^'"]+)['"]`,
+    "g"
+  );
 
   for (const file of files.filter((item) =>
     [".ts", ".tsx", ".js", ".jsx"].includes(item.extension)

@@ -29,7 +29,7 @@ devmap/
 │   │   ├── mcp/           ← MCP server: tools, resources, prompts, snapshot provider, refresher + lock
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 49 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
+│   ├── test/              ← 51 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -129,11 +129,12 @@ Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsco
 
 ## Testing
 
-49 test files in `packages/cli/test/`. Key covered areas:
+51 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors
 - Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
 - Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`; client-side routers, Hono factories, Next normalization and critical-file ranking in `js-ts-gaps`; SolidStart, Qwik City, Angular, Elysia, Koa, AdonisJS and constant-resolved paths in `js-ts-more-frameworks`), detector fixes
 - Heuristic language readers (`heuristic-languages`), scanner robustness, project scope/metadata
+- Analyzer stability and grounding (`analyzer-stability`: linear time on generated files, quote-free text, long identifiers, size cap, symlinks, locale-free ordering; `analyzer-grounding`: language, devDependency frameworks, workspaces, entry points, search terms, duplicate feature names, domain-inference validation)
 - Commands (init, analyze, map, flow, explain, onboarding, config, doctor); `analyze-lock` covers `devmap analyze` holding `.devmap/analyze.lock`
 - MCP server (`core-api`, `mcp-server`, `mcp-freshness`, `mcp-explain`): tools, resources, prompts, stale/missing snapshots, auto-refresh and lock, offline-never-touches-AI, stdio process with a clean protocol stream. `test/mcp-smoke.mjs` runs the compiled `dist/` as a server (CI and publish workflow)
 - Utils (markdown terminal, JSON output, prompts, errors)
@@ -174,6 +175,8 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - Domain inference is cached for idempotency (`.devmap/domain-cache.json`)
 - Snapshot is regenerated on every `devmap analyze` run
 - `AGENTS.md` is never overwritten by init (append-only)
+- A file over `MAX_READ_BYTES` (5 MB) is listed with `oversize: true` and no content, and `warnings` names it; its fingerprint input is its size. Symlinks that resolve outside the project root are skipped
+- Text is ordered with `compareText` (`utils/compare.ts`), never `String#localeCompare`, which follows `LANG` and changes snapshots between machines; a test fails on any use
 - `analyzeCommand` (CLI) holds `.devmap/analyze.lock` around `runAnalyze`; `runAnalyze` itself never takes it, because the MCP refresher already holds the lock when it calls it
 - `.devmap/` is always gitignored
 - `devmap mcp` owns stdout: it is the JSON-RPC stream. Never `console.log` from code the MCP server can reach; use `output.*` inside `withJsonOutput()` (silent) or stderr
@@ -189,6 +192,7 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - Client router detection reads literal route arrays, JSX trees and `getParentRoute` chains; routes assembled by loops, spreads of computed values or runtime config are not followed
 - Elysia, Koa and Adonis detectors follow literal call chains and mounts; routers built inside factory functions, `.use()` of computed values and runtime-assembled paths are not followed. Angular reads literal `Routes` arrays and `loadChildren` imports
 - Feature similarity threshold (0.35) is tuned but may cause false merges
+- Feature `confidence` measures parse quality, not evidence strength: `projectMap.ts` lifts any feature with two files, one parsed by ts-morph, to `high`, so a folder named `search/` reads as `high` like an imported vendor package does
 - Domain inference is single-shot — no conversation context
 - The MCP staleness check re-scans project files (cached for 10 s), so it is not free on very large repositories
 
@@ -204,6 +208,8 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - `.js` → `.ts` extension swap in import resolution (shared in `graph/localPaths.ts`)
 - Database detection ranks ORM/BaaS above drivers; a cache (Redis) is only ever listed as `additional`
 - Singularize entity names for feature matching
+- Never use `getStartLineNumber()` in a loop over a file's nodes: ts-morph recounts newlines from the top each call. Use `LineIndex` (`analysis/lineIndex.ts`)
+- Regexes that read `import`/`export ... from` take their clause from `IMPORT_CLAUSE` (`analysis/importClause.ts`); an unbounded `[^'"]+` rescans a quote-free file from every `export`
 - REASON_TAGS constant for critical file ranking reasoning
 - Critical-file execution bonus (`projectMap.ts`) is name-based (router, controller, orchestrator, engine, dispatcher, scheduler, pipeline, registry, kernel, `commands/`) or fan-out-based (≥ 8 distinct local imports in a non-index file) — never tied to devmap's own file names
 - Angular, Elysia, Koa and Adonis detectors share `moduleBindings.ts` (`createModuleIndex`): imports/`require`, exports and re-exports, and `stringOf` (literals, templates, `+`, constants, `as const` objects and enums across files). Instances (Elysia/Koa) are keyed by `new` expression and only unmounted ones are walked from the top, like Hono

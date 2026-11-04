@@ -10,6 +10,7 @@ import {
   parseSseStream,
   readCompletionPayload
 } from "./openaiCompatibleStream.js";
+import { compareText } from "../utils/compare.js";
 
 const CUSTOM_PAYLOAD_MESSAGES = {
   unreadable: () => new DevmapError(
@@ -220,7 +221,7 @@ async function readModelIds(response: Response): Promise<string[]> {
     return (payload.data ?? [])
       .map((model) => model.id)
       .filter((id): id is string => typeof id === "string")
-      .sort((a, b) => a.localeCompare(b));
+      .sort((a, b) => compareText(a, b));
   } catch {
     throw new DevmapError(
       "The custom endpoint returned an unreadable model list.",

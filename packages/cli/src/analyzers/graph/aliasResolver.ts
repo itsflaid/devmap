@@ -4,6 +4,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { ts } from "ts-morph";
 import { loadBundlerAliases } from "./bundlerAliases.js";
 import { pickNuxtSrcDir } from "./nuxtAutoImports.js";
+import { compareText } from "../../utils/compare.js";
 
 export interface AliasMapping {
   /** Specifier prefix (`@/`), or the whole specifier when `exact` is set. */
@@ -139,7 +140,7 @@ async function findConfigDirectories(root: string): Promise<string[]> {
   // A frontend/ or client/ next to the root config is as common as apps/*.
   try {
     const children = await readdir(root, { withFileTypes: true });
-    for (const entry of children.sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of children.sort((a, b) => compareText(a.name, b.name))) {
       if (
         entry.isDirectory()
         && !entry.name.startsWith(".")
@@ -156,7 +157,7 @@ async function findConfigDirectories(root: string): Promise<string[]> {
   for (const parent of WORKSPACE_PARENTS) {
     try {
       const entries = await readdir(join(root, parent), { withFileTypes: true });
-      for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      for (const entry of entries.sort((a, b) => compareText(a.name, b.name))) {
         if (entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules") {
           directories.push(join(root, parent, entry.name));
         }

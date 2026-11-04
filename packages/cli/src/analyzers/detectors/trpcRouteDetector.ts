@@ -1,6 +1,7 @@
 import type { ScannedFile } from "../analysis/index.js";
 import type { RouteInfo } from "./routeDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
+import { compareText } from "../../utils/compare.js";
 
 type ProcedureKind = "QUERY" | "MUTATION";
 
@@ -83,7 +84,7 @@ export function detectTrpcRoutes(
   }
 
   return routes.sort((left, right) =>
-    left.path.localeCompare(right.path) || left.file.localeCompare(right.file)
+    compareText(left.path, right.path) || compareText(left.file, right.file)
   );
 }
 

@@ -1,6 +1,7 @@
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
+import { compareText } from "../utils/compare.js";
 
 const DEFAULT_MAX_FILES = 5;
 const DEFAULT_MAX_LINES_PER_FILE = 200;
@@ -445,7 +446,7 @@ function rankContextFiles(
     .sort((left, right) =>
       right.score - left.score
       || Number(right.direct) - Number(left.direct)
-      || left.path.localeCompare(right.path)
+      || compareText(left.path, right.path)
     );
 }
 
@@ -918,7 +919,7 @@ function tokenizeQuestion(value: string): string[] {
 function splitSearchTerms(value: string): Set<string> {
   const spaced = value
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+    .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, " ");
 
   return new Set(tokenizeQuestion(spaced));
 }

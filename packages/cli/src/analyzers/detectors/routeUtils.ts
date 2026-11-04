@@ -2,6 +2,7 @@ import { posix } from "node:path";
 import { parseJsonText, type ScannedFile } from "../analysis/index.js";
 import { isArchitectureSource } from "../graph/sourceScope.js";
 import { matchLocalPath, normalizePath } from "../graph/localPaths.js";
+import { compareText } from "../../utils/compare.js";
 
 // Helpers shared by the per-framework route detectors.
 
@@ -87,7 +88,7 @@ export function findHttpMethods(content: string): string[] {
 
 export function sortRoutes<T extends { path: string; file: string }>(routes: T[]): T[] {
   return routes.sort((left, right) =>
-    left.path.localeCompare(right.path) || left.file.localeCompare(right.file)
+    compareText(left.path, right.path) || compareText(left.file, right.file)
   );
 }
 

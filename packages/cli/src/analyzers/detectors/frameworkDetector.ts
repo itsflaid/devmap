@@ -38,23 +38,30 @@ export function detectFramework(files: ScannedFile[]): Framework {
  */
 export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   const detected = new Set<DetectedFramework>();
+  const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
   // Phase 1: dependency manifest — highest confidence signal.
   // package.json is the canonical source of truth for what frameworks are installed.
-  for (const dependencies of readManifestDependencies(files)) {
+  for (const manifest of readManifestDependencies(files)) {
+    const dependencies = { ...manifest.runtime, ...manifest.dev };
+    // A server framework that is only a devDependency is usually test tooling
+    // (a mock server in a library's tests), so production code has to import it.
+    const serverDeclared = (...names: string[]) => names.some((name) =>
+      name in manifest.runtime || (name in manifest.dev && importsPackage(sourceFiles, name))
+    );
     if ("next" in dependencies) detected.add("nextjs");
-    if ("express" in dependencies) detected.add("express");
+    if (serverDeclared("express")) detected.add("express");
     if ("astro" in dependencies) detected.add("astro");
     if ("nuxt" in dependencies) detected.add("nuxt");
-    if ("fastify" in dependencies) detected.add("fastify");
-    if ("@nestjs/core" in dependencies || "@nestjs/common" in dependencies) {
+    if (serverDeclared("fastify")) detected.add("fastify");
+    if (serverDeclared("@nestjs/core", "@nestjs/common")) {
       detected.add("nestjs");
     }
     if ("@sveltejs/kit" in dependencies) detected.add("sveltekit");
-    if ("hono" in dependencies) detected.add("hono");
-    if ("elysia" in dependencies) detected.add("elysia");
-    if ("koa" in dependencies) detected.add("koa");
-    if (ADONIS_PACKAGES.some((name) => name in dependencies)) detected.add("adonisjs");
+    if (serverDeclared("hono")) detected.add("hono");
+    if (serverDeclared("elysia")) detected.add("elysia");
+    if (serverDeclared("koa")) detected.add("koa");
+    if (serverDeclared(...ADONIS_PACKAGES)) detected.add("adonisjs");
 
     // SolidStart, Qwik City and Angular are full frameworks with their own router;
     // plain `solid-js` / `@builder.io/qwik` are just component libraries.
@@ -111,7 +118,6 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
 
   // Phase 2: file structure heuristics — secondary signal.
   // Only used when package.json is absent or incomplete (e.g. monorepo root without deps).
-  const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
   // Next.js: next.config.* or App Router / Pages Router file conventions.
   // _app and _document are Next.js-unique; a bare src/pages/api/ folder is NOT
@@ -259,7 +265,12 @@ function hasExpressCallSite(content: string): boolean {
     || /from\s+["']express["']/.test(content);
 }
 
-function readManifestDependencies(files: ScannedFile[]): Array<Record<string, string>> {
+type ManifestDependencies = {
+  runtime: Record<string, string>;
+  dev: Record<string, string>;
+};
+
+function readManifestDependencies(files: ScannedFile[]): ManifestDependencies[] {
   return files
     .filter((file) =>
       file.path.endsWith("package.json") && isArchitectureSource(file.path)
@@ -267,7 +278,7 @@ function readManifestDependencies(files: ScannedFile[]): Array<Record<string, st
     .map((file) => readDependencies(file.content));
 }
 
-function readDependencies(content: string): Record<string, string> {
+function readDependencies(content: string): ManifestDependencies {
   try {
     const parsed = parseJsonText(content) as {
       dependencies?: Record<string, string>;
@@ -275,10 +286,18 @@ function readDependencies(content: string): Record<string, string> {
     };
 
     return {
-      ...parsed.dependencies,
-      ...parsed.devDependencies
+      runtime: { ...parsed.dependencies },
+      dev: { ...parsed.devDependencies }
     };
   } catch {
-    return {};
+    return { runtime: {}, dev: {} };
   }
+}
+
+const CODE_FILE = /\.[cm]?[jt]sx?$|\.vue$|\.svelte$|\.astro$/;
+
+function importsPackage(sourceFiles: ScannedFile[], name: string): boolean {
+  const escaped = name.replace(/\W/g, "\\$&");
+  const pattern = new RegExp(`(?:from\\s*|require\\(\\s*|import\\s*\\(\\s*|import\\s+)["']${escaped}["'/]`);
+  return sourceFiles.some((file) => CODE_FILE.test(file.path) && pattern.test(file.content));
 }

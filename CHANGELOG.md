@@ -4,17 +4,54 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
-### Fixed
-
-- `devmap analyze` takes `.devmap/analyze.lock`, like the MCP server does, so a terminal analysis
-  and an MCP refresh can no longer write the snapshot at the same time. A second analysis fails with
-  "Another DevMap analysis is already running" instead of racing
-
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
+
+## [0.9.1] - 2026-11-05
+
+### Changed
+
+- A file over 5 MB is listed but not read. `warnings` names it and its size feeds the snapshot
+  fingerprint, so a data dump in a project can no longer exhaust memory (six 400 MB files used to
+  end the run with an out-of-memory error and no snapshot)
+- The snapshot fingerprint includes the DevMap version. After upgrading, `devmap doctor` and the MCP
+  tools report a snapshot written by an older release as stale, and `devmap analyze` regenerates it
+  once instead of reusing it
+
+### Fixed
+
+- `devmap analyze` takes `.devmap/analyze.lock`, like the MCP server does, so a terminal analysis
+  and an MCP refresh can no longer write the snapshot at the same time. A second analysis fails with
+  "Another DevMap analysis is already running" instead of racing
+- Analyzer hangs and crashes (found by running it on 12 real projects and 13 adversarial ones):
+  - Symbol line numbers come from a precomputed line index. ts-morph's `getStartLineNumber()`
+    recounted newlines from the top of the file on every call, so a generated file with tens of
+    thousands of declarations took minutes (4 MB and 50k functions: over 170 s before, 2.7 s now)
+  - `import ... from` and `export ... from` are read with a bounded pattern, so a file without
+    quotes is no longer rescanned from every `export` (12k functions: 13 s before, 1.3 s now)
+  - A 100k-character identifier no longer stalls the search-term index
+  - A symlink that resolves outside the project is skipped instead of read
+  - A malformed AI domain-inference answer, or a bad `.devmap/domain-cache.json`, is validated and
+    dropped (no domain) instead of throwing on every run
+- Snapshots no longer depend on the machine locale: text is ordered with a fixed collator instead
+  of `localeCompare`, which gave 7 of 12 test projects a different snapshot under `cs_CZ` or `tr_TR`
+- Analyzer claims without evidence:
+  - The language is `unknown` when a project has no TS/JS files (a Django project was `typescript`)
+  - A server framework listed only in `devDependencies` counts only when production code imports it
+    (an HTTP client with a test server was reported as an Express `api-service`)
+  - `.d.ts` files are no longer entry points (one ranked as the top critical file of an Express
+    project), and `test-d/` folders are not production source
+  - `workspaceType` comes from declared workspace members (`workspaces`, `packages:` in
+    `pnpm-workspace.yaml`), not from a lone `pnpm-workspace.yaml` or a second `package.json`
+  - Features from the vocabulary registry list only the search terms found in the project's own
+    paths and imports (20 of 91 features across the test projects listed vendors the project does
+    not use)
+  - Two features with the same name get a folder hint (`Home (homes)`) and unique ids, so one of
+    them is no longer dropped from `.devmap/features/`
+  - A feature inferred by AI must name entities the project actually has
 
 ## [0.9.0] - 2026-10-30
 
@@ -414,7 +451,9 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.8.4...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/itsflaid/devmap/releases/tag/v0.9.1
+[0.9.0]: https://github.com/itsflaid/devmap/releases/tag/v0.9.0
 [0.8.4]: https://github.com/itsflaid/devmap/releases/tag/v0.8.4
 [0.8.3]: https://github.com/itsflaid/devmap/releases/tag/v0.8.3
 [0.8.2]: https://github.com/itsflaid/devmap/releases/tag/v0.8.2

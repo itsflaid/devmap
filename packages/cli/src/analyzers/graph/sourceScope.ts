@@ -9,6 +9,7 @@ const NON_PRODUCTION_SEGMENTS = new Set([
   "e2e",
   "fixtures",
   "test",
+  "test-d",
   "tests"
 ]);
 

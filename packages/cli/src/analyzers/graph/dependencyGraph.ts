@@ -1,4 +1,5 @@
 import type { FileAnalysis, ScannedFile } from "../analysis/index.js";
+import { IMPORT_CLAUSE } from "../analysis/importClause.js";
 import type { AliasMapping } from "./aliasResolver.js";
 import { isDeclaredAlias, resolveAliasCandidates } from "./aliasResolver.js";
 import { matchLocalPath, normalizePath } from "./localPaths.js";
@@ -18,7 +19,10 @@ export interface DependencyGraphDiagnostics {
 }
 
 // Static imports, re-exports, require() and dynamic import() with a literal.
-const IMPORT_RE = /(?:\bimport\s+(?:[^'"]+\s+from\s+)?|\bexport\s+[^'"]+\s+from\s+|\b(?:require|import)\s*\(\s*)['"]([^'"]+)['"]/g;
+const IMPORT_RE = new RegExp(
+  String.raw`(?:\bimport\s+(?:${IMPORT_CLAUSE}\s+from\s+)?|\bexport\s+${IMPORT_CLAUSE}\s+from\s+|\b(?:require|import)\s*\(\s*)['"]([^'"]+)['"]`,
+  "g"
+);
 
 export function buildDependencyGraph(
   files: ScannedFile[],

@@ -59,6 +59,31 @@ test("a plain package with main/exports and no app framework is still a library"
   assert.deepEqual(metadata.projectTypes, ["library"]);
 });
 
+test("a VS Code extension package is its own project type, not a library", () => {
+  const files = [
+    fileOf("package.json", JSON.stringify({ name: "ws", private: true })),
+    fileOf("apps/web/package.json", JSON.stringify({ name: "web", dependencies: { next: "^15.0.0" } })),
+    fileOf("apps/extension/package.json", JSON.stringify({
+      name: "ext",
+      main: "./dist/extension.js",
+      engines: { vscode: "^1.100.0" },
+      contributes: { commands: [] }
+    })),
+    fileOf("apps/extension/src/extension.ts", "export function activate() {}")
+  ];
+  const metadata = detectProjectMetadata("/p", "nextjs", files, ["nextjs"]);
+
+  assert.ok(metadata.projectTypes.includes("web-app"));
+  assert.ok(metadata.projectTypes.includes("vscode-extension"));
+  assert.ok(!metadata.projectTypes.includes("library"));
+});
+
+test("an extension manifest with only contributes is recognised without engines", () => {
+  const files = [fileOf("package.json", JSON.stringify({ name: "ext", main: "out/extension.js", contributes: { commands: [] } }))];
+  const metadata = detectProjectMetadata("/p", "unknown", files, []);
+  assert.deepEqual(metadata.projectTypes, ["vscode-extension"]);
+});
+
 // ------------------------------------------------------------ entry + scope
 
 test("barrel index files that the app imports are not entry points", () => {

@@ -10,8 +10,9 @@ import {
   detectFramework,
   detectFrameworks
 } from "../analyzers/detectors/index.js";
-import { detectProjectMetadata } from "../analyzers/pipeline/index.js";
+import { createProjectFingerprint, detectProjectMetadata } from "../analyzers/pipeline/index.js";
 import { inspectSnapshot } from "../cache/snapshot.js";
+import type { McpHealth } from "../mcp/health.js";
 import {
   readConfig,
   readLocalConfig,
@@ -19,6 +20,7 @@ import {
   type LocalDevmapConfig
 } from "../utils/config.js";
 import { DevmapError } from "../utils/errors.js";
+import { detectMcpRegistrations } from "../utils/mcpConfig.js";
 import { output, withJsonOutput } from "../utils/output.js";
 import { DEVMAP_VERSION } from "../utils/packageMetadata.js";
 
@@ -33,6 +35,7 @@ export type DoctorDependencies = {
     config: DevmapConfig,
     model: string
   ) => Promise<ProviderInspection>;
+  checkMcp?: (projectRoot: string) => Promise<McpHealth>;
 };
 
 export async function doctorCommand(
@@ -75,6 +78,7 @@ async function runDoctor(
     ? resolveAiRouting(effectiveConfig, "analyze").model
     : undefined;
   const issues: string[] = [];
+  const notes: string[] = [];
   const nodeSupported = readNodeMajor(process.version) >= MINIMUM_NODE_MAJOR;
   let apiKeyStatus = "not configured";
   let modelStatus = selectedModel ?? "not configured";
@@ -91,12 +95,45 @@ async function runDoctor(
   output.keyValue("Config", config ? "exists" : "missing");
   output.keyValue("Snapshot", snapshotResult.status);
 
+  const snapshotStale = snapshotResult.status === "valid"
+    ? createProjectFingerprint(files) !== snapshotResult.snapshot.fingerprint
+    : null;
+  if (snapshotStale !== null) {
+    output.keyValue("Snapshot age", snapshotStale ? "stale" : "up to date");
+  }
+  if (snapshotResult.status === "missing") {
+    notes.push("No snapshot yet. Run devmap analyze, or let your agent call devmap_analyze.");
+  } else if (snapshotStale) {
+    notes.push("The code changed since the last analysis. Run devmap analyze, or let your agent call devmap_analyze.");
+  }
+
+  const checkMcp = dependencies.checkMcp
+    ?? (async (root: string) => (await import("../mcp/health.js")).checkMcpServer(root));
+  const [mcpHealth, mcpClients] = await Promise.all([
+    checkMcp(projectRoot),
+    detectMcpRegistrations(projectRoot)
+  ]);
+  output.keyValue(
+    "MCP server",
+    mcpHealth.ok ? `ready (${mcpHealth.tools} tools)` : "failed"
+  );
+  output.keyValue(
+    "MCP clients",
+    mcpClients.length > 0 ? mcpClients.join(", ") : "none registered"
+  );
+  if (!mcpHealth.ok) {
+    issues.push(`The MCP server failed its self-check: ${mcpHealth.error ?? "unknown error"}.`);
+  }
+  if (mcpClients.length === 0) {
+    notes.push("No agent is registered for the MCP server. Run: devmap init --mcp opencode|claude|cursor");
+  }
+
   if (!config) {
-    issues.push("Run devmap init to create ~/.devmap/config.json.");
+    notes.push("AI is optional and not configured. Add a provider key with: devmap config key");
     output.keyValue("API key", "not configured");
     output.keyValue("Model", "not configured");
   } else if (!config.apiKey || !selectedModel) {
-    issues.push("Run devmap init again to configure the selected provider.");
+    notes.push("AI is optional and no API key is set. Add one with: devmap config key");
     output.keyValue("API key", "missing");
     modelStatus = selectedModel
       ? describeModel(selectedModel, modelSource)
@@ -114,7 +151,7 @@ async function runDoctor(
       output.keyValue("Model", modelStatus);
 
       if (!provider.modelAvailable) {
-        issues.push("Run devmap init or choose an available provider model.");
+        issues.push("Run devmap config model <model-id> to choose an available provider model.");
       }
     } catch (error) {
       const message = error instanceof DevmapError
@@ -151,6 +188,13 @@ async function runDoctor(
     }
   }
 
+  if (notes.length > 0) {
+    output.section("Notes");
+    for (const note of notes) {
+      output.note(note);
+    }
+  }
+
   if (issues.length === 0) {
     output.success("No issues found");
   } else {
@@ -177,6 +221,12 @@ async function runDoctor(
     snapshot: snapshotResult.status,
     apiKey: apiKeyStatus,
     model: modelStatus,
+    snapshotStale,
+    mcp: {
+      server: mcpHealth,
+      registeredClients: mcpClients
+    },
+    notes,
     issues
   };
 }

@@ -1,6 +1,7 @@
 import type { FileGraph } from "./dependencyGraph.js";
 import type { ManifestEntry } from "./packageManifests.js";
 import { isArchitectureSource } from "./sourceScope.js";
+import { compareText } from "../../utils/compare.js";
 
 const ENTRY_PATTERNS = [
   /(^|\/)page\.[jt]sx?$/,
@@ -114,7 +115,7 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
   const scoreOf = (path: string) => declared.get(path) ?? entryPointScore(path);
 
   return Object.keys(graph)
-    .filter((path) => isSourceFile(path))
+    .filter((path) => isSourceFile(path) && !isDeclarationFile(path))
     .filter((path) => isArchitectureSource(path) && !isGeneratedFile(path))
     .filter((path) => {
       if (declared.has(path)) return true;
@@ -129,7 +130,7 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
         || (!imported.has(path) && FRAMEWORK_LOADED_PATTERNS.some((pattern) => pattern.test(path)))
         || unimportedWithImports;
     })
-    .sort((a, b) => scoreOf(a) - scoreOf(b) || a.localeCompare(b))
+    .sort((a, b) => scoreOf(a) - scoreOf(b) || compareText(a, b))
     .slice(0, 20);
 }
 
@@ -139,4 +140,8 @@ function isGeneratedFile(path: string): boolean {
 
 function isSourceFile(path: string): boolean {
   return /\.[cm]?[jt]sx?$|\.vue$|\.svelte$|\.astro$/.test(path);
+}
+
+function isDeclarationFile(path: string): boolean {
+  return /\.d\.[cm]?ts$/.test(path);
 }

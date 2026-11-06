@@ -2,6 +2,7 @@ import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FeatureInfo } from "../analyzers/features/index.js";
 import type { ProjectMap } from "../analyzers/pipeline/index.js";
+import { compareText } from "../utils/compare.js";
 
 export type AgentNavigationWriteResult = {
   indexPath: string;
@@ -26,24 +27,17 @@ export async function writeAgentNavigationFiles(
   await mkdir(featureDirectory, { recursive: true });
   await removeStaleFeatureMaps(featureDirectory);
 
-  // Dedup by id — safety net for features that generate the same id,
-  // e.g. "Checklist Item Management" and "checklist-item Management"
-  // both resolve to "checklist-item-management". First-seen wins.
-  const seenIds = new Set<string>();
-  const dedupedFeatures = snapshot.features.filter((feature) => {
-    const id = featureId(feature.name);
-    if (seenIds.has(id)) return false;
-    seenIds.add(id);
-    return true;
-  });
-
-  const featureIndexes = dedupedFeatures.map((feature) =>
-    createFeatureIndex(feature, snapshot)
+  // Two features can slug to the same id ("Checklist Item Management" and
+  // "checklist-item Management"). Both stay reachable: the later one gets a
+  // numeric suffix instead of silently disappearing from the index.
+  const ids = assignFeatureIds(snapshot.features);
+  const featureIndexes = snapshot.features.map((feature, index) =>
+    createFeatureIndex(feature, ids[index], snapshot)
   );
   const featurePaths: string[] = [];
 
-  for (const feature of dedupedFeatures) {
-    const id = featureId(feature.name);
+  for (const [index, feature] of snapshot.features.entries()) {
+    const id = ids[index];
     const path = join(featureDirectory, `${id}.json`);
     await writeJson(path, createFeatureMap(id, feature, snapshot));
     featurePaths.push(path);
@@ -75,8 +69,7 @@ export async function writeAgentNavigationFiles(
   return { indexPath, featurePaths };
 }
 
-function createFeatureIndex(feature: FeatureInfo, snapshot: ProjectMap): AgentFeatureIndex {
-  const id = featureId(feature.name);
+function createFeatureIndex(feature: FeatureInfo, id: string, snapshot: ProjectMap): AgentFeatureIndex {
   return {
     id,
     name: feature.name,
@@ -108,7 +101,7 @@ function createFeatureMap(id: string, feature: FeatureInfo, snapshot: ProjectMap
           - (featureOrder.get(right.path) ?? Number.MAX_SAFE_INTEGER)
         || (snapshot.fileIndex[right.path]?.importance ?? 0)
           - (snapshot.fileIndex[left.path]?.importance ?? 0)
-        || left.path.localeCompare(right.path);
+        || compareText(left.path, right.path);
     })
     .map((file) => file.path)
     .slice(0, 8);
@@ -164,7 +157,7 @@ function selectIndexCriticalFiles(snapshot: ProjectMap): string[] {
     })
     .sort((left, right) =>
       calculateStartHereScore(right, snapshot, entryDistance) - calculateStartHereScore(left, snapshot, entryDistance)
-      || left.localeCompare(right)
+      || compareText(left, right)
     )
     .slice(0, 8);
 }
@@ -241,7 +234,7 @@ function selectCriticalFiles(feature: FeatureInfo, snapshot: ProjectMap): string
     .sort((left, right) =>
       (snapshot.fileIndex[right]?.importance ?? 0)
       - (snapshot.fileIndex[left]?.importance ?? 0)
-      || left.localeCompare(right)
+      || compareText(left, right)
     )
     .slice(0, 5);
 }
@@ -273,6 +266,7 @@ function describeProjectKind(snapshot: ProjectMap): string {
   if (types.includes("web-app")) kinds.push("web application");
   if (types.includes("api-service")) kinds.push("API service");
   if (types.includes("library")) kinds.push("reusable library");
+  if (types.includes("vscode-extension")) kinds.push("VS Code extension");
 
   if (kinds.length === 0) return workspace;
   if (kinds.length === 1) {
@@ -295,6 +289,17 @@ function featureId(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "feature";
+}
+
+function assignFeatureIds(features: FeatureInfo[]): string[] {
+  const taken = new Set<string>();
+  return features.map((feature) => {
+    const base = featureId(feature.name);
+    let id = base;
+    for (let suffix = 2; taken.has(id); suffix += 1) id = `${base}-${suffix}`;
+    taken.add(id);
+    return id;
+  });
 }
 
 async function removeStaleFeatureMaps(directory: string): Promise<void> {

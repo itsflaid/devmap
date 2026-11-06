@@ -1,6 +1,6 @@
 # Catatan Debugging DevMap
 
-Terakhir diperbarui: 2026-10-30
+Terakhir diperbarui: 2026-10-31
 
 Dokumen ini menyimpan masalah teknis yang pernah ditemukan selama development
 DevMap. Tujuannya supaya penyebab, solusi, dan cara verifikasinya tidak perlu
@@ -1637,3 +1637,55 @@ yang nyata.
   snapshot dengan project harus menganalisis dan menyimpan di direktori yang sama.
 - Jika semua hasil tiba-tiba `stale: true`, periksa dulu apakah snapshot dan project
   yang dibandingkan memang folder yang sama sebelum mencurigai logika stale.
+
+---
+
+## 31. Rilis 0.9.0 Gagal karena Test `staleTtlMs: 0` Flaky di Runner yang Cepat
+
+**Tanggal:** 2026-10-31
+
+### Gejala
+
+Workflow `publish.yml` untuk tag `v0.9.0` gagal di langkah `Test CLI`:
+`# tests 482`, `# pass 481`, `# fail 1`. Paket belum terbit ke npm. Di laptop dan
+di sandbox semua 482 test lulus. Log yang ditempel terpotong sehingga nama test
+yang gagal tidak kelihatan, dan log lengkap tidak bisa diambil lewat API.
+
+### Akar Masalah
+
+`snapshotProvider` memakai ulang hasil cek stale selama
+`now() - staleCache.at > ttl`. Dengan `staleTtlMs: 0`, dua panggilan di
+milidetik yang sama tetap memakai cache karena `0 > 0` bernilai false. Test
+`results flag a stale snapshot after the project changes` memanggil `get()`,
+menambah file, lalu memanggil `get()` lagi; di mesin cepat kedua panggilan jatuh
+di milidetik yang sama sehingga hasilnya `stale: false`.
+
+Test ini tidak pernah jalan di runner sebelumnya karena workflow `ci.yml`
+berstatus `disabled_manually`; hanya `publish.yml` (Linux saja) yang menjalankan
+test, dan baru setelah test MCP ada.
+
+### Solusi
+
+- Ubah perbandingan menjadi `now() - staleCache.at >= ttl` (PR #138): TTL 0
+  tidak pernah memakai cache. TTL default 10 detik tidak berubah.
+- Tambah test dengan jam beku (`now: () => 1_000`) yang gagal tanpa perbaikan.
+- Karena 0.9.0 belum terbit, versi tetap 0.9.0 dan tag `v0.9.0` dipindah ke
+  merge commit #138 (hapus tag remote, buat ulang, push).
+
+### Verifikasi
+
+- Reproduksi: loop `mcp-*.test.ts` 8 kali di sandbox, test itu gagal 1 kali.
+  Skrip dengan jam beku mereproduksi `stale: false` secara deterministik.
+- Setelah perbaikan: `pnpm test:cli` 483 pass / 0 fail, loop 6 kali tanpa gagal.
+- Publish ulang hijau, `npm view @flaid/devmap version` menampilkan `0.9.0`.
+
+### Pelajaran
+
+- TTL cache yang bernilai 0 harus berarti "jangan cache". Pakai `>=` (atau cek
+  `ttl === 0`), jangan `>`.
+- Test yang bergantung pada urutan waktu nyata gampang flaky di mesin cepat.
+  Pakai jam yang bisa disuntik (`now`) dan uji kasus jam beku.
+- Workflow yang dinonaktifkan membuat test baru tidak teruji di runner mana pun.
+  Satu run publish yang gagal di langkah test aman: tidak ada yang terbit.
+- Jika log CI terpotong, nama test yang gagal bisa dicari dengan mereproduksi
+  lokal: fresh clone, `CI=true`, user non-root, `env -i`, lalu loop berulang.

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configModelCommand } from "../src/commands/config.js";
+import { configKeyCommand, configModelCommand } from "../src/commands/config.js";
+import { DevmapError } from "../src/utils/errors.js";
 import type { DevmapConfig } from "../src/utils/config.js";
 
 function persist<T>(ref: { value: T | null }) {
@@ -57,7 +58,7 @@ test("config model requires an existing initialized config", async () => {
   ));
 
   assert.equal(persisted, false);
-  assert.match(logs, /Run devmap init/i);
+  assert.match(logs, /Run devmap config key/i);
 });
 
 test("config model auto explains OpenRouter free routing", async () => {
@@ -100,3 +101,77 @@ async function captureOutput(action: () => Promise<void>): Promise<string> {
     console.error = originalError;
   }
 }
+
+test("config key creates a keyed config on first use and validates before saving", async () => {
+  const saved: { value: DevmapConfig | null } = { value: null };
+  let validatedWith = "";
+
+  await configKeyCommand("gsk_new", {
+    environment: {},
+    loadConfig: async () => null,
+    persistConfig: persist(saved),
+    validateApiKey: async (key, provider) => {
+      validatedWith = `${provider}:${key}`;
+    }
+  });
+
+  assert.equal(validatedWith, "groq:gsk_new");
+  assert.deepEqual(saved.value, { provider: "groq", model: "auto", apiKey: "gsk_new" });
+});
+
+test("config key replaces the key and keeps provider and model", async () => {
+  const saved: { value: DevmapConfig | null } = { value: null };
+
+  await configKeyCommand("sk-or-new", {
+    environment: {},
+    loadConfig: async () => ({ provider: "openrouter", apiKey: "sk-or-old", model: "openrouter/free" }),
+    persistConfig: persist(saved),
+    validateApiKey: async () => undefined
+  });
+
+  assert.deepEqual(saved.value, { provider: "openrouter", apiKey: "sk-or-new", model: "openrouter/free" });
+});
+
+test("config key reads the key from the provider environment variable", async () => {
+  const saved: { value: DevmapConfig | null } = { value: null };
+
+  await configKeyCommand(undefined, {
+    environment: { GROQ_API_KEY: "gsk_env" },
+    loadConfig: async () => null,
+    persistConfig: persist(saved),
+    validateApiKey: async () => undefined
+  });
+
+  assert.equal(saved.value?.apiKey, "gsk_env");
+});
+
+test("config key does not save a key that fails validation", async () => {
+  let persisted = false;
+
+  await assert.rejects(
+    configKeyCommand("bad", {
+      environment: {},
+      loadConfig: async () => null,
+      persistConfig: async () => {
+        persisted = true;
+      },
+      validateApiKey: async () => {
+        throw new DevmapError("Invalid key.");
+      }
+    }),
+    DevmapError
+  );
+  assert.equal(persisted, false);
+});
+
+test("config key fails clearly without a key when there is no terminal", async () => {
+  await assert.rejects(
+    configKeyCommand(undefined, {
+      environment: {},
+      isInteractive: false,
+      loadConfig: async () => null,
+      persistConfig: async () => undefined
+    }),
+    (error: unknown) => error instanceof DevmapError && /GROQ_API_KEY/.test(error.hint ?? "")
+  );
+});

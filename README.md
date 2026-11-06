@@ -217,6 +217,10 @@ claude mcp add devmap -- npx -y @flaid/devmap mcp
 }
 ```
 
+`devmap init --mcp opencode,claude,cursor` writes this entry for you
+(`opencode.json`, `.mcp.json`, `.cursor/mcp.json`) and merges into an existing
+file without touching other servers. Interactive `devmap init` offers it too.
+
 The server is read-only and static by default (no AI provider is contacted unless
 you start it with `--allow-ai`).
 
@@ -298,7 +302,7 @@ Use your preferred AI tool to change it.
 
 DevMap is free and open source.
 
-AI features require a provider API key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
+The API key is optional. Static analysis, the generated files and the MCP server work without one; AI-written narration and `devmap explain` need a provider key. DevMap uses Groq by default — analysis runs on free-tier infrastructure.
 
 | Provider                       | Status  |
 | ------------------------------- | ------- |
@@ -312,6 +316,10 @@ the selected model. For OpenRouter, pressing Enter at
 `OpenRouter model [openrouter/free]:` keeps the free router; typing another
 model ID uses that free or paid model instead. Change it later with
 `devmap config model <model-id>`.
+
+Press Enter at the key prompt to skip AI and add a key later with
+`devmap config key` (or `devmap config key <key>`; it also reads
+`GROQ_API_KEY` / `OPENROUTER_API_KEY`).
 
 API keys are stored locally:
 

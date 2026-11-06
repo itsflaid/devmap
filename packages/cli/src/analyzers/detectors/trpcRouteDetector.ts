@@ -1,6 +1,7 @@
 import type { ScannedFile } from "../analysis/index.js";
 import type { RouteInfo } from "./routeDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
+import { compareText } from "../../utils/compare.js";
 
 type ProcedureKind = "QUERY" | "MUTATION";
 
@@ -83,7 +84,7 @@ export function detectTrpcRoutes(
   }
 
   return routes.sort((left, right) =>
-    left.path.localeCompare(right.path) || left.file.localeCompare(right.file)
+    compareText(left.path, right.path) || compareText(left.file, right.file)
   );
 }
 
@@ -121,21 +122,22 @@ function parseRouterFile(
 
   const routerBody = content.slice(startIdx - 1, endIdx);
 
-  // Extract procedures by finding "name: publicProcedure" then scanning forward for .query or .mutation
-  const procStartPattern = /(\w+)\s*:\s*publicProcedure\b/g;
+  // A procedure starts at "name: <base>Procedure" (publicProcedure, protectedProcedure,
+  // t.procedure, ...) and its kind is the first .query/.mutation before the next procedure.
+  const procStartPattern = /(\w+)\s*:\s*(?:\w+\.)?\w*[pP]rocedure\b/g;
+  const starts = [...routerBody.matchAll(procStartPattern)];
   const procedures: Array<{ name: string; kind: ProcedureKind }> = [];
-  let procStartMatch = procStartPattern.exec(routerBody);
-  while (procStartMatch) {
-    const procName = procStartMatch[1];
-    const afterStart = routerBody.slice(procStartMatch.index + procStartMatch[0].length);
-    const kindMatch = afterStart.match(/\.(query|mutation)\s*\(/);
+  for (let index = 0; index < starts.length; index++) {
+    const start = starts[index];
+    const segmentStart = (start.index ?? 0) + start[0].length;
+    const segmentEnd = starts[index + 1]?.index ?? routerBody.length;
+    const kindMatch = routerBody.slice(segmentStart, segmentEnd).match(/\.(query|mutation)\s*\(/);
     if (kindMatch) {
       procedures.push({
-        name: procName,
+        name: start[1],
         kind: kindMatch[1].toUpperCase() as ProcedureKind
       });
     }
-    procStartMatch = procStartPattern.exec(routerBody);
   }
 
   // Extract sub-router references: "subRouter" used as values

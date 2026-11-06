@@ -330,8 +330,8 @@ There are three ways to refresh, from most to least hands-on:
 
 Without `--auto-refresh`, a question never writes to disk.
 
-Analysis takes a lock (`.devmap/analyze.lock`) so two servers or editor windows
-cannot write the snapshot at once. A lock left by a dead process, or older than
+Analysis takes a lock (`.devmap/analyze.lock`) so two servers, editor windows or a
+terminal `devmap analyze` cannot write the snapshot at once. A lock left by a dead process, or older than
 15 minutes, is taken over. If another analysis is running, `devmap_analyze`
 returns an error telling the agent to retry.
 

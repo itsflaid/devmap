@@ -54,7 +54,7 @@ test("doctor and config JSON outputs contain no formatting noise", async () => {
       }
     ));
 
-    assert.equal(parseSingleJson(doctorOutput).status, "issues");
+    assert.equal(parseSingleJson(doctorOutput).status, "ok");
     assert.equal(parseSingleJson(configOutput).model, "openai/gpt-oss-120b");
     assert.equal(savedModel, "openai/gpt-oss-120b");
   } finally {

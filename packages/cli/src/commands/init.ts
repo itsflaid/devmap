@@ -15,6 +15,13 @@ import {
 import { ensureDevmapFile } from "../utils/devmapFile.js";
 import { DevmapError } from "../utils/errors.js";
 import { ensureDevmapIgnored } from "../utils/gitignore.js";
+import {
+  MCP_CLIENT_LABELS,
+  MCP_CLIENTS,
+  ensureMcpConfig,
+  type McpClient,
+  type McpConfigResult
+} from "../utils/mcpConfig.js";
 import { output, withJsonOutput } from "../utils/output.js";
 import { createPrompt, type Prompt } from "../utils/prompt.js";
 import { renderWelcomeBrandPanel } from "../utils/welcome.js";
@@ -34,6 +41,7 @@ export type InitDependencies = {
   environmentOpenRouterApiKey?: string;
   loadConfig?: () => Promise<DevmapConfig | null>;
   persistConfig?: (config: DevmapConfig) => Promise<void>;
+  mcpClients?: McpClient[];
 };
 
 export async function initCommand(dependencies: InitDependencies = {}): Promise<void> {
@@ -104,19 +112,27 @@ async function runInit(
       provider
     });
 
-    output.step(`Validating ${providerName} API key`);
-    await validateApiKey(apiKey, provider, baseUrl);
-    output.success(`${providerName} API key is valid`);
+    let model: string | undefined;
+    if (apiKey) {
+      output.step(`Validating ${providerName} API key`);
+      await validateApiKey(apiKey, provider, baseUrl);
+      output.success(`${providerName} API key is valid`);
 
-    const model = await resolveInitialModel({
-      provider,
-      baseUrl,
-      apiKey,
-      prompt,
-      interactive,
-      existingConfig,
-      listModels: dependencies.listModels
-    });
+      model = await resolveInitialModel({
+        provider,
+        baseUrl,
+        apiKey,
+        prompt,
+        interactive,
+        existingConfig,
+        listModels: dependencies.listModels
+      });
+    } else {
+      output.note("No API key set. DevMap works without AI; add one later with: devmap config key");
+      if (descriptor.apiKeyHintUrl) {
+        output.note(`Create a ${providerName} key at ${descriptor.apiKeyHintUrl}`);
+      }
+    }
 
     const agentsStatus = await inspectAgentsFile(projectRoot);
     const appendToExistingAgents = agentsStatus === "existing"
@@ -127,37 +143,54 @@ async function runInit(
       ))
       : false;
 
+    const mcpClients = await resolveMcpClients(prompt, interactive, dependencies.mcpClients);
+
     await mkdir(resolve(projectRoot, ".devmap"), { recursive: true });
-    await persistConfig({
-      provider,
-      apiKey,
-      model,
-      ...(baseUrl ? { baseUrl } : {})
-    });
+    if (apiKey && model) {
+      await persistConfig({
+        provider,
+        apiKey,
+        model,
+        ...(baseUrl ? { baseUrl } : {})
+      });
+    }
 
     const ignored = await ensureDevmapIgnored(projectRoot);
     const devmapFileCreated = await ensureDevmapFile(projectRoot);
     const agentsResult = await ensureAgentsFile(projectRoot, appendToExistingAgents);
+    const mcpResults: McpConfigResult[] = [];
+    for (const client of mcpClients) {
+      mcpResults.push(await ensureMcpConfig(projectRoot, client));
+    }
 
-    output.success("Config saved to ~/.devmap/config.json");
-    if (model !== "auto") {
-      output.note(`${providerName} model: ${model}`);
-      output.note("Change it later with: devmap config model <model-id>");
+    if (apiKey && model) {
+      output.success("Config saved to ~/.devmap/config.json");
+      if (model !== "auto") {
+        output.note(`${providerName} model: ${model}`);
+        output.note("Change it later with: devmap config model <model-id>");
+      }
     }
     output.success(ignored ? "Added .devmap/ to .gitignore" : ".devmap/ already ignored");
     output.success(devmapFileCreated ? "Created DEVMAP.md" : "DEVMAP.md already exists");
     printAgentsResult(agentsResult);
+    for (const result of mcpResults) {
+      printMcpResult(result);
+    }
+    if (mcpResults.length === 0) {
+      output.note("Register the MCP server for your agent with: devmap init --mcp opencode|claude|cursor");
+    }
     output.step("Next: devmap analyze");
 
     return {
       status: "ok",
-      provider,
-      model,
+      aiConfigured: Boolean(apiKey && model),
+      ...(apiKey && model ? { provider, model } : {}),
       files: {
         gitignoreUpdated: ignored,
         devmapFileCreated,
         agentsFile: agentsResult
       },
+      mcp: mcpResults,
       next: "devmap analyze"
     };
   } finally {
@@ -167,6 +200,38 @@ async function runInit(
 
 function isAffirmative(answer: string): boolean {
   return ["y", "yes"].includes(answer.trim().toLowerCase());
+}
+
+function printMcpResult(result: McpConfigResult): void {
+  const label = MCP_CLIENT_LABELS[result.client];
+  if (result.status === "created") {
+    output.success(`Created ${result.file} with the DevMap MCP server`);
+  } else if (result.status === "added") {
+    output.success(`Added the DevMap MCP server to ${result.file}`);
+  } else if (result.status === "unchanged") {
+    output.success(`${result.file} already registers the DevMap MCP server`);
+  } else {
+    output.warning(`Skipped ${label}: ${result.reason ?? "could not update the file"}.`);
+  }
+}
+
+async function resolveMcpClients(
+  prompt: Prompt | null,
+  interactive: boolean,
+  requested: McpClient[] | undefined
+): Promise<McpClient[]> {
+  if (requested) return requested;
+  if (!interactive || !prompt) return [];
+
+  const choice = await prompt.select<McpClient | "skip">(
+    "Register the DevMap MCP server for an agent?",
+    [
+      { label: "Skip", value: "skip" },
+      ...MCP_CLIENTS.map((client) => ({ label: MCP_CLIENT_LABELS[client], value: client }))
+    ],
+    "skip"
+  );
+  return choice === "skip" ? [] : [choice];
 }
 
 function printAgentsResult(result: AgentsFileResult): void {
@@ -196,41 +261,23 @@ type ResolveApiKeyOptions = {
   provider: DevmapProvider;
 };
 
-async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string> {
+async function resolveApiKey(options: ResolveApiKeyOptions): Promise<string | null> {
   if (options.environmentApiKey?.trim()) {
     return options.environmentApiKey.trim();
   }
 
-  const descriptor = PROVIDERS[options.provider];
-  const providerName = descriptor.displayName;
+  const providerName = PROVIDERS[options.provider].displayName;
 
   if (!options.interactive || !options.prompt) {
-    if (options.existingApiKey?.trim()) {
-      return options.existingApiKey.trim();
-    }
-
-    throw new DevmapError(
-      `An ${providerName} API key is required to initialize DevMap.`,
-      `Run devmap init in an interactive terminal or set ${descriptor.envVarName}.`
-    );
+    return options.existingApiKey?.trim() || null;
   }
 
   const keyPrompt = options.existingApiKey
     ? `${providerName} API key [press Enter to keep existing]: `
-    : `${providerName} API key: `;
+    : `${providerName} API key [press Enter to skip]: `;
   const answer = (await options.prompt.ask(keyPrompt)).trim();
-  const apiKey = answer || options.existingApiKey?.trim();
 
-  if (!apiKey) {
-    throw new DevmapError(
-      `An ${providerName} API key is required.`,
-      descriptor.apiKeyHintUrl
-        ? `Create one at ${descriptor.apiKeyHintUrl}.`
-        : `Set ${descriptor.envVarName} or create a key in your endpoint's console.`
-    );
-  }
-
-  return apiKey;
+  return answer || options.existingApiKey?.trim() || null;
 }
 
 type ResolveBaseUrlOptions = {

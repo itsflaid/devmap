@@ -1,6 +1,7 @@
 import { Project, SyntaxKind } from "ts-morph";
 import type { ScannedFile } from "../analysis/index.js";
 import type { RouteInfo } from "./routeDetector.js";
+import { compareText } from "../../utils/compare.js";
 
 const ROUTE_DECORATORS = new Set([
   "Get",
@@ -82,6 +83,6 @@ export function detectNestRoutes(files: ScannedFile[]): RouteInfo[] {
   }
 
   return routes.sort((left, right) =>
-    left.path.localeCompare(right.path) || left.file.localeCompare(right.file)
+    compareText(left.path, right.path) || compareText(left.file, right.file)
   );
 }

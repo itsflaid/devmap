@@ -12,6 +12,7 @@ import {
   type PayloadUnreadableMessages,
   type StreamInterruptedMessages
 } from "./openaiCompatibleStream.js";
+import { compareText } from "../utils/compare.js";
 
 const GROQ_MODELS_URL = "https://api.groq.com/openai/v1/models";
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -446,7 +447,7 @@ async function readModelIds(response: Response): Promise<string[]> {
         if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
         if (aIndex !== -1) return -1;
         if (bIndex !== -1) return 1;
-        return a.localeCompare(b);
+        return compareText(a, b);
       });
   } catch {
     throw new DevmapError(

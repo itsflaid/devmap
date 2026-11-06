@@ -1,5 +1,6 @@
 export {
   scanFiles,
+  MAX_READ_BYTES,
 } from "./fileScanner.js";
 export type {
   ScannedFile,

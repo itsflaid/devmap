@@ -1,5 +1,6 @@
 import { output, type Spinner } from "../../utils/output.js";
 import { hashContent } from "../../cache/fileHash.js";
+import { DEVMAP_VERSION } from "../../utils/packageMetadata.js";
 import { REASON_TAGS } from "./reasonTags.js";
 import { analyzeFiles } from "./analyzerRegistry.js";
 import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
@@ -32,6 +33,7 @@ import {
 } from "../features/index.js";
 import {
   scanFiles,
+  MAX_READ_BYTES,
   parseJsonText,
   extractEntities,
   type ScannedFile,
@@ -45,6 +47,7 @@ import {
   domainFeaturesToFeatureInfo,
   type DomainInferenceResult,
 } from "../inference/index.js";
+import { compareText } from "../../utils/compare.js";
 
 export const SNAPSHOT_SCHEMA_VERSION = "1";
 
@@ -238,14 +241,21 @@ export async function createProjectMap(
       );
       const result = await inferDomain(inferenceInput, callAI, projectRoot);
       if (result) {
-        domain = result;
         // Merge domain-specific features ke features list.
         // Pakai similarity engine — bukan name equality — sehingga
         // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
         // Canonical name (first-seen) dipertahankan oleh mergeDomainFeatures.
-        const domainFeatures = domainFeaturesToFeatureInfo(result.domainFeatures);
-        mergeDomainFeatures(features, domainFeatures);
-        features.sort((a, b) => a.name.localeCompare(b.name));
+        // The merge runs on a copy so AI output can never abort the analysis or
+        // leave the static feature list half-updated.
+        try {
+          const merged = [...features];
+          mergeDomainFeatures(merged, domainFeaturesToFeatureInfo(result.domainFeatures));
+          merged.sort((a, b) => compareText(a.name, b.name));
+          features.splice(0, features.length, ...merged);
+          domain = result;
+        } catch {
+          domain = undefined;
+        }
       }
       activeSpinner.succeed(domain ? `Domain inferred: ${domain.domain}` : "Domain inference skipped");
     }
@@ -325,16 +335,22 @@ function createAgentInstructions(): ProjectMap["agentInstructions"] {
   };
 }
 
+// An unread file still has to change the fingerprint when it grows or shrinks.
+function contentHash(file: ScannedFile): string {
+  return hashContent(file.oversize ? `oversize:${file.size}` : file.content);
+}
+
 export function createProjectFingerprint(files: ScannedFile[]): string {
-  const content = files
-    .map((file) => [file.path, hashContent(file.content)] as const)
+  const entries = files
+    .map((file) => [file.path, contentHash(file)] as const)
     // Plain code-unit order: localeCompare would change the fingerprint of an
     // unchanged project when the machine locale differs.
     .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-    .map(([path, hash]) => `${path}:${hash}`)
-    .join("\n");
+    .map(([path, hash]) => `${path}:${hash}`);
 
-  return hashContent(content);
+  // The analyzer version is part of the fingerprint, so a snapshot written by an
+  // older DevMap is regenerated instead of being reused as "unchanged".
+  return hashContent([`devmap@${DEVMAP_VERSION}`, ...entries].join("\n"));
 }
 
 function rankCriticalFiles(
@@ -393,7 +409,7 @@ function rankCriticalFiles(
       return { path: file.path, referencedBy, score, reasons };
     })
     .filter((file) => file.score > 0)
-    .sort((left, right) => right.score - left.score || left.path.localeCompare(right.path))
+    .sort((left, right) => right.score - left.score || compareText(left.path, right.path))
     .slice(0, 10);
 }
 
@@ -469,7 +485,7 @@ function createFileIndexEntry(
   return {
     analyzer: analysis.analyzer,
     analysisConfidence: analysis.confidence,
-    hash: hashContent(file.content),
+    hash: contentHash(file),
     imports,
     exportedSymbols,
     symbols: analysis.symbols,
@@ -685,7 +701,7 @@ function attachFeatureEntryPoints(
     ])].sort((left, right) =>
       Number(isToolingPath(left)) - Number(isToolingPath(right))
       || left.split("/").length - right.split("/").length
-      || left.localeCompare(right)
+      || compareText(left, right)
     );
     const orderedFiles = feature.name === "Authentication"
       ? orderAuthenticationFiles(feature.files)
@@ -744,7 +760,7 @@ function chooseFeatureEntryPoint(
   if (featureName === "Documentation" && files.length > 1) {
     const sorted = [...files].sort((a, b) =>
       featureFilePriority(featureName, a) - featureFilePriority(featureName, b)
-      || a.localeCompare(b)
+      || compareText(a, b)
     );
     return sorted[0];
   }
@@ -928,17 +944,19 @@ function generateMinimalFlows(
   ];
 }
 
+const CONFIDENCE_RANK: Record<FeatureInfo["confidence"], number> = { low: 0, medium: 1, high: 2 };
+
 export function generateFeatureFlows(
   features: FeatureInfo[],
   fileIndex: Record<string, FileIndexEntry>,
   options: { limit?: number; minConfidence?: "high" | "medium" } = {}
 ): FlowInfo[] {
   const limit = options.limit ?? 3;
-  const minConfidence = options.minConfidence ?? "high";
+  const minimumRank = CONFIDENCE_RANK[options.minConfidence ?? "high"];
 
   return features
     .filter((feature) =>
-      feature.confidence === minConfidence
+      CONFIDENCE_RANK[feature.confidence] >= minimumRank
       && feature.businessFlow.length > 1
       && !feature.businessFlow.some((step) => /^Identify files related to /i.test(step))
     )
@@ -1182,6 +1200,14 @@ function detectAnalysisWarnings(
     warnings.push("No features detected. Feature-based navigation may be unavailable.");
   }
 
+  const unread = files.filter((file) => file.oversize);
+  if (unread.length > 0) {
+    const names = unread.slice(0, 5).map((file) => file.path).join(", ");
+    warnings.push(
+      `${unread.length} file(s) over ${MAX_READ_BYTES / (1024 * 1024)} MB were listed but not read: ${names}${unread.length > 5 ? ", ..." : ""}.`
+    );
+  }
+
   const packageJson = files.find((file) => file.path === "package.json");
   if (!packageJson) {
     return warnings;
@@ -1196,10 +1222,12 @@ function detectAnalysisWarnings(
   return warnings;
 }
 
+// Lookarounds, not `([A-Z]+)([A-Z][a-z])`: that pattern is quadratic on a long run
+// of capitals, and a 100,000-letter class name made the index step take 7 seconds.
 function splitSearchTerms(value: string): string[] {
   const spaced = value
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+    .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, " ");
 
   return spaced
     .toLowerCase()

@@ -5,6 +5,7 @@ import type {
   RelationInfo,
 } from "../analysis/index.js";
 import { classifyFileRole, isTechnicalFeatureSource, isDocumentationMeta, type FileRole } from "../analysis/index.js";
+import { IMPORT_CLAUSE } from "../analysis/importClause.js";
 import type {
   DatabaseInfo,
   RouteInfo,
@@ -22,6 +23,7 @@ import {
 } from "./featureCandidates.js";
 import { HOME_FEATURE_NAME } from "../detectors/frontendFeatureDetector.js";
 import { FEATURE_SIGNALS, hasAiProviderUrl, isAiProviderImport, type FeatureSignal } from "../registry/index.js";
+import { compareText } from "../../utils/compare.js";
 
 export type FeatureInfo = {
   name: string;
@@ -354,7 +356,7 @@ export function detectFeatures(
       .map((file) => file.path)
       .sort((left, right) =>
         featureFilePriority(definition.name, left) - featureFilePriority(definition.name, right)
-        || left.localeCompare(right)
+        || compareText(left, right)
       )
       .slice(0, 12);
 
@@ -409,7 +411,7 @@ export function detectFeatures(
       .map((file) => file.path)
       .sort((left, right) =>
         featureFilePriority(signal.name, left) - featureFilePriority(signal.name, right)
-        || left.localeCompare(right)
+        || compareText(left, right)
       )
       .slice(0, 5);
 
@@ -425,7 +427,7 @@ export function detectFeatures(
       candidates.push(toFeatureCandidate("registry", `signal-${signal.name}`, createFeatureInfo(
         signal.name,
         evidence,
-        signal.terms,
+        groundedSignalTerms(signal, evidence, analyses),
         signal.purpose,
         analyses
       )));
@@ -466,7 +468,7 @@ export function detectFeatures(
   const reconciliation = reconcileFeatureCandidates(candidates, fileReferenceCounts);
   const features = projectFeatureCandidates(reconciliation.clusters);
   const enriched = enrichAuthenticationFeature(features, reconciliation.clusters, scopedFiles, analyses)
-    .sort((left, right) => left.name.localeCompare(right.name));
+    .sort((left, right) => compareText(left.name, right.name));
   return {
     features: enriched,
     mergeDecisions: reconciliation.mergeDecisions ?? [],
@@ -702,7 +704,7 @@ function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
     .sort((a, b) => {
       const tierDiff = entityFileTierScore(a) - entityFileTierScore(b);
       if (tierDiff !== 0) return tierDiff;
-      return a.localeCompare(b);
+      return compareText(a, b);
     })
     .slice(0, 5);
 }
@@ -710,7 +712,7 @@ function findEntityFiles(entityName: string, files: ScannedFile[]): string[] {
 function splitNameToSegments(name: string): string[] {
   return name
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, " ")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
@@ -926,6 +928,28 @@ function matchesSignal(
 }
 
 /**
+ * The registry lists every vendor and keyword a signal knows about. Only the
+ * ones this project's evidence really contains belong in its search terms, or an
+ * agent reading "clerk, auth0, kinde" assumes the project uses them.
+ */
+function groundedSignalTerms(
+  signal: Pick<FeatureSignal, "name" | "terms" | "importTerms" | "importOnly">,
+  evidence: string[],
+  analyses: Record<string, FileAnalysis>
+): string[] {
+  if (signal.importOnly) return signal.terms;
+
+  const paths = evidence.map((path) => path.toLowerCase());
+  const grounded = [...signal.terms, ...(signal.importTerms ?? [])].filter((term) =>
+    paths.some((path) => matchesPathTerm(path, term))
+    || evidence.some((path) =>
+      analyses[path]?.imports.some((specifier) => !specifier.startsWith(".") && matchesImportTerm(specifier, term))
+    )
+  );
+  return grounded.length > 0 ? [...new Set(grounded)] : [signal.name.toLowerCase()];
+}
+
+/**
  * matchesImportTerm — segment-aware import specifier matching.
  *
  * Prevents false positives like "author" matching the "auth" signal.
@@ -1130,7 +1154,7 @@ export function featureFilePriority(featureName: string, path: string): number {
 export function orderAuthenticationFiles(files: string[]): string[] {
   return [...new Set(files)].sort((left, right) =>
     authenticationFilePriority(left) - authenticationFilePriority(right)
-    || left.localeCompare(right)
+    || compareText(left, right)
   );
 }
 
@@ -1153,7 +1177,10 @@ export function authenticationFilePriority(path: string): number {
 // ---------------------------------------------------------------------------
 function extractImportsFallback(content: string): string[] {
   const imports: string[] = [];
-  const pattern = /(?:import\s+(?:[^'"]+\s+from\s+)?|require\()\s*['"]([^'"]+)['"]/g;
+  const pattern = new RegExp(
+    String.raw`(?:import\s+(?:${IMPORT_CLAUSE}\s+from\s+)?|require\()\s*['"]([^'"]+)['"]`,
+    "g"
+  );
   let match = pattern.exec(content);
   while (match) {
     imports.push(match[1].toLowerCase());

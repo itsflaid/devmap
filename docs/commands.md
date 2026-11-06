@@ -15,6 +15,7 @@ configuration command:
 * `devmap explain`
 * `devmap mcp`
 * `devmap doctor`
+* `devmap config key`
 * `devmap config model`
 
 ---
@@ -33,13 +34,19 @@ It should be run once per machine/project, or again when changing provider crede
 
 ```bash
 devmap init
+devmap init --mcp opencode,claude,cursor   # also register the MCP server
 ```
+
+The API key is optional. Press Enter at the key prompt (or run without
+`GROQ_API_KEY` / `OPENROUTER_API_KEY` in a non-interactive shell) to skip AI
+setup: the project files are still created and nothing is written to
+`~/.devmap/config.json`. Add a key later with `devmap config key`.
 
 ### Responsibilities
 
 * Confirm AI provider
-* Input API key or read environment variable
-* Validate API key
+* Input API key or read environment variable (optional, Enter skips)
+* Validate API key when one is given
 * Ask for a Groq model from the provider model list
 * Ask for an OpenRouter model; Enter defaults to `openrouter/free`
 * Save global configuration to `~/.devmap/config.json`
@@ -48,6 +55,9 @@ devmap init
 * Add `.devmap/` to `.gitignore`
 * Generate `DEVMAP.md`
 * Handle `AGENTS.md` safely
+* Optionally register the MCP server (`--mcp`, or the interactive prompt):
+  `opencode.json`, `.mcp.json` or `.cursor/mcp.json`. An existing file is merged,
+  never overwritten, and a file that is not plain JSON is left alone
 
 ### Flow
 
@@ -360,7 +370,7 @@ It should help answer:
 ```bash
 devmap flow                    # curated top flows from the snapshot
 devmap flow --all              # uncapped: also medium-confidence features and non-API routes
-devmap flow authentication     # one specific flow (match is case-insensitive)
+devmap flow authentication     # one specific flow (case-insensitive; falls back to the uncapped list when it isn't curated)
 devmap flow --json
 ```
 
@@ -482,8 +492,8 @@ Cursor, opencode and Codex.
 * Static by default: no AI provider is contacted, and the AI config is not read,
   unless `--allow-ai` is set
 * `--auto-refresh` is off by default: a question never writes to disk
-* Analysis takes `.devmap/analyze.lock` so two servers do not write the snapshot
-  at once
+* Analysis takes `.devmap/analyze.lock` (as does `devmap analyze`) so two analyses
+  do not write the snapshot at once
 * `devmap mcp` has no `--json` flag; its output is the protocol
 
 ---
@@ -511,10 +521,18 @@ devmap doctor
 * API key status
 * Selected model, annotated with its source: `(project override)` when a
   `.devmap/config.local.json` model is active, `(global)` otherwise
-* Snapshot status
+* Snapshot status and age (`up to date` or `stale`)
+* MCP server self-check: the server is started in-process and its tools are listed
+  (nothing is written, stdio is not touched)
+* MCP clients: which of `opencode.json`, `.mcp.json` and `.cursor/mcp.json`
+  already register `devmap`
 * Project detection
 * OS/platform
 * Permission issues
+
+A missing API key is not an issue because AI is optional; it is reported as a
+note with the command that fixes it (`devmap config key`). A failing MCP
+self-check is an issue.
 
 ### Output — No Issues
 
@@ -531,6 +549,9 @@ Package Manager     npm
 Provider            groq
 Config              exists
 Snapshot            valid
+Snapshot age        up to date
+MCP server          ready (7 tools)
+MCP clients         opencode
 API key             valid
 Model               openai/gpt-oss-20b (project override)
 
@@ -549,19 +570,23 @@ Project             my-app
 Framework           next.js
 Workspace Frameworks express
 Package Manager     npm
-Provider            not configured
-Config              missing
-Snapshot            stale
-API key             missing
-Model               not configured
+Provider            groq
+Config              exists
+Snapshot            valid
+Snapshot age        stale
+MCP server          failed
+MCP clients         none registered
+API key             invalid or unreachable
+Model               openai/gpt-oss-20b (global)
 
-Issues found:
+Notes
 
-Provider is not configured
-  Run devmap init to set up an AI provider.
+The code changed since the last analysis. Run devmap analyze, or let your agent call devmap_analyze.
+No agent is registered for the MCP server. Run: devmap init --mcp opencode|claude|cursor
 
-Snapshot is stale
-  Run devmap analyze to refresh the snapshot.
+Issues
+
+The MCP server failed its self-check: <reason>.
 ```
 
 ### Rules
@@ -570,6 +595,24 @@ Snapshot is stale
 * Errors must be actionable
 * Do not expose raw stack traces
 * Mention what command the user should run next
+
+---
+
+## `devmap config key`
+
+Set or replace the AI provider API key. AI is optional, so this is how a key
+gets added after `devmap init` was run without one.
+
+```bash
+devmap config key                    # reads GROQ_API_KEY / OPENROUTER_API_KEY, else prompts
+devmap config key gsk_xxx
+devmap config key sk-or-xxx --provider openrouter
+```
+
+The key is validated against the provider before it is saved. The configured
+provider and model are kept; with no config yet it defaults to Groq and
+automatic model routing. A custom endpoint needs `devmap init` first because it
+needs a base URL.
 
 ---
 
@@ -679,8 +722,8 @@ Contract:
 * runtime failures return a JSON object with `status`, `error`, and optional `hint`
 * `devmap mcp` is the exception: it has no `--json` flag because stdout is the
   MCP protocol stream
-* `init --json` never prompts and therefore requires `GROQ_API_KEY`,
-  `OPENROUTER_API_KEY`, or an existing API key
+* `init --json` never prompts; without `GROQ_API_KEY`, `OPENROUTER_API_KEY` or an
+  existing API key it skips AI setup (`aiConfigured: false`)
 * package-manager wrapper warnings may appear on stderr and are not part of the
   DevMap JSON document
 

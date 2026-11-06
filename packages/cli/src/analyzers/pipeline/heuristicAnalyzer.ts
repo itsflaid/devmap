@@ -7,6 +7,8 @@ import type {
   ScannedFile,
 } from "../analysis/index.js";
 import { readLanguage, supportsLanguageReader } from "./languageReaders.js";
+import { IMPORT_CLAUSE } from "../analysis/importClause.js";
+import { compareText } from "../../utils/compare.js";
 
 // TS/JS extensions are intentionally excluded here.
 // TsMorphAnalyzer handles .ts/.tsx/.js/.jsx with full AST accuracy (confidence: "high").
@@ -95,7 +97,10 @@ export class FallbackAnalyzer implements FileAnalyzer {
 
 function readImportSpecifiers(content: string): string[] {
   const imports = new Set<string>();
-  const pattern = /(?:\bimport\s+(?:[^'"]+\s+from\s+)?|\bexport\s+[^'"]+\s+from\s+|\b(?:require|import)\s*\(\s*)['"]([^'"]+)['"]/g;
+  const pattern = new RegExp(
+    String.raw`(?:\bimport\s+(?:${IMPORT_CLAUSE}\s+from\s+)?|\bexport\s+${IMPORT_CLAUSE}\s+from\s+|\b(?:require|import)\s*\(\s*)['"]([^'"]+)['"]`,
+    "g"
+  );
   let match = pattern.exec(content);
 
   while (match) {
@@ -174,7 +179,7 @@ function readSymbols(content: string): SymbolInfo[] {
     }
   }
 
-  return [...symbols.values()].sort((left, right) => left.line - right.line || left.name.localeCompare(right.name));
+  return [...symbols.values()].sort((left, right) => left.line - right.line || compareText(left.name, right.name));
 }
 
 function lineAt(content: string, index: number): number {
@@ -184,5 +189,5 @@ function lineAt(content: string, index: number): number {
 function compareFunctions(left: FunctionInfo, right: FunctionInfo): number {
   return Number(right.exported) - Number(left.exported)
     || left.line - right.line
-    || left.name.localeCompare(right.name);
+    || compareText(left.name, right.name);
 }

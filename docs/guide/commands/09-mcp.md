@@ -98,8 +98,11 @@ Before taking the lock, `run()` checks staleness. When nothing changed it return
 `unchanged` without touching the lock or the analyzer, so a call that has nothing
 to do is also never blocked by another process's analysis.
 
-`devmap analyze` in the terminal does **not** take this lock. The window for a
-collision is small, but it exists; if it matters, `runAnalyze` is the place to add it.
+`devmap analyze` in the terminal takes the same lock (`analyzeCommand` wraps
+`runAnalyze`). `runAnalyze` itself does not, because the refresher already holds
+the lock when it calls it. If a terminal analysis is running, `devmap_analyze`
+returns the "already running" error, and `devmap analyze` fails the same way
+while the server is refreshing.
 
 ### `aiDataDropped`
 

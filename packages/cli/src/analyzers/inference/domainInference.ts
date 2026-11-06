@@ -5,6 +5,7 @@ import { classifyOwnershipTopology, type OwnershipPattern } from "./ownershipTop
 import { createHash } from "node:crypto";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,7 +64,7 @@ type DomainInferenceCache = {
 
 function hashDomainInput(input: DomainInferenceInput): string {
   const stable = JSON.stringify({
-    v: 2,
+    v: 3,
     entityNames: [...input.entityNames].sort(),
     relations: [...input.relations]
       .map((r) => `${r.from}:${r.kind}:${r.to}`)
@@ -81,15 +82,17 @@ function hashDomainInput(input: DomainInferenceInput): string {
 
 async function readDomainCache(
   projectRoot: string,
-  inputHash: string
+  inputHash: string,
+  input: DomainInferenceInput
 ): Promise<DomainInferenceResult | null> {
   try {
     const cachePath = join(projectRoot, ".devmap", "domain-cache.json");
     const raw = await readFile(cachePath, "utf-8");
-    const cache = JSON.parse(raw) as DomainInferenceCache;
+    const cache = JSON.parse(raw) as Partial<DomainInferenceCache>;
 
     if (cache.inputHash !== inputHash) return null; // input berubah → stale
-    return cache.result;
+    // A cached result that no longer passes validation is a miss, not a crash.
+    return sanitizeDomainResult(cache.result, input);
   } catch {
     return null; // file tidak ada atau corrupt → miss
   }
@@ -151,7 +154,7 @@ export async function inferDomain(
 
   // Cache hit → return langsung, no LLM call
   if (projectRoot) {
-    const cached = await readDomainCache(projectRoot, inputHash);
+    const cached = await readDomainCache(projectRoot, inputHash, input);
     if (cached) return cached;
   }
 
@@ -220,7 +223,8 @@ Respond with ONLY a JSON object (no markdown, no explanation):
 }
 
 Rules:
-- domainFeatures: 3-6 features specific to this domain, not generic technical features
+- domainFeatures: up to 6 features specific to this domain, not generic technical features. Use an empty array when the metadata does not support any
+- Every relatedEntities value must be copied from the entities list above
 - Do not include Authentication, Database, or other infrastructure as domainFeatures
 - Base everything on the metadata provided, not assumptions
 - Entity names alone (e.g. 'Message', 'Room', 'User') are NOT reliable signals of application domain. The same entity name can represent a chat message, an activity log, a personal note, or a comment — depending on ownership pattern, not naming. Use ownershipPattern and absentCapabilities as primary evidence: single_user_isolated strongly suggests a personal/private tool (notes, journal, tracker), not a multi-user communication platform. Only conclude 'chat' or 'messaging' domain if ownershipPattern is shared_access or direct_messaging, or detectedCapabilities includes collaboration/social/real-time.`;
@@ -229,6 +233,67 @@ Rules:
 // ---------------------------------------------------------------------------
 // Response parser
 // ---------------------------------------------------------------------------
+
+const domainFeatureSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  purpose: z.string().trim().min(1).max(300),
+  relatedEntities: z.union([
+    z.array(z.string()),
+    z.string().transform((value) => [value])
+  ])
+});
+
+const domainResultSchema = z.object({
+  domain: z.string().trim().min(1).max(80),
+  summary: z.string().trim().min(1).max(500),
+  confidence: z.number().optional(),
+  domainFeatures: z.array(z.unknown()).optional()
+});
+
+/**
+ * Single gate for everything the model (or a stale cache file) hands back.
+ * Wrong types are rejected instead of crashing later, and a domain feature only
+ * survives with entities that really exist in the static analysis, because an
+ * AI feature has no files of its own to be grounded in.
+ */
+function sanitizeDomainResult(
+  value: unknown,
+  input: DomainInferenceInput
+): DomainInferenceResult | null {
+  const parsed = domainResultSchema.safeParse(value);
+  if (!parsed.success) return null;
+
+  const knownEntities = new Map(input.entityNames.map((name) => [name.toLowerCase(), name]));
+  const domainFeatures: DomainFeature[] = [];
+
+  for (const candidate of parsed.data.domainFeatures ?? []) {
+    const feature = domainFeatureSchema.safeParse(candidate);
+    if (!feature.success) continue;
+
+    const relatedEntities = [...new Set(
+      feature.data.relatedEntities
+        .map((name) => knownEntities.get(name.trim().toLowerCase()))
+        .filter((name): name is string => name !== undefined)
+    )];
+    if (relatedEntities.length === 0) continue;
+
+    domainFeatures.push({
+      name: feature.data.name,
+      purpose: feature.data.purpose,
+      relatedEntities
+    });
+    if (domainFeatures.length === 6) break;
+  }
+
+  return {
+    domain: parsed.data.domain,
+    summary: parsed.data.summary,
+    domainFeatures,
+    confidence: Math.min(1, Math.max(0, parsed.data.confidence ?? 0)),
+    model: "unknown",
+    tokensUsed: 0
+  };
+}
 
 function parseDomainInferenceResponse(
   raw: string,
@@ -242,36 +307,7 @@ function parseDomainInferenceResponse(
       .replace(/```\s*$/i, "")
       .trim();
 
-    const parsed = JSON.parse(cleaned) as {
-      domain?: string;
-      summary?: string;
-      confidence?: number;
-      domainFeatures?: Array<{
-        name?: string;
-        purpose?: string;
-        relatedEntities?: string[];
-      }>;
-    };
-
-    if (!parsed.domain || !parsed.summary) return null;
-
-    const domainFeatures: DomainFeature[] = (parsed.domainFeatures ?? [])
-      .filter((f) => f.name && f.purpose)
-      .map((f) => ({
-        name: f.name!,
-        purpose: f.purpose!,
-        relatedEntities: f.relatedEntities ?? []
-      }))
-      .slice(0, 6);
-
-    return {
-      domain: parsed.domain,
-      summary: parsed.summary,
-      domainFeatures,
-      confidence: Math.min(1, Math.max(0, parsed.confidence ?? 0.7)),
-      model: "unknown", // diisi caller
-      tokensUsed: 0     // diisi caller
-    };
+    return sanitizeDomainResult(JSON.parse(cleaned), input);
   } catch {
     return null;
   }

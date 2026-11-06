@@ -23,14 +23,14 @@ const links = [
       <a class="site-header__nav-cta" href={SITE.npm}>npm</a>
     </nav>
 
-    <div class="site-header__gh">
-      <a class="btn btn--ghost" href={SITE.github}>
+    <div class="site-header__pill">
+      <a class="site-header__pill-link site-header__pill-link--light" href={SITE.github}>
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
           <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.71 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2-3.65-.89-3.65-3.96 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.08-1.87 3.76-3.65 3.96.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
         </svg>
         GitHub
       </a>
-      <a class="btn btn--ghost" href={SITE.npm}>
+      <a class="site-header__pill-link site-header__pill-link--dark" href={SITE.npm}>
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="currentColor">
           <path fill-rule="evenodd" d="M1 1h14v14H1V1Zm2.5 11.5H8v-7h2.5v7h2v-9h-9v9Z" />
         </svg>
@@ -159,14 +159,51 @@ const links = [
     display: none;
   }
 
-  .site-header__gh {
-    display: flex;
-    gap: 0.5rem;
+  /* One pill, two halves: GitHub on white, npm on black. */
+  .site-header__pill {
+    display: inline-flex;
+    align-items: stretch;
+    min-height: 2.5rem;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    overflow: hidden;
+    font-size: 0.9375rem;
+    font-weight: 500;
   }
 
-  .site-header__gh .btn {
-    min-height: 2.5rem;
+  .site-header__pill-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
     padding: 0 1.1rem;
+    transition:
+      background 150ms ease,
+      color 150ms ease;
+  }
+
+  .site-header__pill-link--light {
+    padding-right: 1rem;
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .site-header__pill-link--light:hover {
+    background: var(--wash);
+  }
+
+  .site-header__pill-link--dark {
+    padding-left: 1rem;
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .site-header__pill-link--dark:hover {
+    background: var(--night-2);
+  }
+
+  /* The pill clips overflow, so keep the focus ring inside it. */
+  .site-header__pill-link:focus-visible {
+    outline-offset: -4px;
   }
 
   .site-header__toggle {
@@ -175,7 +212,7 @@ const links = [
 
   /* Narrow screens: the pill becomes a panel under the bar. */
   @media (max-width: 58rem) {
-    .site-header__gh {
+    .site-header__pill {
       display: none;
     }
 

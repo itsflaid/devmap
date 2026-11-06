@@ -21,7 +21,9 @@ Menjalankan `devmap analyze` 0.9.1 ke express, fastify, vuejs/core, nest dan cal
 **Verifikasi:** `pnpm build` dan `pnpm test` di `packages/cli`: 541 pass / 0 fail, `tsc --noEmit` bersih.
 Test baru ada di `framework-routes.test.ts` dan `onboarding-library.test.ts`.
 
-**Belum:** versi tidak dinaikkan dan tidak ada tag. Menunggu keputusan bump.
+**Rilis:** PR #146 sudah merge. Branch `release/0.9.2` menaikkan `packages/cli/package.json` dan
+`server.json` ke 0.9.2 dan memindahkan changelog ke section 0.9.2. Tag `v0.9.2` dibuat manual di merge
+commit PR rilis (memicu `publish.yml`).
 
 ---
 

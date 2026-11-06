@@ -4,6 +4,18 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- NestJS routes read the `@Controller({ path })` object form and array paths (`@Controller(['a', 'b'])`,
+  `@Post(['x', 'y'])`). The controller prefix used to be dropped, so
+  `@Controller({ path: '/v2/clients/:clientId' })` with `@Get('/')` was reported as `/`
+- Routes no longer come from specs, e2e suites or sample apps. `isArchitectureSource` now also treats
+  a root-level or workspace-member `integration/` and `sample/` folder as non-production, so a repo
+  like NestJS no longer reports 633 test-only routes (1 left) or `integration/*/app.module.ts` as
+  entry points
+- Onboarding calls a published package with no app, API or CLI in it a library ("fastify — a
+  reusable library.") instead of "Personal app with caching as the core feature"
+
 ### Planned
 
 - Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature

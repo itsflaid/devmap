@@ -32,6 +32,13 @@ function buildTagline(snapshot: ProjectMap, language: OnboardingLanguage): strin
     return firstSentence.endsWith(".") ? firstSentence : `${firstSentence}.`;
   }
 
+  if (isLibraryOnly(snapshot)) {
+    const name = snapshot.project.name || "Project";
+    return language === "id"
+      ? `${name} — library yang dipakai ulang oleh project lain.`
+      : `${name} — a reusable library.`;
+  }
+
   const ownershipHint = resolveOwnershipHint(snapshot, language);
   const primaryFeature = snapshot.features[0];
 
@@ -51,6 +58,18 @@ function buildTagline(snapshot: ProjectMap, language: OnboardingLanguage): strin
   return language === "id"
     ? `${snapshot.project.name || "Project"} — aplikasi ${fw}.`
     : `${snapshot.project.name || "Project"} — ${fw} application.`;
+}
+
+/**
+ * A published package with no app or service in it. Its capabilities say
+ * nothing about users or sharing, so app wording ("Personal app") would be wrong.
+ */
+function isLibraryOnly(snapshot: ProjectMap): boolean {
+  const types = snapshot.project.projectTypes;
+  return types.includes("library")
+    && !types.includes("web-app")
+    && !types.includes("api-service")
+    && !types.includes("node-cli");
 }
 
 function resolveOwnershipHint(snapshot: ProjectMap, language: OnboardingLanguage): string | null {
@@ -107,11 +126,19 @@ function buildWhatThisIs(snapshot: ProjectMap, language: OnboardingLanguage): st
     sentences.push(snapshot.ai.architecture);
   } else if (features.length > 0) {
     const topFeatures = features.slice(0, 3).map((f) => f.toLowerCase()).join(", ");
-    sentences.push(
-      language === "id"
-        ? `${name} menangani ${topFeatures}.`
-        : `${name} handles ${topFeatures}.`
-    );
+    if (isLibraryOnly(snapshot)) {
+      sentences.push(
+        language === "id"
+          ? `${name} adalah library; kodenya menyentuh area ${topFeatures}.`
+          : `${name} is a library; its code touches ${topFeatures}.`
+      );
+    } else {
+      sentences.push(
+        language === "id"
+          ? `${name} menangani ${topFeatures}.`
+          : `${name} handles ${topFeatures}.`
+      );
+    }
   }
 
   const domainPattern = (snapshot.domain as { ownershipPattern?: string })?.ownershipPattern;

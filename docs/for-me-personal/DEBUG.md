@@ -1689,3 +1689,46 @@ test, dan baru setelah test MCP ada.
   Satu run publish yang gagal di langkah test aman: tidak ada yang terbit.
 - Jika log CI terpotong, nama test yang gagal bisa dicari dengan mereproduksi
   lokal: fresh clone, `CI=true`, user non-root, `env -i`, lalu loop berulang.
+
+---
+
+## 32. Route Nest Kehilangan Prefix, Route Test Ikut Terhitung, Onboarding Library Salah
+
+**Tanggal:** 2026-11-06
+
+### Gejala
+
+- cal.com: `@Controller({ path: "/v2/atoms/auth/oauth2/clients/:clientId" })` dengan `@Get("/")`
+  dilaporkan sebagai route `/`.
+- nest: 634 route, 633 di antaranya dari `*.spec.ts`, `e2e/`, `integration/` dan `sample/`.
+  Entry point juga berisi `integration/*/app.module.ts`.
+- fastify: `devmap onboarding` menulis "Personal app with caching as the core feature".
+
+### Akar masalah
+
+- `detectNestRoutes` hanya membaca argumen `@Controller` yang berupa string literal. Bentuk objek
+  dan array menghasilkan prefix kosong.
+- `detectRoutes` hanya memfilter file test di detector Next, Astro, Nuxt dan SvelteKit, bukan di
+  detector lain. `isArchitectureSource` juga belum mengenal `integration/` dan `sample/`.
+- `resolveOwnershipHint` menganggap project tanpa capability sharing, real-time atau social sebagai
+  "Personal app", termasuk library yang tidak punya user sama sekali.
+
+### Solusi
+
+- Nest membaca `{ path }` dan array path (controller maupun method), lalu menghapus trailing slash.
+- `detectRoutes` membuang route yang `file`-nya bukan `isArchitectureSource`. `integration` dan
+  `sample` masuk ke `SAMPLE_SEGMENTS` (hanya dikenali di root atau root workspace member).
+- `isLibraryOnly` di `modelBuilder.ts`: tagline dan `whatThisIs` memakai kata library.
+
+### Verifikasi
+
+- 3 test baru, `pnpm test` 541 pass / 0 fail.
+- Jalankan ulang di clone nest, cal.com dan fastify: nest 1 route, cal.com route benar, fastify
+  "a reusable library.".
+
+### Pelajaran
+
+- Fingerprint memuat versi DevMap, jadi snapshot lama dipakai ulang ("Project is unchanged")
+  walau kode analyzer sudah berubah. Saat memverifikasi dari source, hapus `.devmap/` atau pakai
+  `--fresh`.
+- Filter file test sebaiknya satu titik di `detectRoutes`, bukan diulang di tiap detector.

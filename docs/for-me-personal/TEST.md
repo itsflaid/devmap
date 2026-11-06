@@ -15,6 +15,21 @@ Ada beberapa versi DevMap yang dapat diuji:
 | npm link | CLI global sementara | Menguji command `devmap` dari folder mana pun |
 | CI/runtime | OS dan versi Node berbeda | Verifikasi lintas platform sebelum release |
 
+## Uji di repo populer (2026-11-06)
+
+Memastikan analyzer stabil dan tidak mengarang di project yang tidak dikenal.
+
+```bash
+git clone --depth 1 https://github.com/nestjs/nest /tmp/nest
+rm -rf /tmp/nest/.devmap          # fingerprint memuat versi, snapshot lama akan dipakai ulang
+node packages/cli/dist/index.js analyze /tmp/nest
+node packages/cli/dist/index.js onboarding /tmp/nest
+```
+
+Hasil yang diharapkan: exit 0, dua run menghasilkan snapshot sama, route tidak berasal dari
+`*.spec.ts`, `e2e/`, `integration/` atau `sample/`, dan library (fastify, express) tidak disebut
+"Personal app". Repo yang sudah dicoba: express, fastify, vuejs/core, nest, calcom/cal.com.
+
 ## MCP server (2026-10-30)
 
 Prasyarat: `pnpm install --frozen-lockfile`, Node 22.12+.

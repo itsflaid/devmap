@@ -447,6 +447,68 @@ test("detectRoutes composes @Controller prefix with method decorator paths", () 
   );
 });
 
+test("detectRoutes reads the @Controller object form and array paths", () => {
+  const files = [
+    createScannedFile("package.json", JSON.stringify({ dependencies: { "@nestjs/common": "^11.0.0" } })),
+    createScannedFile("src/oauth/oauth.controller.ts", [
+      'import { Controller, Get, Post } from "@nestjs/common";',
+      "@Controller({",
+      "  path: \"/v2/clients/:clientId\",",
+      "  version: [\"1\", \"2\"]",
+      "})",
+      "export class OAuthController {",
+      "  @Get(\"/\")",
+      "  getClient() {}",
+      "",
+      "  @Post([\"token\", \"refresh\"])",
+      "  issue() {}",
+      "}"
+    ].join("\n")),
+    createScannedFile("src/aliases/aliases.controller.ts", [
+      'import { Controller, Get } from "@nestjs/common";',
+      "@Controller([\"cats\", \"felines\"])",
+      "export class AliasesController {",
+      "  @Get(`:id`)",
+      "  findOne() {}",
+      "}"
+    ].join("\n"))
+  ];
+
+  const routes = detectRoutes(files, ["nestjs"]);
+  assert.deepEqual(
+    routes.map((route) => [route.path, route.methods?.join(",")]),
+    [
+      ["/cats/:id", "GET"],
+      ["/felines/:id", "GET"],
+      ["/v2/clients/:clientId", "GET"],
+      ["/v2/clients/:clientId/refresh", "POST"],
+      ["/v2/clients/:clientId/token", "POST"]
+    ]
+  );
+});
+
+test("detectRoutes ignores controllers declared in specs, e2e suites and sample apps", () => {
+  const controller = (name: string) => [
+    'import { Controller, Get } from "@nestjs/common";',
+    "@Controller()",
+    `export class ${name} {`,
+    "  @Get()",
+    "  root() {}",
+    "}"
+  ].join("\n");
+  const files = [
+    createScannedFile("package.json", JSON.stringify({ dependencies: { "@nestjs/common": "^11.0.0" } })),
+    createScannedFile("src/app.controller.ts", controller("AppController")),
+    createScannedFile("src/app.controller.spec.ts", controller("SpecController")),
+    createScannedFile("integration/cors/e2e/cors.ts", controller("E2eController")),
+    createScannedFile("integration/hello-world/src/app.controller.ts", controller("HarnessController")),
+    createScannedFile("sample/01-cats-app/src/cats.controller.ts", controller("SampleController"))
+  ];
+
+  const routes = detectRoutes(files, ["nestjs"]);
+  assert.deepEqual(routes.map((route) => route.file), ["src/app.controller.ts"]);
+});
+
 test("NestJS routes surface through project map and service stays classified", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({

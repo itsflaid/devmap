@@ -4,6 +4,14 @@ All notable changes to DevMap are documented in this file.
 
 ## [Unreleased]
 
+### Planned
+
+- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
+- Public benchmark results
+- Feedback-driven fixes from the `0.2.0` beta
+
+## [0.9.2] - 2026-11-06
+
 ### Fixed
 
 - NestJS routes read the `@Controller({ path })` object form and array paths (`@Controller(['a', 'b'])`,
@@ -15,12 +23,6 @@ All notable changes to DevMap are documented in this file.
   entry points
 - Onboarding calls a published package with no app, API or CLI in it a library ("fastify — a
   reusable library.") instead of "Personal app with caching as the core feature"
-
-### Planned
-
-- Go, Java, C# and PHP (PSR-4) import resolution, after JS/TS is mature
-- Public benchmark results
-- Feedback-driven fixes from the `0.2.0` beta
 
 ## [0.9.1] - 2026-11-05
 
@@ -463,7 +465,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/itsflaid/devmap/releases/tag/v0.9.2
 [0.9.1]: https://github.com/itsflaid/devmap/releases/tag/v0.9.1
 [0.9.0]: https://github.com/itsflaid/devmap/releases/tag/v0.9.0
 [0.8.4]: https://github.com/itsflaid/devmap/releases/tag/v0.8.4

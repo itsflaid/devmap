@@ -101,7 +101,9 @@ export function detectRoutes(
   routes.push(...detectAdonisRoutes(files, graph));
   routes.push(...detectClientRoutes(files, graph));
 
-  return sortRoutes(routes);
+  // Controllers declared inside specs, e2e suites and sample apps register
+  // routes on throwaway test servers, not on the project itself.
+  return sortRoutes(routes.filter((route) => isArchitectureSource(route.file)));
 }
 
 // Files that Next serves at a fixed URL.

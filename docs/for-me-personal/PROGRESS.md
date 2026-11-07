@@ -1,6 +1,31 @@
 # Progress DevMap
 
-Terakhir diperbarui: 2026-10-31
+Terakhir diperbarui: 2026-11-06
+
+## Update 2026-11-06
+
+### Uji stabilitas di repo populer dan tiga perbaikan analyzer
+
+Menjalankan `devmap analyze` 0.9.1 ke express, fastify, vuejs/core, nest dan cal.com (216 sampai
+7.038 file, 3 sampai 56 detik). Tidak ada crash dan snapshot dua run identik, tapi tiga hasil salah:
+
+- Route Nest mengabaikan prefix `@Controller({ path })` (`nestRouteDetector.ts`).
+- Route dan entry point dari spec, e2e, `integration/` dan `sample/` ikut terhitung
+  (`routeDetector.ts`, `graph/sourceScope.ts`).
+- Onboarding fastify menyebut "Personal app with caching as the core feature"
+  (`onboarding/modelBuilder.ts`, `isLibraryOnly`).
+
+**Hasil di repo uji setelah perbaikan:** nest 634 route menjadi 1, route cal.com
+`/v2/atoms/auth/oauth2/clients/:clientId`, onboarding fastify "a reusable library."
+
+**Verifikasi:** `pnpm build` dan `pnpm test` di `packages/cli`: 541 pass / 0 fail, `tsc --noEmit` bersih.
+Test baru ada di `framework-routes.test.ts` dan `onboarding-library.test.ts`.
+
+**Rilis:** PR #146 sudah merge. Branch `release/0.9.2` menaikkan `packages/cli/package.json` dan
+`server.json` ke 0.9.2 dan memindahkan changelog ke section 0.9.2. Tag `v0.9.2` dibuat manual di merge
+commit PR rilis (memicu `publish.yml`).
+
+---
 
 ## Update 2026-10-31
 

@@ -10,6 +10,20 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.9.2] - 2026-11-06
+
+### Fixed
+
+- NestJS routes read the `@Controller({ path })` object form and array paths (`@Controller(['a', 'b'])`,
+  `@Post(['x', 'y'])`). The controller prefix used to be dropped, so
+  `@Controller({ path: '/v2/clients/:clientId' })` with `@Get('/')` was reported as `/`
+- Routes no longer come from specs, e2e suites or sample apps. `isArchitectureSource` now also treats
+  a root-level or workspace-member `integration/` and `sample/` folder as non-production, so a repo
+  like NestJS no longer reports 633 test-only routes (1 left) or `integration/*/app.module.ts` as
+  entry points
+- Onboarding calls a published package with no app, API or CLI in it a library ("fastify — a
+  reusable library.") instead of "Personal app with caching as the core feature"
+
 ## [0.9.1] - 2026-11-05
 
 ### Changed
@@ -451,7 +465,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.2...HEAD
+[0.9.2]: https://github.com/itsflaid/devmap/releases/tag/v0.9.2
 [0.9.1]: https://github.com/itsflaid/devmap/releases/tag/v0.9.1
 [0.9.0]: https://github.com/itsflaid/devmap/releases/tag/v0.9.0
 [0.8.4]: https://github.com/itsflaid/devmap/releases/tag/v0.8.4

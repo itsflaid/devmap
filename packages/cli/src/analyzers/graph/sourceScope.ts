@@ -16,7 +16,15 @@ const NON_PRODUCTION_SEGMENTS = new Set([
 // Sample material is only recognised where a repo keeps it (the root or a
 // workspace member's root). A product feature that happens to live in
 // src/features/demo or src/docs is real code.
-const SAMPLE_SEGMENTS = new Set(["demo", "docs", "example", "examples", "samples"]);
+const SAMPLE_SEGMENTS = new Set([
+  "demo",
+  "docs",
+  "example",
+  "examples",
+  "integration",
+  "sample",
+  "samples"
+]);
 const WORKSPACE_PARENTS = new Set(["apps", "packages", "libs", "services", "projects"]);
 
 const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?[jt]sx?$|(?:^|\/)test_[^/]+\.py$|_test\.(?:py|go)$|(?:^|\/)conftest\.py$/;

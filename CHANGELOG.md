@@ -10,6 +10,34 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.9.3] - 2026-11-09
+
+### Added
+
+- Drizzle ORM schemas are read as entities. `pgTable`, `mysqlTable`, `sqliteTable` (and the SingleStore,
+  MSSQL and CockroachDB builders) give each table its columns, its foreign keys (`.references()`)
+  and its `relations()`. A Drizzle project used to fall back to entities guessed from URL segments: a
+  SvelteKit app with 15 tables was reported with 9 invented entities (`Reset`, `Chat`,
+  `Conversation`, ...) and 0 relations, and now gets its 15 tables and 42 relations
+
+### Fixed
+
+- Resource names from plurals that end in "s" keep the "s" of the singular: `statuses` is `Status`,
+  `aliases` is `Alias`, and `exercises` is `Exercise` instead of "Exercis Management". The capability
+  detector and the entity extractors share one `singularize`, so a model and its endpoint get the
+  same name and no longer show up as two features over the same files
+- Read-only `stats`, `report(s)` and `analytics` endpoints belong to "Statistics & Reporting" and no
+  longer produce "Stat Management" or "Report Management" CRUD features. A resource that accepts
+  writes is still a managed resource
+- Action segments such as `reset`, `toggle`, `sync`, `export`, `import`, `download`, `confirm`,
+  `cancel`, `approve`, `reject` and `retry` are no longer reported as entities
+- A `checkout` file no longer makes a "Payments" feature by itself. A point-of-sale checkout was
+  reported as Payments with high confidence; a payment provider (`stripe`, `midtrans`, `xendit`, ...),
+  `payment`, `billing` or `invoice` still does
+- `project.language` names the language of a non-JS/TS project: `php`, `python`, `ruby`, `go`, `java`,
+  `csharp` or `rust`, when its files outnumber the TypeScript and JavaScript ones. A Laravel app with
+  a few Vue files was reported as `javascript`
+
 ## [0.9.2] - 2026-11-06
 
 ### Fixed
@@ -465,7 +493,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/itsflaid/devmap/releases/tag/v0.9.3
 [0.9.2]: https://github.com/itsflaid/devmap/releases/tag/v0.9.2
 [0.9.1]: https://github.com/itsflaid/devmap/releases/tag/v0.9.1
 [0.9.0]: https://github.com/itsflaid/devmap/releases/tag/v0.9.0

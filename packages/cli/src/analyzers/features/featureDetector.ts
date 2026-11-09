@@ -742,7 +742,8 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
 
   const features: FeatureInfo[] = [];
 
-  const meaningfulEntities = (entityGraph.source === "prisma"
+  const schemaBacked = entityGraph.source === "prisma" || entityGraph.source === "drizzle";
+  const meaningfulEntities = (schemaBacked
     ? entityGraph.entities.filter((e) =>
         relations.some((r) => r.from === e.name || r.to === e.name)
       )
@@ -798,7 +799,7 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
       .slice(0, 2)
       .map((e) => e.file);
 
-    let confidence: FeatureInfo["confidence"] = entityGraph.source === "prisma" ? "high" : "medium";
+    let confidence: FeatureInfo["confidence"] = schemaBacked ? "high" : "medium";
     if (entityFiles.length === 1) {
       const tier = classifyFileTier(entityFiles[0]);
       if (tier === "reference") confidence = "low";

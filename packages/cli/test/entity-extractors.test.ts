@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { SQLExtractor } from "../src/analyzers/analysis/extractors/sqlExtractor.js";
-import { singularize } from "../src/analyzers/analysis/extractors/fallbackExtractor.js";
+import { DrizzleExtractor } from "../src/analyzers/analysis/extractors/drizzleExtractor.js";
+import { extractEntities } from "../src/analyzers/analysis/extractors/index.js";
+import { RouteFallbackExtractor, singularize } from "../src/analyzers/analysis/extractors/fallbackExtractor.js";
 import { detectDatabase } from "../src/analyzers/detectors/databaseDetector.js";
 
 function scannedFile(path: string, content: string) {
@@ -144,4 +146,144 @@ test("databaseDetector recognizes raw SQL clients (pg, mysql2, better-sqlite3)",
     scannedFile("package.json", JSON.stringify({ dependencies: { "better-sqlite3": "^9.0.0" } }))
   ];
   assert.equal(detectDatabase(sqliteProject)?.provider, "SQLite (raw SQL)");
+});
+
+test("singularize keeps the trailing s of singulars that end in s", () => {
+  assert.equal(singularize("statuses"), "Status");
+  assert.equal(singularize("buses"), "Bus");
+  assert.equal(singularize("aliases"), "Alias");
+  assert.equal(singularize("exercises"), "Exercise");
+  assert.equal(singularize("purchases"), "Purchase");
+  assert.equal(singularize("licenses"), "License");
+});
+
+test("route-hint entities skip action segments such as /staff/reset", () => {
+  const entities = new RouteFallbackExtractor().extract([
+    { path: "/api/staff", file: "src/routes/api/staff/+server.ts", kind: "api", methods: ["GET", "POST"] },
+    { path: "/api/staff/reset", file: "src/routes/api/staff/reset/+server.ts", kind: "api", methods: ["POST"] }
+  ]);
+
+  assert.deepEqual(entities.map((entity) => entity.name), ["Staff"]);
+});
+
+const DRIZZLE_SCHEMA = [
+  "import { pgTable, text, integer, timestamp, boolean } from 'drizzle-orm/pg-core';",
+  "import { relations, sql } from 'drizzle-orm';",
+  "",
+  "// Tabel bisnis; komentar dengan kurung ( dan tanda kutip ' tidak boleh merusak parser.",
+  "export const business = pgTable('business', {",
+  "  id: text('id').primaryKey(),",
+  "  name: text('name').notNull(),",
+  "  note: text('note').default('a, b, {c}')",
+  "});",
+  "",
+  "export const user = pgTable('user', {",
+  "  id: text('id').primaryKey(),",
+  "  businessId: text('business_id').references(() => business.id),",
+  "  email: text('email').notNull().unique()",
+  "});",
+  "",
+  "export const staffInvitations = pgTable(",
+  "  'staff_invitations',",
+  "  {",
+  "    id: text('id').primaryKey(),",
+  "    businessId: text('business_id').notNull().references(() => business.id, { onDelete: 'cascade' }),",
+  "    createdBy: text('created_by').references(() => user.id)",
+  "  },",
+  "  (t) => [sql`check (${t.id} <> '')`]",
+  ");",
+  "",
+  "export const profile = pgTable('profile', {",
+  "  id: text('id').primaryKey(),",
+  "  userId: text('user_id').notNull().unique().references(() => user.id)",
+  "});",
+  "",
+  "export const categoryNode = pgTable('category_node', {",
+  "  id: text('id').primaryKey(),",
+  "  parentId: text('parent_id').references((): any => categoryNode.id)",
+  "});",
+  "",
+  "export const roleEnum = pgEnum('role', ['OWNER', 'STAFF']);"
+].join("\n");
+
+test("DrizzleExtractor reads tables, columns and foreign keys from a schema file", () => {
+  const extractor = new DrizzleExtractor();
+  const files = [scannedFile("src/lib/server/db/schema.ts", DRIZZLE_SCHEMA)];
+
+  assert.equal(extractor.canHandle(files), true);
+  const entities = extractor.extract(files);
+
+  assert.deepEqual(entities.map((entity) => entity.name), [
+    "Business", "User", "StaffInvitation", "Profile", "CategoryNode"
+  ]);
+  assert.ok(entities.every((entity) => entity.source === "drizzle"));
+
+  const business = entities.find((entity) => entity.name === "Business");
+  assert.deepEqual(business?.fields.filter((field) => !field.isRelation).map((field) => field.name), ["id", "name", "note"]);
+  assert.equal(business?.fields.find((field) => field.name === "name")?.isOptional, false);
+  assert.equal(business?.fields.find((field) => field.name === "note")?.isOptional, true);
+});
+
+test("DrizzleExtractor turns foreign keys into relations in both directions", () => {
+  const entities = new DrizzleExtractor().extract([scannedFile("db/schema.ts", DRIZZLE_SCHEMA)]);
+  const relations = entities.flatMap((entity) => entity.relations);
+  const has = (from: string, to: string, kind: string) =>
+    relations.some((relation) => relation.from === from && relation.to === to && relation.kind === kind);
+
+  assert.ok(has("Business", "User", "one-to-many"));
+  assert.ok(has("Business", "StaffInvitation", "one-to-many"));
+  assert.ok(has("User", "StaffInvitation", "one-to-many"));
+  // A unique foreign key is a one-to-one, and a self reference is not a cross-entity relation.
+  assert.ok(relations.some((relation) => relation.from.length > 0 && relation.to === "Profile" && relation.kind === "one-to-one"));
+  assert.ok(!relations.some((relation) => relation.from === "CategoryNode" && relation.to === "CategoryNode"));
+});
+
+test("DrizzleExtractor names an entity from the SQL table, not from a `usersTable` variable", () => {
+  const entities = new DrizzleExtractor().extract([
+    scannedFile(
+      "src/db/schema.ts",
+      "import { sqliteTable, text } from 'drizzle-orm/sqlite-core';\nexport const usersTable = sqliteTable('users', { id: text('id') });\n"
+    )
+  ]);
+
+  assert.deepEqual(entities.map((entity) => entity.name), ["User"]);
+});
+
+test("DrizzleExtractor reads relations() declarations that have no foreign key", () => {
+  const entities = new DrizzleExtractor().extract([
+    scannedFile(
+      "src/db/schema.ts",
+      [
+        "import { mysqlTable, int } from 'drizzle-orm/mysql-core';",
+        "import { relations } from 'drizzle-orm';",
+        "export const author = mysqlTable('author', { id: int('id').primaryKey() });",
+        "export const book = mysqlTable('book', { id: int('id').primaryKey(), authorId: int('author_id') });",
+        "export const authorRelations = relations(author, ({ many }) => ({ books: many(book) }));"
+      ].join("\n")
+    )
+  ]);
+
+  const relations = entities.flatMap((entity) => entity.relations);
+  assert.ok(relations.some((relation) => relation.from === "Author" && relation.to === "Book" && relation.kind === "one-to-many"));
+});
+
+test("DrizzleExtractor ignores pgTable look-alikes in files that do not use drizzle-orm", () => {
+  const extractor = new DrizzleExtractor();
+  const files = [
+    scannedFile("src/other.ts", "export const pgTable = () => 1;\nexport const t = pgTable('x', {});\n"),
+    scannedFile("docs/schema.md", "import from 'drizzle-orm'\npgTable('x', {})")
+  ];
+
+  assert.equal(extractor.canHandle(files), false);
+  assert.deepEqual(extractor.extract(files), []);
+});
+
+test("extractEntities prefers a Prisma schema over Drizzle and Drizzle over route hints", () => {
+  const routes = [{ path: "/api/widgets", file: "src/routes/api/widgets/+server.ts", kind: "api" as const, methods: ["GET", "POST"] }];
+  const drizzleFile = scannedFile("src/db/schema.ts", DRIZZLE_SCHEMA);
+  const prismaFile = scannedFile("prisma/schema.prisma", "model Order {\n  id Int @id\n}\n");
+
+  assert.equal(extractEntities([drizzleFile], routes).source, "drizzle");
+  assert.deepEqual(extractEntities([drizzleFile], routes).entityNames.includes("Widget"), false);
+  assert.equal(extractEntities([drizzleFile, prismaFile], routes).source, "prisma");
 });

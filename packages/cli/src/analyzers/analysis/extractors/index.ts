@@ -2,6 +2,7 @@ import type { ScannedFile } from "../index.js";
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityGraph, EntityInfo, IEntityExtractor, RelationInfo } from "./types.js";
 import { PrismaExtractor } from "./prismaExtractor.js";
+import { DrizzleExtractor } from "./drizzleExtractor.js";
 import { SQLExtractor } from "./sqlExtractor.js";
 import { RouteFallbackExtractor } from "./fallbackExtractor.js";
 
@@ -17,7 +18,7 @@ import { RouteFallbackExtractor } from "./fallbackExtractor.js";
  *
  * Order penting: lebih reliable = lebih atas.
  *   1. Prisma    — high confidence, full field + relation data
- *   2. [future] Drizzle  → import { DrizzleExtractor } from "./drizzleExtractor.js"
+ *   2. Drizzle   — fields + foreign-key relations from `pgTable`/`mysqlTable`/`sqliteTable`
  *   3. [future] TypeORM  → import { TypeORMExtractor } from "./typeormExtractor.js"
  *   4. [future] Mongoose → import { MongooseExtractor } from "./mongooseExtractor.js"
  *   5. SQL       — raw pg/mysql2/better-sqlite3, table names as pseudo-entities
@@ -26,7 +27,7 @@ import { RouteFallbackExtractor } from "./fallbackExtractor.js";
  */
 const EXTRACTORS: IEntityExtractor[] = [
   new PrismaExtractor(),
-  // new DrizzleExtractor(),
+  new DrizzleExtractor(),
   // new TypeORMExtractor(),
   // new MongooseExtractor(),
   new SQLExtractor(),

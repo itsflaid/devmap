@@ -46,6 +46,8 @@ const IRREGULAR_SINGULAR = new Map([
   ["campus", "campus"],
 ]);
 
+const SINGULAR_ENDS_IN_S_PLURAL = /(?:status|bus|alias|campus|bonus|virus|canvas|bias|atlas)es$/;
+
 // ---------------------------------------------------------------------------
 // Extractor
 // ---------------------------------------------------------------------------
@@ -146,6 +148,11 @@ export function singularize(word: string): string {
 
   // A one or two letter word ("s", "us") is not a plural: stripping its "s" leaves nothing.
   if (lower.length <= 2) return capitalize(lower);
+
+  // "statuses" → "status", "aliases" → "alias": the singular already ends in "s", so the plural takes "-es".
+  if (SINGULAR_ENDS_IN_S_PLURAL.test(lower)) {
+    return capitalize(lower.slice(0, -2));
+  }
 
   // "categories" → "category", "replies" → "reply"
   if (lower.endsWith("ies")) {

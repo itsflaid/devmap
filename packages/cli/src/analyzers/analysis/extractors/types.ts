@@ -9,7 +9,7 @@ export type EntityInfo = {
   name: string;
   fields: FieldInfo[];
   relations: RelationInfo[];
-  source: "prisma" | "sql" | "route-hint";
+  source: "prisma" | "drizzle" | "sql" | "route-hint";
   /** Files this entity was actually found in — set when the source has no
    *  reliable filename/path convention to fall back on (e.g. a "verses"
    *  table referenced inside src/routes/quran.ts has no file named verse.ts
@@ -38,7 +38,7 @@ export type EntityGraph = {
   /** Flat list of entity names — shortcut buat featureDetector & capabilityDetector */
   entityNames: string[];
   /** Where entities came from — consumers dapat tau seberapa reliable data ini */
-  source: "prisma" | "sql" | "route-hint" | "empty";
+  source: "prisma" | "drizzle" | "sql" | "route-hint" | "empty";
 };
 
 // ---------------------------------------------------------------------------

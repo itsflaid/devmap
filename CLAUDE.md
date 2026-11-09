@@ -29,7 +29,7 @@ devmap/
 │   │   ├── mcp/           ← MCP server: tools, resources, prompts, snapshot provider, refresher + lock
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 51 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
+│   ├── test/              ← 53 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -129,8 +129,8 @@ Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsco
 
 ## Testing
 
-51 test files in `packages/cli/test/`. Key covered areas:
-- Analyzers, AI clients, agent navigation, entity extractors
+53 test files in `packages/cli/test/`. Key covered areas:
+- Analyzers, AI clients, agent navigation, entity extractors (Prisma, Drizzle, SQL, route hints; `capability-grounding` covers resource naming, read-only stats/report endpoints and the Payments signal)
 - Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
 - Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`; client-side routers, Hono factories, Next normalization and critical-file ranking in `js-ts-gaps`; SolidStart, Qwik City, Angular, Elysia, Koa, AdonisJS and constant-resolved paths in `js-ts-more-frameworks`), detector fixes
 - Heuristic language readers (`heuristic-languages`), scanner robustness, project scope/metadata

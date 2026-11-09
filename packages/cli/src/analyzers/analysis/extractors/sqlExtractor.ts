@@ -2,7 +2,7 @@ import { Project, ScriptTarget, SyntaxKind } from "ts-morph";
 import type { ScannedFile } from "../index.js";
 import type { EntityInfo, IEntityExtractor } from "./types.js";
 import { resourceEntityName } from "./fallbackExtractor.js";
-import { isArchitectureSource } from "../../graph/index.js";
+import { isArchitectureSource } from "../../graph/sourceScope.js";
 
 // ---------------------------------------------------------------------------
 // Constants

@@ -1,5 +1,5 @@
 import { REASON_TAGS } from "../analyzers/pipeline/reasonTags.js";
-import type { ProjectMap } from "../analyzers/pipeline/index.js";
+import { languageLabel, type ProjectMap } from "../analyzers/pipeline/index.js";
 import type {
   OnboardingLanguage,
   OnboardingModel,
@@ -99,7 +99,7 @@ function buildStackLine(snapshot: ProjectMap): string {
   const parts: string[] = [];
 
   if (snapshot.project.language && snapshot.project.language !== "unknown") {
-    parts.push(capitalize(snapshot.project.language));
+    parts.push(languageLabel(snapshot.project.language));
   }
 
   if (snapshot.project.framework && snapshot.project.framework !== "unknown") {

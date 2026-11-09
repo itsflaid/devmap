@@ -10,7 +10,41 @@ import {
 } from "../detectors/frameworkDetector.js";
 import { isArchitectureSource } from "../graph/index.js";
 
-export type ProjectLanguage = "typescript" | "javascript" | "mixed" | "unknown";
+export type ProjectLanguage =
+  | "typescript"
+  | "javascript"
+  | "mixed"
+  | "php"
+  | "python"
+  | "ruby"
+  | "go"
+  | "java"
+  | "csharp"
+  | "rust"
+  | "unknown";
+
+const LANGUAGE_LABELS: Partial<Record<ProjectLanguage, string>> = {
+  typescript: "TypeScript",
+  javascript: "JavaScript",
+  php: "PHP",
+  csharp: "C#"
+};
+
+/** Display name for a detected language: "typescript" → "TypeScript", "csharp" → "C#". */
+export function languageLabel(language: ProjectLanguage): string {
+  return LANGUAGE_LABELS[language] ?? language.charAt(0).toUpperCase() + language.slice(1);
+}
+
+/** Server-side languages DevMap reads heuristically. Only used to say what a project is NOT JS/TS. */
+const OTHER_LANGUAGE_EXTENSIONS: ReadonlyArray<readonly [ProjectLanguage, readonly string[]]> = [
+  ["php", [".php"]],
+  ["python", [".py"]],
+  ["ruby", [".rb"]],
+  ["go", [".go"]],
+  ["java", [".java"]],
+  ["csharp", [".cs"]],
+  ["rust", [".rs"]]
+];
 export type PackageManager = "pnpm" | "npm" | "yarn" | "bun" | "unknown";
 export type ProjectType = "node-cli" | "web-app" | "api-service" | "library" | "vscode-extension" | "unknown";
 
@@ -339,6 +373,16 @@ function detectLanguage(files: ScannedFile[]): ProjectLanguage {
   const javaScriptFiles = files.filter((file) =>
     [".js", ".jsx", ".mjs", ".cjs"].includes(file.extension)
   ).length;
+
+  const dominantOther = OTHER_LANGUAGE_EXTENSIONS
+    .map(([language, extensions]) => ({
+      language,
+      count: files.filter((file) => extensions.includes(file.extension)).length
+    }))
+    .reduce((best, candidate) => (candidate.count > best.count ? candidate : best), { language: "unknown" as ProjectLanguage, count: 0 });
+
+  // A Laravel app with a handful of Vue/JS files is a PHP project, not a JavaScript one.
+  if (dominantOther.count > typeScriptFiles + javaScriptFiles) return dominantOther.language;
 
   if (typeScriptFiles === 0 && javaScriptFiles === 0) return "unknown";
   if (typeScriptFiles > 0 && javaScriptFiles === 0) return "typescript";

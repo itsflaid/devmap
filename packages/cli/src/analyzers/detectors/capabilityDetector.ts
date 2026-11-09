@@ -1,6 +1,13 @@
 import { isDynamicSegment, isOperationalSegment, LARGE_API_ROUTE_COUNT } from "./nonResourceSegments.js";
 import type { RouteInfo } from "./routeDetector.js";
 import type { EntityGraph } from "../analysis/index.js";
+import { singularize } from "../analysis/extractors/fallbackExtractor.js";
+
+/**
+ * Read-only endpoints under these names (`GET /api/stats`, `GET /api/reports/weekly`) are
+ * views over other data. They are the "Statistics & Reporting" capability, not a managed resource.
+ */
+const READ_ONLY_VIEW_RESOURCE = /^(?:stats?|statistics|analytics?|reports?|reporting)$/;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,6 +111,7 @@ function detectCrudCapabilities(
     const hasDelete = methods.has("DELETE");
 
     if (!hasRead && !hasWrite) continue;
+    if (!hasWrite && READ_ONLY_VIEW_RESOURCE.test(resource)) continue;
 
     // In an API of any size, one read-only endpoint (`GET /api/sidebar`) is plumbing,
     // not a resource someone manages. A small API keeps it: it may be the whole product.
@@ -331,20 +339,6 @@ function resolveEntityName(resource: string, entityGraph: EntityGraph): string {
   if (words.length === 0) return "";
   words[words.length - 1] = singularize(words[words.length - 1]);
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
-}
-
-function singularize(word: string): string {
-  if (word.endsWith("ies")) return word.slice(0, -3) + "y";
-  if (
-    word.endsWith("sses") ||
-    word.endsWith("xes") ||
-    word.endsWith("ches") ||
-    word.endsWith("ses")
-  ) {
-    return word.slice(0, -2);
-  }
-  if (word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
-  return word;
 }
 
 function deduplicateCapabilities(capabilities: CapabilityInfo[]): CapabilityInfo[] {

@@ -7,7 +7,7 @@ import { detectFrameworks } from "../src/analyzers/detectors/frameworkDetector.j
 import { detectEntryPoints } from "../src/analyzers/graph/entryPoints.js";
 import { isArchitectureSource } from "../src/analyzers/graph/sourceScope.js";
 import { inferDomain, type DomainInferenceInput } from "../src/analyzers/inference/domainInference.js";
-import { detectProjectMetadata } from "../src/analyzers/pipeline/projectMetadata.js";
+import { detectProjectMetadata, languageLabel } from "../src/analyzers/pipeline/projectMetadata.js";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import { writeAgentNavigationFiles } from "../src/cache/agentNavigation.js";
 
@@ -41,14 +41,49 @@ const PACKAGE = JSON.stringify({ name: "fixture", dependencies: {} });
 // Project metadata: nothing is reported that the files do not show
 // ---------------------------------------------------------------------------
 
-test("a project without TypeScript or JavaScript files has an unknown language, not typescript", () => {
+test("a project without TypeScript or JavaScript files reports its own language, never typescript", () => {
   const files = [
     scanned("manage.py", "import os\n"),
     scanned("app/models.py", "class Article:\n    pass\n"),
     scanned("requirements.txt", "django\n")
   ];
 
+  assert.equal(detectProjectMetadata("/fixture", "unknown", files).language, "python");
+});
+
+test("a project with no recognised source files has an unknown language", () => {
+  const files = [scanned("README.md", "# notes\n"), scanned("data/seed.csv", "a,b\n")];
+
   assert.equal(detectProjectMetadata("/fixture", "unknown", files).language, "unknown");
+});
+
+test("a Laravel app with a few JS files is a php project, not a javascript one", () => {
+  const files = [
+    scanned("app/Http/Controllers/DebtController.php", "<?php class DebtController {}\n"),
+    scanned("app/Models/Debt.php", "<?php class Debt {}\n"),
+    scanned("routes/web.php", "<?php\n"),
+    scanned("resources/js/app.js", "import './bootstrap';\n"),
+    scanned("resources/js/echo.js", "export default {};\n")
+  ];
+
+  assert.equal(detectProjectMetadata("/fixture", "unknown", files).language, "php");
+});
+
+test("a JavaScript-heavy project with a stray script in another language keeps its JS/TS language", () => {
+  const files = [
+    scanned("src/a.ts", "export const a = 1;\n"),
+    scanned("src/b.ts", "export const b = 1;\n"),
+    scanned("scripts/deploy.py", "print('x')\n")
+  ];
+
+  assert.equal(detectProjectMetadata("/fixture", "unknown", files).language, "typescript");
+});
+
+test("languageLabel gives display names", () => {
+  assert.equal(languageLabel("typescript"), "TypeScript");
+  assert.equal(languageLabel("php"), "PHP");
+  assert.equal(languageLabel("csharp"), "C#");
+  assert.equal(languageLabel("python"), "Python");
 });
 
 test("a TypeScript project is still reported as typescript", () => {

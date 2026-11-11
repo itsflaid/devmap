@@ -25,6 +25,7 @@ export {
 
 export {
   detectProjectMetadata,
+  languageLabel,
 } from "./projectMetadata.js";
 export type {
   ProjectLanguage,

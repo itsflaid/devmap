@@ -1,7 +1,7 @@
 import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FeatureInfo } from "../analyzers/features/index.js";
-import type { ProjectMap } from "../analyzers/pipeline/index.js";
+import { languageLabel, type ProjectMap } from "../analyzers/pipeline/index.js";
 import { compareText } from "../utils/compare.js";
 
 export type AgentNavigationWriteResult = {
@@ -240,7 +240,7 @@ function selectCriticalFiles(feature: FeatureInfo, snapshot: ProjectMap): string
 }
 
 function createProjectSummary(snapshot: ProjectMap): string {
-  const language = formatLabel(snapshot.project.language);
+  const language = languageLabel(snapshot.project.language);
   const projectKind = describeProjectKind(snapshot);
   const featureNames = snapshot.features
     .filter((feature) => feature.confidence !== "low")
@@ -276,12 +276,6 @@ function describeProjectKind(snapshot: ProjectMap): string {
   }
 
   return `${workspace} containing ${kinds.slice(0, -1).join(", ")} and ${kinds[kinds.length - 1]}`;
-}
-
-function formatLabel(value: string): string {
-  if (value === "typescript") return "TypeScript";
-  if (value === "javascript") return "JavaScript";
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function featureId(name: string): string {

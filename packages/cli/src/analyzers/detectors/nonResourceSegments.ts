@@ -13,6 +13,8 @@ export const OPERATIONAL_SEGMENTS: ReadonlySet<string> = new Set([
   "og", "opengraph-image", "twitter-image", "icon", "sitemap", "robots", "manifest",
   // verbs of the auth flow
   "login", "logout", "signin", "signout", "signup", "register", "verify", "refresh",
+  // actions performed on a resource (`/staff/reset`), not resources themselves
+  "reset", "toggle", "sync", "export", "import", "download", "confirm", "cancel", "approve", "reject", "retry",
 ]);
 
 /** A file served at a fixed URL (robots.txt, sitemap.xml, favicon.ico) is never a resource. */

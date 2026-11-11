@@ -1,7 +1,7 @@
 {
   "name": "@flaid/devmap",
   "mcpName": "io.github.itsflaid/devmap",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "CLI that maps your codebase into a reusable context layer for developers and AI agents: entry points, critical files, features and routes for JS/TS projects.",
   "bin": {
     "devmap": "./dist/index.js"

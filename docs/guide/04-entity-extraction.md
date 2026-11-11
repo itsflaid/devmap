@@ -28,7 +28,7 @@ non-empty result**:
 ```ts
 const EXTRACTORS: IEntityExtractor[] = [
   new PrismaExtractor(),
-  // new DrizzleExtractor(),   ← reserved slot, not yet implemented
+  new DrizzleExtractor(),
   // new TypeORMExtractor(),   ← reserved slot
   // new MongooseExtractor(),  ← reserved slot
   new SQLExtractor(),
@@ -55,7 +55,7 @@ Prisma schema → SQL query strings → route URL segments → empty
    (high conf)      (medium conf)        (low conf)
 ```
 
-Every `EntityInfo` carries its own `source: "prisma" | "sql" | "route-hint"`,
+Every `EntityInfo` carries its own `source: "prisma" | "drizzle" | "sql" | "route-hint"`,
 so downstream consumers can weight evidence by confidence instead of
 treating all entities as equally reliable.
 
@@ -91,6 +91,19 @@ rather than just reading one. The rule, implemented in `buildRelations()`:
 - Self-referential fields (`Message.sourceMessage: Message?`) are skipped
   entirely — valid Prisma, but not a cross-entity relationship worth
   modeling.
+
+## Tier 1b — `DrizzleExtractor`
+
+**Source:** `source: "drizzle"`. Reads `pgTable`, `mysqlTable`, `sqliteTable` (and the SingleStore, MSSQL and
+CockroachDB builders) from TypeScript/JavaScript files that import `drizzle-orm`.
+
+- The entity name comes from the SQL table name (`'staff_invitations'` → `StaffInvitation`), not the variable
+  (`usersTable`), and is singularized.
+- Fields come from the column object; `.notNull()` and `.primaryKey()` make a field non-optional.
+- Relations come from `.references(() => table.id)` foreign keys (a `.unique()` key is one-to-one) and from
+  `relations()` declarations. Self references are ignored.
+- Comments, strings and template literals are skipped when matching brackets, so a `)` inside a default value
+  or a `sql\`...\`` check does not cut a table short.
 
 ## Tier 2 — `SQLExtractor`
 

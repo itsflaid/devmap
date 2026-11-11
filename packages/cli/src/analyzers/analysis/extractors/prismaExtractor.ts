@@ -146,7 +146,7 @@ function parsePrismaFields(body: string): FieldInfo[] {
 //   Field bertipe sama dengan entity sendiri → skip, ini bukan cross-entity relation.
 // ---------------------------------------------------------------------------
 
-function buildRelations(entities: EntityInfo[]): EntityInfo[] {
+export function buildRelations(entities: EntityInfo[]): EntityInfo[] {
   const entityNames = new Set(entities.map((e) => e.name));
   const seenRelations = new Set<string>();
   const allRelations: RelationInfo[] = [];

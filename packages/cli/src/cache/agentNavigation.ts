@@ -1,7 +1,7 @@
 import { mkdir, readdir, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { FeatureInfo } from "../analyzers/features/index.js";
-import { languageLabel, type ProjectMap } from "../analyzers/pipeline/index.js";
+import { allFrameworks, languageLabel, type ProjectMap } from "../analyzers/pipeline/index.js";
 import { compareText } from "../utils/compare.js";
 
 export type AgentNavigationWriteResult = {
@@ -48,7 +48,7 @@ export async function writeAgentNavigationFiles(
     project: {
       name: snapshot.project.name,
       framework: snapshot.project.framework,
-      frameworks: snapshot.project.frameworks,
+      frameworks: allFrameworks(snapshot.project),
       language: snapshot.project.language,
       packageManager: snapshot.project.packageManager,
       projectTypes: snapshot.project.projectTypes,

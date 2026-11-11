@@ -348,3 +348,34 @@ test("a /docs page and the Documentation role are one feature", async () => {
     assert.equal(names.filter((name) => name === "Documentation").length, 1, names.join(", "));
   });
 });
+
+test("a monorepo names every frontend it ships, while route detection keeps the per-category winner", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "mono", private: true, workspaces: ["apps/*"] }),
+    "apps/web/package.json": JSON.stringify({ name: "web", dependencies: { next: "15.0.0", react: "19.0.0", "react-dom": "19.0.0" } }),
+    "apps/web/src/app/page.tsx": "export default function Page() { return null; }\n",
+    "apps/mobile/package.json": JSON.stringify({ name: "mobile", dependencies: { expo: "52.0.0", "expo-router": "4.0.0", react: "18.0.0" } }),
+    "apps/mobile/src/app/index.tsx": "export default function Home() { return null; }\n",
+    "apps/start/package.json": JSON.stringify({ name: "start", dependencies: { "@tanstack/react-start": "1.0.0", "@tanstack/react-router": "1.0.0", react: "19.0.0" } }),
+    "apps/start/src/routes/about.tsx": "export const Route = createFileRoute('/about')({ component: () => null });\n"
+  }, async (root) => {
+    const { project, routes } = await createProjectMap(root);
+
+    assert.deepEqual(project.frameworks, ["nextjs"]);
+    assert.deepEqual(project.detectedFrameworks, ["nextjs", "tanstack-start", "expo"]);
+    assert.ok(routes.some((route) => route.file === "apps/mobile/src/app/index.tsx"));
+    assert.ok(routes.some((route) => route.file === "apps/start/src/routes/about.tsx"));
+  });
+});
+
+test("a single Next.js app does not list the React it ships as a second framework", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "site", dependencies: { next: "15.0.0", react: "19.0.0", "react-dom": "19.0.0" } }),
+    "app/page.tsx": "export default function Page() { return null; }\n"
+  }, async (root) => {
+    const { project } = await createProjectMap(root);
+
+    assert.deepEqual(project.detectedFrameworks, ["nextjs"]);
+    assert.deepEqual(project.frameworks, ["nextjs"]);
+  });
+});

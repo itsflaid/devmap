@@ -6,7 +6,7 @@ import { analyzeFiles } from "./analyzerRegistry.js";
 import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
 import {
   detectDatabase, type DatabaseInfo,
-  detectFramework, detectFrameworks, type Framework,
+  summarizeFrameworks, type Framework,
   detectRoutes, type RouteInfo,
   detectExternalServices,
   detectCapabilities, type CapabilityInfo,
@@ -199,13 +199,14 @@ export async function createProjectMap(
     const aliasMappings = await loadAliasMappings(projectRoot);
     const { graph, diagnostics: graphDiagnostics } = buildDependencyGraph(files, analyses, aliasMappings);
     const references = countReferences(graph);
-    const detectedFramework = detectFramework(files);
-    const frameworks = detectFrameworks(files);
+    const { frameworks, detectedFrameworks } = summarizeFrameworks(files);
+    const detectedFramework: Framework = frameworks[0] ?? "unknown";
     const project = detectProjectMetadata(
       projectRoot,
       detectedFramework,
       files,
-      frameworks
+      frameworks,
+      detectedFrameworks
     );
     const framework = project.framework;
     const entryPoints = detectEntryPoints(

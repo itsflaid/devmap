@@ -158,6 +158,17 @@ test("pnpm-workspace.yaml packages make a monorepo, including the inline list fo
   assert.equal(inline.workspaceType, "monorepo");
 });
 
+test("a workspace list that only names the root is not a monorepo", async () => {
+  for (const patterns of ["packages: ['.']\n", "packages:\n  - ./\n", "packages: [., '!node_modules']\n"]) {
+    const project = await metadataOf({
+      "package.json": JSON.stringify({ name: "blog", dependencies: { astro: "^5.0.0" } }),
+      "pnpm-workspace.yaml": patterns
+    }, ["astro"]);
+
+    assert.equal(project.workspaceType, "single-package", patterns);
+  }
+});
+
 test("a one-off package.json inside an app does not make it a monorepo or a library", async () => {
   const project = await metadataOf({
     "package.json": JSON.stringify({ name: "app", dependencies: { "@remix-run/react": "^2.0.0" } }),

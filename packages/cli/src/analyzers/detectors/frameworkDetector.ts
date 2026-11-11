@@ -37,6 +37,52 @@ export function detectFramework(files: ScannedFile[]): Framework {
  * simply scoped per category now.
  */
 export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
+  return winnersOf(collectFrameworks(files));
+}
+
+/**
+ * Every framework the project shows signals for, in display order. Route
+ * detection keeps using `detectFrameworks` (one winner per category); this is
+ * the list a reader or an agent should see, so a monorepo with a Next.js site,
+ * an Expo app and a TanStack Start app names all three.
+ */
+export function detectAllFrameworks(files: ScannedFile[]): DetectedFramework[] {
+  return allOf(collectFrameworks(files));
+}
+
+/** Both lists from one pass over the files. */
+export function summarizeFrameworks(files: ScannedFile[]): {
+  frameworks: DetectedFramework[];
+  detectedFrameworks: DetectedFramework[];
+} {
+  const detected = collectFrameworks(files);
+  return { frameworks: winnersOf(detected), detectedFrameworks: allOf(detected) };
+}
+
+function winnersOf(detected: Set<DetectedFramework>): DetectedFramework[] {
+  return [
+    FRONTEND_FRAMEWORKS.find((framework) => detected.has(framework)),
+    BACKEND_FRAMEWORKS.find((framework) => detected.has(framework)),
+  ].filter((framework): framework is FrontendFramework | BackendFramework => Boolean(framework));
+}
+
+// A plain UI framework (or TanStack Router) that a full framework in the same
+// project already implies is not listed next to it: every Next.js app ships React.
+const IMPLIED_BY: Partial<Record<DetectedFramework, readonly DetectedFramework[]>> = {
+  react: ["nextjs", "remix", "react-router", "tanstack-start", "tanstack-router", "expo"],
+  vue: ["nuxt"],
+  svelte: ["sveltekit"],
+  "tanstack-router": ["tanstack-start"],
+};
+
+function allOf(detected: Set<DetectedFramework>): DetectedFramework[] {
+  return [...FRONTEND_FRAMEWORKS, ...BACKEND_FRAMEWORKS].filter((framework) =>
+    detected.has(framework)
+    && !(IMPLIED_BY[framework] ?? []).some((parent) => detected.has(parent))
+  );
+}
+
+function collectFrameworks(files: ScannedFile[]): Set<DetectedFramework> {
   const detected = new Set<DetectedFramework>();
   const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
@@ -223,10 +269,7 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
     detected.add("hono");
   }
 
-  return [
-    FRONTEND_FRAMEWORKS.find((framework) => detected.has(framework)),
-    BACKEND_FRAMEWORKS.find((framework) => detected.has(framework)),
-  ].filter((framework): framework is FrontendFramework | BackendFramework => Boolean(framework));
+  return detected;
 }
 
 const REMIX_PACKAGES = [

@@ -6,11 +6,8 @@ import {
   type ProviderInspection
 } from "../ai/provider.js";
 import { scanFiles } from "../analyzers/analysis/index.js";
-import {
-  detectFramework,
-  detectFrameworks
-} from "../analyzers/detectors/index.js";
-import { createProjectFingerprint, detectProjectMetadata } from "../analyzers/pipeline/index.js";
+import { summarizeFrameworks } from "../analyzers/detectors/index.js";
+import { allFrameworks, createProjectFingerprint, detectProjectMetadata } from "../analyzers/pipeline/index.js";
 import { inspectSnapshot } from "../cache/snapshot.js";
 import type { McpHealth } from "../mcp/health.js";
 import {
@@ -65,9 +62,9 @@ async function runDoctor(
     inspectSnapshot(projectRoot),
     scanFiles(projectRoot)
   ]);
-  const framework = detectFramework(files);
-  const frameworks = detectFrameworks(files);
-  const project = detectProjectMetadata(projectRoot, framework, files, frameworks);
+  const { frameworks, detectedFrameworks } = summarizeFrameworks(files);
+  const framework = frameworks[0] ?? "unknown";
+  const project = detectProjectMetadata(projectRoot, framework, files, frameworks, detectedFrameworks);
   const modelSource = config && localConfig?.model
     ? "project override"
     : "global";
@@ -89,7 +86,7 @@ async function runDoctor(
   output.keyValue("OS", `${platform()}/${arch()}`);
   output.keyValue("Project", project.name);
   output.keyValue("Framework", project.framework);
-  output.keyValue("Workspace Frameworks", project.frameworks.join(", ") || "none detected");
+  output.keyValue("Workspace Frameworks", allFrameworks(project).join(", ") || "none detected");
   output.keyValue("Package Manager", project.packageManager);
   output.keyValue("Provider", config?.provider ?? "not configured");
   output.keyValue("Config", config ? "exists" : "missing");

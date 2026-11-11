@@ -8,7 +8,7 @@ import {
 import { buildAnalyzeMessages } from "../ai/prompts.js";
 import { enrichSnapshotWithAi } from "../ai/snapshotEnrichment.js";
 import type { AiClient } from "../ai/types.js";
-import { createProjectMap } from "../analyzers/pipeline/index.js";
+import { allFrameworks, createProjectMap } from "../analyzers/pipeline/index.js";
 import { acquireLock } from "../cache/analysisLock.js";
 import { inspectSnapshot, saveSnapshot } from "../cache/snapshot.js";
 import { writeAgentNavigationFiles } from "../cache/agentNavigation.js";
@@ -196,7 +196,7 @@ function printSnapshot(
   output.keyValue("Framework", snapshot.project.framework);
   output.keyValue(
     "Workspace Frameworks",
-    snapshot.project.frameworks.join(", ") || "none detected"
+    allFrameworks(snapshot.project).join(", ") || "none detected"
   );
   output.keyValue("Language", snapshot.project.language);
   output.keyValue("Package Manager", snapshot.project.packageManager);

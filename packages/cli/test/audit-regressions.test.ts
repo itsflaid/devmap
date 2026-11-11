@@ -331,3 +331,20 @@ test("the snapshot records who owns the data, and 'Personal app' needs that evid
   }), "en");
   assert.match(isolated.tagline, /personal/i);
 });
+
+// ------------------------------------------------------------ one feature, one name
+
+test("a /docs page and the Documentation role are one feature", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "site", dependencies: { next: "14.0.0", react: "^19.0.0" } }),
+    "app/layout.tsx": "export default function Layout({ children }: { children: unknown }) { return children; }\n",
+    "app/(docs)/docs/[[...slug]]/page.tsx": "export default function Doc() { return null; }\n",
+    "content/docs/intro.mdx": "# Intro\n",
+    "docs/guide.md": "# Guide\n"
+  }, async (root) => {
+    const names = (await createProjectMap(root)).features.map((feature) => feature.name);
+
+    assert.ok(!names.includes("Doc"), names.join(", "));
+    assert.equal(names.filter((name) => name === "Documentation").length, 1, names.join(", "));
+  });
+});

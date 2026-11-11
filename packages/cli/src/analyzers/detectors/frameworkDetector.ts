@@ -124,7 +124,7 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   // (Astro uses the same folder for endpoints), so it is deliberately excluded
   // from the Pages Router signal here.
   if (
-    files.some((file) => /(^|\/)next\.config\.[cm]?[jt]s$/.test(file.path))
+    sourceFiles.some((file) => /(^|\/)next\.config\.[cm]?[jt]s$/.test(file.path))
     || sourceFiles.some((file) =>
       // `app/routes/blog/route.tsx` is a Remix route folder, not a Next route handler.
       /(^|\/)(?:src\/)?app\/(?!routes\/)(?:.+\/)?(?:page|layout|route)\.[jt]sx?$/.test(file.path)
@@ -169,7 +169,7 @@ export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   }
 
   // Nuxt: nuxt.config.* is as specific as next.config.* today.
-  if (files.some((file) => /(^|\/)nuxt\.config\.[cm]?[jt]s$/.test(file.path))) {
+  if (sourceFiles.some((file) => /(^|\/)nuxt\.config\.[cm]?[jt]s$/.test(file.path))) {
     detected.add("nuxt");
   }
 

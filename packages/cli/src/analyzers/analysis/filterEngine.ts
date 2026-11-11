@@ -147,6 +147,12 @@ export function shouldIgnorePath(p: string, isDirectory: boolean, projectRoot?: 
     return true;
   }
 
+  // `devmap onboarding --write` creates this file after the snapshot, so counting it
+  // would report every project as stale right after the guide is written.
+  if (!isDirectory && lowerPath === "onboarding.md") {
+    return true;
+  }
+
   if (!isDirectory && [...IGNORED_EXTENSIONS].some((ext) => lowerPath.endsWith(ext))) {
     return true;
   }

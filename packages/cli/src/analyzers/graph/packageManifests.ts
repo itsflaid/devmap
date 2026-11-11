@@ -369,7 +369,7 @@ function scriptFileTokens(command: string): string[] {
 }
 
 function isConfigFile(path: string): boolean {
-  return /(^|\/)[\w.-]*\.(?:config|setup)\.[cm]?[jt]s$/.test(path) || /(^|\/)\.[\w.-]+rc\.[cm]?[jt]s$/.test(path);
+  return /(^|\/)[\w.-]*\.(?:config|setup)(?:\.[\w-]+)*\.[cm]?[jt]s$/.test(path) || /(^|\/)\.[\w.-]+rc\.[cm]?[jt]s$/.test(path);
 }
 
 function joinPath(directory: string, path: string): string {

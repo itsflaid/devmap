@@ -1,4 +1,5 @@
 import { DevmapError } from "../utils/errors.js";
+import { aiRequestSignal, isRequestTimeout } from "./requestTimeout.js";
 import type {
   AiClient,
   AiCompletionRequest,
@@ -124,6 +125,7 @@ export class CustomProviderClient implements AiClient {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json"
         },
+        signal: aiRequestSignal(),
         body: JSON.stringify({
           model: request.model,
           messages: request.messages,
@@ -135,7 +137,13 @@ export class CustomProviderClient implements AiClient {
           } : {})
         })
       });
-    } catch {
+    } catch (error) {
+      if (isRequestTimeout(error)) {
+        throw new DevmapError(
+          "The custom endpoint did not answer in time.",
+          "Try again, or raise DEVMAP_AI_TIMEOUT_MS (milliseconds)."
+        );
+      }
       throw unreachableEndpointError();
     }
   }

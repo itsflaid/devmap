@@ -159,6 +159,7 @@ function isFeatureEvidenceFile(path: string): boolean {
     || /\.sql$/.test(lower)
     || /\/generated\//.test(lower)
     || /\.generated\./.test(lower)
+    || /\.(?:svg|png|jpe?g|gif|webp|avif|ico|icns|woff2?|ttf|otf|eot|mp[34]|webm|pdf)$/.test(lower)
     || /\/prisma\/schema\.prisma$/.test(lower)
     || /^prisma\/schema\.prisma$/.test(lower)
   );

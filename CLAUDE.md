@@ -29,7 +29,7 @@ devmap/
 │   │   ├── mcp/           ← MCP server: tools, resources, prompts, snapshot provider, refresher + lock
 │   │   ├── onboarding/    ← Onboarding model and builder
 │   │   └── utils/         ← Config, errors, output, prompts, markdown renderer
-│   ├── test/              ← 53 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
+│   ├── test/              ← 54 test files (`*.test.ts`, auto-discovered by `run-tests.ts`) + `mcp-smoke.mjs`, `package-e2e.mjs`
 │   └── package.json
 ├── apps/web/              ← Astro marketing site (unrelated to CLI)
 ├── docs/                  ← Public documentation
@@ -129,7 +129,7 @@ Order for a non-relative specifier: `#subpath` (package.json `imports`) → tsco
 
 ## Testing
 
-53 test files in `packages/cli/test/`. Key covered areas:
+54 test files in `packages/cli/test/`. Key covered areas:
 - Analyzers, AI clients, agent navigation, entity extractors (Prisma, Drizzle, SQL, route hints; `capability-grounding` covers resource naming, read-only stats/report endpoints and the Payments signal)
 - Dependency graph: aliases, workspace packages, `#imports`, Nuxt auto-imports/aliases, entry points (`graph-resolution`, `dependency-graph-alias`, `js-ts-ecosystem`, `js-ts-frameworks`)
 - Feature similarity/merge, frontend features, framework routes (`framework-routes`; Remix/React Router/TanStack/Expo/Hono and bundler aliases in `js-ts-frameworks`; client-side routers, Hono factories, Next normalization and critical-file ranking in `js-ts-gaps`; SolidStart, Qwik City, Angular, Elysia, Koa, AdonisJS and constant-resolved paths in `js-ts-more-frameworks`), detector fixes
@@ -153,17 +153,14 @@ cd packages/cli && pnpm build
 # Test
 cd packages/cli && pnpm test
 
-# Lint
-pnpm lint
-
-# Typecheck
-pnpm typecheck
+# Typecheck (also part of `pnpm test`)
+cd packages/cli && pnpm test:types
 
 # Dev mode
-pnpm dev
+pnpm dev:cli
 
 # Run CLI locally
-pnpm devmap <command>
+node packages/cli/dist/index.js <command>
 ```
 
 MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
@@ -171,7 +168,7 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 ## Important Constraints
 
 - No source files should be modified during reverse-engineering tasks
-- AI errors are always non-fatal — `devmap analyze` completes even if AI fails
+- AI errors are always non-fatal — `devmap analyze` completes even if AI fails. Every chat request is aborted after `DEVMAP_AI_TIMEOUT_MS` (default 120 s) so an endpoint that never answers cannot block `explain`, `flow` or the MCP server
 - Domain inference is cached for idempotency (`.devmap/domain-cache.json`)
 - Snapshot is regenerated on every `devmap analyze` run
 - `AGENTS.md` is never overwritten by init (append-only)
@@ -183,6 +180,8 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - The MCP server is read-only and static by default. Only `devmap_analyze` / `--auto-refresh` write, and only inside `.devmap/`. AI is reachable only with `--allow-ai`; `devmap_explain` is registered only then
 
 ## Known Limitations
+
+- A file with a line over 50,000 characters (a one-line bundle) is listed with low confidence and no symbols or imports: ts-morph's comment scan is quadratic on such a line
 
 - In-memory graph, rebuilt fully on every analyze run — no incremental analysis
 - Regex-based heuristic analyzer is explicitly TODO'd toward tree-sitter

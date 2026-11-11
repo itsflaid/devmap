@@ -22,6 +22,22 @@ import { compareText } from "../../utils/compare.js";
 // Native extensions — ts-morph parses these directly, no preprocessing needed.
 const NATIVE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
 
+// ts-morph rescans a line for comments once per statement, so a bundle written on a
+// single line (a 1.7 MB `vendor.js`) takes minutes. Real source never has such a line.
+const MAX_LINE_LENGTH = 50_000;
+
+function hasOversizedLine(content: string): boolean {
+  if (content.length <= MAX_LINE_LENGTH) return false;
+  let start = 0;
+  while (start < content.length) {
+    const newline = content.indexOf("\n", start);
+    const end = newline === -1 ? content.length : newline;
+    if (end - start > MAX_LINE_LENGTH) return true;
+    start = end + 1;
+  }
+  return false;
+}
+
 // Preprocessors handle files that contain embedded JS/TS inside a larger format.
 // Order matters only for logging — each preprocessor's extensions are disjoint.
 const PREPROCESSORS: LanguagePreprocessor[] = [
@@ -84,6 +100,8 @@ export class TsMorphAnalyzer implements FileAnalyzer {
     content: string,
     _originalPath: string
   ): FileAnalysis {
+    if (hasOversizedLine(content)) return emptyAnalysis(this.id, "low");
+
     const sourceFile = this.project.createSourceFile(parsePath, content, { overwrite: true });
     const lines = new LineIndex(sourceFile.getFullText());
     const lineOf = (node: Node) => lines.lineAt(node.getStart());

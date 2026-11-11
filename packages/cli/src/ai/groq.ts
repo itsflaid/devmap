@@ -1,4 +1,5 @@
 import { DevmapError } from "../utils/errors.js";
+import { aiRequestSignal, isRequestTimeout } from "./requestTimeout.js";
 import type {
   AiClient,
   AiCompletionRequest,
@@ -239,6 +240,7 @@ export class GroqClient implements AiClient {
           Authorization: `Bearer ${this.apiKey}`,
           "Content-Type": "application/json"
         },
+        signal: aiRequestSignal(),
         body: JSON.stringify({
           model,
           messages: request.messages,
@@ -250,7 +252,13 @@ export class GroqClient implements AiClient {
           } : {})
         })
       });
-    } catch {
+    } catch (error) {
+      if (isRequestTimeout(error)) {
+        throw new DevmapError(
+          "Groq did not answer in time.",
+          "Try again, or raise DEVMAP_AI_TIMEOUT_MS (milliseconds)."
+        );
+      }
       throw new DevmapError(
         "Could not connect to Groq.",
         "Check your internet connection and run devmap doctor."

@@ -96,17 +96,17 @@ function resolveOwnershipHint(snapshot: ProjectMap, language: OnboardingLanguage
   const hasRealtime = caps.some((c) => c.kind === "real-time");
   const hasSocial = caps.some((c) => c.kind === "social");
 
-  const domainPattern = (snapshot.domain as { ownershipPattern?: string })?.ownershipPattern;
+  const pattern = snapshot.ownership?.pattern;
 
-  if (domainPattern === "single_user_isolated" || (!hasSharing && !hasRealtime && !hasSocial)) {
+  if (pattern === "single_user_isolated") {
     return language === "id" ? "Aplikasi personal" : "Personal app";
   }
 
-  if (domainPattern === "direct_messaging") {
+  if (pattern === "direct_messaging") {
     return language === "id" ? "Platform pesan langsung" : "Direct messaging platform";
   }
 
-  if (hasSharing || hasRealtime || hasSocial) {
+  if (pattern === "shared_access" || hasSharing || hasRealtime || hasSocial) {
     return language === "id" ? "Aplikasi kolaborasi" : "Collaborative app";
   }
 

@@ -8,6 +8,8 @@ export type {
   DomainFeature,
   DomainInferenceInput,
 } from "./domainInference.js";
+export { groundDomain } from "./domainGrounding.js";
+export type { DomainEvidence, DomainGrounding } from "./domainGrounding.js";
 export {
   classifyOwnershipTopology,
 } from "./ownershipTopology.js";

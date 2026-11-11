@@ -256,6 +256,12 @@ const domainResultSchema = z.object({
  * survives with entities that really exist in the static analysis, because an
  * AI feature has no files of its own to be grounded in.
  */
+// Every app has these; a feature that only touches them is not specific to the domain.
+const GENERIC_ENTITIES = new Set([
+  "user", "users", "account", "accounts", "session", "sessions", "verificationtoken",
+  "verification", "token", "role", "roles", "permission", "permissions", "profile"
+]);
+
 function sanitizeDomainResult(
   value: unknown,
   input: DomainInferenceInput
@@ -275,7 +281,7 @@ function sanitizeDomainResult(
         .map((name) => knownEntities.get(name.trim().toLowerCase()))
         .filter((name): name is string => name !== undefined)
     )];
-    if (relatedEntities.length === 0) continue;
+    if (!relatedEntities.some((name) => !GENERIC_ENTITIES.has(name.toLowerCase()))) continue;
 
     domainFeatures.push({
       name: feature.data.name,

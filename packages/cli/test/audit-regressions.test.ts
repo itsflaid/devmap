@@ -10,6 +10,8 @@ import { TsMorphAnalyzer } from "../src/analyzers/analysis/tsMorphAnalyzer.js";
 import { detectFrameworks } from "../src/analyzers/detectors/index.js";
 import { buildDependencyGraph, detectEntryPoints, loadAliasMappings } from "../src/analyzers/graph/index.js";
 import { analyzeFiles } from "../src/analyzers/pipeline/analyzerRegistry.js";
+import { groundDomain } from "../src/analyzers/inference/domainGrounding.js";
+import { inferDomain, type DomainInferenceInput } from "../src/analyzers/inference/domainInference.js";
 import { createProjectMap } from "../src/analyzers/pipeline/projectMap.js";
 import type { ProjectMap } from "../src/analyzers/pipeline/index.js";
 import { buildOnboardingModel } from "../src/onboarding/modelBuilder.js";
@@ -222,4 +224,110 @@ test("a custom endpoint that never answers fails with a timeout error", async ()
     if (previous === undefined) delete process.env.DEVMAP_AI_TIMEOUT_MS;
     else process.env.DEVMAP_AI_TIMEOUT_MS = previous;
   }
+});
+
+// ------------------------------------------------------------ AI domain must be grounded in the project
+
+const BLOG_EVIDENCE = {
+  projectName: "taxonomy",
+  entityNames: ["Post", "User", "Account", "Session", "VerificationToken"],
+  featureNames: ["Blog", "Dashboard", "Documentation"],
+  routePaths: ["/blog/[slug]", "/dashboard/billing", "/docs/[[...slug]]"],
+  capabilityKinds: ["subscription"]
+};
+
+function domainResult(domain: string, summary: string) {
+  return { domain, summary, domainFeatures: [], confidence: 0.97, model: "m", tokensUsed: 0 };
+}
+
+test("a domain that shares nothing with the project is not grounded", () => {
+  const verdict = groundDomain(
+    domainResult("Hospital Patient Management System", "Manages patients, doctors and appointments for hospitals."),
+    BLOG_EVIDENCE
+  );
+
+  assert.equal(verdict.grounded, false);
+  assert.ok(verdict.unsupported.includes("patient"));
+});
+
+test("a domain described with the project's own words is grounded", () => {
+  assert.equal(groundDomain(
+    domainResult("Blog SaaS", "A starter where users write posts, read docs and pay for a subscription."),
+    BLOG_EVIDENCE
+  ).grounded, true);
+  assert.equal(groundDomain(
+    domainResult("Content Management System", "Lets people manage content."),
+    BLOG_EVIDENCE
+  ).grounded, true);
+});
+
+test("one coincidental word in the summary is not enough when the domain name matches nothing", () => {
+  const verdict = groundDomain(
+    domainResult("Hospital Patient Portal", "Hospitals publish a post about patients."),
+    BLOG_EVIDENCE
+  );
+
+  assert.equal(verdict.grounded, false);
+});
+
+test("an AI feature that only touches User or Session entities is dropped", async () => {
+  const input: DomainInferenceInput = {
+    entityNames: ["User", "Session", "Post"],
+    relations: [], capabilities: [], technicalFeatures: [], routeCount: 0, framework: "nextjs",
+    ownershipPattern: "single_user_isolated", crossUserFields: [], absentCapabilities: []
+  };
+  const reply = JSON.stringify({
+    domain: "Blog", summary: "Posts by users.", confidence: 0.9,
+    domainFeatures: [
+      { name: "Account Security", purpose: "Protects accounts", relatedEntities: ["User", "Session"] },
+      { name: "Publishing", purpose: "Writes posts", relatedEntities: ["Post", "User"] }
+    ]
+  });
+
+  const result = await inferDomain(input, async () => reply);
+
+  assert.deepEqual(result?.domainFeatures.map((feature) => feature.name), ["Publishing"]);
+});
+
+test("analyze ignores an AI domain the project does not support and says so", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "blog", dependencies: { next: "14.0.0", "@prisma/client": "5.0.0" } }),
+    "prisma/schema.prisma": [
+      "model User {",
+      "  id    String @id",
+      "  posts Post[]",
+      "}",
+      "model Post {",
+      "  id       String @id",
+      "  title    String",
+      "  authorId String",
+      "  author   User   @relation(fields: [authorId], references: [id])",
+      "}"
+    ].join("\n"),
+    "app/page.tsx": "export default function Page() { return null; }\n"
+  }, async (root) => {
+    const reply = JSON.stringify({
+      domain: "Hospital Patient Management System",
+      summary: "Manages patients, doctors and appointments.",
+      confidence: 0.97,
+      domainFeatures: [{ name: "Patient Records", purpose: "Stores records", relatedEntities: ["Post"] }]
+    });
+    const map = await createProjectMap(root, async () => reply);
+
+    assert.equal(map.domain, undefined);
+    assert.ok(map.features.every((feature) => feature.name !== "Patient Records"));
+    assert.ok(map.warnings?.some((warning) => warning.includes("Hospital Patient Management System")));
+  });
+});
+
+// ------------------------------------------------------------ ownership comes from the entity graph
+
+test("the snapshot records who owns the data, and 'Personal app' needs that evidence", () => {
+  const withoutEvidence = buildOnboardingModel(snapshotWith({ capabilities: [] }), "en");
+  assert.doesNotMatch(withoutEvidence.tagline, /personal/i);
+
+  const isolated = buildOnboardingModel(snapshotWith({
+    ownership: { pattern: "single_user_isolated", crossUserFields: [] }
+  }), "en");
+  assert.match(isolated.tagline, /personal/i);
 });

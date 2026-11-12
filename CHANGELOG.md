@@ -10,6 +10,63 @@ All notable changes to DevMap are documented in this file.
 - Public benchmark results
 - Feedback-driven fixes from the `0.2.0` beta
 
+## [0.9.4] - 2026-11-12
+
+### Added
+
+- `project.detectedFrameworks` lists every framework a project shows signals for. A monorepo with a
+  Next.js site, an Expo app and a TanStack Start app used to name only `nextjs`, because
+  `project.frameworks` keeps one winner per category (it still does, and it still gates route
+  detection). `devmap doctor`, `devmap analyze` and `.devmap/index.json` show the full list, and a
+  framework a larger one already implies (the React inside Next.js) is not listed next to it. Older
+  snapshots without the field fall back to `frameworks`
+- `ownership` in the snapshot stores the deterministic ownership topology (`single_user_isolated`,
+  `shared_access`, `direct_messaging`, `unclear`) next to the cross-user fields it was read from
+
+### Changed
+
+- Feature confidence tells a name from a package. A vocabulary signal that only a file name or a
+  local import supports (a `cache.js`, a `session-storage.js`) is reported at `medium` at most, unless
+  a route is served from its files; an imported vendor package keeps it `high`. A scoped package counts
+  through its scope, so `@playwright/test` is Playwright while `@standard-schema/spec` is not "spec
+  tests". SvelteKit's own runtime was reported with Authentication, Caching, CMS & Content, Background
+  Jobs and Testing at `high`
+- A file TypeScript had to recover from is reported at `medium` instead of `high`, and a template-only
+  `.vue`, `.svelte` or `.astro` file already was
+- The onboarding headline and summary lead with the features that describe the product, ordered by
+  file count, and name supporting ones (analytics, caching, authentication) last. A Next.js app whose
+  alphabetically first feature was Analytics read "Personal app with analytics as the core feature"
+- "Personal app" in the onboarding tagline needs `single_user_isolated`; any other topology gets a
+  neutral description
+
+### Fixed
+
+- A hung AI endpoint no longer blocks `explain`, `flow` or the MCP `devmap_explain` tool. Every chat
+  request is aborted after `DEVMAP_AI_TIMEOUT_MS` (default 120 s) with a clear error, and
+  `devmap analyze` still completes without AI
+- A one-line bundle without `.min.` in its name no longer makes `devmap analyze` hang (a 1.7 MB file
+  took over 120 s). A line over 50,000 characters is skipped and the file is listed with low confidence
+- An AI-inferred domain that no entity, route or feature in the project supports is ignored with a
+  warning. A mock endpoint answering "Hospital Patient Management System" for a blog starter had its
+  domain, summary and an "Appointment Booking" feature accepted. A feature whose only related entities
+  are generic (`User`, `Account`, `Session`) is dropped
+- A Vue file with both `<script>` and `<script setup>` reads every block, so its imports reach the
+  graph and the impact analysis (an article component went from 2 imports to 7)
+- Tooling configs (`vitest.config.e2e.ts`, `*.config.mts`) are no longer entry points, and an Angular
+  `app.config.ts` is one only next to its `app.component`, routes or module
+- `next.config` and `nuxt.config` are read from source files only, so an `examples/with-nextjs` folder
+  no longer makes a project Next.js (excalidraw was reported as `nextjs`)
+- Images, fonts, media and PDFs are not feature evidence: `PayPal.svg` no longer produces a Payments
+  feature
+- `packages: ["."]` in a workspace list no longer makes a project a monorepo
+- A `/docs` page and the Documentation role are one feature named "Documentation", not `Doc` and
+  `Documentation`
+- `devmap onboarding --write` no longer makes the snapshot stale, because `onboarding.md` in the project
+  root is not part of the fingerprint. An unsupported `--language` is an error that names the
+  supported ones instead of falling back to English
+- The onboarding stack line no longer repeats a name ("Prisma" twice), and purposes no longer end in
+  two periods or read "application application"
+
 ## [0.9.3] - 2026-11-09
 
 ### Added
@@ -493,7 +550,8 @@ Initial early beta release.
 - Token-efficiency benchmarks are not yet published
 - External user feedback will be collected after the beta is published
 
-[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.3...HEAD
+[Unreleased]: https://github.com/itsflaid/devmap/compare/v0.9.4...HEAD
+[0.9.4]: https://github.com/itsflaid/devmap/releases/tag/v0.9.4
 [0.9.3]: https://github.com/itsflaid/devmap/releases/tag/v0.9.3
 [0.9.2]: https://github.com/itsflaid/devmap/releases/tag/v0.9.2
 [0.9.1]: https://github.com/itsflaid/devmap/releases/tag/v0.9.1

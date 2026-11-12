@@ -6,7 +6,7 @@ import { analyzeFiles } from "./analyzerRegistry.js";
 import { detectProjectMetadata, type ProjectMetadata } from "./projectMetadata.js";
 import {
   detectDatabase, type DatabaseInfo,
-  detectFramework, detectFrameworks, type Framework,
+  summarizeFrameworks, type Framework,
   detectRoutes, type RouteInfo,
   detectExternalServices,
   detectCapabilities, type CapabilityInfo,
@@ -44,8 +44,11 @@ import {
 import {
   inferDomain,
   buildDomainInferenceInput,
+  classifyOwnershipTopology,
   domainFeaturesToFeatureInfo,
+  groundDomain,
   type DomainInferenceResult,
+  type OwnershipPattern,
 } from "../inference/index.js";
 import { compareText } from "../../utils/compare.js";
 
@@ -135,6 +138,11 @@ export type ProjectMap = {
   capabilities?: CapabilityInfo[];
   /** AI-inferred domain understanding — present kalau AI inference berhasil */
   domain?: DomainInferenceResult;
+  /** Who owns the data, read from the entity graph (static, never from AI). */
+  ownership?: {
+    pattern: OwnershipPattern;
+    crossUserFields: string[];
+  };
   flows: FlowInfo[];
   onboarding: {
     recommendedPath: string[];
@@ -191,13 +199,14 @@ export async function createProjectMap(
     const aliasMappings = await loadAliasMappings(projectRoot);
     const { graph, diagnostics: graphDiagnostics } = buildDependencyGraph(files, analyses, aliasMappings);
     const references = countReferences(graph);
-    const detectedFramework = detectFramework(files);
-    const frameworks = detectFrameworks(files);
+    const { frameworks, detectedFrameworks } = summarizeFrameworks(files);
+    const detectedFramework: Framework = frameworks[0] ?? "unknown";
     const project = detectProjectMetadata(
       projectRoot,
       detectedFramework,
       files,
-      frameworks
+      frameworks,
+      detectedFrameworks
     );
     const framework = project.framework;
     const entryPoints = detectEntryPoints(
@@ -222,7 +231,8 @@ export async function createProjectMap(
       routes,
       entryPoints,
       graph,
-      analyses
+      analyses,
+      new Set(featureResult.nameOnlyFeatures)
     );
     activeSpinner.succeed(`Detected ${features.length} features`);
 
@@ -230,6 +240,7 @@ export async function createProjectMap(
     // Kirim structured metadata ke AI, dapat domain summary + domain-specific features.
     // Kalau gagal atau callAI tidak ada, static features tetap lengkap.
     let domain: DomainInferenceResult | undefined;
+    const domainWarnings: string[] = [];
     if (callAI) {
       activeSpinner = output.spinner("Inferring domain with AI");
       const inferenceInput = buildDomainInferenceInput(
@@ -240,7 +251,20 @@ export async function createProjectMap(
         routes.length
       );
       const result = await inferDomain(inferenceInput, callAI, projectRoot);
-      if (result) {
+      const grounding = result
+        ? groundDomain(result, {
+          projectName: project.name,
+          entityNames: entityGraph.entityNames,
+          featureNames: features.map((feature) => feature.name),
+          routePaths: routes.map((route) => route.path),
+          capabilityKinds: capabilities.map((capability) => capability.kind)
+        })
+        : undefined;
+      if (result && grounding && !grounding.grounded) {
+        domainWarnings.push(
+          `AI domain "${result.domain}" was ignored: no entity, route or feature in the project supports it.`
+        );
+      } else if (result) {
         // Merge domain-specific features ke features list.
         // Pakai similarity engine — bukan name equality — sehingga
         // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
@@ -257,7 +281,11 @@ export async function createProjectMap(
           domain = undefined;
         }
       }
-      activeSpinner.succeed(domain ? `Domain inferred: ${domain.domain}` : "Domain inference skipped");
+      activeSpinner.succeed(
+        domain ? `Domain inferred: ${domain.domain}`
+          : domainWarnings.length > 0 ? "Domain inference rejected: not supported by the project"
+            : "Domain inference skipped"
+      );
     }
 
     activeSpinner = output.spinner("Building project index");
@@ -302,12 +330,13 @@ export async function createProjectMap(
       ...(entityGraph.source !== "empty" ? { entityGraph } : {}),
       ...(capabilities.length > 0 ? { capabilities } : {}),
       ...(domain ? { domain } : {}),
+      ...(entityGraph.source !== "empty" ? { ownership: ownershipOf(entityGraph) } : {}),
       flows,
       onboarding: {
         recommendedPath: buildOnboardingPath(files, entryPoints, criticalFiles, fileIndex)
       },
       changeImpact: buildChangeImpact(fileIndex, features, flows, graph),
-      warnings: detectAnalysisWarnings(files, entryPoints, criticalFiles, features),
+      warnings: [...detectAnalysisWarnings(files, entryPoints, criticalFiles, features), ...domainWarnings],
       ...(graphDiagnostics.unresolvedAliases.length > 0 || graphDiagnostics.parserFallbacks.length > 0
         ? { diagnostics: graphDiagnostics }
         : {}),
@@ -322,6 +351,11 @@ export async function createProjectMap(
     activeSpinner?.fail();
     throw error;
   }
+}
+
+function ownershipOf(entityGraph: EntityGraph): NonNullable<ProjectMap["ownership"]> {
+  const { pattern, crossUserFields } = classifyOwnershipTopology(entityGraph, entityGraph.relations);
+  return { pattern, crossUserFields: crossUserFields.slice(0, 5) };
 }
 
 function createAgentInstructions(): ProjectMap["agentInstructions"] {
@@ -687,7 +721,8 @@ function attachFeatureEntryPoints(
   routes: RouteInfo[],
   entryPoints: string[],
   graph: Record<string, string[]>,
-  analyses?: Record<string, FileAnalysis>
+  analyses?: Record<string, FileAnalysis>,
+  nameOnlyFeatures: ReadonlySet<string> = new Set()
 ): FeatureInfo[] {
   return features.map((feature) => {
     const relatedRouteEntries = routes
@@ -708,6 +743,10 @@ function attachFeatureEntryPoints(
       : feature.files;
     const entryPoint = chooseFeatureEntryPoint(feature.name, orderedFiles, relatedEntries, routes, graph);
     const businessFlow = buildFeatureBusinessFlow(feature.name, entryPoint, graph, orderedFiles);
+    // A word in a file name is a hint; only a route served from the feature's files,
+    // or an imported package, turns it into evidence. An entry point is no proof: any file
+    // that nothing imports is one.
+    const hintOnly = nameOnlyFeatures.has(feature.name) && relatedRouteEntries.length === 0;
     const hasHighQualityEvidence = analyses
       ? feature.evidence.some((path) => analyses[path]?.confidence === "high")
       : false;
@@ -718,9 +757,11 @@ function attachFeatureEntryPoints(
       ...(entryPoint ? { entryPoint } : {}),
       entryPoints: relatedEntries,
       businessFlow,
-      confidence: hasHighQualityEvidence && (feature.files.length >= 2 || relatedEntries.length > 0)
-        ? "high"
-        : feature.confidence
+      confidence: hintOnly
+        ? (feature.confidence === "low" ? "low" : "medium")
+        : hasHighQualityEvidence && (feature.files.length >= 2 || relatedEntries.length > 0)
+          ? "high"
+          : feature.confidence
     };
   });
 }

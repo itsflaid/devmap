@@ -4,6 +4,7 @@ import type { ProjectMap } from "../analyzers/pipeline/index.js";
 import { isSnapshotStale, readSnapshotOrThrow } from "../cache/snapshot.js";
 import { buildOnboardingModel } from "../onboarding/modelBuilder.js";
 import type { OnboardingLanguage, OnboardingModel, ConceptualStep, FeatureSummary, StartHereItem } from "../onboarding/model.js";
+import { DevmapError } from "../utils/errors.js";
 import { output, withJsonOutput } from "../utils/output.js";
 import { createPrompt, type Prompt } from "../utils/prompt.js";
 
@@ -281,6 +282,12 @@ async function resolveOnboardingLanguage(options: OnboardingOptions): Promise<On
   const explicitLanguage = normalizeOnboardingLanguage(options.language);
   if (explicitLanguage) {
     return explicitLanguage;
+  }
+  if (options.language?.trim()) {
+    throw new DevmapError(
+      `Unsupported onboarding language "${options.language.trim()}".`,
+      "Use --language en or --language id."
+    );
   }
 
   if (options.json || (!options.prompt && !process.stdin.isTTY)) {

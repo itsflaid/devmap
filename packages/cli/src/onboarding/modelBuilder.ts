@@ -1,4 +1,5 @@
 import { REASON_TAGS } from "../analyzers/pipeline/reasonTags.js";
+import { compareText } from "../utils/compare.js";
 import { languageLabel, type ProjectMap } from "../analyzers/pipeline/index.js";
 import type {
   OnboardingLanguage,
@@ -26,6 +27,23 @@ export function buildOnboardingModel(
   };
 }
 
+// Cross-cutting capabilities and generic pages say little about what a project is for.
+const SUPPORTING_FEATURES = new Set([
+  "404", "ai integration", "analytics", "authentication", "background jobs", "caching",
+  "doc", "documentation", "email", "encryption", "file upload", "guide", "home",
+  "internationalization", "login", "logging & monitoring", "notifications", "rate limiting",
+  "register", "testing", "user management"
+]);
+
+/** Features in the order that describes the project: domain features by size first, supporting ones last. */
+function rankFeatures(snapshot: ProjectMap): ProjectMap["features"] {
+  const domain = snapshot.features
+    .filter((feature) => !SUPPORTING_FEATURES.has(feature.name.toLowerCase()))
+    .sort((a, b) => b.files.length - a.files.length || compareText(a.name, b.name));
+  const supporting = snapshot.features.filter((feature) => SUPPORTING_FEATURES.has(feature.name.toLowerCase()));
+  return [...domain, ...supporting];
+}
+
 function buildTagline(snapshot: ProjectMap, language: OnboardingLanguage): string {
   if (snapshot.domain?.summary && snapshot.domain.summary.trim().length > 0) {
     const firstSentence = snapshot.domain.summary.split(/\.\s+/)[0];
@@ -40,7 +58,7 @@ function buildTagline(snapshot: ProjectMap, language: OnboardingLanguage): strin
   }
 
   const ownershipHint = resolveOwnershipHint(snapshot, language);
-  const primaryFeature = snapshot.features[0];
+  const primaryFeature = rankFeatures(snapshot)[0];
 
   if (ownershipHint && primaryFeature) {
     return language === "id"
@@ -54,10 +72,10 @@ function buildTagline(snapshot: ProjectMap, language: OnboardingLanguage): strin
       : `${snapshot.project.framework} app for ${primaryFeature.name.toLowerCase()}.`;
   }
 
-  const fw = snapshot.project.framework !== "unknown" ? snapshot.project.framework : "application";
+  const known = snapshot.project.framework !== "unknown" ? snapshot.project.framework : null;
   return language === "id"
-    ? `${snapshot.project.name || "Project"} — aplikasi ${fw}.`
-    : `${snapshot.project.name || "Project"} — ${fw} application.`;
+    ? `${snapshot.project.name || "Project"} — aplikasi${known ? ` ${known}` : ""}.`
+    : `${snapshot.project.name || "Project"} — ${known ? `${known} ` : ""}application.`;
 }
 
 /**
@@ -78,17 +96,17 @@ function resolveOwnershipHint(snapshot: ProjectMap, language: OnboardingLanguage
   const hasRealtime = caps.some((c) => c.kind === "real-time");
   const hasSocial = caps.some((c) => c.kind === "social");
 
-  const domainPattern = (snapshot.domain as { ownershipPattern?: string })?.ownershipPattern;
+  const pattern = snapshot.ownership?.pattern;
 
-  if (domainPattern === "single_user_isolated" || (!hasSharing && !hasRealtime && !hasSocial)) {
+  if (pattern === "single_user_isolated") {
     return language === "id" ? "Aplikasi personal" : "Personal app";
   }
 
-  if (domainPattern === "direct_messaging") {
+  if (pattern === "direct_messaging") {
     return language === "id" ? "Platform pesan langsung" : "Direct messaging platform";
   }
 
-  if (hasSharing || hasRealtime || hasSocial) {
+  if (pattern === "shared_access" || hasSharing || hasRealtime || hasSocial) {
     return language === "id" ? "Aplikasi kolaborasi" : "Collaborative app";
   }
 
@@ -114,13 +132,21 @@ function buildStackLine(snapshot: ProjectMap): string {
     parts.push(capitalize(service));
   }
 
-  return parts.slice(0, 5).join(" · ");
+  const seen = new Set<string>();
+  const unique = parts.filter((part) => {
+    const key = part.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return unique.slice(0, 5).join(" · ");
 }
 
 function buildWhatThisIs(snapshot: ProjectMap, language: OnboardingLanguage): string {
   const sentences: string[] = [];
   const name = snapshot.project.name || (language === "id" ? "Project ini" : "This project");
-  const features = snapshot.features.map((f) => f.name);
+  const features = rankFeatures(snapshot).map((f) => f.name);
 
   if (snapshot.ai?.architecture) {
     sentences.push(snapshot.ai.architecture);
@@ -339,7 +365,7 @@ function buildFeatureWhat(
   language: OnboardingLanguage
 ): string {
   if (feature.purpose && !isBoilerplatePurpose(feature.purpose)) {
-    return feature.purpose.split(/\.\s+/)[0] + ".";
+    return feature.purpose.split(/\.\s+/)[0].replace(/\.$/, "") + ".";
   }
 
   const name = feature.name.toLowerCase();

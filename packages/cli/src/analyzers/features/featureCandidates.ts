@@ -37,6 +37,11 @@ export interface FeatureCandidate {
    * absorb them through shared files.
    */
   standalone?: boolean;
+  /**
+   * A vocabulary signal whose only support is a word in a file name or a local import. No
+   * package it imports confirms it, so on its own it is a hint and never a high-confidence feature.
+   */
+  nameOnly?: boolean;
   /** Internal compatibility payload used while the public snapshot remains V1. */
   projection?: FeatureInfo;
 }
@@ -346,6 +351,10 @@ function createCluster(
 }
 
 function compareCanonicalCandidates(left: FeatureCandidate, right: FeatureCandidate): number {
+  // "/docs" and the Documentation role are one feature: it keeps the concept's name, not the URL's.
+  const aliased = Number(isAliasedName(left.label)) - Number(isAliasedName(right.label));
+  if (aliased !== 0) return aliased;
+
   const source = SOURCE_PRIORITY[right.source] - SOURCE_PRIORITY[left.source];
   if (source !== 0) return source;
 
@@ -417,9 +426,21 @@ function isSignalCandidate(candidate: FeatureCandidate): boolean {
   return candidate.source === "registry" && !candidate.id.includes(":role-");
 }
 
+// A page is named after its URL segment and a role after the concept: /docs is "Documentation".
+const NAME_ALIASES: Record<string, string> = { doc: "documentation" };
+
 /** "Payment Management" and "Payments" are the same name. */
-function featureStem(label: string): string {
+function plainStem(label: string): string {
   return normalizeAnchor(label).replace(/ management$/, "").replace(/s$/, "");
+}
+
+function featureStem(label: string): string {
+  const stem = plainStem(label);
+  return NAME_ALIASES[stem] ?? stem;
+}
+
+function isAliasedName(label: string): boolean {
+  return plainStem(label) in NAME_ALIASES;
 }
 
 function sameName(left: FeatureCandidate, right: FeatureCandidate): boolean {

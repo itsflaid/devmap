@@ -54,7 +54,10 @@ export type ProjectMetadata = {
   name: string;
   root: string;
   framework: Framework;
+  /** The winner of each category (frontend, backend); route detection is gated on it. */
   frameworks: DetectedFramework[];
+  /** Every framework the project shows signals for, so a monorepo names all its frontends. Absent in older snapshots. */
+  detectedFrameworks?: DetectedFramework[];
   language: ProjectLanguage;
   packageManager: PackageManager;
   projectTypes: ProjectType[];
@@ -62,11 +65,17 @@ export type ProjectMetadata = {
   description?: string;
 };
 
+/** Every framework to show a reader; falls back to the winners for snapshots written before the field existed. */
+export function allFrameworks(project: Pick<ProjectMetadata, "frameworks" | "detectedFrameworks">): DetectedFramework[] {
+  return project.detectedFrameworks ?? project.frameworks;
+}
+
 export function detectProjectMetadata(
   projectRoot: string,
   framework: Framework,
   files: ScannedFile[],
-  frameworks: DetectedFramework[] = framework === "unknown" ? [] : [framework]
+  frameworks: DetectedFramework[] = framework === "unknown" ? [] : [framework],
+  detectedFrameworks: DetectedFramework[] = frameworks
 ): ProjectMetadata {
   const manifests = readPackageManifests(files);
   const workspacePatterns = readWorkspacePatterns(files, manifests);
@@ -85,6 +94,7 @@ export function detectProjectMetadata(
     root: projectRoot,
     framework: primaryFramework,
     frameworks,
+    detectedFrameworks,
     language: detectLanguage(files),
     packageManager: detectPackageManager(projectRoot, manifests),
     projectTypes,
@@ -294,7 +304,13 @@ function readWorkspacePatterns(files: ScannedFile[], manifests: PackageManifest[
 
   return [...fromManifest.filter((item): item is string => typeof item === "string"), ...fromPnpm]
     .map((pattern) => pattern.trim())
-    .filter((pattern) => pattern.length > 0 && !pattern.startsWith("!"));
+    .filter((pattern) => pattern.length > 0 && !pattern.startsWith("!") && !isRootPattern(pattern));
+}
+
+/** `packages: ["."]` names the root itself, which is the project and not a member of it. */
+function isRootPattern(pattern: string): boolean {
+  const directory = pattern.replace(/^\.\//, "").replace(/\/+$/, "").replace(/\/package\.json$/, "");
+  return directory === "" || directory === ".";
 }
 
 function readPnpmWorkspacePackages(content: string): string[] {

@@ -78,6 +78,19 @@ test("onboarding write can generate Indonesian markdown after language prompt", 
   }
 });
 
+test("onboarding rejects a language it does not support instead of answering in English", async () => {
+  const projectRoot = await createOnboardingProject();
+
+  try {
+    await assert.rejects(
+      onboardingCommand({ projectRoot, language: "fr" }),
+      /Unsupported onboarding language "fr"/
+    );
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
 async function createOnboardingProject(): Promise<string> {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-onboarding-test-"));
   const snapshot = await createProjectMap(nextFixture);

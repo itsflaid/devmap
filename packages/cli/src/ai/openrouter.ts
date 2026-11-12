@@ -1,4 +1,5 @@
 import { DevmapError } from "../utils/errors.js";
+import { aiRequestSignal, isRequestTimeout } from "./requestTimeout.js";
 import type {
   AiClient,
   AiCompletionRequest,
@@ -113,6 +114,7 @@ export class OpenRouterClient implements AiClient {
           "HTTP-Referer": "https://github.com/itsflaid/devmap",
           "X-OpenRouter-Title": "DevMap"
         },
+        signal: aiRequestSignal(),
         body: JSON.stringify({
           ...(models.length > 1 ? { models } : { model: models[0] }),
           messages: request.messages,
@@ -121,7 +123,13 @@ export class OpenRouterClient implements AiClient {
           ...(stream ? { stream: true } : {})
         })
       });
-    } catch {
+    } catch (error) {
+      if (isRequestTimeout(error)) {
+        throw new DevmapError(
+          "OpenRouter did not answer in time.",
+          "Try again, or raise DEVMAP_AI_TIMEOUT_MS (milliseconds)."
+        );
+      }
       throw new DevmapError(
         "Could not connect to OpenRouter.",
         "Check your internet connection and run devmap doctor."

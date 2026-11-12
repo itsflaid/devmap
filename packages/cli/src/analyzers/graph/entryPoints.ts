@@ -70,6 +70,24 @@ const ENTRY_PATTERN_SCORES: Array<{ pattern: RegExp; score: number }> = [
   { pattern: /(^|\/)(index|main)\.[cm]?[jt]sx?$/, score: 5 },
 ];
 
+// vite.config.ts, vitest.config.e2e.ts, app.config.ts, eslint.setup.js, .eslintrc.js ...
+const TOOLING_CONFIG = /(^|\/)[\w.-]*\.(?:config|setup)(?:\.[\w-]+)*\.[cm]?[jt]s$|(^|\/)\.[\w.-]+rc\.[cm]?[jt]s$/;
+
+/**
+ * Angular's `app.config.ts` is an entry; Expo's or Expo-like `app.config.ts` is
+ * tooling. The Angular one always sits next to its component, routes or module.
+ */
+function isAngularAppConfig(path: string, graph: FileGraph): boolean {
+  if (!/(^|\/)app\.config\.ts$/.test(path)) return false;
+  const slash = path.lastIndexOf("/");
+  const directory = slash === -1 ? "" : path.slice(0, slash + 1);
+  return ["app.component.ts", "app.routes.ts", "app.module.ts"].some((name) => `${directory}${name}` in graph);
+}
+
+function isToolingConfig(path: string, graph: FileGraph): boolean {
+  return TOOLING_CONFIG.test(path) && !isAngularAppConfig(path, graph);
+}
+
 function entryPointScore(path: string): number {
   for (const { pattern, score } of ENTRY_PATTERN_SCORES) {
     if (pattern.test(path)) return score;
@@ -107,6 +125,7 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
   const declared = new Map<string, number>();
   for (const entry of manifestEntries) {
     if (!(entry.path in graph) || !isSourceFile(entry.path) || !isArchitectureSource(entry.path)) continue;
+    if (isToolingConfig(entry.path, graph)) continue;
     if (entry.kind === "main" && imported.has(entry.path)) continue;
     const score = MANIFEST_SCORES[entry.kind];
     declared.set(entry.path, Math.min(score, declared.get(entry.path) ?? score));
@@ -117,6 +136,7 @@ export function detectEntryPoints(graph: FileGraph, manifestEntries: ManifestEnt
   return Object.keys(graph)
     .filter((path) => isSourceFile(path) && !isDeclarationFile(path))
     .filter((path) => isArchitectureSource(path) && !isGeneratedFile(path))
+    .filter((path) => !isToolingConfig(path, graph))
     .filter((path) => {
       if (declared.has(path)) return true;
       const unimportedWithImports = !imported.has(path) && (graph[path]?.length ?? 0) > 0;

@@ -542,7 +542,8 @@ test("buildTagline uses ownership hint and primary feature when no domain summar
     dependencies: {},
     fileGraph: {},
     fileIndex: {},
-    capabilities: []
+    capabilities: [],
+    ownership: { pattern: "single_user_isolated" as const, crossUserFields: [] }
   };
 
   const model = buildOnboardingModel(snapshot, "en");

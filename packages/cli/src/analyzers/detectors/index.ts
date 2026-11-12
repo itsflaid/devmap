@@ -1,6 +1,8 @@
 export {
   detectFramework,
   detectFrameworks,
+  detectAllFrameworks,
+  summarizeFrameworks,
 } from "./frameworkDetector.js";
 export type {
   Framework,

@@ -379,3 +379,104 @@ test("a single Next.js app does not list the React it ships as a second framewor
     assert.deepEqual(project.frameworks, ["nextjs"]);
   });
 });
+
+// ------------------------------------------------------------ syntax errors lower the confidence
+
+test("a file TypeScript had to recover from is not reported as a clean parse", async () => {
+  const analyses = await analyzeFiles([
+    fileOf("src/ok.ts", "import { a } from './a';\nexport function ok() { return a; }\n"),
+    fileOf("src/broken.ts", "import { a } from './a';\nexport function broken( {\n  return a\n"),
+    fileOf("src/Broken.vue", "<script setup lang=\"ts\">\nimport { a } from './a';\nconst x = (;\n</script>\n<template><p /></template>\n"),
+    fileOf("src/Fine.vue", "<script setup lang=\"ts\">\nimport { a } from './a';\nconst x = a;\n</script>\n<template><p /></template>\n")
+  ]);
+
+  assert.equal(analyses["src/ok.ts"].confidence, "high");
+  assert.equal(analyses["src/Fine.vue"].confidence, "high");
+  assert.equal(analyses["src/broken.ts"].confidence, "medium");
+  assert.equal(analyses["src/Broken.vue"].confidence, "medium");
+  // what could be read is still reported
+  assert.ok(analyses["src/broken.ts"].imports.includes("./a"));
+});
+
+test("the snapshot carries the lowered confidence per file", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "app", dependencies: { express: "4.0.0" } }),
+    "src/server.ts": "import express from 'express';\nexport const app = express();\n",
+    "src/broken.ts": "export function broken( {\n"
+  }, async (root) => {
+    const { fileIndex } = await createProjectMap(root);
+
+    assert.equal(fileIndex["src/server.ts"].analysisConfidence, "high");
+    assert.equal(fileIndex["src/broken.ts"].analysisConfidence, "medium");
+  });
+});
+
+// ------------------------------------------------------------ vocabulary words are hints, packages are evidence
+
+const lines = (...rows: string[]) => rows.join("\n") + "\n";
+
+test("a feature that only a file name suggests is not reported as high confidence", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "kit", version: "1.0.0" }),
+    "src/runtime/cache.js": lines("import { read } from './store.js';", "export const cache = new Map();", "export function get(k) { return read(cache, k); }"),
+    "src/runtime/query/cache.js": lines("import { cache } from '../cache.js';", "export const queries = cache;"),
+    "src/runtime/store.js": lines("export function read(m, k) { return m.get(k); }")
+  }, async (root) => {
+    const caching = (await createProjectMap(root)).features.find((feature) => feature.name === "Caching");
+
+    assert.ok(caching, "the hint is still reported");
+    assert.equal(caching.confidence, "medium");
+  });
+});
+
+test("an imported vendor package keeps a feature at high confidence", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "api", dependencies: { ioredis: "5.0.0" } }),
+    "src/cache/client.ts": lines("import Redis from 'ioredis';", "export const redis = new Redis();"),
+    "src/cache/sessions.ts": lines("import Redis from 'ioredis';", "export const sessions = new Redis();")
+  }, async (root) => {
+    const caching = (await createProjectMap(root)).features.find((feature) => feature.name === "Caching");
+
+    assert.ok(caching);
+    assert.equal(caching.confidence, "high");
+  });
+});
+
+test("the name behind a package scope does not count as evidence", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "kit", dependencies: { "@standard-schema/spec": "1.0.0" } }),
+    "src/a.ts": lines("import type { StandardSchemaV1 } from '@standard-schema/spec';", "export type A = StandardSchemaV1;"),
+    "src/b.ts": lines("import type { StandardSchemaV1 } from '@standard-schema/spec';", "export type B = StandardSchemaV1;")
+  }, async (root) => {
+    const testing = (await createProjectMap(root)).features.find((feature) => feature.name === "Testing");
+
+    assert.ok(!testing || testing.confidence !== "high");
+  });
+});
+
+test("a scoped vendor package is evidence through its scope", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "api", dependencies: { "@sentry/node": "8.0.0" } }),
+    "src/lib/errors.ts": lines("import * as Sentry from '@sentry/node';", "export const report = (e: unknown) => Sentry.captureException(e);"),
+    "src/lib/boot.ts": lines("import * as Sentry from '@sentry/node';", "export const boot = () => Sentry.init({});")
+  }, async (root) => {
+    const monitoring = (await createProjectMap(root)).features.find((feature) => feature.name === "Logging & Monitoring");
+
+    assert.ok(monitoring);
+    assert.equal(monitoring.confidence, "high");
+  });
+});
+
+test("a feature named by its files but served by a route keeps high confidence", async () => {
+  await withProject({
+    "package.json": JSON.stringify({ name: "site", dependencies: { next: "15.0.0", react: "19.0.0", "react-dom": "19.0.0" } }),
+    "app/login/page.tsx": lines("import { signIn } from '../../lib/auth/session';", "export default function Login() { return signIn(); }"),
+    "app/api/session/route.ts": lines("import { current } from '../../../lib/auth/session';", "export async function GET() { return Response.json(current()); }"),
+    "lib/auth/session.ts": lines("export const signIn = () => null;", "export const current = () => null;")
+  }, async (root) => {
+    const authentication = (await createProjectMap(root)).features.find((feature) => feature.name === "Authentication");
+
+    assert.ok(authentication);
+    assert.equal(authentication.confidence, "high");
+  });
+});

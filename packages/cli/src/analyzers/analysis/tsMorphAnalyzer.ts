@@ -26,6 +26,16 @@ const NATIVE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
 // single line (a 1.7 MB `vendor.js`) takes minutes. Real source never has such a line.
 const MAX_LINE_LENGTH = 50_000;
 
+/**
+ * Whether TypeScript recovered from a syntax error while parsing. The tree of such a file is
+ * partial, so its imports and symbols may be incomplete and it must not read as a clean parse.
+ * `parseDiagnostics` is internal to TypeScript; should a release drop it, every file reads as clean.
+ */
+function hasSyntaxErrors(sourceFile: SourceFile): boolean {
+  const diagnostics = (sourceFile.compilerNode as unknown as { parseDiagnostics?: unknown }).parseDiagnostics;
+  return Array.isArray(diagnostics) && diagnostics.length > 0;
+}
+
 function hasOversizedLine(content: string): boolean {
   if (content.length <= MAX_LINE_LENGTH) return false;
   let start = 0;
@@ -103,6 +113,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
     if (hasOversizedLine(content)) return emptyAnalysis(this.id, "low");
 
     const sourceFile = this.project.createSourceFile(parsePath, content, { overwrite: true });
+    const confidence: FileAnalysis["confidence"] = hasSyntaxErrors(sourceFile) ? "medium" : "high";
     const lines = new LineIndex(sourceFile.getFullText());
     const lineOf = (node: Node) => lines.lineAt(node.getStart());
 
@@ -267,7 +278,7 @@ export class TsMorphAnalyzer implements FileAnalyzer {
 
     return {
       analyzer: this.id,
-      confidence: "high",
+      confidence,
       imports: [...imports],
       exports,
       symbols,

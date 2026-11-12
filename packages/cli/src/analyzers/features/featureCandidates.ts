@@ -37,6 +37,11 @@ export interface FeatureCandidate {
    * absorb them through shared files.
    */
   standalone?: boolean;
+  /**
+   * A vocabulary signal whose only support is a word in a file name or a local import. No
+   * package it imports confirms it, so on its own it is a hint and never a high-confidence feature.
+   */
+  nameOnly?: boolean;
   /** Internal compatibility payload used while the public snapshot remains V1. */
   projection?: FeatureInfo;
 }

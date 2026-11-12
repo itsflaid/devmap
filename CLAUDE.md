@@ -86,7 +86,7 @@ Everything else (files, graph, routes, features, flows, critical files) is 100% 
 version, generatedAt, fingerprint, projectRoot, framework,
 project(ProjectMetadata), stats, entryPoints, criticalFiles,
 routes, apiRoutes, externalServices, database?,
-features, entityGraph?, capabilities?, domain?,
+features, entityGraph?, capabilities?, domain?, ownership?,
 flows, onboarding, changeImpact, warnings?,
 dependencies, fileGraph(imports), ai?, fileIndex
 ```
@@ -191,7 +191,7 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - Client router detection reads literal route arrays, JSX trees and `getParentRoute` chains; routes assembled by loops, spreads of computed values or runtime config are not followed
 - Elysia, Koa and Adonis detectors follow literal call chains and mounts; routers built inside factory functions, `.use()` of computed values and runtime-assembled paths are not followed. Angular reads literal `Routes` arrays and `loadChildren` imports
 - Feature similarity threshold (0.35) is tuned but may cause false merges
-- Feature `confidence` measures parse quality, not evidence strength: `projectMap.ts` lifts any feature with two files, one parsed by ts-morph, to `high`, so a folder named `search/` reads as `high` like an imported vendor package does
+- Feature `confidence` measures parse quality and evidence kind, not product importance: a vocabulary signal that only a file name or local import supports is reported at `medium` at most unless a route is served from its files (an imported vendor package keeps it `high`), but a library's own runtime folder named `cache/` is still listed as a `Caching` feature. The registry does not separate vendor terms from generic words (`vitest` next to `spec`), so a package named by a generic word still counts
 - Domain inference is single-shot — no conversation context
 - The MCP staleness check re-scans project files (cached for 10 s), so it is not free on very large repositories
 
@@ -213,5 +213,11 @@ MCP server (after `pnpm build:cli`): `node packages/cli/test/mcp-smoke.mjs`.
 - Critical-file execution bonus (`projectMap.ts`) is name-based (router, controller, orchestrator, engine, dispatcher, scheduler, pipeline, registry, kernel, `commands/`) or fan-out-based (≥ 8 distinct local imports in a non-index file) — never tied to devmap's own file names
 - Angular, Elysia, Koa and Adonis detectors share `moduleBindings.ts` (`createModuleIndex`): imports/`require`, exports and re-exports, and `stringOf` (literals, templates, `+`, constants, `as const` objects and enums across files). Instances (Elysia/Koa) are keyed by `new` expression and only unmounted ones are walked from the top, like Hono
 - Feature merging (`featureCandidates.ts`): two page candidates never merge by shared file, a page never merges with a vocabulary signal unless they share the exact name, a `standalone` candidate (Home) is never merged, and a bridge candidate cannot fuse two different pages or entities. Weak signal words live in `genericTerms`; package-only words in `importTerms`; `excludePaths` removes false paths per signal
+- Feature confidence has two kinds of evidence: parse quality (`calculateFeatureConfidence`, the `projectMap.ts` lift) and, for registry vocabulary signals, whether an imported npm package names the signal (`hasPackageEvidence`, `namesPackage`: a scoped package counts through its scope, `@playwright/test`, never through the name behind it, `@standard-schema/spec`). Signals without that evidence carry `nameOnly` and `detectFeatures` returns them in `nameOnlyFeatures`; `attachFeatureEntryPoints` caps them at `medium` unless a route is served from their files. An entry point is no proof, since any file nothing imports is one
+- `featureStem` aliases `doc` to `documentation` (a `/docs` page and the Documentation role are one feature, kept under the concept's name)
+- `project.frameworks` is the winner per category (frontend, backend) and gates route detection; `project.detectedFrameworks` lists every framework with signals (a Next.js + Expo + TanStack Start monorepo names all three; React inside Next.js is folded away) and is what `doctor`, `analyze` and `.devmap/index.json` show. Read it through `allFrameworks()`, since older snapshots lack it
+- `readWorkspacePatterns` ignores patterns that name the root (`packages: ["."]`), so they do not make a monorepo
+- A file TypeScript had to recover from (`parseDiagnostics`, internal to TypeScript and guarded) is `medium`, not `high`; a template-only `.vue`/`.svelte`/`.astro` file is `medium` too
+- AI domain inference is grounded (`inference/domainGrounding.ts`): a domain that no entity, route or feature in the project supports is ignored with a warning, and features whose only related entities are generic (User, Account, Session) are dropped. `ownership` in the snapshot is the deterministic topology; "Personal app" wording needs `single_user_isolated`, which is inferred from missing cross-user evidence and is therefore weak
 - `nonResourceSegments.ts` lists operational URL segments (health, revalidate, robots.txt, login ...) that never become resources or "Management" features
 - Client-side routes (`clientRouteDetector.ts`) are self-gated by router imports/types and run for every project, like the other self-gating detectors; Hono factory functions are modeled as one app per call

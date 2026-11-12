@@ -41,6 +41,11 @@ export type DetectFeaturesResult = {
   features: FeatureInfo[];
   mergeDecisions: Array<{ candidateIds: [string, string]; outcome: string; anchors: Array<{ type: string; value: string }> }>;
   rejectedCandidateIds: string[];
+  /**
+   * Features whose only support is a vocabulary word in a file name or local import. Unless a route
+   * or entry point reaches them, the pipeline reports them at medium confidence at most.
+   */
+  nameOnlyFeatures: string[];
 };
 
 export type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
@@ -425,13 +430,15 @@ export function detectFeatures(
     }
 
     if (evidence.length > 0) {
-      candidates.push(toFeatureCandidate("registry", `signal-${signal.name}`, createFeatureInfo(
+      const candidate = toFeatureCandidate("registry", `signal-${signal.name}`, createFeatureInfo(
         signal.name,
         evidence,
         groundedSignalTerms(signal, evidence, analyses),
         signal.purpose,
         analyses
-      )));
+      ));
+      if (!signal.importOnly && !hasPackageEvidence(signal, evidence, analyses)) candidate.nameOnly = true;
+      candidates.push(candidate);
     }
   }
 
@@ -470,10 +477,16 @@ export function detectFeatures(
   const features = projectFeatureCandidates(reconciliation.clusters);
   const enriched = enrichAuthenticationFeature(features, reconciliation.clusters, scopedFiles, analyses)
     .sort((left, right) => compareText(left.name, right.name));
+  const nameOnlyFeatures = enriched
+    .filter((feature) => reconciliation.clusters.some((cluster) =>
+      cluster.canonicalLabel === feature.name && cluster.candidates.every((candidate) => candidate.nameOnly)
+    ))
+    .map((feature) => feature.name);
   return {
     features: enriched,
     mergeDecisions: reconciliation.mergeDecisions ?? [],
-    rejectedCandidateIds: reconciliation.rejectedCandidateIds
+    rejectedCandidateIds: reconciliation.rejectedCandidateIds,
+    nameOnlyFeatures
   };
 }
 
@@ -927,6 +940,42 @@ function matchesSignal(
   return (signal.importTerms ?? []).some((term) =>
     analysis.imports.some((specifier) => !specifier.startsWith(".") && matchesImportTerm(specifier, term))
   );
+}
+
+/** An npm package specifier: not relative, not an alias such as `@/x`, `~/x`, `#x` or `$lib/x`, not `node:`. */
+function isPackageSpecifier(specifier: string): boolean {
+  return /^(?:@[a-z0-9][\w.-]*\/[\w.-]+|[a-z0-9][\w.-]*)(?:\/|$)/i.test(specifier);
+}
+
+/**
+ * Whether a package the evidence imports names the signal. A word in a file name
+ * ("cache.js", "session-storage.js") or a local import says what the file is called,
+ * not that the project does caching or sessions; an imported `ioredis` or `next-auth` does.
+ */
+function hasPackageEvidence(
+  signal: Pick<FeatureSignal, "terms" | "importTerms">,
+  evidence: string[],
+  analyses: Record<string, FileAnalysis>
+): boolean {
+  const terms = [...signal.terms, ...(signal.importTerms ?? [])];
+  return evidence.some((path) =>
+    analyses[path]?.imports.some((specifier) =>
+      isPackageSpecifier(specifier) && terms.some((term) => namesPackage(specifier, term))
+    )
+  );
+}
+
+/**
+ * A package is named by its scope or its own name, never by the name behind a scope:
+ * `@playwright/test` is Playwright, while `@standard-schema/spec` is not "spec tests".
+ * A term that is itself scoped (`@upstash/redis`) must match the package exactly.
+ */
+function namesPackage(specifier: string, term: string): boolean {
+  const lower = specifier.toLowerCase();
+  if (term.startsWith("@")) return lower === term || lower.startsWith(`${term}/`);
+  const scope = lower.match(/^@([^/]+)\//)?.[1];
+  const identity = scope ?? lower.split("/")[0];
+  return new RegExp(`(?:^|[._-])${escapeRegex(term)}(?:[._-]|$)`).test(identity);
 }
 
 /**

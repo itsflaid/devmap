@@ -478,6 +478,7 @@ test("project map summarizes a Next.js fixture", async () => {
     root: nextFixture,
     framework: "nextjs",
     frameworks: ["nextjs"],
+    detectedFrameworks: ["nextjs"],
     language: "typescript",
     packageManager: "unknown",
     projectTypes: ["web-app"],

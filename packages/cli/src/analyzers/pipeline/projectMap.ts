@@ -231,7 +231,8 @@ export async function createProjectMap(
       routes,
       entryPoints,
       graph,
-      analyses
+      analyses,
+      new Set(featureResult.nameOnlyFeatures)
     );
     activeSpinner.succeed(`Detected ${features.length} features`);
 
@@ -720,7 +721,8 @@ function attachFeatureEntryPoints(
   routes: RouteInfo[],
   entryPoints: string[],
   graph: Record<string, string[]>,
-  analyses?: Record<string, FileAnalysis>
+  analyses?: Record<string, FileAnalysis>,
+  nameOnlyFeatures: ReadonlySet<string> = new Set()
 ): FeatureInfo[] {
   return features.map((feature) => {
     const relatedRouteEntries = routes
@@ -741,6 +743,10 @@ function attachFeatureEntryPoints(
       : feature.files;
     const entryPoint = chooseFeatureEntryPoint(feature.name, orderedFiles, relatedEntries, routes, graph);
     const businessFlow = buildFeatureBusinessFlow(feature.name, entryPoint, graph, orderedFiles);
+    // A word in a file name is a hint; only a route served from the feature's files,
+    // or an imported package, turns it into evidence. An entry point is no proof: any file
+    // that nothing imports is one.
+    const hintOnly = nameOnlyFeatures.has(feature.name) && relatedRouteEntries.length === 0;
     const hasHighQualityEvidence = analyses
       ? feature.evidence.some((path) => analyses[path]?.confidence === "high")
       : false;
@@ -751,9 +757,11 @@ function attachFeatureEntryPoints(
       ...(entryPoint ? { entryPoint } : {}),
       entryPoints: relatedEntries,
       businessFlow,
-      confidence: hasHighQualityEvidence && (feature.files.length >= 2 || relatedEntries.length > 0)
-        ? "high"
-        : feature.confidence
+      confidence: hintOnly
+        ? (feature.confidence === "low" ? "low" : "medium")
+        : hasHighQualityEvidence && (feature.files.length >= 2 || relatedEntries.length > 0)
+          ? "high"
+          : feature.confidence
     };
   });
 }

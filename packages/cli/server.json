@@ -7,12 +7,12 @@
     "source": "github",
     "subfolder": "packages/cli"
   },
-  "version": "0.9.3",
+  "version": "0.9.4",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@flaid/devmap",
-      "version": "0.9.3",
+      "version": "0.9.4",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"

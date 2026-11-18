@@ -422,7 +422,7 @@ type AutoloadRoot = {
 
 // `fastify.register(autoLoad, { dir: join(__dirname, "routes"), options: { prefix: "/v1" } })`
 const AUTOLOAD_IMPORT_PATTERN =
-  /import\s+(\w+)\s+from\s+["']@fastify\/autoload["']|(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*["']@fastify\/autoload["']\s*\)/;
+  /import\s+(\w+)\s+from\s+["'](?:@fastify\/autoload|fastify-autoload)["']|(?:const|let|var)\s+(\w+)\s*=\s*require\(\s*["'](?:@fastify\/autoload|fastify-autoload)["']\s*\)/;
 
 function findAutoloadRoots(files: ScannedFile[]): AutoloadRoot[] {
   const roots: AutoloadRoot[] = [];

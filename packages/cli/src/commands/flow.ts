@@ -197,7 +197,8 @@ function buildAllFlows(snapshot: ProjectMap): FlowInfo[] {
   return [
     ...generateFeatureFlows(snapshot.features, snapshot.fileIndex, {
       limit: Infinity,
-      minConfidence: "medium"
+      minConfidence: "medium",
+      graph: snapshot.fileGraph
     }),
     ...generateRequestFlows(snapshot.routes, snapshot.fileIndex, snapshot.fileGraph, {
       limit: Infinity,

@@ -982,7 +982,7 @@ function generateMinimalFlows(
   graph: Record<string, string[]>
 ): FlowInfo[] {
   return [
-    ...generateFeatureFlows(features, fileIndex),
+    ...generateFeatureFlows(features, fileIndex, { graph }),
     ...generateRequestFlows(routes, fileIndex, graph)
   ];
 }
@@ -992,10 +992,11 @@ const CONFIDENCE_RANK: Record<FeatureInfo["confidence"], number> = { low: 0, med
 export function generateFeatureFlows(
   features: FeatureInfo[],
   fileIndex: Record<string, FileIndexEntry>,
-  options: { limit?: number; minConfidence?: "high" | "medium" } = {}
+  options: { limit?: number; minConfidence?: "high" | "medium"; graph?: Record<string, string[]> } = {}
 ): FlowInfo[] {
   const limit = options.limit ?? 3;
   const minimumRank = CONFIDENCE_RANK[options.minConfidence ?? "high"];
+  const graph = options.graph;
 
   return features
     .filter((feature) =>
@@ -1010,11 +1011,16 @@ export function generateFeatureFlows(
         ...feature.entryPoints,
         ...feature.files
       ])];
+      const seen: string[] = [];
       const steps = feature.businessFlow.slice(0, 6).map((label) => {
-        const file = candidateFiles.find((candidate) => label.includes(candidate));
+        const file = candidateFiles.find((candidate) => label.includes(candidate))
+          ?? referencedFlowFile(label, fileIndex);
+        const from = file && graph ? seen.find((earlier) => earlier !== file && graph[earlier]?.includes(file)) : undefined;
+        if (file) seen.push(file);
         return {
           label,
-          ...(file ? { file, purpose: fileIndex[file]?.purpose } : {})
+          ...(file ? { file, purpose: fileIndex[file]?.purpose } : {}),
+          ...(from ? { from } : {})
         };
       });
 
@@ -1024,10 +1030,16 @@ export function generateFeatureFlows(
         type: "feature" as const,
         ...(feature.entryPoint ? { entryPoint: feature.entryPoint } : {}),
         steps,
-        ...(steps.length > 3 ? { mermaid: renderMermaidFlow(steps) } : {}),
+        ...(steps.length > 3 ? { mermaid: renderMermaidFlow(steps, graph ? "imports" : undefined) } : {}),
         confidence: feature.confidence === "high" ? "high" as const : "medium" as const
       };
     });
+}
+
+/** "Start at x." / "Follow dependency x." name a file even when it is not one of the feature's own files. */
+function referencedFlowFile(label: string, fileIndex: Record<string, FileIndexEntry>): string | undefined {
+  const named = /^(?:Start at|Follow dependency)\s+(.+)\.$/.exec(label)?.[1];
+  return named && fileIndex[named] ? named : undefined;
 }
 
 export function generateRequestFlows(
@@ -1039,28 +1051,47 @@ export function generateRequestFlows(
   const limit = options.limit ?? 5;
   const includeAllRouteKinds = options.includeAllRouteKinds ?? false;
 
-  return routes
-    .filter((route) => route.kind === "api" || includeAllRouteKinds)
-    .slice(0, limit)
-    .map((route) => {
-      const files = collectRequestFlowFiles(route, graph, fileIndex);
-      const steps = files.map(({ file, from }, index) => ({
-        label: renderFlowStepLabel(file, fileIndex[file], index === 0),
-        file,
-        purpose: fileIndex[file]?.purpose,
-        ...(from ? { from } : {})
-      }));
+  const served = groupRoutesByHandler(
+    routes.filter((route) => route.kind === "api" || includeAllRouteKinds)
+  ).slice(0, limit);
+  const pathCount = new Map<string, number>();
+  for (const route of served) pathCount.set(route.path, (pathCount.get(route.path) ?? 0) + 1);
 
-      return {
-        name: `Request ${route.path}`,
-        purpose: `Shows the main files involved in the ${route.path} request path.`,
-        type: "request" as const,
-        entryPoint: route.file,
-        steps,
-        ...(steps.length > 2 ? { mermaid: renderMermaidFlow(steps) } : {}),
-        confidence: steps.length > 1 ? "high" as const : "medium" as const
-      };
-    });
+  return served.map((route) => {
+    const files = collectRequestFlowFiles(route, graph, fileIndex);
+    const steps = files.map(({ file, from }, index) => ({
+      label: renderFlowStepLabel(file, fileIndex[file], index === 0),
+      file,
+      purpose: fileIndex[file]?.purpose,
+      ...(from ? { from } : {})
+    }));
+    const shared = (pathCount.get(route.path) ?? 0) > 1;
+
+    return {
+      name: shared ? `Request ${route.path} (${route.handlerFile ?? route.file})` : `Request ${route.path}`,
+      purpose: `Shows the main files involved in the ${route.path} request path.`,
+      type: "request" as const,
+      entryPoint: route.file,
+      steps,
+      ...(steps.length > 2 ? { mermaid: renderMermaidFlow(steps, "imports") } : {}),
+      confidence: steps.length > 1 ? "high" as const : "medium" as const
+    };
+  });
+}
+
+/** GET /articles and POST /articles served by one handler are one request path, not two flows. */
+function groupRoutesByHandler(routes: RouteInfo[]): RouteInfo[] {
+  const groups = new Map<string, RouteInfo>();
+  for (const route of routes) {
+    const key = [route.path, route.file, route.handlerFile ?? ""].join("\u0000");
+    const existing = groups.get(key);
+    if (!existing) {
+      groups.set(key, { ...route });
+    } else if (route.methods) {
+      existing.methods = [...new Set([...(existing.methods ?? []), ...route.methods])];
+    }
+  }
+  return [...groups.values()];
 }
 
 const FLOW_FILE_LIMIT = 5;
@@ -1214,16 +1245,24 @@ function renderFlowStepLabel(
   return `${prefix} ${file}${symbolText}`;
 }
 
-export function renderMermaidFlow(steps: FlowInfo["steps"]): string {
+/**
+ * `imports` draws only the import edges recorded in `step.from`; `order` chains the steps
+ * in reading order and is kept for snapshots written before steps carried `from`.
+ */
+export type MermaidEdgeMode = "imports" | "order";
+
+export function renderMermaidFlow(
+  steps: FlowInfo["steps"],
+  mode: MermaidEdgeMode = steps.some((step) => step.from !== undefined) ? "imports" : "order"
+): string {
   const lines = ["graph TD"];
-  const hasParents = steps.some((step) => step.from !== undefined);
   const nodeByFile = new Map<string, string>();
 
   steps.forEach((step, index) => {
     const node = `S${index + 1}`;
     lines.push(`  ${node}["${escapeMermaidLabel(step.file ?? step.label)}"]`);
 
-    const parent = hasParents
+    const parent = mode === "imports"
       ? (step.from ? nodeByFile.get(step.from) : undefined)
       : (index > 0 ? `S${index}` : undefined);
     if (parent) {

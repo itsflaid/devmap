@@ -555,6 +555,7 @@ test("project map summarizes a Next.js fixture", async () => {
   assert.deepEqual(projectMap.changeImpact["lib/auth.ts"].impacts.sort(), [
     "Authentication",
     "Authentication flow",
+    "Home flow",
     "Request /api/session"
   ]);
   assert.ok(projectMap.onboarding.recommendedPath.includes("package.json"));

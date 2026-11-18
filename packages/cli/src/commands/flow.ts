@@ -230,9 +230,9 @@ function resolveFlowTarget(
 }
 
 function matchFlows(flows: FlowInfo[], target: string): FlowInfo[] {
-  const needle = target.toLowerCase();
+  const needle = target.trim().toLowerCase();
 
-  const exact = flows.filter(f => f.name.toLowerCase() === needle);
+  const exact = flows.filter(f => flowAliases(f).includes(needle));
   if (exact.length > 0) return exact;
 
   const partial = flows.filter(f => f.name.toLowerCase().includes(needle));
@@ -245,6 +245,12 @@ function matchFlows(flows: FlowInfo[], target: string): FlowInfo[] {
   }
 
   return [];
+}
+
+/** A request flow is also addressable by its bare route path, without the "Request " prefix. */
+function flowAliases(flow: FlowInfo): string[] {
+  const name = flow.name.toLowerCase();
+  return flow.type === "request" ? [name, name.replace(/^request\s+/, "")] : [name];
 }
 
 async function narrateFlow(

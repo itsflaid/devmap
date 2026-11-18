@@ -264,11 +264,11 @@ function buildAuthWebAppFlow(
 
   if (language === "id") {
     const steps: ConceptualStep[] = [
-      { step: "User login — semua aksi butuh sesi aktif." },
+      { step: "User login — aksi yang dilindungi butuh sesi aktif." },
     ];
 
     if (entities.length > 0) {
-      steps.push({ step: `User membuat atau mengelola ${entities[0].toLowerCase()}${entities[1] ? ` yang berisi ${entities[1].toLowerCase()}` : ""}.` });
+      steps.push({ step: `User membuat atau mengelola ${entities[0].toLowerCase()}${entities[1] ? ` beserta ${entities[1].toLowerCase()}` : ""}.` });
     }
 
     if (ownershipPattern === "single_user_isolated") {
@@ -287,11 +287,11 @@ function buildAuthWebAppFlow(
   }
 
   const steps: ConceptualStep[] = [
-    { step: "User logs in — all actions require an active session." },
+    { step: "User logs in — protected actions require an active session." },
   ];
 
   if (entities.length > 0) {
-    steps.push({ step: `User creates or manages ${entities[0].toLowerCase()}${entities[1] ? ` that contain ${entities[1].toLowerCase()}` : ""}.` });
+    steps.push({ step: `User creates or manages ${entities[0].toLowerCase()}${entities[1] ? ` along with ${entities[1].toLowerCase()}` : ""}.` });
   }
 
   if (ownershipPattern === "single_user_isolated") {

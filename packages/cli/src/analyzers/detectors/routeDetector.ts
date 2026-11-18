@@ -30,6 +30,8 @@ export type RouteInfo = {
   file: string;
   kind: "page" | "api";
   methods?: string[];
+  /** Router file that owns the handlers when `file` only mounts it. */
+  handlerFile?: string;
 };
 
 /**
@@ -589,7 +591,8 @@ function detectExpressRoutes(
             path: composeMountPath(base, subPath),
             file: mount.file,
             kind: "api",
-            methods
+            methods,
+            handlerFile: target.path
           });
         }
       } else if (target && mountsByFile.has(target.path)) {

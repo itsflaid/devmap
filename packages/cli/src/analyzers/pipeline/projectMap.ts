@@ -74,6 +74,8 @@ export type FlowInfo = {
     label: string;
     file?: string;
     purpose?: string;
+    /** File that imports this step's file in the flow; absent for the entry and for ordered feature steps. */
+    from?: string;
   }>;
   mermaid?: string;
   confidence: "high" | "medium" | "low";
@@ -844,7 +846,7 @@ function buildFeatureBusinessFlow(
   const chain = collectFlowFiles(entryPoint, graph);
   const steps = [`Start at ${entryPoint}.`];
 
-  for (const file of chain.slice(1, 4)) {
+  for (const { file } of chain.slice(1, 4)) {
     steps.push(`Follow dependency ${file}.`);
   }
 
@@ -1041,11 +1043,12 @@ export function generateRequestFlows(
     .filter((route) => route.kind === "api" || includeAllRouteKinds)
     .slice(0, limit)
     .map((route) => {
-      const files = collectFlowFiles(route.file, graph, fileIndex);
-      const steps = files.map((file, index) => ({
+      const files = collectRequestFlowFiles(route, graph, fileIndex);
+      const steps = files.map(({ file, from }, index) => ({
         label: renderFlowStepLabel(file, fileIndex[file], index === 0),
         file,
-        purpose: fileIndex[file]?.purpose
+        purpose: fileIndex[file]?.purpose,
+        ...(from ? { from } : {})
       }));
 
       return {
@@ -1060,27 +1063,55 @@ export function generateRequestFlows(
     });
 }
 
+const FLOW_FILE_LIMIT = 5;
+
+type FlowFile = { file: string; from?: string };
+
+/**
+ * A mounted route is served by `handlerFile`, not by the file that mounts it, so the
+ * walk starts at the handler. Starting at the mounting file would pull in every other
+ * router it mounts.
+ */
+function collectRequestFlowFiles(
+  route: RouteInfo,
+  graph: Record<string, string[]>,
+  fileIndex: Record<string, FileIndexEntry>
+): FlowFile[] {
+  const handler = route.handlerFile;
+  if (!handler || handler === route.file || !fileIndex[handler]) {
+    return collectFlowFiles(route.file, graph, fileIndex);
+  }
+
+  const mount: FlowFile[] = fileIndex[route.file] ? [{ file: route.file }] : [];
+  const handled = collectFlowFiles(handler, graph, fileIndex, FLOW_FILE_LIMIT - mount.length);
+  return [
+    ...mount,
+    ...handled.map((entry, index) => index === 0 && mount.length > 0 ? { ...entry, from: route.file } : entry)
+  ];
+}
+
 function collectFlowFiles(
   entryFile: string,
   graph: Record<string, string[]>,
-  fileIndex?: Record<string, FileIndexEntry>
-): string[] {
-  const files: string[] = [];
+  fileIndex?: Record<string, FileIndexEntry>,
+  limit: number = FLOW_FILE_LIMIT
+): FlowFile[] {
+  const files: FlowFile[] = [];
   const visited = new Set<string>();
-  const queue = [entryFile];
+  const queue: FlowFile[] = [{ file: entryFile }];
 
-  while (queue.length > 0 && files.length < 5) {
-    const file = queue.shift();
-    if (!file || visited.has(file) || (fileIndex && !fileIndex[file])) {
+  while (queue.length > 0 && files.length < limit) {
+    const current = queue.shift();
+    if (!current || visited.has(current.file) || (fileIndex && !fileIndex[current.file])) {
       continue;
     }
 
-    visited.add(file);
-    files.push(file);
+    visited.add(current.file);
+    files.push(current);
 
-    for (const next of graph[file] ?? []) {
+    for (const next of graph[current.file] ?? []) {
       if (!visited.has(next) && (!fileIndex || fileIndex[next])) {
-        queue.push(next);
+        queue.push({ file: next, from: current.file });
       }
     }
   }
@@ -1185,11 +1216,21 @@ function renderFlowStepLabel(
 
 export function renderMermaidFlow(steps: FlowInfo["steps"]): string {
   const lines = ["graph TD"];
+  const hasParents = steps.some((step) => step.from !== undefined);
+  const nodeByFile = new Map<string, string>();
+
   steps.forEach((step, index) => {
     const node = `S${index + 1}`;
     lines.push(`  ${node}["${escapeMermaidLabel(step.file ?? step.label)}"]`);
-    if (index > 0) {
-      lines.push(`  S${index} --> ${node}`);
+
+    const parent = hasParents
+      ? (step.from ? nodeByFile.get(step.from) : undefined)
+      : (index > 0 ? `S${index}` : undefined);
+    if (parent) {
+      lines.push(`  ${parent} --> ${node}`);
+    }
+    if (step.file) {
+      nodeByFile.set(step.file, node);
     }
   });
   return lines.join("\n");

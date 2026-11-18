@@ -629,7 +629,8 @@ test("project map summarizes an Express fixture", async () => {
       path: "/payments",
       file: "src/server.ts",
       kind: "api",
-      methods: ["GET"]
+      methods: ["GET"],
+      handlerFile: "src/routes/payments.ts"
     }
   ]);
   const paymentsFlow = projectMap.flows.find((flow) => flow.name === "Request /payments");

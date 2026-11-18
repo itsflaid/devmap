@@ -326,6 +326,7 @@ function buildProjectMap(snapshot: ProjectMap, all?: boolean): { markdown: strin
   const mermaidEdges: MermaidEdge[] = [];
   for (const feature of features) {
     for (const file of feature.files) {
+      if (declaresOnlyTypes(snapshot.fileIndex[file])) continue;
       for (const dependency of snapshot.fileGraph[file] ?? []) {
         const dependencyFeature = fileToFeature.get(dependency);
         if (dependencyFeature && dependencyFeature !== feature.name) {
@@ -369,6 +370,12 @@ function buildProjectMap(snapshot: ProjectMap, all?: boolean): { markdown: strin
     markdown: buildMapMarkdown({ title: "Project", sections, mermaid: renderMermaid(mermaidEdges) }),
     mermaid: renderMermaid(mermaidEdges)
   };
+}
+
+/** A file that only declares interfaces and type aliases couples features at compile time, not at runtime. */
+export function declaresOnlyTypes(entry: ProjectMap["fileIndex"][string] | undefined): boolean {
+  const symbols = entry?.symbols ?? [];
+  return symbols.length > 0 && symbols.every((symbol) => symbol.kind === "interface" || symbol.kind === "type");
 }
 
 function buildFullProjectDump(snapshot: ProjectMap): { markdown: string; mermaid: string } {

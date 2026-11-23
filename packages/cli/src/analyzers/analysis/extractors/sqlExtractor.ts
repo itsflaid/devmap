@@ -4,16 +4,10 @@ import type { EntityInfo, IEntityExtractor } from "./types.js";
 import { resourceEntityName } from "./fallbackExtractor.js";
 import { isArchitectureSource } from "../../graph/sourceScope.js";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 /**
- * Raw SQL client packages. Deliberately narrow — these are the drivers
- * actually used without an ORM layer on top. Drivers that only ever show up
- * *underneath* an ORM (e.g. `pg` used by Drizzle) don't matter here: if an
- * ORM extractor higher in the EXTRACTORS chain already found entities, this
- * one never runs at all (orchestrator stops at first non-empty result).
+ * Raw SQL client packages, kept narrow to drivers used without an ORM. A driver under an ORM
+ * (e.g. `pg` under Drizzle) is irrelevant: the ORM extractor earlier in the chain wins and
+ * this one never runs.
  */
 const RAW_SQL_IMPORTS = new Set([
   "pg", "pg-promise",
@@ -21,10 +15,7 @@ const RAW_SQL_IMPORTS = new Set([
   "better-sqlite3", "sqlite3", "node:sqlite",
 ]);
 
-/**
- * Table-like names that show up in real query strings but aren't domain
- * entities — internal Postgres/SQLite catalogs and migration bookkeeping.
- */
+/** Names that appear in real queries but are not domain entities: DB catalogs and migration bookkeeping. */
 const NON_ENTITY_TABLE_NAMES = new Set([
   "information_schema", "pg_catalog", "pg_stat_activity",
   "sqlite_master", "sqlite_sequence", "sqlite_temp_master",
@@ -32,11 +23,9 @@ const NON_ENTITY_TABLE_NAMES = new Set([
 ]);
 
 /**
- * Common English function words that land right after from/into/update/join
- * in ordinary UI copy — "Update your profile", "select a file from your
- * computer" — but are never real table names. Without this, any project with
- * a raw SQL client anywhere and normal SaaS/checkout copy elsewhere (confirm
- * dialogs, toasts, form hints) produces bogus pseudo-entities like "Your".
+ * English words that follow from/into/update/join in UI copy ("Update your profile",
+ * "select a file from your computer") but are never table names. Without them, a project with
+ * a raw SQL client plus ordinary UI text yields pseudo-entities like "Your".
  */
 const ENGLISH_STOPWORDS = new Set([
   "a", "an", "the", "this", "that", "these", "those",
@@ -45,10 +34,8 @@ const ENGLISH_STOPWORDS = new Set([
 ]);
 
 /**
- * Matches `from "pg"`, `require("mysql2")`, `require('better-sqlite3')`, etc.
- * Content-based rather than relying on parsed imports, since IEntityExtractor
- * only receives raw ScannedFile[] — same approach as the AI Integration
- * content fallback in featureDetector.ts.
+ * Matches `from "pg"`, `require("mysql2")`, etc. Reads raw content because IEntityExtractor only
+ * receives `ScannedFile[]`, not parsed imports.
  */
 function usesRawSqlClient(content: string): boolean {
   return [...RAW_SQL_IMPORTS].some((pkg) => {
@@ -57,32 +44,17 @@ function usesRawSqlClient(content: string): boolean {
   });
 }
 
-/**
- * Pull table names out of query strings via the SQL keywords that precede a
- * table name in the vast majority of real queries. This is intentionally not
- * a SQL parser — just enough to turn `SELECT * FROM users` into a "users"
- * pseudo-entity.
- *
- * String *boundaries* come from a real AST (ts-morph — already a dependency,
- * already used the same way in tsMorphAnalyzer.ts), not from regex-pairing
- * quote characters. A naive `"([^"]*)"` scan pairs the Nth quote with the
- * (N+1)th regardless of which statement they actually belong to, so a single
- * apostrophe in a comment ("doesn't", "it's") throws off parity for
- * everything after it — silently merging JSDoc prose and unrelated code into
- * one fake "string" that gets scanned for SQL-shaped phrases. AST nodes don't
- * have that failure mode: a StringLiteral node is exactly the source text
- * between one real quote pair, comments and JSX text are different node
- * kinds entirely, so this can't happen.
- */
+// Table names are taken from the keyword that precedes them (`FROM users`); this is not a SQL parser.
+//
+// String boundaries come from the ts-morph AST, not from pairing quote characters with a regex:
+// one apostrophe in a comment ("doesn't") flips the pairing for the rest of the file and merges
+// prose and code into a fake string. StringLiteral nodes exclude comments and JSX text.
 const SQL_STATEMENT_PATTERN = /\b(?:select|insert|update|delete|with)\b/i;
 const TABLE_NAME_PATTERN = /\b(?:from|into|update|join)\s+["'`]?([a-zA-Z_][a-zA-Z0-9_]*)["'`]?/gi;
 
-// Real table identifiers are lowercase/snake_case (`users`, `order_items`) or,
-// rarely, SCREAMING_CASE. A captured word that starts with a capital letter
-// followed by a lowercase letter (`DevMap`, `Stripe`, `Your`) reads as a
-// proper noun or a sentence's first word, not a table — the residual gap
-// after the stopword list, which can only ever cover words we thought to
-// list, not arbitrary product/brand names in CLI help text or UI copy.
+// Table identifiers are lowercase/snake_case or, rarely, SCREAMING_CASE. A Title-case word
+// (`DevMap`, `Stripe`, `Your`) is a proper noun or sentence start; this covers the brand names
+// in help text and UI copy that the stopword list cannot enumerate.
 const TITLE_CASE_PATTERN = /^[A-Z][a-z]/;
 const SQL_SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 
@@ -104,8 +76,7 @@ function stringLiteralsIn(content: string): string[] {
     }
     literalProject.removeSourceFile(sourceFile);
   } catch {
-    // Best-effort: a file ts-morph can't parse just contributes no literals,
-    // same as a file with no SQL-shaped strings at all.
+    // Unparseable file: contributes no literals.
   }
   return literals;
 }
@@ -131,15 +102,9 @@ function extractTableNames(file: ScannedFile): string[] {
   return [...names];
 }
 
-// ---------------------------------------------------------------------------
-// Extractor
-// ---------------------------------------------------------------------------
-
 /**
- * SQLExtractor — the "[future] SQL" slot already reserved in
- * extractors/index.ts. Produces pseudo-entities (name only, no fields or
- * relations — raw SQL has no schema metadata to read the way Prisma does)
- * from table names referenced in query strings, for projects with no ORM.
+ * Produces name-only pseudo-entities from table names in query strings, for projects with no ORM.
+ * Fields and relations stay empty because raw SQL carries no schema metadata.
  */
 export class SQLExtractor implements IEntityExtractor {
   readonly name = "sql";

@@ -17,7 +17,7 @@ export function toFeatureIdentity(feature: FeatureInfo): FeatureIdentity {
   };
 }
 
-// Deliberately strict: searchTerms also hold generic technical keywords, which must not
+// Strict on purpose: searchTerms also hold generic technical keywords, which must not
 // count as entities. Plain searchTerms still reach the similarity score through termOverlap,
 // so entityOverlap only captures names stated explicitly.
 function extractRelatedEntities(feature: FeatureInfo): string[] {

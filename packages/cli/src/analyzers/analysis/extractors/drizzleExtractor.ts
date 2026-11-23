@@ -204,10 +204,7 @@ function parseRelationDeclarations(text: string): RelationDeclaration[] {
   return declarations;
 }
 
-// ---------------------------------------------------------------------------
-// Source scanning: just enough JS lexing to find balanced brackets and split on
-// commas without being fooled by strings or comments.
-// ---------------------------------------------------------------------------
+// Minimal JS lexing below: balanced brackets and top-level commas, ignoring strings and comments.
 
 function stripComments(source: string): string {
   let out = "";

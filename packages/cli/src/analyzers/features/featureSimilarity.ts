@@ -5,7 +5,7 @@
 // The default threshold of 0.35 is tuned so features that share entities and search terms match
 // ("Search" and "Search Functionality") while unrelated ones ("Authentication", "Search") do not.
 
-// Deliberately smaller than FeatureInfo so callers can compare without building a full feature.
+// Smaller than FeatureInfo so callers can compare without building a full feature.
 export type FeatureIdentity = {
   name: string;
   files: string[];

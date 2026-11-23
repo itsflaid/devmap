@@ -1,20 +1,16 @@
 import type { ScannedFile } from "../index.js";
 import type { RouteInfo } from "../../detectors/index.js";
 
-// ---------------------------------------------------------------------------
-// Core types
-// ---------------------------------------------------------------------------
-
 export type EntityInfo = {
   name: string;
   fields: FieldInfo[];
   relations: RelationInfo[];
   source: "prisma" | "drizzle" | "sql" | "route-hint";
-  /** Files this entity was actually found in — set when the source has no
-   *  reliable filename/path convention to fall back on (e.g. a "verses"
-   *  table referenced inside src/routes/quran.ts has no file named verse.ts
-   *  for the generic name-matching fallback to find). When present, this
-   *  takes priority over that fallback. */
+  /**
+   * Files the entity was found in. Set when the source has no filename convention to match on
+   * (a "verses" table queried in `src/routes/quran.ts` has no `verse.ts`); takes priority over
+   * name-based file matching.
+   */
   sourceFiles?: string[];
 };
 
@@ -35,55 +31,27 @@ export type RelationInfo = {
 export type EntityGraph = {
   entities: EntityInfo[];
   relations: RelationInfo[];
-  /** Flat list of entity names — shortcut buat featureDetector & capabilityDetector */
+  /** Flat list of entity names, for featureDetector and capabilityDetector. */
   entityNames: string[];
-  /** Where entities came from — consumers dapat tau seberapa reliable data ini */
+  /** Where the entities came from, so consumers can judge how reliable they are. */
   source: "prisma" | "drizzle" | "sql" | "route-hint" | "empty";
 };
 
-// ---------------------------------------------------------------------------
-// Extractor interface
-// ---------------------------------------------------------------------------
-
-/**
- * IEntityExtractor — contract yang harus diimplementasi semua extractor.
- *
- * Setiap extractor bertanggung jawab atas satu source (Prisma, Drizzle, dll).
- * Orchestrator di index.ts iterate extractor list dan stop di hasil pertama
- * yang non-empty — ini yang bikin fallback chain bisa kerja tanpa if-else panjang.
- */
+/** One entity source (Prisma, Drizzle, ...). The orchestrator in `index.ts` stops at the first non-empty result. */
 export interface IEntityExtractor {
-  /**
-   * Nama extractor ini — untuk logging / debug.
-   * Contoh: "prisma", "drizzle", "typeorm"
-   */
+  /** Also becomes `EntityGraph.source`, so it must match one of that union's members. */
   readonly name: string;
 
-  /**
-   * canHandle — quick check apakah extractor ini relevan untuk file-file ini.
-   * Dipanggil sebelum extract() untuk short-circuit extractor yang tidak applicable.
-   *
-   * Contoh:
-   *   Prisma extractor → return files.some(f => f.path.endsWith(".prisma"))
-   *   Drizzle extractor → return files.some(f => isDrizzleSchemaFile(f))
-   */
+  /** Cheap relevance check, called before `extract()` so inapplicable extractors are skipped. */
   canHandle(files: ScannedFile[]): boolean;
 
-  /**
-   * extract — parse files dan return list EntityInfo.
-   * Hanya dipanggil kalau canHandle() return true.
-   *
-   * Return [] kalau parse gagal / tidak ada entity ditemukan —
-   * orchestrator akan lanjut ke extractor berikutnya.
-   */
+  /** Only called when `canHandle()` is true. Returns `[]` when nothing is found, so the chain moves on. */
   extract(files: ScannedFile[]): EntityInfo[];
 }
 
 /**
- * IRouteFallbackExtractor — contract khusus route-hint extractor.
- *
- * Dipisah dari IEntityExtractor karena input-nya berbeda (RouteInfo[] bukan ScannedFile[]).
- * Orchestrator panggil ini hanya kalau semua IEntityExtractor return kosong.
+ * Separate from IEntityExtractor because its input is `RouteInfo[]`, not `ScannedFile[]`.
+ * Only used when every IEntityExtractor returned nothing.
  */
 export interface IRouteFallbackExtractor {
   readonly name: string;

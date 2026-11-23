@@ -145,15 +145,10 @@ function readPackageManifests(files: ScannedFile[]): PackageManifest[] {
 }
 
 /**
- * Whether the ROOT package itself (not any nested workspace member) is
- * shaped like a CLI or a library. Deliberately scoped to the root manifest
- * only — unlike `detectProjectTypes`, which intentionally checks every
- * manifest so `projectTypes` can report "this repo also contains a CLI"
- * as one of several labels. That whole-tree check must not be reused here:
- * a monorepo root (e.g. a private workspace with no bin/main/exports of its
- * own) that merely CONTAINS a CLI subpackage (e.g. packages/cli) is not
- * itself a CLI, and shouldn't have its correctly-detected framework (e.g.
- * an Astro app living in apps/web) blanked out to "unknown" because of it.
+ * Whether the root package itself, not a nested workspace member, looks like a CLI or library.
+ * `detectProjectTypes` checks every manifest so it can report "also contains a CLI", but reusing
+ * that here would make a monorepo root that merely contains `packages/cli` count as a CLI and
+ * blank its detected framework (say an Astro app in `apps/web`) to "unknown".
  */
 function isRootCliOrLibrary(
   manifests: PackageManifest[],

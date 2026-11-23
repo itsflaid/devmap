@@ -1,21 +1,9 @@
 /**
- * fileRole.ts — classify files into architectural roles.
- *
- * Roles describe the STRUCTURAL PURPOSE of a file in a codebase,
- * not what library it uses or what domain it belongs to.
- *
- * Generic by design — roles here should apply to any web/backend/CLI project,
- * not just DevMap. DevMap-specific roles (snapshot-engine, analysis-engine)
- * have been removed and replaced with universal architectural roles.
- *
- * Role priority (checked top to bottom — first match wins):
- *   test → documentation → config → landing-ui → cli-command
- *   → api-handler → service → middleware → repository
- *   → ui-component → ai-integration → application-source
+ * A role is a file's structural purpose, not the library it uses or its domain. The roles are
+ * generic so they fit any web, backend or CLI project. `classifyFileRole` returns the first match
+ * in declaration order, except that `config` is checked before `landing-ui`.
  */
-
 export type FileRole =
-  // --- Universal structural roles ---
   | "test"               // test files, specs, fixtures
   | "documentation"      // markdown, docs, changelogs
   | "config"             // config files, env, build setup
@@ -29,55 +17,26 @@ export type FileRole =
   | "ai-integration"     // AI provider clients, prompt builders, LLM wrappers
   | "application-source"; // everything else — generic source file
 
-// ---------------------------------------------------------------------------
-// Main classifier
-// ---------------------------------------------------------------------------
-
 export function classifyFileRole(path: string): FileRole {
   const normalized = path.toLowerCase();
   const filename = normalized.split("/").at(-1) ?? normalized;
   const ext = filename.includes(".") ? "." + filename.split(".").at(-1) : "";
 
-  // 1. Tests — check first, biar test helper files gak ke-classify sebagai source
+  // Tests go first so test helpers are not classified as source.
   if (isTestPath(normalized)) return "test";
-
-  // 2. Documentation
   if (isDocumentationPath(normalized, filename)) return "documentation";
-
-  // 3. Config — build files, env, tsconfig, dll
   if (isConfigPath(normalized, filename, ext)) return "config";
-
-  // 4. Landing UI — public marketing pages
   if (isLandingUIPath(normalized, filename, ext)) return "landing-ui";
-
-  // 5. CLI commands — command handlers dan bin entry points
   if (isCLIPath(normalized)) return "cli-command";
-
-  // 6. API handlers — route files, controllers, endpoint handlers
   if (isAPIHandlerPath(normalized, filename)) return "api-handler";
-
-  // 7. Services — business logic layer
   if (isServicePath(normalized, filename)) return "service";
-
-  // 8. Middleware — guards, interceptors, proxies
   if (isMiddlewarePath(normalized, filename)) return "middleware";
-
-  // 9. Repository — data access layer
   if (isRepositoryPath(normalized, filename)) return "repository";
-
-  // 10. UI components — React/Vue/Svelte components dan pages
   if (isUIComponentPath(normalized, filename, ext)) return "ui-component";
-
-  // 11. AI integration — AI provider clients dan prompt builders
   if (isAIIntegrationPath(normalized, filename)) return "ai-integration";
 
-  // 12. Fallback
   return "application-source";
 }
-
-// ---------------------------------------------------------------------------
-// Role checkers
-// ---------------------------------------------------------------------------
 
 function isTestPath(path: string): boolean {
   return (
@@ -89,10 +48,8 @@ function isTestPath(path: string): boolean {
   );
 }
 
-// Meta-files that are NOT meaningful project documentation.
-// These are repo boilerplate, DevMap meta, or GitHub management files.
-// They still get role "documentation" for isTechnicalFeatureSource filtering,
-// but are excluded from Documentation feature evidence in featureDetector.
+// Repo boilerplate, DevMap meta and GitHub management files. They keep the "documentation" role (so
+// isTechnicalFeatureSource skips them) but are not evidence for the Documentation feature.
 const DOCUMENTATION_META_FILENAMES = new Set([
   "devmap.md", "agents.md",
   "contributing.md", "code_of_conduct.md", "code-of-conduct.md",
@@ -101,10 +58,8 @@ const DOCUMENTATION_META_FILENAMES = new Set([
 ]);
 
 function isDocumentationPath(path: string, filename: string): boolean {
-  // All .md, .mdx, .txt and doc folders are classified as "documentation" role.
-  // The role is used broadly for isTechnicalFeatureSource() filtering.
-  // Narrower filtering (excluding meta-files) happens in featureDetector.ts
-  // via isDocumentationEvidence().
+  // Deliberately broad (every .md, .mdx, .txt) because isTechnicalFeatureSource uses the role to
+  // skip docs; featureDetector narrows it with isDocumentationEvidence().
   return (
     filename.endsWith(".md")
     || filename.endsWith(".mdx")
@@ -120,13 +75,12 @@ function isDocumentationPath(path: string, filename: string): boolean {
   );
 }
 
-/** Export buat featureDetector — check apakah file ini meaningful doc evidence */
+/** Whether a lowercase file name is a repo meta-file that is not documentation evidence. */
 export function isDocumentationMeta(filename: string): boolean {
   return DOCUMENTATION_META_FILENAMES.has(filename.toLowerCase());
 }
 
 function isConfigPath(path: string, filename: string, ext: string): boolean {
-  // Named config files
   const CONFIG_FILENAMES = new Set([
     "package.json", "tsconfig.json", "tsconfig.base.json",
     ".eslintrc", ".eslintrc.json", ".eslintrc.js",
@@ -148,12 +102,9 @@ function isConfigPath(path: string, filename: string, ext: string): boolean {
   if (CONFIG_FILENAMES.has(filename)) return true;
 
   return (
-    // *.config.ts / *.config.js
     /\.(config)\.[cm]?[jt]sx?$/.test(filename)
-    // src/config/ folder
     || /(^|\/)src\/configs?(\/|$)/.test(path)
     || /(^|\/)configs?(\/|$)/.test(path)
-    // env files
     || /^\.env(\.|$)/.test(filename)
   );
 }
@@ -164,10 +115,8 @@ function isLandingUIPath(path: string, filename: string, ext: string): boolean {
 
   return (
     /(^|\/)(landing|marketing)(\/|$)/.test(path)
-    // Next.js / Astro home page
     || /(^|\/)src\/pages\/index\.(astro|tsx?|jsx?)$/.test(path)
     || /(^|\/)src\/app\/page\.(tsx?|jsx?)$/.test(path)
-    // Named landing components
     || /(^|\/)+(hero|pricing|testimonials?|features?section|cta|banner|showcase)[^/]*\.(astro|tsx?|jsx?|vue|svelte)$/.test(path)
   );
 }
@@ -177,7 +126,6 @@ function isCLIPath(path: string): boolean {
     /(^|\/)src\/commands?(\/|$)/.test(path)
     || /(^|\/)commands?(\/|$)/.test(path)
     || /(^|\/)bin(\/|$)/.test(path)
-    // CLI entry point
     || /(^|\/)src\/cli\.[cm]?[jt]s$/.test(path)
     || /(^|\/)src\/main\.[cm]?[jt]s$/.test(path)
   );
@@ -185,18 +133,13 @@ function isCLIPath(path: string): boolean {
 
 function isAPIHandlerPath(path: string, filename: string): boolean {
   return (
-    // Next.js App Router route files
     /\/app\/.*\/route\.[cm]?[jt]sx?$/.test(path)
-    // Next.js Pages Router API
     || /\/pages\/api\//.test(path)
-    // Express/Fastify/Hono router files
     || /(^|\/)src\/(routes?|routers?)(\/|$)/.test(path)
     || /(^|\/)routes?(\/|$)/.test(path)
-    // Controllers (MVC pattern)
     || /(^|\/)src\/(controllers?)(\/|$)/.test(path)
     || /(^|\/)controllers?(\/|$)/.test(path)
     || /\.(controller)\.[cm]?[jt]sx?$/.test(filename)
-    // Named handler files
     || /\.(handler|router)\.[cm]?[jt]sx?$/.test(filename)
   );
 }
@@ -208,7 +151,6 @@ function isServicePath(path: string, filename: string): boolean {
     || /(^|\/)usecases?(\/|$)/.test(path)
     || /\.(service)\.[cm]?[jt]sx?$/.test(filename)
     || /\.(usecase|use-case)\.[cm]?[jt]sx?$/.test(filename)
-    // Action files (Next.js server actions)
     || /(^|\/)src\/actions?(\/|$)/.test(path)
     || /\.(action)\.[cm]?[jt]sx?$/.test(filename)
   );
@@ -220,7 +162,6 @@ function isMiddlewarePath(path: string, filename: string): boolean {
     || /(^|\/)middleware\.[cm]?[jt]sx?$/.test(path)
     || /(^|\/)proxy\.[cm]?[jt]sx?$/.test(path)
     || /\.(middleware|guard|interceptor)\.[cm]?[jt]sx?$/.test(filename)
-    // Next.js middleware convention
     || /(^|\/)src\/middleware\.[cm]?[jt]sx?$/.test(path)
   );
 }
@@ -230,10 +171,8 @@ function isRepositoryPath(path: string, filename: string): boolean {
     /(^|\/)src\/(repositories?|repos?|daos?|data-access)(\/|$)/.test(path)
     || /(^|\/)repositories?(\/|$)/.test(path)
     || /\.(repository|repo)\.[cm]?[jt]sx?$/.test(filename)
-    // Prisma / DB client files
     || /(^|\/)src\/lib\/(prisma|db|database)\.[cm]?[jt]sx?$/.test(path)
     || /(^|\/)src\/(db|database)(\/|$)/.test(path)
-    // Drizzle schema files
     || /(^|\/)src\/db\/schema\.[cm]?[jt]sx?$/.test(path)
   );
 }
@@ -242,15 +181,13 @@ function isUIComponentPath(path: string, filename: string, ext: string): boolean
   const UI_EXTS = new Set([".tsx", ".jsx", ".vue", ".svelte", ".astro"]);
   if (!UI_EXTS.has(ext)) return false;
 
-  // Exclude files already classified as api-handler, landing-ui, etc.
-  // This runs last among UI checks so it acts as a broad catch-all for UI files.
   return (
     /(^|\/)src\/(components?|ui|widgets?)(\/|$)/.test(path)
     || /(^|\/)components?(\/|$)/.test(path)
     || /(^|\/)src\/(pages?|views?|screens?)(\/|$)/.test(path)
     || /(^|\/)pages?(\/|$)/.test(path)
     || /(^|\/)app\/.*\/(page|layout|loading|error|not-found)\.[cm]?[jt]sx?$/.test(path)
-    // Catch-all: any .tsx/.jsx/.vue/.svelte not caught above
+    // The earlier patterns are subsumed by this: any UI-extension file that no earlier role took.
     || UI_EXTS.has(ext)
   );
 }
@@ -260,21 +197,13 @@ function isAIIntegrationPath(path: string, filename: string): boolean {
     /(^|\/)src\/ai(\/|$)/.test(path)
     || /(^|\/)ai(\/|$)/.test(path)
     || /(^|\/)src\/lib\/(openai|groq|anthropic|gemini|langchain|ai)\.[cm]?[jt]sx?$/.test(path)
-    // "models?" intentionally excluded — src/models/ almost always means
-    // database/domain models, not AI models. Use src/llm/ or src/ai/ instead.
+    // No `models?` folder: src/models/ almost always holds database or domain models, not AI models.
     || /(^|\/)src\/(llm|prompts?)(\/|$)/.test(path)
     || /\.(prompt|chain)\.[cm]?[jt]sx?$/.test(filename)
   );
 }
 
-// ---------------------------------------------------------------------------
-// Utility exports
-// ---------------------------------------------------------------------------
-
-/**
- * isTechnicalFeatureSource — filter files yang relevan untuk feature detection.
- * Skip: test, documentation, config — mereka noise buat feature analysis.
- */
+/** Tests, documentation and config files are noise for feature detection. */
 export function isTechnicalFeatureSource(path: string): boolean {
   const role = classifyFileRole(path);
   return role !== "test"
@@ -282,10 +211,7 @@ export function isTechnicalFeatureSource(path: string): boolean {
     && role !== "config";
 }
 
-/**
- * isArchitecturalRole — roles yang represent meaningful architectural layers.
- * Berguna buat AI agent yang mau ngerti struktur project.
- */
+/** Roles that name an architectural layer, as opposed to test, documentation, config and the rest. */
 export function isArchitecturalRole(role: FileRole): boolean {
   return (
     role === "api-handler"

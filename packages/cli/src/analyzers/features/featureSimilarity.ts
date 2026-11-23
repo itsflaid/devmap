@@ -1,58 +1,27 @@
-/**
- * featureSimilarity.ts
- *
- * Reusable similarity engine untuk feature identity comparison.
- *
- * Design goals:
- *   - Tidak bergantung pada feature name sebagai primary identity
- *   - Weighted multi-factor scoring: files, entities, searchTerms, description
- *   - Groundwork untuk future fingerprint system
- *   - No heuristic string tricks (substring, includes, normalize-only)
- *
- * Scoring model:
- *   Setiap faktor diberi bobot berbeda tergantung reliability-nya.
- *   File overlap = paling reliable (concrete evidence).
- *   Name similarity = least reliable (AI dapat berubah wording).
- *
- *   Composite score 0.0 - 1.0.
- *   Threshold default 0.35 — dipilih biar:
- *     - "Plan Management" ↔ "Customizable Plans" MATCH (entity + terms overlap)
- *     - "Authentication" ↔ "Search" TIDAK MATCH (no overlap)
- *     - "Search" ↔ "Search Functionality" MATCH (terms overlap)
- */
+// Weighted similarity between two features, independent of their names: the composite score is
+// 0.0 to 1.0 and the weights follow how reliable each factor is. Shared files are concrete
+// evidence; the name is the weakest factor because AI-written wording changes between runs.
+//
+// The default threshold of 0.35 is tuned so features that share entities and search terms match
+// ("Search" and "Search Functionality") while unrelated ones ("Authentication", "Search") do not.
 
-// ---------------------------------------------------------------------------
-// Feature identity — data yang relevan untuk similarity comparison.
-// Sengaja dibuat minimal agar bisa dipakai tanpa import FeatureInfo penuh.
-// ---------------------------------------------------------------------------
-
+// Deliberately smaller than FeatureInfo so callers can compare without building a full feature.
 export type FeatureIdentity = {
   name: string;
-  /** File paths yang di-associate ke feature ini */
   files: string[];
-  /** Search terms — keyword from signal definitions, entity names, etc. */
+  /** Keywords from signal definitions, entity names and similar sources. */
   searchTerms: string[];
-  /** Related entity names — dari entityGraph atau domainFeature.relatedEntities */
+  /** From the entity graph or `domainFeature.relatedEntities`. */
   relatedEntities: string[];
   /** Route resources are a hard anchor when both sides resolve to the same resource. */
   routePaths?: string[];
-  /** Purpose / description string — dipakai sebagai soft signal */
+  /** Soft signal only. */
   purpose?: string;
 };
 
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-/**
- * MAX_SEARCH_TERMS — cross-cutting constant untuk search term cap.
- * Konsisten dengan featureDetector. Dipakai di similarity engine dan merge.
- */
+/** Cap on search terms kept when features are merged (see `mergeFeatureData`). */
 export const MAX_SEARCH_TERMS = 8;
 
-/**
- * FeatureSimilarityConfig — weights dan threshold yang bisa di-override.
- */
 export type FeatureSimilarityConfig = {
   weights: {
     fileOverlap: number;
@@ -75,24 +44,12 @@ export const DEFAULT_SIMILARITY_CONFIG: FeatureSimilarityConfig = {
   threshold: 0.35,
 };
 
-/**
- * DEFAULT_SIMILARITY_THRESHOLD — backward compat alias.
- */
 export const DEFAULT_SIMILARITY_THRESHOLD = DEFAULT_SIMILARITY_CONFIG.threshold;
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
 
 function resolveConfig(config?: FeatureSimilarityConfig): FeatureSimilarityConfig {
   return config ?? DEFAULT_SIMILARITY_CONFIG;
 }
 
-/**
- * computeSimilarity — hitung composite similarity score antara dua feature.
- *
- * @returns 0.0 - 1.0 (0 = no similarity, 1 = identical)
- */
 export function computeSimilarity(
   a: FeatureIdentity,
   b: FeatureIdentity,
@@ -113,9 +70,6 @@ export function computeSimilarity(
   );
 }
 
-/**
- * isSimilarFeature — convenience wrapper dengan threshold.
- */
 export function isSimilarFeature(
   a: FeatureIdentity,
   b: FeatureIdentity,
@@ -128,12 +82,7 @@ export function isSimilarFeature(
   return computeSimilarity(a, b, config) >= config.threshold;
 }
 
-/**
- * findSimilarFeature — cari feature di list yang paling similar ke candidate.
- *
- * Return { index, score } dari match terbaik, atau null kalau tidak ada yang
- * melewati threshold.
- */
+/** The best-scoring candidate at or above the threshold, or null when none reaches it. */
 export function findSimilarFeature(
   candidates: FeatureIdentity[],
   target: FeatureIdentity,
@@ -161,13 +110,9 @@ export function findSimilarFeature(
   return { index: bestIndex, score: bestScore };
 }
 
-// ---------------------------------------------------------------------------
-// Explainability — internal debugging only
-// ---------------------------------------------------------------------------
-
 /**
- * SimilarityExplanation — breakdown per faktor + reasons.
- * @internal — kandidat masuk devmap doctor output nanti, bukan public API.
+ * Per-factor breakdown for debugging.
+ * @internal
  */
 export type SimilarityExplanation = {
   score: number;
@@ -183,8 +128,7 @@ export type SimilarityExplanation = {
 };
 
 /**
- * computeSimilarityWithExplanation — seperti computeSimilarity, tapi return
- * breakdown detail buat debugging.
+ * Same score as `computeSimilarity`, with the per-factor breakdown.
  * @internal
  */
 export function computeSimilarityWithExplanation(
@@ -268,17 +212,7 @@ function describeFilesOverlap(a: string[], b: string[]): string {
     : "none";
 }
 
-// ---------------------------------------------------------------------------
-// Similarity algorithms
-// ---------------------------------------------------------------------------
-
-/**
- * jaccardSimilarity — |A ∩ B| / |A ∪ B|
- *
- * Dipakai untuk set-based features (files, terms, entities).
- * Return 1.0 kalau keduanya empty (dua feature tanpa data tidak conflicting).
- * Return 0.0 kalau salah satu empty dan yang lain tidak.
- */
+/** |A ∩ B| / |A ∪ B|. Two empty sets score 0, not 1: features with no data are not evidence of a match. */
 export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 && b.size === 0) return 0.0;
   if (a.size === 0 || b.size === 0) return 0.0;
@@ -293,14 +227,10 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
 }
 
 /**
- * trigramSimilarity — Dice coefficient pada character trigrams.
- *
- * Lebih robust dari Levenshtein untuk perbandingan nama pendek.
- * "Plan Management" ↔ "Customizable Plans" → ~0.28
- * "Authentication" ↔ "Authentication System" → ~0.82
- * "Search" ↔ "Search Functionality" → ~0.55
- *
- * Dipakai sebagai soft signal saja (weight 0.10) karena AI wording volatile.
+ * Dice coefficient (2|A ∩ B| / (|A| + |B|)) over character trigrams, which copes with short
+ * names better than Levenshtein. "Plan Management" vs "Customizable Plans" is about 0.16,
+ * "Authentication" vs "Authentication System" about 0.77, "Search" vs "Search Functionality"
+ * about 0.47. Only a soft signal (weight 0.10) because AI wording varies.
  */
 export function trigramSimilarity(a: string, b: string): number {
   const ta = buildTrigrams(a.toLowerCase());
@@ -314,7 +244,6 @@ export function trigramSimilarity(a: string, b: string): number {
     if (tb.has(g)) intersection++;
   }
 
-  // Dice coefficient: 2 * |A ∩ B| / (|A| + |B|)
   return (2 * intersection) / (ta.size + tb.size);
 }
 
@@ -327,14 +256,7 @@ function buildTrigrams(s: string): Set<string> {
   return grams;
 }
 
-// ---------------------------------------------------------------------------
-// Normalization helpers
-// ---------------------------------------------------------------------------
-
-/**
- * normTerms — lowercase semua terms untuk case-insensitive comparison.
- * Tidak strip stopwords — terlalu agresif dan bisa hilangkan signal penting.
- */
+// Lowercases only; stopwords are kept because stripping them can drop real signal.
 function normTerms(terms: string[]): string[] {
   return terms.map((t) => t.toLowerCase().trim()).filter(Boolean);
 }
@@ -343,26 +265,13 @@ function comparableDimension(left: string[], right: string[], weight: number): {
   return { score: jaccardSimilarity(new Set(left), new Set(right)), weight };
 }
 
-// ---------------------------------------------------------------------------
-// Feature fingerprint foundation
-//
-// Belum dipakai sekarang, tapi desain ini memungkinkan future persistence.
-// Fingerprint di-derive dari data concrete (files, entities, terms),
-// bukan dari nama — sehingga "Plan Management" dan "Customizable Plans"
-// akan generate fingerprint yang compatible.
-//
-// Future usage:
-//   const fp = buildFeatureFingerprint(featureIdentity);
-//   // store fp in .devmap/fingerprints.json
-//   // next run: match by fingerprint instead of name
-// ---------------------------------------------------------------------------
-
+// Not used by the pipeline yet. A fingerprint is built from files, terms and entities rather than
+// the name, so a feature renamed between runs ("Plan Management" / "Customizable Plans") could be
+// matched to its earlier fingerprint if one were persisted.
 export type FeatureFingerprint = {
-  /** Sorted, normalized file paths */
+  /** Sorted, normalized, `|`-joined file paths. */
   fileSignature: string;
-  /** Sorted, normalized search terms */
   termSignature: string;
-  /** Sorted, normalized entity names */
   entitySignature: string;
 };
 
@@ -374,11 +283,7 @@ export function buildFeatureFingerprint(identity: FeatureIdentity): FeatureFinge
   };
 }
 
-/**
- * fingerprintSimilarity — compare dua fingerprint secara segment-by-segment.
- * Alternative entry point kalau future code ingin compare fingerprints
- * tanpa reconstruct full FeatureIdentity.
- */
+/** Compares two fingerprints without rebuilding a `FeatureIdentity`. */
 export function fingerprintSimilarity(a: FeatureFingerprint, b: FeatureFingerprint): number {
   const fileScore   = jaccardSimilarity(
     new Set(a.fileSignature.split("|").filter(Boolean)),
@@ -393,7 +298,7 @@ export function fingerprintSimilarity(a: FeatureFingerprint, b: FeatureFingerpri
     new Set(b.entitySignature.split("|").filter(Boolean))
   );
 
-  // tanpa nameSimilarity karena fingerprint tidak menyimpan nama
+  // No name factor: a fingerprint does not store the name.
   const { weights } = DEFAULT_SIMILARITY_CONFIG;
   return (
     fileScore   * weights.fileOverlap +

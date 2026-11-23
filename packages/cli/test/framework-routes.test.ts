@@ -29,10 +29,6 @@ async function buildFixture(files: Record<string, string>): Promise<string> {
   return projectRoot;
 }
 
-// ---------------------------------------------------------------------------
-// Astro
-// ---------------------------------------------------------------------------
-
 test("detectRoutes maps Astro pages and endpoints", () => {
   const files = [
     createScannedFile("package.json", JSON.stringify({ dependencies: { astro: "^5.0.0" } })),
@@ -83,10 +79,6 @@ test("Astro pages surface as features through project map", async () => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Nuxt
-// ---------------------------------------------------------------------------
-
 test("detectFrameworks and detectRoutes handle Nuxt file-based routing", () => {
   const files = [
     createScannedFile("package.json", JSON.stringify({
@@ -134,10 +126,6 @@ test("Nuxt pages surface as features through project map", async () => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// Vue (SPA + Vue Router)
-// ---------------------------------------------------------------------------
-
 test("Vue Router routes resolve for identifier and lazy-import forms", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({
@@ -174,10 +162,6 @@ test("Vue Router routes resolve for identifier and lazy-import forms", async () 
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
-
-// ---------------------------------------------------------------------------
-// SvelteKit
-// ---------------------------------------------------------------------------
 
 test("detectRoutes maps SvelteKit +page and +server files only", () => {
   const files = [
@@ -236,10 +220,6 @@ test("SvelteKit pages surface as features through project map", async () => {
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
-
-// ---------------------------------------------------------------------------
-// Svelte SPA client routing
-// ---------------------------------------------------------------------------
 
 test("Svelte SPA routes from svelte-routing and svelte-spa-router become features", async () => {
   const projectRoot = await buildFixture({
@@ -309,10 +289,6 @@ test("svelte-spa-router object map only matches when the import is present", asy
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
-
-// ---------------------------------------------------------------------------
-// Fastify
-// ---------------------------------------------------------------------------
 
 test("detectRoutes maps Fastify chained and object-style routes", () => {
   const files = [
@@ -390,10 +366,6 @@ test("Fastify routes surface through project map", async () => {
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
-
-// ---------------------------------------------------------------------------
-// NestJS
-// ---------------------------------------------------------------------------
 
 test("Nest projects with platform-express are labeled nestjs, not express", () => {
   const files = [
@@ -551,10 +523,6 @@ test("NestJS routes surface through project map and service stays classified", a
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
-
-// ---------------------------------------------------------------------------
-// tRPC
-// ---------------------------------------------------------------------------
 
 const trpcFixture = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "trpc-project");
 

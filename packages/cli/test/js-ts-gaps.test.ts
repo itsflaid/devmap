@@ -33,8 +33,6 @@ async function routeTable(root: string): Promise<string[]> {
 
 const comp = (name: string) => `export default function ${name}() { return null; }\n`;
 
-// ------------------------------------------------------------ client routers
-
 test("React Router JSX: nesting, index, layout, relative paths, wrappers and lazy pages", async () => {
   await withProject({
     "package.json": pkg({ name: "spa", dependencies: { react: "19.0.0", "react-dom": "19.0.0", "react-router-dom": "7.0.0", vite: "6.0.0" } }),
@@ -243,8 +241,6 @@ test("a nav-menu array with path and name is not a route table", async () => {
   });
 });
 
-// ------------------------------------------------------------------- Next.js
-
 test("Next routes: private folders, intercepting routes, slots and metadata files", async () => {
   await withProject({
     "package.json": pkg({ name: "web", dependencies: { next: "15.0.0", react: "19.0.0", "react-dom": "19.0.0" } }),
@@ -277,8 +273,6 @@ test("Next routes: private folders, intercepting routes, slots and metadata file
     ]);
   });
 });
-
-// ---------------------------------------------------------------------- Hono
 
 test("Hono: a function that returns an app is one app per call", async () => {
   await withProject({
@@ -352,8 +346,6 @@ test("Hono: createFactory().createApp() and functions that register routes on an
     ]);
   });
 });
-
-// ------------------------------------------------------------------ ranking
 
 test("critical files: orchestrators rank by name or fan-out, not by devmap-specific names", async () => {
   const modules = Array.from({ length: 8 }, (_, i) => `mod${i}`);

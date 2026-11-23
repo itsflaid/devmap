@@ -43,8 +43,6 @@ async function routeTable(root: string): Promise<string[]> {
 
 const page = "export default function Page() { return null; }\n";
 
-// ------------------------------------------------------------------ detection
-
 test("Remix, React Router v7, TanStack and Expo win over plain react", async () => {
   const cases: Array<[string, Record<string, string>, string]> = [
     ["remix", { "@remix-run/react": "2.0.0", "@remix-run/node": "2.0.0", react: "18.0.0", "react-dom": "18.0.0" }, "remix"],
@@ -81,8 +79,6 @@ test("Hono is a backend framework and sits next to a frontend one", async () => 
     assert.deepEqual(await frameworksOf(root), ["nextjs", "hono"]);
   });
 });
-
-// ------------------------------------------------------------------- Remix
 
 test("Remix flat routes: params, pathless layouts, escapes and resource routes", async () => {
   await withProject({
@@ -128,8 +124,6 @@ test("Remix route files are entry points even though no file imports them", asyn
     assert.ok(map.entryPoints.includes("app/routes/_index.tsx"));
   });
 });
-
-// ------------------------------------------------------------ React Router v7
 
 test("React Router v7 reads app/routes.ts: nesting, layout(), prefix() and variables", async () => {
   await withProject({
@@ -200,8 +194,6 @@ test("React Router v7 flatRoutes() pulls in the file-name convention", async () 
     ]);
   });
 });
-
-// ------------------------------------------------------------------ TanStack
 
 test("TanStack Router reads each route's own id; the generated tree is not a route", async () => {
   await withProject({
@@ -277,8 +269,6 @@ test("TanStack Start server handlers are api routes with their methods", async (
   });
 });
 
-// ---------------------------------------------------------------------- Expo
-
 test("Expo Router: groups, dynamic segments, API routes; layouts are not screens", async () => {
   await withProject({
     "package.json": pkg({
@@ -328,8 +318,6 @@ test("Expo Router reads a custom root from app.json", async () => {
     ]);
   });
 });
-
-// ---------------------------------------------------------------------- Hono
 
 test("Hono: chains, basePath, mounted apps, constrained params and c.get()", async () => {
   await withProject({
@@ -443,8 +431,6 @@ test("an unrelated object with get()/post() methods is not a Hono route", async 
   });
 });
 
-// ------------------------------------------------------------------ monorepos
-
 test("a monorepo lists the routes of every frontend, not only the framework that won", async () => {
   await withProject({
     "package.json": pkg({ name: "mono", private: true, workspaces: ["apps/*"] }),
@@ -469,8 +455,6 @@ test("a monorepo lists the routes of every frontend, not only the framework that
     ]);
   });
 });
-
-// ------------------------------------------------------------ bundler aliases
 
 async function graphOf(root: string) {
   const files = await scanFiles(root);

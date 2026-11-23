@@ -10,14 +10,11 @@ import { readLanguage, supportsLanguageReader } from "./languageReaders.js";
 import { IMPORT_CLAUSE } from "../analysis/importClause.js";
 import { compareText } from "../../utils/compare.js";
 
-// TS/JS extensions are intentionally excluded here.
-// TsMorphAnalyzer handles .ts/.tsx/.js/.jsx with full AST accuracy (confidence: "high").
-// If ts-morph throws on a malformed file, AnalyzerRegistry falls through to this analyzer.
-// Keeping TS/JS out of this set makes that fallback explicit rather than silent.
+// .ts/.tsx/.js/.jsx are left to TsMorphAnalyzer; when it throws on a malformed file the registry
+// falls through to FallbackAnalyzer, not to this one.
 //
 // TODO: Replace regex-based analysis for non-JS languages with tree-sitter grammars post-MVP.
-// Current regex approach covers import/export detection well enough for MVP scope,
-// but won't handle scope-aware analysis (e.g. distinguishing code from comments in Python).
+// Regexes cover imports/exports well enough but cannot tell code from comments (e.g. in Python).
 const HEURISTIC_EXTENSIONS = new Set([
   ".cjs",
   ".cs",
@@ -39,9 +36,8 @@ export class HeuristicAnalyzer implements FileAnalyzer {
   }
 
   async analyze(file: ScannedFile, _context: AnalyzerContext): Promise<FileAnalysis> {
-    // Python, Ruby, PHP, Go, C# and Java have their own import and declaration
-    // syntax; running the JS patterns over them yields nothing (imports) or
-    // noise (`class of` from a docstring). The JS family keeps the JS readers.
+    // Python, Ruby, PHP, Go, C# and Java need their own readers: the JS patterns find no imports
+    // in them and match noise (`class of` from a docstring). The JS family keeps the JS readers.
     const reading = supportsLanguageReader(file.extension)
       ? readLanguage(file.extension, file.content)
       : undefined;

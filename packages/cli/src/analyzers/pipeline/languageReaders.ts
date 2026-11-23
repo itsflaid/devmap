@@ -46,9 +46,8 @@ export function readLanguage(extension: string, content: string): LanguageReadin
 }
 
 /**
- * Blank out comments (and Python docstrings) while keeping every newline and
- * string literal, so offsets and line numbers stay valid and `#` or `//` inside
- * a string is not mistaken for a comment.
+ * Blanks comments (and Python docstrings) but keeps newlines and string literals, so offsets and
+ * line numbers stay valid and a `#` or `//` inside a string is not taken for a comment.
  */
 function stripComments(content: string, syntax: CommentSyntax): string {
   const out: string[] = [];
@@ -138,8 +137,6 @@ function matchAll(content: string, pattern: RegExp): RegExpExecArray[] {
   return [...content.matchAll(new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`))];
 }
 
-// ------------------------------------------------------------------- Python
-
 function readPython(code: string): LanguageReading {
   const imports = new Set<string>();
   const symbols: SymbolInfo[] = [];
@@ -193,8 +190,6 @@ function readPython(code: string): LanguageReading {
   return { imports: [...imports], symbols };
 }
 
-// --------------------------------------------------------------------- Ruby
-
 function readRuby(code: string): LanguageReading {
   const imports = new Set<string>();
   const symbols: SymbolInfo[] = [];
@@ -225,8 +220,6 @@ function readRuby(code: string): LanguageReading {
 
   return { imports: [...imports], symbols };
 }
-
-// ---------------------------------------------------------------------- PHP
 
 function readPhp(code: string): LanguageReading {
   const imports = new Set<string>();
@@ -267,8 +260,6 @@ function readPhp(code: string): LanguageReading {
   return { imports: [...imports], symbols: symbols.sort(byLine) };
 }
 
-// ----------------------------------------------------------------------- Go
-
 function readGo(code: string): LanguageReading {
   const imports = new Set<string>();
   const symbols: SymbolInfo[] = [];
@@ -304,8 +295,6 @@ function readGo(code: string): LanguageReading {
 
   return { imports: [...imports], symbols: symbols.sort(byLine) };
 }
-
-// ------------------------------------------------------------ C# and Java
 
 function readCSharp(code: string): LanguageReading {
   const imports = new Set<string>();

@@ -50,20 +50,9 @@ export type DetectFeaturesResult = {
 
 export type AuthSemanticRole = "auth-config" | "guard" | "provider" | "consumer";
 
-// ---------------------------------------------------------------------------
-// ROLE_FEATURES — only user-visible features, not architectural layers.
-//
-// Excluded intentionally:
-//   "api-handler", "service", "middleware", "repository", "ui-component"
-//   → architectural implementation concerns, not domain features
-//   "ai-integration"
-//   → detected via FEATURE_SIGNALS (import-based), role-based too noisy
-//   "documentation"
-//   → re-added with strict meta-file filtering via isDocumentationEvidence()
-//
-// FEATURE_SIGNALS (vocabulary-driven feature detection) lives in
-// ../registry/index.js — one file per domain under ../registry/.
-// ---------------------------------------------------------------------------
+// Only user-visible roles. "api-handler", "service", "middleware", "repository" and "ui-component"
+// are architectural layers, not features. "ai-integration" is left to FEATURE_SIGNALS (imports),
+// since the role is too noisy. "documentation" is included but filtered by isDocumentationEvidence().
 const ROLE_FEATURES: Array<{
   role: FileRole;
   name: string;
@@ -90,22 +79,10 @@ const ROLE_FEATURES: Array<{
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Infrastructure entity names — auth provider internals and ORM bookkeeping
-// entities that should never appear as standalone domain features.
-//
-// These are excluded from entityGraphToFeatures regardless of their relations.
-//
-// Rule: an entity is infrastructure if it exists solely to support an
-// external system (auth provider, ORM, payment processor) and has no
-// business logic of its own visible to the application domain.
-//
-// "Account" is excluded here because in NextAuth / Lucia schemas it
-// represents an OAuth provider link record, not a user-facing account.
-// Projects that genuinely use "Account" as a domain entity (e.g. billing
-// accounts, bank accounts) will still detect it via FEATURE_SIGNALS or
-// capabilitiesToFeatures — so excluding it here is safe.
-// ---------------------------------------------------------------------------
+// Entities that only support an external system (auth provider, ORM bookkeeping) and never become
+// features in entityGraphToFeatures, whatever their relations. "Account" is an OAuth link record in
+// NextAuth / Lucia schemas; a project that uses it as a domain entity (billing, bank accounts) still
+// gets it through FEATURE_SIGNALS or capabilitiesToFeatures.
 const INFRASTRUCTURE_ENTITY_NAMES = new Set([
   // NextAuth / Lucia / Better-Auth internals
   "Account",
@@ -126,10 +103,6 @@ const INFRASTRUCTURE_ENTITY_NAMES = new Set([
   "EventLog",
 ]);
 
-// ---------------------------------------------------------------------------
-// Documentation evidence filter
-// ---------------------------------------------------------------------------
-
 function isDocumentationEvidence(filePath: string): boolean {
   const normalized = filePath.toLowerCase();
   const filename = normalized.split("/").at(-1) ?? normalized;
@@ -146,13 +119,8 @@ function isDocumentationEvidence(filePath: string): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Feature evidence file filter
-//
-// Excludes files that are generated artifacts or migration history —
-// these contain domain keywords (table/column names) that cause false
-// positive feature detection without representing actual implementation.
-// ---------------------------------------------------------------------------
+// Generated files and migration history repeat table and column names, which would match feature
+// vocabulary without being an implementation.
 function isFeatureEvidenceFile(path: string): boolean {
   const lower = path.toLowerCase();
 
@@ -170,20 +138,12 @@ function isFeatureEvidenceFile(path: string): boolean {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Registry self-exclusion
-//
-// Files under ../registry/ *define* the detection vocabulary. They are not
-// evidence of a real feature in the scanned project — without this check a
-// file like registry/email.ts would self-match the "email" term it describes.
-// ---------------------------------------------------------------------------
+// Files under ../registry/ define the detection vocabulary; registry/email.ts would otherwise
+// match the "email" term it describes.
 function isRegistryFile(path: string): boolean {
   return /\/analyzers\/registry\//.test(path.toLowerCase());
 }
 
-// ---------------------------------------------------------------------------
-// FEATURE_FILE_PRIORITIES
-// ---------------------------------------------------------------------------
 const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
   Documentation: [
     /(^|\/)readme\.md$/,
@@ -274,12 +234,7 @@ const FEATURE_FILE_PRIORITIES: Record<string, RegExp[]> = {
   ],
 };
 
-// ---------------------------------------------------------------------------
-// Entry point scoring
-//
-// Lower score = better entry point candidate.
-// Generic utility/helper files score >= ENTRY_POINT_EXCLUDE_THRESHOLD (excluded).
-// ---------------------------------------------------------------------------
+// Entry point score: lower is better. Generic utility files score at or above this and are dropped.
 const ENTRY_POINT_EXCLUDE_THRESHOLD = 90;
 
 export type FileTier = "primary" | "supporting" | "reference" | "excluded";
@@ -327,10 +282,6 @@ function scoreEntryPointRelevance(file: string, _context: string): number {
   return 70;
 }
 
-// ---------------------------------------------------------------------------
-// Main entry
-// ---------------------------------------------------------------------------
-
 export function detectFeatures(
   files: ScannedFile[],
   analyses: Record<string, FileAnalysis>,
@@ -343,7 +294,6 @@ export function detectFeatures(
   const candidates: FeatureCandidate[] = [];
   const scopedFiles = files.filter((file) => isArchitectureSource(file.path));
 
-  // --- ROLE_FEATURES ---
   const hasCliSource = scopedFiles.some(isCliSource);
   for (const definition of ROLE_FEATURES) {
     // Folder names alone ("commands/", "src/main.ts") also fit web apps and libraries.
@@ -381,7 +331,6 @@ export function detectFeatures(
     }
   }
 
-  // --- VS Code extension: files that use the `vscode` API ---
   const extensionFiles = scopedFiles
     .filter((file) => /\.[cm]?[jt]sx?$/.test(file.path) && VSCODE_IMPORT.test(file.content))
     .filter((file) => isFeatureEvidenceFile(file.path))
@@ -402,10 +351,7 @@ export function detectFeatures(
     ));
   }
 
-  // --- FEATURE_SIGNALS ---
-  // Pre-filter once here — avoids redundant isFeatureEvidenceFile calls inside each signal loop
-  // Registry files (../registry/**) are excluded: they *define* the vocabulary,
-  // so their paths/content would otherwise self-match every signal they describe.
+  // Filtered once for all signals. Registry files define the vocabulary and would match every signal.
   const technicalFiles = scopedFiles
     .filter((file) => isTechnicalFeatureSource(file.path))
     .filter((file) => isFeatureEvidenceFile(file.path))
@@ -442,8 +388,7 @@ export function detectFeatures(
     }
   }
 
-  // Database and API Routes are architectural concerns, not domain features.
-  // Database info lives in snapshot.database, routes in snapshot.routes.
+  // Database and API routes are not features; they live in snapshot.database and snapshot.routes.
 
   if (capabilities && capabilities.length > 0) {
     for (const feature of capabilitiesToFeatures(capabilities)) {
@@ -573,13 +518,6 @@ function normalizeCandidateSubject(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
-// ---------------------------------------------------------------------------
-// capabilitiesToFeatures
-//
-// Capabilities with no resolvable entry points are dropped — they represent
-// route patterns detected without backing implementation files, which
-// produces low-quality features (empty criticalFiles, misleading names).
-// ---------------------------------------------------------------------------
 function capabilitiesToFeatures(capabilities: CapabilityInfo[]): Array<FeatureInfo | null> {
   return capabilities.map((cap) => {
     const terms = [cap.kind, ...cap.entities.map((e) => e.toLowerCase())];
@@ -597,8 +535,8 @@ function capabilitiesToFeatures(capabilities: CapabilityInfo[]): Array<FeatureIn
       .slice(0, 2)
       .map((e) => e.file);
 
-    // Drop capabilities with no resolvable entry points and non-high confidence.
-    // These are weak detections: route pattern matched but no backing file found.
+    // A route pattern matched but no backing file was found; such a feature would have no entry
+    // points and a misleading name.
     if (entryPoints.length === 0 && cap.confidence !== "high") return null;
 
     return {
@@ -631,41 +569,14 @@ function purposeFromCapability(cap: CapabilityInfo): string {
   }
 }
 
-// ---------------------------------------------------------------------------
-// entityGraphToFeatures
-//
-// Entity ownership model:
-//
-//   TRUE CHILD — entity with a single parent via one-to-many AND no own
-//                children (leaf node), OR has a child-like name suffix.
-//                Skipped as standalone feature; mentioned in parent's purpose.
-//                Example: ChecklistItem (owned by Message, no children, suffix "Item")
-//
-//   STANDALONE — entity with multiple parents, or entity that itself owns
-//                other entities (intermediate node). Gets its own feature.
-//                Example: Room (owned by User, but owns Message[])
-//                Example: Message (owned by User+Room, but owns ChecklistItem[])
-//
-//   OWNED      — non-infra, non-true-child entities this entity owns via
-//                one-to-many. Shown in purpose string.
-//
-//   PEER       — many-to-many associations. Shown as "associates with X".
-//
-// Infrastructure entities (auth provider internals, ORM bookkeeping) are
-// excluded entirely via INFRASTRUCTURE_ENTITY_NAMES.
-// ---------------------------------------------------------------------------
-
-// Suffixes that semantically indicate a sub-item of a parent entity.
-// Used as a tiebreaker when an entity has a single parent and no children.
+// A name ending in one of these marks a sub-item of its parent, so an entity with a single
+// one-to-many parent is still a child even when it owns children itself.
 const TRUE_CHILD_SUFFIXES = /(?:Item|Entry|Detail|Line|Row|Part|Step|Variant|Option)$/;
 
 /**
- * isTrueChildEntity — determines if an entity should be skipped as standalone.
- *
- * An entity is a true child if ALL of:
- *   1. Exactly ONE parent owns it via one-to-many (single exclusive owner)
- *   2. It has NO outgoing one-to-many of its own (leaf node)
- *      OR its name has a child-like suffix (Item, Entry, Detail, etc.)
+ * A true child has exactly one one-to-many owner and is either a leaf or has a child-like name
+ * suffix. It gets no feature of its own; the parent's purpose mentions it. `ChecklistItem` (owned by
+ * `Message`) is a child, while `Message` (owned by `User` and `Room`, owns `ChecklistItem[]`) is not.
  */
 function isTrueChildEntity(entityName: string, relations: RelationInfo[]): boolean {
   const parents = relations.filter((r) => r.to === entityName && r.kind === "one-to-many");
@@ -735,7 +646,6 @@ function splitNameToSegments(name: string): string[] {
 function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = []): FeatureInfo[] {
   if (entityGraph.source === "empty") return [];
 
-  // Deduplicate relations across the graph
   const relations: RelationInfo[] = [];
   const seenRelKeys = new Set<string>();
   for (const entity of entityGraph.entities) {
@@ -763,8 +673,8 @@ function entityGraphToFeatures(entityGraph: EntityGraph, files: ScannedFile[] = 
       )
     : entityGraph.entities)
     .filter((e) => !trueChildNames.has(e.name) && !INFRASTRUCTURE_ENTITY_NAMES.has(e.name))
-    // entity dengan implementasi nyata (sourceFiles dari route-hint/SQL) diprioritaskan
-    // di atas entity yang cuma eksis di schema tanpa file custom
+    // Entities with real implementation files (sourceFiles from route hints or SQL) come before
+    // those that exist only in the schema.
     .sort((a, b) => (b.sourceFiles?.length ?? 0) - (a.sourceFiles?.length ?? 0));
 
   for (const entity of meaningfulEntities.slice(0, 8)) {
@@ -851,9 +761,6 @@ function buildEntityPurpose(
   return `Manages ${entityName} data and operations.`;
 }
 
-// ---------------------------------------------------------------------------
-// Confidence calculation
-// ---------------------------------------------------------------------------
 function calculateFeatureConfidence(
   evidence: string[],
   analyses: Record<string, FileAnalysis>
@@ -899,22 +806,9 @@ function createFeatureInfo(
   };
 }
 
-/**
- * mergeFeature — wrapper untuk backward compat internal usage.
- * Delegasi ke similarity-based mergeIntoFeatureList dari featureMerge.ts.
- *
- * Alasan tidak hapus function ini: masih dipanggil di beberapa tempat di file ini.
- * mergeIntoFeatureList menggantikan logika lama yang pakai normalizeFeatureName.
- */
-// ---------------------------------------------------------------------------
-// matchesSignal
-//
-// AI Integration: import-only by default — see ../registry/ai-providers.ts for the
-// provider vocabulary and the fetch()-URL fallback rules.
-//
-// All other signals: path matching first, then import matching.
-// ---------------------------------------------------------------------------
-
+// An `importOnly` signal (AI Integration) matches imports, provider URLs and the role only; see
+// ../registry/ai-providers.ts for the vocabulary and the fetch() URL rules. Other signals match by
+// path first, then by import.
 function matchesSignal(
   file: ScannedFile,
   analysis: FileAnalysis | undefined,
@@ -979,9 +873,8 @@ function namesPackage(specifier: string, term: string): boolean {
 }
 
 /**
- * The registry lists every vendor and keyword a signal knows about. Only the
- * ones this project's evidence really contains belong in its search terms, or an
- * agent reading "clerk, auth0, kinde" assumes the project uses them.
+ * The registry lists every vendor a signal knows. Only terms the evidence contains go into the
+ * search terms, or an agent reading "clerk, auth0, kinde" would assume the project uses them.
  */
 function groundedSignalTerms(
   signal: Pick<FeatureSignal, "name" | "terms" | "importTerms" | "importOnly">,
@@ -1001,37 +894,26 @@ function groundedSignalTerms(
 }
 
 /**
- * matchesImportTerm — segment-aware import specifier matching.
- *
- * Prevents false positives like "author" matching the "auth" signal.
- *
- * Rules:
- *   - Scoped packages: exact match on package name after @org/
- *     e.g. "@auth/core" matches "auth", "@prisma/client" matches "prisma"
- *   - Unscoped packages: exact match on first segment
- *     e.g. "next-auth" matches "auth" (via segment boundary), "author" does NOT
- *   - Local imports: use the same segment-boundary regex as path matching
- *     e.g. "./author" does NOT match "auth", "./auth/config" DOES match "auth"
+ * Matches on segment boundaries so "author" does not match the "auth" signal: `next-auth`,
+ * `@org/next-auth` and `./auth/config` match "auth", `./author` does not. For a scoped package only
+ * the name after the scope is tested, so `@auth/core` matches only through a term like `@auth`.
  */
 function matchesImportTerm(specifier: string, term: string): boolean {
   const lower = specifier.toLowerCase();
 
-  // A term that names a scope or a full scoped package ("@sentry/nextjs", "@trigger.dev")
+  // A term may name a scope or a full scoped package ("@sentry/nextjs", "@trigger.dev").
   if (term.startsWith("@") && (lower === term || lower.startsWith(`${term}/`))) return true;
 
-  // Scoped package: @org/name — match against the name segment
+  // Scoped package: match the segment after the scope.
   const scopedMatch = lower.match(/^@[^/]+\/(.+)$/);
   if (scopedMatch) {
     const packageName = scopedMatch[1];
-    // Exact segment match: "auth" matches "next-auth" (contains "-auth")
-    // but "auth" does NOT match "author" (different segment)
     return getOrCompilePattern(term).test(packageName)
       || packageName === term
       || packageName.split("-").includes(term);
   }
 
-  // Unscoped package or local path: use segment-boundary matching
-  // This reuses the same regex that protects path matching
+  // Unscoped package or local path: same boundary regex as path matching.
   return getOrCompilePattern(term).test(lower)
     || lower.split("/").some((segment) => segment === term);
 }
@@ -1046,12 +928,9 @@ function getOrCompilePattern(term: string): RegExp {
 }
 
 function matchesPathTerm(path: string, term: string): boolean {
-  // All terms ≤7 chars use word-boundary matching to prevent partial matches.
-  //
-  // ≤3 chars: "ai" must not match "detail", "tailwind", "email"
-  // 4-7 chars: "search" must not match "SearchSurah.tsx" (component name, not a path segment)
-  //            "upload" must not match "LoginUploadWidget.tsx"
-  // ≥8 chars: substring is fine — long terms are specific enough (e.g. "elasticsearch")
+  // Terms up to 7 chars need a segment boundary: "ai" must not match "detail" or "email", "search"
+  // must not match "SearchSurah.tsx", "upload" must not match "LoginUploadWidget.tsx". Longer terms
+  // ("elasticsearch") are specific enough for a substring match.
   if (term.length <= 7) {
     return getOrCompilePattern(term).test(path);
   }
@@ -1062,9 +941,6 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// ---------------------------------------------------------------------------
-// Authentication enrichment
-// ---------------------------------------------------------------------------
 function enrichAuthenticationFeature(
   features: FeatureInfo[],
   clusters: FeatureCluster[],
@@ -1182,9 +1058,6 @@ export function detectAuthenticationSemanticRole(
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// File priority helpers
-// ---------------------------------------------------------------------------
 export function featureFilePriority(featureName: string, path: string): number {
   const normalized = path.toLowerCase();
 
@@ -1223,9 +1096,7 @@ export function authenticationFilePriority(path: string): number {
   return 80;
 }
 
-// ---------------------------------------------------------------------------
-// Fallback helpers (used when ts-morph analysis unavailable)
-// ---------------------------------------------------------------------------
+// Regex fallbacks for files with no ts-morph analysis.
 function extractImportsFallback(content: string): string[] {
   const imports: string[] = [];
   const pattern = new RegExp(

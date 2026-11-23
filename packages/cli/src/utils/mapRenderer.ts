@@ -1,9 +1,8 @@
 import type { MapTreeNode } from "../analyzers/graph/dependencyMap.js";
 
 /**
- * renderTree — render a MapTreeNode as an indented, box-drawing tree
- * (same visual convention as the Unix `tree` command). Cycle-closing nodes
- * are suffixed with "(cycle)" instead of being expanded further.
+ * Box-drawing tree in the style of the Unix `tree` command. Cycle-closing
+ * nodes get a "(cycle)" suffix instead of being expanded again.
  */
 export function renderTree(node: MapTreeNode, prefix = ""): string {
   const lines: string[] = [];
@@ -36,10 +35,7 @@ function renderTreeLines(
   }
 }
 
-/**
- * renderFlatList — simple bullet list for cases (feature/project mode) where
- * a flat "these files are involved" view reads better than a nested tree.
- */
+/** Bullet list for feature/project mode, where there is no meaningful nesting. */
 export function renderFlatList(paths: string[], options: { cap?: number } = {}): string {
   if (paths.length === 0) return "(none)";
   const cap = options.cap ?? Infinity;
@@ -55,9 +51,8 @@ export function renderFlatList(paths: string[], options: { cap?: number } = {}):
 export type MermaidEdge = { from: string; to: string };
 
 /**
- * renderMermaid — render a set of file-to-file edges as a Mermaid
- * flowchart. Mermaid node IDs can't contain slashes/dots, so each real path
- * gets a sanitized ID with the real path kept as the visible label.
+ * Mermaid node IDs cannot contain slashes or dots, so each path gets a
+ * sanitized ID and keeps the real path as its label.
  */
 export function renderMermaid(
   edges: MermaidEdge[],
@@ -93,10 +88,7 @@ function escapeMermaidLabel(label: string): string {
   return label.replace(/"/g, "#quot;");
 }
 
-/**
- * buildMapMarkdown — wrap a text tree + Mermaid diagram into a single .md
- * body, in the same style as the rest of DevMap's generated docs.
- */
+/** Wraps the text tree and Mermaid diagram into one markdown body. */
 export function buildMapMarkdown(options: {
   title: string;
   sections: Array<{ heading: string; body: string }>;

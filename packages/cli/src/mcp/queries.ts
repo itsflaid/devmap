@@ -17,8 +17,6 @@ export function clampLimit(limit: number | undefined, fallback = DEFAULT_LIMIT):
   return Math.max(1, Math.min(MAX_LIMIT, Math.floor(limit)));
 }
 
-// ── overview ────────────────────────────────────────────────────────────────
-
 export type OverviewResult = {
   project: ProjectMap["project"];
   stats: ProjectMap["stats"];
@@ -77,8 +75,6 @@ export function buildOverview(snapshot: ProjectMap, limit = 10): OverviewResult 
   };
 }
 
-// ── routes ──────────────────────────────────────────────────────────────────
-
 export type RoutesQuery = {
   kind?: "page" | "api" | "all";
   prefix?: string;
@@ -115,8 +111,6 @@ export function queryRoutes(snapshot: ProjectMap, query: RoutesQuery = {}): Rout
     routes: matches.slice(0, limit)
   };
 }
-
-// ── impact ──────────────────────────────────────────────────────────────────
 
 export function resolveProjectFile(snapshot: ProjectMap, input: string): string {
   const normalized = input.trim().replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
@@ -280,8 +274,6 @@ export function queryImpact(
       || reached.length > cap
   };
 }
-
-// ── find ────────────────────────────────────────────────────────────────────
 
 export type FindHit =
   | { type: "feature"; name: string; purpose: string; entryPoint?: string; score: number }

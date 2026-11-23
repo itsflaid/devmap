@@ -139,8 +139,7 @@ function parse(line: string): { kind: Kind; text: string } {
 </script>
 
 <style>
-  /* ---------- Layout ----------
-     Phones and no-JS: a plain list. Each row is followed by its terminal.
+  /* Phones and no-JS: a plain list, each row followed by its terminal.
      Wide screens with JS: rows on the left, one sticky terminal on the right. */
   .cmdx {
     display: grid;
@@ -174,7 +173,6 @@ function parse(line: string): { kind: Kind; text: string } {
     display: none;
   }
 
-  /* ---------- Rows ---------- */
   .cmdx__group {
     margin: 1.75rem 0 0.4rem;
     padding-inline: 1rem;
@@ -287,7 +285,6 @@ function parse(line: string): { kind: Kind; text: string } {
     margin: 0.25rem 0 0.75rem;
   }
 
-  /* ---------- Terminal ---------- */
   .cx {
     display: flex;
     flex-direction: column;

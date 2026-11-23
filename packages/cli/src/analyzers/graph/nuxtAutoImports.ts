@@ -178,8 +178,6 @@ export function addNuxtAutoImportEdges(
   }
 }
 
-// ------------------------------------------------------------------ naming
-
 /** Nuxt's component name: folder path + file name, overlap dropped. */
 export function componentName(relativeToComponents: string): string | null {
   const segments = relativeToComponents.split("/");

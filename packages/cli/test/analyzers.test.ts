@@ -449,16 +449,6 @@ test("feature detection keeps documentation and landing UI out of technical feat
   assert.ok(aiFeature?.files.every((path) => path.startsWith("packages/cli/src/ai/")));
 });
 
-// NOTE: "structural feature flows describe behavior instead of repeating file
-// lists" was removed here. It asserted against "Analysis Engine" / "Snapshot
-// Engine" features — confirmed via fileRole.ts's own header comment that
-// these DevMap-specific roles were deliberately removed in favor of generic
-// architectural roles (api-handler, service, middleware, repository,
-// ui-component, ai-integration, cli-command). The test was never updated
-// after that removal. If you want a regression test for "business flows
-// describe behavior, not a file list" against a role that still exists
-// (e.g. "CLI Commands"), that's a good follow-up but needs fresh fixture
-// data verified against real output first.
 test("project map summarizes a Next.js fixture", async () => {
   const projectMap = await createProjectMap(nextFixture);
 

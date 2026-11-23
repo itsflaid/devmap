@@ -1,10 +1,6 @@
 import type { FileGraph } from "./dependencyGraph.js";
 
-/**
- * buildReverseGraph — invert a forward file-import graph into a
- * "who depends on me" graph. `fileGraph` maps a file to the files it
- * imports; the reverse maps a file to the files that import it.
- */
+/** Inverts a file -> imports graph into file -> importers ("who depends on me"). */
 export function buildReverseGraph(fileGraph: FileGraph): FileGraph {
   const reverse: FileGraph = {};
 
@@ -30,20 +26,17 @@ export type MapTreeNode = {
 };
 
 /**
- * Default cap on direct children shown per node. Hub files (a shared
- * types.ts, utils.ts, a common UI component) can have very high fan-in —
- * without a cap, a single "used by" tree (or the mermaid diagram built from
- * it) can balloon to hundreds of lines/nodes and become unreadable. Pass
- * `maxChildren: Infinity` (wired to the `--all` flag) to bypass this.
+ * Default cap on direct children shown per node. Hub files (shared types.ts,
+ * utils.ts, common UI components) have huge fan-in, and a "used by" tree or
+ * mermaid diagram without a cap grows to hundreds of unreadable nodes. Pass
+ * `maxChildren: Infinity` (the `--all` flag) to bypass it.
  */
 export const DEFAULT_MAX_CHILDREN = 25;
 
 /**
- * buildBoundedTree — walk a graph outward from `root` up to `maxDepth` hops,
- * stopping (and flagging isCycle) whenever a path revisits a file already on
- * the current branch. File dependency graphs commonly have real cycles
- * (A imports B imports A), so a naive walk without a visited-per-branch set
- * would recurse forever.
+ * Walks the graph outward from `root` up to `maxDepth` hops. A path that
+ * revisits a file already on its branch stops and is flagged `isCycle`; import
+ * cycles (A imports B imports A) are real and would otherwise recurse forever.
  */
 export function buildBoundedTree(
   graph: FileGraph,
@@ -87,12 +80,7 @@ export function buildBoundedTree(
   };
 }
 
-/**
- * collectNodesWithinDepth — flat, deduplicated list of every file reachable
- * from `root` within `maxDepth` hops (root excluded). Used for feature-level
- * "what does this feature touch outside itself" style queries where a flat
- * set is more useful than a nested tree.
- */
+/** Flat, deduplicated list of files reachable from `root` within `maxDepth` hops, root excluded. */
 export function collectNodesWithinDepth(
   graph: FileGraph,
   root: string,

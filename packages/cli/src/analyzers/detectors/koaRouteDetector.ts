@@ -222,7 +222,6 @@ function optionsPrefix(options: ts.Expression | undefined, module: ModuleInfo, i
     if (ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === "prefix") {
       return index.stringOf(property.initializer, module) ?? "";
     }
-    // `{ prefix }`
     if (ts.isShorthandPropertyAssignment(property) && property.name.text === "prefix") {
       return index.stringOf(property.name, module) ?? "";
     }

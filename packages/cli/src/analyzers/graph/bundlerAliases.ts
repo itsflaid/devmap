@@ -3,16 +3,14 @@ import { join, posix, relative, sep } from "node:path";
 import { ts } from "ts-morph";
 import type { AliasMapping } from "./aliasResolver.js";
 
-/**
- * Aliases that only exist in bundler config: `@` → `src` in vite.config,
- * `$components` in svelte.config, `resolve.alias` in webpack.config, `alias`
- * in nuxt.config. None of them is in tsconfig, so without this the import
- * `@/lib/db` looks like an npm package and the file graph loses the edge.
- *
- * Configs are code, so they are read from the syntax tree, never run. Anything
- * that cannot be worked out statically (an env variable, a function call this
- * module does not know) is skipped rather than guessed.
- */
+// Aliases that only exist in bundler config (`@` -> `src` in vite.config,
+// `$components` in svelte.config, `resolve.alias` in webpack.config, `alias` in
+// nuxt.config) are absent from tsconfig, so without this `@/lib/db` looks like
+// an npm package and the file graph loses the edge.
+//
+// Configs are code, so they are read from the syntax tree, never run. Anything
+// that cannot be worked out statically (an env variable, an unknown helper
+// call) is skipped rather than guessed.
 
 const CONFIG_FILE =
   /^(?:vite(?:st)?|vitest|webpack|rollup|rspack|rsbuild|astro|svelte|nuxt|next|electron\.vite|quasar)(?:\.[\w-]+)?\.config\.[cm]?[jt]s$|^webpack\.[\w.-]+\.[cm]?[jt]s$/;
@@ -212,8 +210,6 @@ function toMappings(
   ];
 }
 
-// ---------------------------------------------------------- path evaluation
-
 /**
  * Fold an expression that builds a path (`path.resolve(__dirname, 'src')`,
  * `fileURLToPath(new URL('./src', import.meta.url))`, a template string, a
@@ -253,7 +249,7 @@ function fold(
     return value;
   }
 
-  // import.meta.url, import.meta.dirname, process.cwd, import.meta.dirname
+  // import.meta.url / .filename / .dirname
   if (ts.isPropertyAccessExpression(node)) {
     const text = node.getText();
     if (text === "import.meta.url" || text === "import.meta.filename") return FILE;
@@ -328,8 +324,6 @@ function calleeName(expression: ts.Expression): string | undefined {
   if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
   return undefined;
 }
-
-// --------------------------------------------------------------------- AST
 
 function collectVariables(node: ts.Node, variables: Map<string, ts.Expression>): void {
   if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {

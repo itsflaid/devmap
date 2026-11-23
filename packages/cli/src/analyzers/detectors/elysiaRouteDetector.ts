@@ -73,7 +73,7 @@ export function detectElysiaRoutes(files: ScannedFile[], graph?: Record<string, 
     return undefined;
   };
 
-  // Pass 1: every chain rooted at an instance, wherever it is written.
+  // Collect every chain rooted at an instance, wherever it is written.
   for (const file of gated) {
     const module = index.get(file.path);
     if (!module) continue;

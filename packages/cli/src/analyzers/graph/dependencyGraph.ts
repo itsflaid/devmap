@@ -66,7 +66,6 @@ export function buildDependencyGraph(
         }
       }
 
-      // Try alias resolution for non-relative imports
       const candidates = resolveAliasCandidates(specifier, aliasMappings, file.path);
       const aliasResolved = candidates.length > 0 ? firstResolved(candidates, localPaths) : null;
       if (aliasResolved) {

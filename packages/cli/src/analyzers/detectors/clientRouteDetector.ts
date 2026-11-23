@@ -77,8 +77,6 @@ export function detectClientRoutes(
   })));
 }
 
-// ------------------------------------------------------------------- model
-
 type FileModel = {
   /** Local name → module specifier. */
   imports: Map<string, string>;
@@ -140,15 +138,11 @@ function locateComponent(
   return resolved ?? entry.definedIn;
 }
 
-// -------------------------------------------------------------- path rules
-
 function composePath(base: string, path: string | undefined, isIndex: boolean): string {
   if (isIndex || path === undefined || path === "") return base;
   if (path === "*") return joinRoutePaths(base, "*");
   return path.startsWith("/") ? joinRoutePaths(path) : joinRoutePaths(base, path);
 }
-
-// ---------------------------------------------------- React Router: JSX tree
 
 const WRAPPER_TAG = /(?:Route|Guard|Protected|Auth|Private|Suspense|Provider|Boundary)/;
 const ROUTE_TAG = /^(?:\w+\.)?\w*Route$/;
@@ -267,8 +261,6 @@ function componentFromExpression(expression: ts.Expression): Component | undefin
   return undefined;
 }
 
-// -------------------------------- React Router data routers / Vue Router
-
 type RouteObject = {
   path?: string;
   isIndex: boolean;
@@ -372,8 +364,6 @@ function isChildrenOfRoute(array: ts.ArrayLiteralExpression): boolean {
     && ts.isArrayLiteralExpression(owner.parent);
 }
 
-// ------------------------------------------------- TanStack code-based routes
-
 type CodeRoute = { variable: string; path?: string; parent?: string; component: Component; isIndex: boolean };
 
 function readTanStackRoutes(source: ts.SourceFile, definedIn: string, model: FileModel): RouteEntry[] {
@@ -451,8 +441,6 @@ function parentOf(value: ts.Expression): string | undefined {
   }
   return undefined;
 }
-
-// ------------------------------------------------------- svelte-spa-router
 
 function readSvelteSpaRoutes(
   source: ts.SourceFile,

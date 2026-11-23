@@ -17,19 +17,19 @@ const ROUTE_DECORATORS = new Set([
 const ALL_HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
 
 /**
- * detectNestRoutes — NestJS controllers are decorator + class based, so flat
- * per-line regex cannot associate a @Get(':id') with the @Controller('users')
- * that scopes it. ts-morph gives per-class/method decorator scope for free.
+ * NestJS routes are decorator-based, so a per-line regex cannot tie a
+ * `@Get(':id')` to the `@Controller('users')` that scopes it; ts-morph exposes
+ * decorators per class and method.
  *
  * Paths are read from string literals, no-substitution templates and arrays of
  * them, for both `@Controller('users')` and `@Controller({ path: 'users' })`.
  *
  * Known limitations:
  * - Paths built from constants or template substitutions are not resolved.
- * - app.setGlobalPrefix('api') and `version` are not composed into route paths.
+ * - `app.setGlobalPrefix('api')` and `version` are not composed into route paths.
  */
 export function detectNestRoutes(files: ScannedFile[]): RouteInfo[] {
-  // Cheap pre-filter before any ts-morph parse — most scans have no controllers.
+  // Cheap pre-filter before any ts-morph parse: most scans have no controllers.
   const candidates = files.filter(
     (file) => /\.[cm]?[jt]s$/.test(file.path) && file.content.includes("@Controller")
   );
@@ -66,8 +66,7 @@ export function detectNestRoutes(files: ScannedFile[]): RouteInfo[] {
 
         const subPaths = literalPaths(routeDecorator.getArguments()[0]);
         const decoratorName = routeDecorator.getName().toUpperCase();
-        // @All() matches every HTTP method — expand instead of inventing a
-        // placeholder value.
+        // @All() matches every HTTP method, so list them all rather than a placeholder.
         const methods =
           decoratorName === "ALL" ? ALL_HTTP_METHODS : [decoratorName];
 

@@ -7,20 +7,16 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type DomainInferenceResult = {
   /** e.g. "Code Snippet Manager", "E-Commerce Platform", "LMS" */
   domain: string;
   /** Human-readable summary of what the project does */
   summary: string;
-  /** Domain-specific features AI inferred — tidak hardcode, truly dynamic */
+  /** Domain-specific features the model inferred; not drawn from a fixed list. */
   domainFeatures: DomainFeature[];
   confidence: number; // 0.0 - 1.0
   model: string;
-  /** Total tokens used — buat monitoring cost */
+  /** Total tokens used, for cost monitoring. */
   tokensUsed: number;
 };
 
@@ -33,7 +29,7 @@ export type DomainFeature = {
 export type DomainInferenceInput = {
   entityNames: string[];
   relations: Array<{ from: string; to: string; kind: string }>;
-  capabilities: string[];        // capability kinds only — hemat token
+  capabilities: string[];        // capability kinds only, to save tokens
   technicalFeatures: string[];   // feature names only
   routeCount: number;
   framework: string;
@@ -42,20 +38,8 @@ export type DomainInferenceInput = {
   absentCapabilities: string[];
 };
 
-// ---------------------------------------------------------------------------
-// Cache
-//
-// Domain inference di-cache di .devmap/domain-cache.json berdasarkan hash
-// dari DomainInferenceInput. Kalau input tidak berubah (entity names, relations,
-// capabilities, framework sama), cached result langsung dipakai tanpa LLM call.
-//
-// Ini memastikan `devmap analyze` idempotent — hasil feature names tidak
-// berubah tiap run selama codebase tidak berubah.
-//
-// Cache invalidation otomatis: kalau hash input berubah (tambah entity baru,
-// ubah relasi, dll), cache di-skip dan LLM dipanggil ulang.
-// ---------------------------------------------------------------------------
-
+// Results are cached in .devmap/domain-cache.json keyed by a hash of the input, so
+// `devmap analyze` returns the same feature names on every run until the input changes.
 type DomainInferenceCache = {
   inputHash: string;
   result: DomainInferenceResult;
@@ -90,11 +74,11 @@ async function readDomainCache(
     const raw = await readFile(cachePath, "utf-8");
     const cache = JSON.parse(raw) as Partial<DomainInferenceCache>;
 
-    if (cache.inputHash !== inputHash) return null; // input berubah → stale
+    if (cache.inputHash !== inputHash) return null;
     // A cached result that no longer passes validation is a miss, not a crash.
     return sanitizeDomainResult(cache.result, input);
   } catch {
-    return null; // file tidak ada atau corrupt → miss
+    return null; // missing or corrupt cache file is a miss
   }
 }
 
@@ -114,45 +98,29 @@ async function writeDomainCache(
     };
     await writeFile(cachePath, JSON.stringify(cache, null, 2) + "\n", "utf-8");
   } catch {
-    // Cache write gagal = non-fatal, lanjut tanpa cache
+    // A failed cache write only costs a repeat LLM call next run.
   }
 }
 
-// ---------------------------------------------------------------------------
-// Main entry
-// ---------------------------------------------------------------------------
-
 /**
- * inferDomain — kirim structured metadata ke AI, dapat domain understanding.
+ * Infers the project domain from structured metadata only, never raw source, which
+ * keeps a call to ~300-500 tokens. Returns null when the input is too thin, the
+ * model fails or its answer does not validate; the static features stand on their own.
  *
- * INTENTIONALLY tidak kirim raw source code — hanya metadata terstruktur.
- * Ini menjaga token usage minimal (~300-500 token per call) dan
- * memastikan AI focus pada domain inference, bukan code analysis.
- *
- * Cache: result di-cache di .devmap/domain-cache.json berdasarkan hash input.
- * Kalau input tidak berubah, cached result dipakai langsung (no LLM call).
- * Ini memastikan analyze idempotent — feature names tidak berubah tiap run.
- *
- * Dipanggil SETELAH static analysis selesai (Step 1-4) — sebagai enhancement,
- * bukan replacement. Kalau AI unavailable, static features tetap ada.
- *
- * @param input       - Structured metadata dari static analysis
- * @param callAI      - Injected AI caller — decoupled dari provider specifics
- * @param projectRoot - Root project path, untuk baca/tulis cache
+ * With `projectRoot`, an unchanged input is answered from the cache without calling `callAI`.
  */
 export async function inferDomain(
   input: DomainInferenceInput,
   callAI: (prompt: string) => Promise<string>,
   projectRoot?: string
 ): Promise<DomainInferenceResult | null> {
-  // Skip kalau data terlalu sedikit — AI inference gak akan meaningful
+  // With neither entities nor capabilities the model has nothing to infer from.
   if (input.entityNames.length === 0 && input.capabilities.length === 0) {
     return null;
   }
 
   const inputHash = hashDomainInput(input);
 
-  // Cache hit → return langsung, no LLM call
   if (projectRoot) {
     const cached = await readDomainCache(projectRoot, inputHash, input);
     if (cached) return cached;
@@ -165,32 +133,18 @@ export async function inferDomain(
     const result = parseDomainInferenceResponse(raw, input);
     if (!result) return null;
 
-    // Tulis ke cache buat run berikutnya
     if (projectRoot) {
       await writeDomainCache(projectRoot, inputHash, result);
     }
 
     return result;
   } catch {
-    // AI inference adalah enhancement, bukan blocker
-    // Kalau gagal, return null — caller tetap punya static features
+    // Any model or network failure is non-fatal.
     return null;
   }
 }
 
-// ---------------------------------------------------------------------------
-// Prompt builder
-// ---------------------------------------------------------------------------
-
-/**
- * buildDomainInferencePrompt — build minimal, structured prompt.
- *
- * Design principles:
- * - Compact: hanya kirim yang AI butuhkan
- * - Structured: JSON input biar AI gak perlu parse prose
- * - Focused: satu task, satu output format
- * - Bounded: max_tokens 600 cukup buat domain inference
- */
+// The caller caps the completion at 600 tokens (commands/analyze.ts), enough for this JSON shape.
 function buildDomainInferencePrompt(input: DomainInferenceInput): string {
   const metadata = JSON.stringify({
     framework: input.framework,
@@ -230,10 +184,6 @@ Rules:
 - Entity names alone (e.g. 'Message', 'Room', 'User') are NOT reliable signals of application domain. The same entity name can represent a chat message, an activity log, a personal note, or a comment — depending on ownership pattern, not naming. Use ownershipPattern and absentCapabilities as primary evidence: single_user_isolated strongly suggests a personal/private tool (notes, journal, tracker), not a multi-user communication platform. Only conclude 'chat' or 'messaging' domain if ownershipPattern is shared_access or direct_messaging, or detectedCapabilities includes collaboration/social/real-time.`;
 }
 
-// ---------------------------------------------------------------------------
-// Response parser
-// ---------------------------------------------------------------------------
-
 const domainFeatureSchema = z.object({
   name: z.string().trim().min(1).max(80),
   purpose: z.string().trim().min(1).max(300),
@@ -250,18 +200,18 @@ const domainResultSchema = z.object({
   domainFeatures: z.array(z.unknown()).optional()
 });
 
-/**
- * Single gate for everything the model (or a stale cache file) hands back.
- * Wrong types are rejected instead of crashing later, and a domain feature only
- * survives with entities that really exist in the static analysis, because an
- * AI feature has no files of its own to be grounded in.
- */
 // Every app has these; a feature that only touches them is not specific to the domain.
 const GENERIC_ENTITIES = new Set([
   "user", "users", "account", "accounts", "session", "sessions", "verificationtoken",
   "verification", "token", "role", "roles", "permission", "permissions", "profile"
 ]);
 
+/**
+ * Single gate for everything the model (or a stale cache file) hands back.
+ * Wrong types are rejected instead of crashing later, and a domain feature only
+ * survives with entities that really exist in the static analysis, because an
+ * AI feature has no files of its own to be grounded in.
+ */
 function sanitizeDomainResult(
   value: unknown,
   input: DomainInferenceInput
@@ -306,7 +256,7 @@ function parseDomainInferenceResponse(
   input: DomainInferenceInput
 ): DomainInferenceResult | null {
   try {
-    // Strip markdown fences kalau ada
+    // Models wrap JSON in markdown fences despite the prompt.
     const cleaned = raw
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -319,10 +269,6 @@ function parseDomainInferenceResponse(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helper — convert DomainFeature ke FeatureInfo buat merge ke snapshot
-// ---------------------------------------------------------------------------
-
 export function domainFeaturesToFeatureInfo(
   domainFeatures: DomainFeature[]
 ): FeatureInfo[] {
@@ -332,23 +278,17 @@ export function domainFeaturesToFeatureInfo(
     files: [],
     entryPoints: [],
     businessFlow: [],
-    // searchTerms include relatedEntities agar similarity engine dapat
-    // mencocokkan AI feature dengan static feature via entity overlap.
-    // Contoh: AI returns relatedEntities: ["Plan", "Subscription"]
-    //         Static feature "Plan Management" punya searchTerms: ["plan", "subscription", ...]
-    //         → entityOverlap / termOverlap tinggi → di-merge, bukan duplicate.
+    // Entities go into searchTerms so the similarity engine can match an AI feature to a
+    // static one: relatedEntities ["Plan", "Subscription"] overlaps the searchTerms of
+    // "Plan Management" and merges instead of duplicating it.
     searchTerms: [
       ...df.relatedEntities.map((e) => e.toLowerCase()),
       ...df.name.toLowerCase().split(/\s+/).filter(Boolean)
     ].filter((v, i, arr) => arr.indexOf(v) === i).slice(0, 12),
-    confidence: "medium" as const, // AI-inferred = medium, bukan high
+    confidence: "medium" as const, // AI-inferred is never high
     evidence: []
   }));
 }
-
-// ---------------------------------------------------------------------------
-// Helper — build DomainInferenceInput dari projectMap data
-// ---------------------------------------------------------------------------
 
 const ALL_CAPABILITY_KINDS: CapabilityKind[] = [
   "crud", "sharing", "collaboration", "discovery", "publishing",

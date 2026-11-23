@@ -163,9 +163,8 @@ function selectIndexCriticalFiles(snapshot: ProjectMap): string[] {
 }
 
 // BFS distance from the nearest entry point over the resolved dependency graph.
-// Without this, calculateStartHereScore had no way to prefer "the file the
-// entry point calls directly" over "some file three imports deeper" — both
-// only differed by generic importance, which doesn't track call-graph order.
+// Lets the start-here score prefer a file the entry point imports directly over
+// one several imports deeper; generic importance does not track call-graph order.
 function computeEntryDistance(snapshot: ProjectMap): Map<string, number> {
   const distance = new Map<string, number>();
   const queue: string[] = [];

@@ -242,9 +242,8 @@ function buildFeatureMap(
     }
   }
 
-  // Cap which files are actually drawn as edges to match the (possibly
-  // truncated) flat lists below — otherwise the mermaid diagram could still
-  // balloon even after the text list is capped.
+  // Cap the drawn edges to the same (possibly truncated) file set as the flat
+  // lists below, or the mermaid diagram stays huge after the text is capped.
   const shownDependencies = Number.isFinite(listCap)
     ? new Set([...externalDependencies].slice(0, listCap))
     : externalDependencies;

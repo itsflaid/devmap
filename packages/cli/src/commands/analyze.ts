@@ -85,9 +85,8 @@ export async function runAnalyze(
 
   output.section("DevMap Analyze");
 
-  // Build callAI wrapper — dipakai oleh domain inference (Step 5) di createProjectMap.
-  // Dibuat di sini biar analyze command yang kontrol config + client lifecycle,
-  // sementara projectMap tetap decoupled dari AI provider specifics.
+  // Built here so the command owns config and client lifecycle, and the
+  // pipeline stays independent of AI provider specifics.
   const callAI = options.offline ? undefined : await buildCallAI(projectRoot, dependencies);
 
   let snapshot = await createProjectMap(projectRoot, callAI);
@@ -154,14 +153,10 @@ async function enrichSnapshot(
 }
 
 /**
- * buildCallAI — build callAI wrapper untuk domain inference di createProjectMap.
- *
- * Return undefined kalau config tidak ada atau apiKey tidak di-set —
- * createProjectMap akan skip domain inference dan hanya jalankan static analysis.
- *
- * Wrapper ini intentionally simple: satu user message, satu string response.
- * Domain inference prompt sudah structured di domainInference.ts — tidak perlu
- * system prompt tambahan di sini.
+ * Wraps the AI client for domain inference. Returns `undefined` without an API
+ * key, so `createProjectMap` skips inference and runs static analysis only.
+ * One user message in, one string out: the prompt is already structured in
+ * `domainInference.ts`, so no system prompt is added here.
  */
 async function buildCallAI(
   projectRoot: string,
@@ -182,8 +177,8 @@ async function buildCallAI(
       messages: [{ role: "user", content: prompt }],
       model: routing.model,
       fallbackModels: routing.fallbackModels,
-      maxCompletionTokens: 600,  // domain inference gak butuh banyak token
-      temperature: 0.1            // low temperature buat consistent JSON output
+      maxCompletionTokens: 600, // domain inference returns a small JSON object
+      temperature: 0.1 // keeps the JSON output consistent
     });
     return result.content;
   };

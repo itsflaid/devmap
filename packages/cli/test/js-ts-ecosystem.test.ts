@@ -51,8 +51,6 @@ async function entriesOf(root: string): Promise<string[]> {
 
 const pkg = (value: Record<string, unknown>) => JSON.stringify(value);
 
-// ------------------------------------------------------------ workspace imports
-
 test("a workspace package imported by name resolves through its exports", async () => {
   await withProject({
     "package.json": pkg({ name: "mono", private: true, workspaces: ["packages/*", "apps/*"] }),
@@ -172,8 +170,6 @@ test("a tsconfig in a frontend/ folder next to the root still supplies its alias
   });
 });
 
-// ------------------------------------------------------------ package.json imports
-
 test("package.json imports (#subpaths) resolve inside the nearest package", async () => {
   await withProject({
     "package.json": pkg({ name: "root", imports: { "#root-only": "./root.ts" } }),
@@ -209,8 +205,6 @@ test("bundler query suffixes are not part of the file name", async () => {
     assert.deepEqual(graph["src/main.ts"].sort(), ["src/notes.ts", "src/worker.ts"]);
   });
 });
-
-// ------------------------------------------------------------ entry points
 
 test("bin, scripts and published main are entries; config files and internal roots are not", async () => {
   await withProject({
@@ -276,8 +270,6 @@ test("framework-loaded files are entries only while nothing imports them", async
     assert.ok(!entries.includes("spa/src/pages/Home.vue"));
   });
 });
-
-// ------------------------------------------------------------ Nuxt
 
 test("Nuxt 4 aliases point ~ and @ at app/, ~~ at the root", async () => {
   await withProject({
@@ -430,8 +422,6 @@ test("Nuxt component names follow the folder path and drop repeated prefixes", (
   assert.equal(componentName("index.vue"), null);
 });
 
-// ------------------------------------------------------------ database
-
 const manifestFile = (dependencies: Record<string, string>): ScannedFile => ({
   path: "package.json",
   absolutePath: "/p/package.json",
@@ -506,8 +496,6 @@ test("more ORMs and serverless drivers are recognized", () => {
   }
 });
 
-// ------------------------------------------------------------ CommonJS
-
 async function analyzeScript(code: string) {
   return new TsMorphAnalyzer().analyze(
     { path: "lib/x.js", absolutePath: "/p/lib/x.js", extension: ".js", size: code.length, lines: 1, content: code },
@@ -550,8 +538,6 @@ test("ES module files are unaffected by the CommonJS reader", async () => {
   const analysis = await analyzeScript("export const a = 1;\nexport default function main() {}\n");
   assert.deepEqual(analysis.exports, ["a", "default"]);
 });
-
-// ------------------------------------------------------------ end to end
 
 test("a workspace monorepo shows cross-package edges and its real entry points", async () => {
   await withProject({

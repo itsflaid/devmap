@@ -28,8 +28,6 @@ async function withProject(files: Record<string, string>, run: (root: string) =>
   }
 }
 
-// ------------------------------------------------------------ framework + meta
-
 test("a package.json with a UTF-8 BOM is still read", () => {
   const manifest = `﻿${JSON.stringify({ name: "api", dependencies: { express: "^4.0.0" } })}`;
   assert.deepEqual(detectFrameworks([fileOf("package.json", manifest)]), ["express"]);
@@ -84,8 +82,6 @@ test("an extension manifest with only contributes is recognised without engines"
   assert.deepEqual(metadata.projectTypes, ["vscode-extension"]);
 });
 
-// ------------------------------------------------------------ entry + scope
-
 test("barrel index files that the app imports are not entry points", () => {
   const entries = detectEntryPoints({
     "src/main.ts": ["src/components/index.ts", "src/components/index.test.ts"],
@@ -128,8 +124,6 @@ test("root-level test folders and SvelteKit pages get the right file scope", asy
     assert.equal(map.fileIndex["test/helpers.ts"]?.scope, "test");
   });
 });
-
-// ------------------------------------------------------------------- routes
 
 test("pages/index is the root route and not /index", () => {
   const routes = detectRoutes([

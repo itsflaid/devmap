@@ -108,10 +108,7 @@ export function isDeclaredAlias(specifier: string, mappings: AliasMapping[], fro
   );
 }
 
-/**
- * Resolve an alias import specifier to a root-relative path using configured
- * mappings. Returns null if no mapping matches.
- */
+/** Best candidate from `resolveAliasCandidates`, or null when no mapping matches. */
 export function resolveAlias(
   specifier: string,
   mappings: AliasMapping[],

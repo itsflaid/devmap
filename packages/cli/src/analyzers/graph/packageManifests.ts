@@ -178,8 +178,6 @@ export function manifestEntryPoints(manifests: PackageManifest[], localPaths: Se
   return entries;
 }
 
-// ------------------------------------------------------------------ internals
-
 /**
  * The file `import "<package name>"` lands on. `guess` also tries the usual
  * `src/index` layouts when the manifest declares nothing; entry detection

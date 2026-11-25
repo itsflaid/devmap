@@ -15,7 +15,6 @@ async function buildFixture(files: Record<string, string>): Promise<string> {
   return projectRoot;
 }
 
-// WP0 #5: Prisma auth-only schema plus independent API routes preserves both
 test("Prisma auth-only schema plus independent API routes preserves both schema claims and route-derived candidates", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({
@@ -97,20 +96,15 @@ test("Prisma auth-only schema plus independent API routes preserves both schema 
     const snapshot = await createProjectMap(projectRoot);
     const names = snapshot.features.map((f) => f.name);
 
-    // Authentication must be present (from both Prisma schema and API routes)
     assert.ok(names.includes("Authentication"), "Authentication feature must exist");
 
-    // DEFECT ASSERTION (WP0 #5): Snippet feature should exist from independent
-    // API routes, but currently it is suppressed because entity extractor treats
-    // it as a "true child" of User even though API routes actively use it.
-    // This test is RED — it will pass after WP3 fixes entity extraction
-    // to consider route evidence alongside schema relations.
+    // Regression: Snippet was suppressed as a "true child" of User even though
+    // independent API routes serve it.
     assert.ok(
       names.includes("Snippet") || names.includes("Snippet Management"),
       "Snippet feature must exist from API routes with independent CRUD operations (currently suppressed as true child)"
     );
 
-    // No false "User Management" or "Session Management" from auth-only schema entities
     assert.ok(
       !names.includes("User Management"),
       "User Management must not appear as standalone feature from auth schema"
@@ -124,7 +118,6 @@ test("Prisma auth-only schema plus independent API routes preserves both schema 
   }
 });
 
-// WP0 #6: /api/workspaces/[id]/members does not create standalone "Member Management"
 test("/api/workspaces/[id]/members does not automatically create standalone Member Management without schema or implementation evidence", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({ name: "workspace-api" }),
@@ -157,13 +150,11 @@ test("/api/workspaces/[id]/members does not automatically create standalone Memb
     const snapshot = await createProjectMap(projectRoot);
     const names = snapshot.features.map((f) => f.name);
 
-    // "Member Management" should NOT exist as standalone feature
     assert.ok(
       !names.includes("Member Management"),
       "Member Management must not be created from nested route segment without schema evidence"
     );
 
-    // Workspace-related features may exist from route detection, but must not include Member Management
     const workspaceFeatures = names.filter((n) => n.toLowerCase().includes("workspace"));
     assert.ok(
       !workspaceFeatures.some((n) => n.includes("Member")),
@@ -174,7 +165,6 @@ test("/api/workspaces/[id]/members does not automatically create standalone Memb
   }
 });
 
-// WP0 #7: Import containing "author" does not create "Authentication"
 test("import containing author does not create Authentication solely because it contains the substring auth", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({ name: "author-not-auth" }),
@@ -209,13 +199,11 @@ test("import containing author does not create Authentication solely because it 
     const snapshot = await createProjectMap(projectRoot);
     const names = snapshot.features.map((f) => f.name);
 
-    // "Authentication" must NOT appear from author-related files
     assert.ok(
       !names.includes("Authentication"),
       "Authentication must not be created from files containing 'author' substring"
     );
 
-    // Author-related feature should exist (e.g., "Author" or "Authors")
     const hasAuthorFeature = names.some((n) => n.toLowerCase().includes("author"));
     assert.ok(hasAuthorFeature, "An Author feature should exist from author-related routes");
   } finally {
@@ -223,11 +211,7 @@ test("import containing author does not create Authentication solely because it 
   }
 });
 
-// WP0 #9: Parser fallback emits diagnostic
 test("native parser failure falling back to heuristic emits a diagnostic and does not silently retain high reliability", async () => {
-  // This test verifies that when a file cannot be parsed natively,
-  // the system downgrades observation reliability and emits a warning.
-  // We create a project with a file that will trigger heuristic/fallback analysis.
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({ name: "fallback-test" }),
     "app/page.tsx": 'export default function Home() { return <div>Hello</div>; }\n',
@@ -242,7 +226,6 @@ test("native parser failure falling back to heuristic emits a diagnostic and doe
   try {
     const snapshot = await createProjectMap(projectRoot);
 
-    // The C file should be analyzed with heuristic/fallback, not native
     const cFileEntry = snapshot.fileIndex["lib/custom-handler.c"];
     if (cFileEntry) {
       assert.notEqual(
@@ -250,23 +233,18 @@ test("native parser failure falling back to heuristic emits a diagnostic and doe
         "ts-morph",
         "C file should not be analyzed by ts-morph (native parser)"
       );
-      // Reliability should be downgraded from high
       assert.ok(
         cFileEntry.analysisConfidence !== "high" || cFileEntry.analyzer !== "ts-morph",
         "Fallback analysis must not retain high reliability"
       );
     }
-
-    // Warnings may be present about parse issues
-    // (not strictly required, but diagnostic mode should expose this)
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
 
-// WP1: Prisma schema with >8 relation-bearing models — boilerplate NextAuth
-// models listed first must not starve out real domain entities when the
-// meaningfulEntities list is capped at 8.
+// Boilerplate NextAuth models listed first must not use up the 8-entity cap on
+// meaningfulEntities and starve out real domain entities.
 test("domain entities survive the 8-entity cap when boilerplate models appear first", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({
@@ -276,7 +254,6 @@ test("domain entities survive the 8-entity cap when boilerplate models appear fi
     "prisma/schema.prisma": [
       'generator client { provider = "prisma-client-js" }',
       'datasource db { provider = "postgresql" }',
-      // --- boilerplate NextAuth models (listed first) ---
       "model User {",
       "  id              String           @id @default(cuid())",
       "  email           String           @unique",
@@ -328,7 +305,6 @@ test("domain entities survive the 8-entity cap when boilerplate models appear fi
       "  transports           String?",
       "  @@unique([userId, credentialPublicKey])",
       "}",
-      // --- domain models ---
       "model Room {",
       "  id        String      @id @default(cuid())",
       "  name      String",
@@ -407,15 +383,12 @@ test("domain entities survive the 8-entity cap when boilerplate models appear fi
     const snapshot = await createProjectMap(projectRoot);
     const featureNames = snapshot.features.map((f) => f.name);
 
-    // 2 of 4 domain entities must appear as features despite 9 total
-    // relation-bearing models exceeding the 8-entity cap.
-    // ChecklistItem and PushSubscription are excluded because
-    // isTrueChildEntity returns true (one parent, no children of their own)
-    // — they get folded into their parent entity as owned entities instead.
+    // 9 relation-bearing models exceed the cap of 8. ChecklistItem and
+    // PushSubscription are not expected: isTrueChildEntity folds them into their
+    // parent (one parent, no children of their own).
     assert.ok(featureNames.includes("Room Management"), "Room should be a feature");
     assert.ok(featureNames.includes("Message Management"), "Message should be a feature");
 
-    // Boilerplate infrastructure models must NOT appear
     assert.ok(!featureNames.includes("Account Management"), "Account is infrastructure");
     assert.ok(!featureNames.includes("Session Management"), "Session is infrastructure");
     assert.ok(!featureNames.includes("VerificationToken Management"), "VerificationToken is infrastructure");

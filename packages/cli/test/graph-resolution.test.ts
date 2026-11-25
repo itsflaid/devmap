@@ -36,8 +36,6 @@ async function graphOf(root: string) {
   return buildDependencyGraph(files, analyses, mappings);
 }
 
-// ---------------------------------------------------------------- alias config
-
 test("tsconfig with comments and trailing commas still yields alias edges", async () => {
   await withProject({
     "tsconfig.json": `{
@@ -163,8 +161,6 @@ test("a declared alias that points nowhere is reported once per import", async (
   });
 });
 
-// ------------------------------------------------------------ edge resolution
-
 test("dynamic import() creates an edge", async () => {
   await withProject({
     "src/router.ts": 'export const load = () => import("./pages/home");\n',
@@ -233,8 +229,6 @@ test("relative imports that climb above the project root do not match root files
   });
 });
 
-// ----------------------------------------------------------- analyzer details
-
 async function analyzeTs(content: string) {
   const analyzer = new TsMorphAnalyzer();
   return analyzer.analyze(
@@ -259,8 +253,6 @@ test("function overloads produce one symbol", async () => {
   assert.equal(analysis.symbols.filter((symbol) => symbol.name === "parse").length, 1);
   assert.equal(analysis.symbols.filter((symbol) => symbol.name === "m").length, 1);
 });
-
-// --------------------------------------------------------------- ignore rules
 
 test("nested .gitignore files apply to their own subtree only", async () => {
   await withProject({

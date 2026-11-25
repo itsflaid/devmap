@@ -1,9 +1,6 @@
 const FEEDBACK_MS = 2000;
 
-/**
- * Copy text to the clipboard with a legacy fallback for non-secure contexts
- * (clipboard API requires HTTPS or localhost).
- */
+/** Falls back to `execCommand` where the clipboard API is unavailable (it needs HTTPS or localhost). */
 export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
@@ -22,11 +19,9 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 /**
- * Wire a copy-to-clipboard CTA. On success the button flips to a "copied"
- * state (styled via `[data-copied]`, e.g. icon copy → check, accent color)
- * and announces "Copied!" through aria-label, then reverts. The command text
- * is read from the element itself, so it works regardless of any
- * typewriter/typing animation on the same node.
+ * On success the button gets `[data-copied]` (styles swap the copy icon for a
+ * check) and announces "Copied!" through aria-label, then reverts. The command
+ * is read from the element's text, so a typing animation on the node does not matter.
  */
 export function initCopyCommand(button: HTMLElement, commandEl: HTMLElement): void {
   const command = commandEl.textContent?.trim() ?? "";

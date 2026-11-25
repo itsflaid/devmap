@@ -1,31 +1,19 @@
 import type { ScannedFile } from "../index.js";
 import type { EntityInfo, FieldInfo, RelationInfo, IEntityExtractor } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
 /**
- * Tipe scalar bawaan Prisma — kalau field typenya ini, bukan relasi ke entity lain.
+ * Prisma built-in scalar types: a field of one of these types is never a relation.
  * https://www.prisma.io/docs/orm/reference/prisma-schema-reference#model-field-scalar-types
  */
 const PRISMA_SCALAR_TYPES = new Set([
   "String", "Boolean", "Int", "BigInt", "Float",
   "Decimal", "DateTime", "Json", "Bytes",
-  // Prisma-specific (MongoDB)
   "ObjectId",
 ]);
 
-// ---------------------------------------------------------------------------
-// Extractor
-// ---------------------------------------------------------------------------
-
 /**
- * PrismaExtractor — parse satu atau lebih .prisma files jadi list EntityInfo.
- *
- * Prisma supports multi-file schema via `prisma/` folder (Prisma 5+), jadi
- * extract() iterate semua .prisma files dan merge hasilnya.
- * Dedup dilakukan di orchestrator, bukan di sini.
+ * Parses every `.prisma` file, since Prisma 5+ allows a multi-file schema in a `prisma/` folder.
+ * Duplicate models are dropped by the orchestrator in `index.ts`, not here.
  */
 export class PrismaExtractor implements IEntityExtractor {
   readonly name = "prisma";
@@ -42,33 +30,15 @@ export class PrismaExtractor implements IEntityExtractor {
       allEntities.push(...parsePrismaSchema(file.content));
     }
 
-    // Build relations after all entities are parsed.
-    // We need the full entity name set to distinguish relations from scalars
-    // and to determine relation direction (one-to-many vs many-to-one).
+    // Needs every model across all files: a relation target may be defined in another file.
     return buildRelations(allEntities);
   }
 }
 
-// ---------------------------------------------------------------------------
-// Parser internals
-// ---------------------------------------------------------------------------
-
-/**
- * parsePrismaSchema — parse schema.prisma content jadi list EntityInfo.
- *
- * Prisma model syntax:
- *   model User {
- *     id        String     @id @default(cuid())
- *     email     String     @unique
- *     rooms     Room[]              ← relation one-to-many (User owns Rooms)
- *     workspace Workspace?          ← relation one-to-one optional
- *     userId    String              ← FK scalar, bukan relasi langsung
- *   }
- */
 function parsePrismaSchema(content: string): EntityInfo[] {
   const entities: EntityInfo[] = [];
 
-  // Match tiap model block — non-greedy biar gak overlap antar model
+  // Non-greedy so one match cannot span two models; the closing brace must start a line.
   const modelPattern = /^model\s+(\w+)\s*\{([\s\S]*?)\n\}/gm;
 
   let match = modelPattern.exec(content);
@@ -77,7 +47,7 @@ function parsePrismaSchema(content: string): EntityInfo[] {
     const body = match[2];
     const fields = parsePrismaFields(body);
 
-    // relations di-populate di buildRelations() setelah semua entity ter-parse
+    // Filled by buildRelations() once all entities are parsed.
     entities.push({ name, fields, relations: [], source: "prisma" });
     match = modelPattern.exec(content);
   }
@@ -85,20 +55,10 @@ function parsePrismaSchema(content: string): EntityInfo[] {
   return entities;
 }
 
-/**
- * parsePrismaFields — extract field list dari body satu model block.
- *
- * Skip:
- * - Baris kosong
- * - Comment (//)
- * - Block attributes (@@index, @@unique, @@map)
- * - Inline attributes (@id, @default, dll) yang somehow lolos
- */
 function parsePrismaFields(body: string): FieldInfo[] {
   const fields: FieldInfo[] = [];
 
-  // fieldName  FieldType[]?  @attributes...
-  // Capture: (1) fieldName, (2) fieldType, (3) [], (4) ?
+  // `name Type[]? @attrs`; lines starting with `//` or `@@` never match because `\w+` excludes them.
   const fieldPattern = /^\s+(\w+)\s+(\w+)(\[\])?(\?)?/gm;
 
   let match = fieldPattern.exec(body);
@@ -108,13 +68,13 @@ function parsePrismaFields(body: string): FieldInfo[] {
     const isList = Boolean(match[3]);
     const isOptional = Boolean(match[4]);
 
-    // Skip attribute lines yang lolos regex
+    // Defensive: `\w+` cannot match a leading `@`, so this never fires.
     if (fieldName.startsWith("@")) {
       match = fieldPattern.exec(body);
       continue;
     }
 
-    // Tipe kapital + bukan scalar Prisma = relasi ke entity lain
+    // Capitalized non-scalar is a model or enum; buildRelations() drops enums by checking model names.
     const isRelation = isCapitalized(fieldType) && !PRISMA_SCALAR_TYPES.has(fieldType);
 
     fields.push({ name: fieldName, type: fieldType, isRelation, isList, isOptional });
@@ -124,28 +84,12 @@ function parsePrismaFields(body: string): FieldInfo[] {
   return fields;
 }
 
-// ---------------------------------------------------------------------------
-// Relation builder
-//
-// Prisma relasi selalu bidirectional — kedua sisi model punya field relasi.
-// Kita derive arah relasi dari field type modifier:
-//
-//   User { rooms Room[] }   → User has many Room  → one-to-many (User → Room)
-//   Room { user User }      → Room belongs to User → many-to-one (Room → User)
-//   User { profile Profile? } → one-to-one optional
-//
-// Strategy: iterate tiap entity, cari field yang isRelation.
-//   - Field isList (Type[])  → from: thisEntity, to: fieldType, kind: one-to-many
-//   - Field !isList + optional → from: thisEntity, to: fieldType, kind: one-to-one
-//   - Field !isList + required → many-to-one (FK holder) — kita skip ini karena
-//     sisi lain (the "one") sudah generate one-to-many dari perspektifnya.
-//
-// Dedup: pakai Set string key biar relasi yang sama dari kedua sisi tidak double.
-//
-// Self-referential relations (Message → Message via sourceMessage/reminders):
-//   Field bertipe sama dengan entity sendiri → skip, ini bukan cross-entity relation.
-// ---------------------------------------------------------------------------
-
+/**
+ * Prisma relations are declared on both models, so direction comes from the list modifier:
+ * a `Type[]` field gives one-to-many from the owner. A non-list field is the many-to-one side
+ * and is skipped when the other model has the list; with no list on the other side it is
+ * one-to-one. Self-references are skipped. Each relation is recorded once.
+ */
 export function buildRelations(entities: EntityInfo[]): EntityInfo[] {
   const entityNames = new Set(entities.map((e) => e.name));
   const seenRelations = new Set<string>();
@@ -156,23 +100,18 @@ export function buildRelations(entities: EntityInfo[]): EntityInfo[] {
       if (!field.isRelation) continue;
       if (!entityNames.has(field.type)) continue;
 
-      // Skip self-referential — e.g. Message.sourceMessage: Message?
-      // These are valid Prisma patterns but not cross-entity ownership relations
+      // Self-references (e.g. `parent Comment?`) are not cross-entity ownership.
       if (field.type === entity.name) continue;
 
       if (field.isList) {
-        // Type[] → one-to-many: this entity owns many of field.type
-        // e.g. User.rooms Room[] → User → Room (one-to-many)
         const key = `${entity.name}→${field.type}:one-to-many`;
         if (!seenRelations.has(key)) {
           seenRelations.add(key);
           allRelations.push({ from: entity.name, to: field.type, kind: "one-to-many" });
         }
       } else {
-        // Type or Type? (non-list) → this entity holds the FK (many-to-one side)
-        // We skip many-to-one here — the one-to-many from the parent already covers it.
-        // Exception: if there is NO corresponding list field on the other side,
-        // this might be a one-to-one — add it as such.
+        // Non-list side holds the FK. The parent's list field already yields the one-to-many,
+        // so only a field with no list counterpart is kept, as one-to-one.
         const otherEntity = entities.find((e) => e.name === field.type);
         if (!otherEntity) continue;
 
@@ -181,8 +120,7 @@ export function buildRelations(entities: EntityInfo[]): EntityInfo[] {
         );
 
         if (!otherSideHasList) {
-          // No list on the other side → one-to-one
-          // Use alphabetical order to deduplicate bidirectional one-to-one fields
+          // Sorted pair, so both sides of a one-to-one produce the same key.
           const [a, b] = [entity.name, field.type].sort();
           const key = `${a}↔${b}:one-to-one`;
           if (!seenRelations.has(key)) {
@@ -190,12 +128,10 @@ export function buildRelations(entities: EntityInfo[]): EntityInfo[] {
             allRelations.push({ from: entity.name, to: field.type, kind: "one-to-one" });
           }
         }
-        // If other side has list → many-to-one, already handled from the list side → skip
       }
     }
   }
 
-  // Attach relations back to each entity
   return entities.map((entity) => ({
     ...entity,
     relations: allRelations.filter(
@@ -203,10 +139,6 @@ export function buildRelations(entities: EntityInfo[]): EntityInfo[] {
     ),
   }));
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function isCapitalized(str: string): boolean {
   return str.length > 0 && str[0] === str[0].toUpperCase() && str[0] !== str[0].toLowerCase();

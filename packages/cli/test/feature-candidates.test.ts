@@ -110,8 +110,6 @@ test("a bridge candidate reconciles components independently of insertion order"
   assert.deepEqual(projectFeatureCandidates(forward.clusters).map((feature) => feature.name), ["Chat"]);
 });
 
-// WP0 #5 (unit): Prisma auth entities and route-derived entities remain separate
-// when they share no hard anchor.
 test("auth schema entity candidates and unrelated route entity candidates remain separate without shared anchor", () => {
   const reconciliation = reconcileFeatureCandidates([
     candidate({
@@ -135,9 +133,7 @@ test("auth schema entity candidates and unrelated route entity candidates remain
   assert.deepEqual(names, ["Snippet Management", "User Management"]);
 });
 
-// WP0 #6 (unit): Nested route segment /api/workspaces/[id]/members does not
-// create standalone "Member Management" — the route resource is "workspaces",
-// not "members".
+// The route resource of /api/workspaces/[id]/members is "workspaces", not "members".
 test("nested route segment does not create standalone entity from subresource path", () => {
   const reconciliation = reconcileFeatureCandidates([
     candidate({
@@ -156,8 +152,7 @@ test("nested route segment does not create standalone entity from subresource pa
     }),
   ]);
 
-  // The nested route shares the "workspaces" route resource with the parent,
-  // so it should merge into the same cluster — NOT create a separate "Member" feature.
+  // It shares the "workspaces" resource with the parent and merges into that cluster.
   const projected = projectFeatureCandidates(reconciliation.clusters);
   const memberFeature = projected.find((f) => f.name.includes("Member"));
   assert.equal(
@@ -167,11 +162,8 @@ test("nested route segment does not create standalone entity from subresource pa
   );
 });
 
-// WP0 #7 (unit): Import specifier containing "author" must not match the
-// "auth" signal term via substring matching.
-// This tests the import matching path in matchesSignal() at the feature
-// detection level by verifying that an Author entity candidate with
-// "author"-containing files does NOT get a spurious Authentication cluster.
+// Regression: "author" matched the "auth" signal term by substring and pulled
+// Author candidates into an Authentication cluster.
 test("author-related entity candidate does not merge into Authentication cluster", () => {
   const reconciliation = reconcileFeatureCandidates([
     candidate({
@@ -190,15 +182,12 @@ test("author-related entity candidate does not merge into Authentication cluster
     }),
   ]);
 
-  // "Author Management" and "Authentication" share no hard anchor
-  // (no common files, no common entities, no common route resources).
-  // They must remain separate clusters.
+  // No shared file, entity or route resource, so no anchor: they stay separate.
   assert.equal(reconciliation.clusters.length, 2);
   const labels = reconciliation.clusters.map((c) => c.canonicalLabel).sort();
   assert.deepEqual(labels, ["Authentication", "Author Management"]);
 });
 
-// WP3: High fan-in shared files should NOT serve as merge anchors.
 test("high fan-in shared file does not merge unrelated candidates", () => {
   const candidates = [
     candidate({
@@ -215,14 +204,14 @@ test("high fan-in shared file does not merge unrelated candidates", () => {
     }),
   ];
 
-  // shared-utils.ts is imported by 8 different files — it's a hub, not evidence
+  // Imported by 8 files: a hub, not evidence that the candidates are related.
   const reconciliation = reconcileFeatureCandidates(candidates, {
     "lib/shared-utils.ts": 8,
   });
 
   assert.equal(reconciliation.clusters.length, 2, "Hub file should not merge candidates");
 
-  // Control: same file with low refcount should still merge
+  // Control: with a low refcount the same file still merges.
   const reconciliationControl = reconcileFeatureCandidates(candidates, {
     "lib/shared-utils.ts": 1,
   });

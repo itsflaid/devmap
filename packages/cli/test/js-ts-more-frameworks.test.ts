@@ -33,8 +33,6 @@ async function routeTable(root: string): Promise<string[]> {
 
 const cls = (name: string) => `export class ${name} {}\n`;
 
-// ------------------------------------------------------------------- Angular
-
 test("Angular: routes, loadComponent, children, lazy routes files and lazy NgModules", async () => {
   await withProject({
     "package.json": pkg({ name: "ng", dependencies: { "@angular/core": "19.0.0", "@angular/platform-browser": "19.0.0", "@angular/router": "19.0.0" } }),
@@ -118,8 +116,6 @@ test("Angular: a library that only lists @angular/core is not an Angular app", a
   });
 });
 
-// ----------------------------------------------------------------- SolidStart
-
 test("SolidStart: file routes, groups, layouts and API handlers", async () => {
   await withProject({
     "package.json": pkg({ name: "solid", dependencies: { "@solidjs/start": "1.1.0", "solid-js": "1.9.0" } }),
@@ -147,8 +143,6 @@ test("SolidStart: file routes, groups, layouts and API handlers", async () => {
   });
 });
 
-// ----------------------------------------------------------------------- Qwik
-
 test("Qwik City: index routes, groups, layout variants and endpoints", async () => {
   await withProject({
     "package.json": pkg({ name: "qwik", devDependencies: { "@builder.io/qwik": "1.12.0", "@builder.io/qwik-city": "1.12.0" } }),
@@ -175,8 +169,6 @@ test("Qwik City: index routes, groups, layout variants and endpoints", async () 
     assert.equal((await createProjectMap(root)).framework, "qwik");
   });
 });
-
-// --------------------------------------------------------------------- Elysia
 
 test("Elysia: prefix, group, guard, plugins across files and function plugins", async () => {
   await withProject({
@@ -234,8 +226,6 @@ test("Elysia: prefix, group, guard, plugins across files and function plugins", 
   });
 });
 
-// ------------------------------------------------------------------------ Koa
-
 test("Koa: router prefix, nested routers across files, named routes and koa-mount", async () => {
   await withProject({
     "package.json": pkg({ name: "koa-api", dependencies: { koa: "2.15.0", "@koa/router": "13.0.0", "koa-mount": "4.0.0" } }),
@@ -287,8 +277,6 @@ test("Koa: router prefix, nested routers across files, named routes and koa-moun
     assert.equal((await createProjectMap(root)).framework, "koa");
   });
 });
-
-// -------------------------------------------------------------------- AdonisJS
 
 test("AdonisJS: groups, prefix, resources, controllers and rendered views", async () => {
   await withProject({
@@ -345,8 +333,6 @@ test("AdonisJS: groups, prefix, resources, controllers and rendered views", asyn
     assert.equal((await createProjectMap(root)).framework, "adonisjs");
   });
 });
-
-// ------------------------------------------------------- constants as paths
 
 test("paths held in constants and enums are resolved, and lazy route files need no router import", async () => {
   await withProject({

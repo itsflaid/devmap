@@ -9,10 +9,6 @@ import { singularize } from "../analysis/extractors/fallbackExtractor.js";
  */
 const READ_ONLY_VIEW_RESOURCE = /^(?:stats?|statistics|analytics?|reports?|reporting)$/;
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 export type CapabilityKind =
   | "crud"
   | "sharing"
@@ -28,30 +24,22 @@ export type CapabilityKind =
 export type CapabilityInfo = {
   kind: CapabilityKind;
   name: string;
-  /** Entity yang capability ini beroperasi di atasnya */
+  /** Entities the capability operates on. */
   entities: string[];
-  /** Route files sebagai evidence */
+  /** Route files the capability was inferred from. */
   evidence: string[];
   confidence: "high" | "medium" | "low";
 };
 
-// ---------------------------------------------------------------------------
-// Main entry
-// ---------------------------------------------------------------------------
-
 /**
- * detectCapabilities — derive capabilities dari route patterns + entity graph.
+ * Derives capabilities from route patterns, using the entity graph to name entities.
  *
- * Berbeda dari featureDetector yang detect *library* yang dipakai (Stripe, Redis, dll),
- * capabilityDetector detect *perilaku* yang di-expose project via routes.
+ * Unlike `featureDetector`, which detects libraries the project uses (Stripe, Redis),
+ * this detects behavior the project exposes through routes:
  *
- * Contoh:
- *   GET+POST+PUT+DELETE /snippets → crud capability pada entity "Snippet"
- *   POST /snippets/[id]/share     → sharing capability
- *   POST /workspaces/[id]/members → collaboration capability
- *
- * Input: RouteInfo[] + EntityGraph (untuk entity name mapping)
- * Output: CapabilityInfo[]
+ *   GET+POST+PUT+DELETE /snippets -> crud on entity "Snippet"
+ *   POST /snippets/[id]/share     -> sharing
+ *   POST /workspaces/[id]/members -> collaboration
  */
 export function detectCapabilities(
   routes: RouteInfo[],
@@ -63,23 +51,16 @@ export function detectCapabilities(
   const apiRoutes = routes.filter((r) => r.kind === "api");
   const pageRoutes = routes.filter((r) => r.kind === "page");
 
-  // --- CRUD detection ---
   const crudCapabilities = detectCrudCapabilities(apiRoutes, entityGraph);
   capabilities.push(...crudCapabilities);
 
-  // --- Behavioral capabilities dari route patterns ---
-  // Only use API routes for behavioral detection — page routes produce too many
-  // false positives because page paths often contain domain keywords that
-  // don't represent actual capabilities (e.g. /search page = UI, not search infra)
+  // API routes only: page paths often contain domain keywords that are not
+  // capabilities (a /search page is UI, not search infrastructure).
   const behavioral = detectBehavioralCapabilities(apiRoutes, entityGraph);
   capabilities.push(...behavioral);
 
   return deduplicateCapabilities(capabilities);
 }
-
-// ---------------------------------------------------------------------------
-// CRUD detection
-// ---------------------------------------------------------------------------
 
 function detectCrudCapabilities(
   apiRoutes: RouteInfo[],
@@ -132,25 +113,10 @@ function detectCrudCapabilities(
   return capabilities;
 }
 
-// ---------------------------------------------------------------------------
-// Behavioral capabilities
-//
-// Threshold design rationale:
-//
-//   highConfidenceAt = 1 was too aggressive — a single route match on a
-//   generic path like /search or /stats was enough to create a "high"
-//   confidence feature, even when that route was just a UI page.
-//
-//   New thresholds:
-//   - Search: 2 — one /search page is a UI pattern, not a search infrastructure
-//   - Reporting: 2 — one /stats or /dashboard page doesn't mean reporting infra
-//   - Social: 3 — needs multiple social signals (likes AND comments, etc.)
-//   - All others: 1 or 2 depending on signal specificity
-//
-//   Additionally: behavioral detection now only runs on API routes (not page
-//   routes) to avoid UI pages being confused with backend capabilities.
-// ---------------------------------------------------------------------------
-
+// Thresholds keep a single route on a generic path (/search, /stats) from
+// reading as a capability. Search and Reporting need 2 matches for "high",
+// Social needs 3 (likes AND comments, ...), the rest 1 or 2 by how specific
+// the path is. Search and Social also need several matches to surface at all.
 const BEHAVIORAL_SIGNALS: Array<{
   kind: CapabilityKind;
   name: string;
@@ -160,7 +126,7 @@ const BEHAVIORAL_SIGNALS: Array<{
   /** Minimum matches to surface as a capability at all (default: 1) */
   minimumMatches?: number;
 }> = [
-  // Sharing — specific enough that 1 match is fine
+  // Specific enough that 1 match is fine.
   {
     kind: "sharing",
     name: "Content Sharing",
@@ -168,7 +134,6 @@ const BEHAVIORAL_SIGNALS: Array<{
     highConfidenceAt: 2,
     minimumMatches: 1,
   },
-  // Publishing
   {
     kind: "publishing",
     name: "Content Publishing",
@@ -176,7 +141,7 @@ const BEHAVIORAL_SIGNALS: Array<{
     highConfidenceAt: 1,
     minimumMatches: 1,
   },
-  // Collaboration — workspace/member/invite are strong signals
+  // workspace/member/invite are strong signals.
   {
     kind: "collaboration",
     name: "Team Collaboration",
@@ -189,7 +154,6 @@ const BEHAVIORAL_SIGNALS: Array<{
     highConfidenceAt: 2,
     minimumMatches: 1,
   },
-  // Discovery
   {
     kind: "discovery",
     name: "Public Discovery",
@@ -200,8 +164,7 @@ const BEHAVIORAL_SIGNALS: Array<{
     highConfidenceAt: 1,
     minimumMatches: 1,
   },
-  // Social — needs multiple signals to avoid false positives
-  // e.g. a single /comments route could be anything
+  // A single /comments route could be anything, so several signals are needed.
   {
     kind: "social",
     name: "Social Interactions",
@@ -212,9 +175,8 @@ const BEHAVIORAL_SIGNALS: Array<{
       /\/(follow|followers|following)(\/|$)/i,
     ],
     highConfidenceAt: 3,
-    minimumMatches: 2,  // needs at least 2 distinct social routes to surface
+    minimumMatches: 2,
   },
-  // File management
   {
     kind: "file-management",
     name: "File Management",
@@ -226,7 +188,7 @@ const BEHAVIORAL_SIGNALS: Array<{
     highConfidenceAt: 1,
     minimumMatches: 1,
   },
-  // Real-time — transport-level signals only, very specific
+  // Transport-level signals only.
   {
     kind: "real-time",
     name: "Real-time Features",
@@ -238,16 +200,15 @@ const BEHAVIORAL_SIGNALS: Array<{
     highConfidenceAt: 1,
     minimumMatches: 1,
   },
-  // Search — needs at least 2 API routes to surface
-  // A single /api/search could be a simple filter, not search infrastructure
+  // A single /api/search could be a simple filter, not search infrastructure.
   {
     kind: "search",
     name: "Search",
     pathPatterns: [/\/(search|find|query|lookup)(\/|$)/i],
     highConfidenceAt: 2,
-    minimumMatches: 2,  // must have at least 2 distinct search API routes
+    minimumMatches: 2,
   },
-  // Reporting — dashboard alone is not enough (many apps have a /dashboard page)
+  // `dashboard` is left out: many apps have a /dashboard page.
   {
     kind: "reporting",
     name: "Statistics & Reporting",
@@ -261,7 +222,6 @@ const BEHAVIORAL_SIGNALS: Array<{
 ];
 
 function detectBehavioralCapabilities(
-  // Only API routes now — page routes removed to cut false positives
   apiRoutes: RouteInfo[],
   entityGraph: EntityGraph
 ): CapabilityInfo[] {
@@ -296,10 +256,6 @@ function detectBehavioralCapabilities(
 
   return capabilities;
 }
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function extractResourceName(path: string): string | null {
   const segments = path
@@ -374,12 +330,12 @@ function higherConfidence(
   return rank[a] >= rank[b] ? a : b;
 }
 
-// NON_RESOURCE_SEGMENTS — path segments yang bukan nama resource.
+// Path segments that never name a resource.
 const NON_RESOURCE_SEGMENTS = new Set([
   "auth", "oauth", "callback", "health",
   "ping", "status", "public", "internal",
   "static", "assets", "files", "me", "self",
   "history", "session", "sessions",
-  // tambahan: common Next.js/UI page paths yang bukan API resource
+  // Common Next.js/UI page paths that are not API resources.
   "dashboard", "settings", "profile", "search",
 ]);

@@ -6,24 +6,11 @@ import { DrizzleExtractor } from "./drizzleExtractor.js";
 import { SQLExtractor } from "./sqlExtractor.js";
 import { RouteFallbackExtractor } from "./fallbackExtractor.js";
 
-// ---------------------------------------------------------------------------
-// Extractor registry
-// ---------------------------------------------------------------------------
-
 /**
- * EXTRACTORS — ordered fallback chain, diiterasi dari atas ke bawah.
- *
- * Tambah source baru = append extractor baru ke sini, tanpa ubah logic apapun.
- * Orchestrator stop di extractor pertama yang canHandle() = true DAN extract() non-empty.
- *
- * Order penting: lebih reliable = lebih atas.
- *   1. Prisma    — high confidence, full field + relation data
- *   2. Drizzle   — fields + foreign-key relations from `pgTable`/`mysqlTable`/`sqliteTable`
- *   3. [future] TypeORM  → import { TypeORMExtractor } from "./typeormExtractor.js"
- *   4. [future] Mongoose → import { MongooseExtractor } from "./mongooseExtractor.js"
- *   5. SQL       — raw pg/mysql2/better-sqlite3, table names as pseudo-entities
- *                  (no field/relation data — lowest confidence of the schema sources,
- *                  stays last so any ORM extractor above gets first refusal)
+ * Fallback chain, tried top to bottom; the first extractor with `canHandle()` true and a
+ * non-empty `extract()` wins. Order is by reliability, most reliable first:
+ * Prisma (fields and relations), Drizzle (fields and foreign keys), then SQL (table names only),
+ * which stays last so any ORM extractor gets first refusal. New sources slot in above SQL.
  */
 const EXTRACTORS: IEntityExtractor[] = [
   new PrismaExtractor(),
@@ -35,26 +22,15 @@ const EXTRACTORS: IEntityExtractor[] = [
 
 const ROUTE_FALLBACK = new RouteFallbackExtractor();
 
-// ---------------------------------------------------------------------------
-// Main entry
-// ---------------------------------------------------------------------------
-
 /**
- * extractEntities — scan files dan build entity graph.
- *
- * Fallback chain:
- *   1. Iterate EXTRACTORS — stop di hasil pertama yang non-empty
- *   2. Kalau semua kosong dan ada routes → route-hint fallback
- *   3. Kalau routes juga kosong → return empty graph
- *
- * Relation graph di-build dari entity fields setelah semua entities terkumpul.
- * Dedup entity dilakukan di sini (bukan di extractor) untuk handle Prisma multi-file schema.
+ * Runs the EXTRACTORS chain, then falls back to route-derived entity names, then to an empty graph.
+ * Entities are deduplicated here rather than in the extractors because a Prisma multi-file
+ * schema can define a model twice.
  */
 export function extractEntities(
   files: ScannedFile[],
   routes: RouteInfo[] = []
 ): EntityGraph {
-  // --- Schema-based sources ---
   for (const extractor of EXTRACTORS) {
     if (!extractor.canHandle(files)) continue;
 
@@ -72,7 +48,7 @@ export function extractEntities(
     };
   }
 
-  // --- Route fallback: aktif kalau semua schema source kosong ---
+  // Only reached when every schema source came back empty.
   if (routes.length > 0) {
     const entities = ROUTE_FALLBACK.extract(routes);
     if (entities.length > 0) {
@@ -88,19 +64,9 @@ export function extractEntities(
   return { entities: [], relations: [], entityNames: [], source: "empty" };
 }
 
-// ---------------------------------------------------------------------------
-// Relation graph builder
-// ---------------------------------------------------------------------------
-
 /**
- * buildRelationGraph — derive semua relasi dari field isRelation = true.
- *
- * Rules:
- *   A.b  B[]   = one-to-many (A has many B)
- *   A.b  B     = one-to-one
- *   A.b  B[] + B.a A[] = many-to-many
- *
- * Duplicate guard: many-to-many A↔B hanya disimpan sekali.
+ * Derives relations from relation fields: `B[]` is one-to-many, `B` is one-to-one, and `B[]`
+ * on both sides is many-to-many (stored once per pair).
  */
 function buildRelationGraph(entities: EntityInfo[]): RelationInfo[] {
   const relations: RelationInfo[] = [];
@@ -123,7 +89,7 @@ function buildRelationGraph(entities: EntityInfo[]): RelationInfo[] {
         kind = "one-to-one";
       }
 
-      // Skip duplicate many-to-many (B→A sudah masuk waktu proses A→B)
+      // The B→A side of a many-to-many was already added while processing A→B.
       const isDuplicate = relations.some(
         (r) =>
           r.kind === "many-to-many" &&
@@ -140,15 +106,7 @@ function buildRelationGraph(entities: EntityInfo[]): RelationInfo[] {
   return relations;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * deduplicateEntities — filter duplicate entity names.
- * Penting buat Prisma multi-file schema dimana model bisa didefinisi di file terpisah.
- * First-seen wins.
- */
+/** First definition of a name wins. */
 function deduplicateEntities(entities: EntityInfo[]): EntityInfo[] {
   const seen = new Set<string>();
   return entities.filter((e) => {

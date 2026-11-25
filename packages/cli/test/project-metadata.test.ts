@@ -13,13 +13,8 @@ function createScannedFile(path: string, content: string) {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Regression: monorepo root containing a CLI/library subpackage must not
-// blank out a framework correctly detected elsewhere in the same repo.
-// https://github.com/itsflaid/devmap — found by dogfooding `devmap analyze`
-// on the devmap-main monorepo itself (apps/web is Astro, packages/cli has a
-// bin field; framework came back "unknown" instead of "astro").
-// ---------------------------------------------------------------------------
+// Regression: a CLI subpackage (a `bin` field in packages/cli) blanked the framework
+// detected elsewhere in the monorepo: devmap's own repo reported "unknown" instead of "astro".
 
 test("monorepo root with a CLI subpackage keeps the framework detected elsewhere", () => {
   const files = [
@@ -42,8 +37,7 @@ test("monorepo root with a CLI subpackage keeps the framework detected elsewhere
 
   assert.equal(project.framework, "astro");
   assert.equal(project.workspaceType, "monorepo");
-  // The CLI subpackage should still be visible in the multi-label
-  // classification — it just shouldn't erase the framework.
+  // The CLI subpackage stays visible in the multi-label classification.
   assert.ok(project.projectTypes.includes("node-cli"));
   assert.ok(project.projectTypes.includes("web-app"));
 });
@@ -81,9 +75,7 @@ test("a single-package CLI project still reports framework as unknown", () => {
     }))
   ];
 
-  // Even if a framework-ish dependency is present, a project whose ROOT
-  // package is itself the CLI keeps the original "unknown" framework
-  // behavior — this must not regress.
+  // A root package that is itself the CLI keeps framework "unknown", even with a react dependency.
   const project = detectProjectMetadata("/fixture", "react", files, ["react"]);
 
   assert.equal(project.framework, "unknown");

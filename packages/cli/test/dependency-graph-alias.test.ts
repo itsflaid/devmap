@@ -15,8 +15,6 @@ async function buildFixture(files: Record<string, string>): Promise<string> {
   return projectRoot;
 }
 
-// WP0 #8: Alias imports (@/…, ~/…) resolve when relevant config declares them;
-// unresolved aliases produce a diagnostic rather than a fake edge.
 test("configured alias imports resolve to real file graph edges", async () => {
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({ name: "alias-resolve" }),
@@ -39,14 +37,11 @@ test("configured alias imports resolve to real file graph edges", async () => {
   try {
     const snapshot = await createProjectMap(projectRoot);
 
-    // The alias @/components/Button should resolve to src/components/Button.tsx
     const pageImports = snapshot.fileGraph["src/app/page.tsx"] ?? [];
     const hasResolvedImport = pageImports.some((imp) =>
       imp.includes("Button") || imp.includes("components/Button")
     );
 
-    // If alias resolution works, the import should be resolved
-    // If not yet implemented, this test should be RED (failing)
     assert.ok(
       hasResolvedImport,
       "Alias @/components/Button should resolve to a real file in the graph"
@@ -75,8 +70,6 @@ test("unresolved alias imports produce a diagnostic and do not create fake edges
   try {
     const snapshot = await createProjectMap(projectRoot);
 
-    // The alias @/utils/nonexistent does not exist on disk
-    // It should NOT create a fake edge in the file graph
     const pageImports = snapshot.fileGraph["src/app/page.tsx"] ?? [];
     const hasFakeEdge = pageImports.some((imp) =>
       imp.includes("nonexistent")
@@ -87,12 +80,10 @@ test("unresolved alias imports produce a diagnostic and do not create fake edges
       "Unresolved alias should not create a fake edge in file graph"
     );
 
-    // Warnings should indicate the unresolved alias
     const aliasWarning = snapshot.warnings?.some((w) =>
       w.toLowerCase().includes("alias") || w.toLowerCase().includes("unresolved")
     );
-    // Not strictly required yet — this test is RED until WP5 implements diagnostics
-    // But the fake edge assertion above is the critical behavioral invariant
+    // aliasWarning is computed but not asserted: the fake-edge check above is the invariant.
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

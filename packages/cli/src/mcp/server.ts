@@ -153,8 +153,6 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
     { instructions: SERVER_INSTRUCTIONS }
   );
 
-  // ── tools ────────────────────────────────────────────────────────────────
-
   server.registerTool(
     "devmap_overview",
     {
@@ -424,8 +422,6 @@ export function createDevmapServer(options: DevmapServerOptions): DevmapServer {
       })
     );
   }
-
-  // ── resources ────────────────────────────────────────────────────────────
 
   server.registerResource(
     "devmap-snapshot",

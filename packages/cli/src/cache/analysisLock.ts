@@ -36,8 +36,8 @@ async function readLock(path: string): Promise<LockInfo | undefined> {
 
 /**
  * Take the analysis lock (`.devmap/analyze.lock`) so two analyses (`devmap analyze`,
- * or the MCP server of two editor windows) never write the snapshot at the same time. A lock whose
- * process is gone, or that is older than LOCK_STALE_MS, is taken over.
+ * or the MCP servers of two editor windows) never write the snapshot at the same
+ * time. A lock whose process is gone, or that is older than LOCK_STALE_MS, is taken over.
  */
 export async function acquireLock(projectRoot: string): Promise<() => Promise<void>> {
   const path = lockPath(projectRoot);

@@ -4,8 +4,6 @@ import { isArchitectureSource } from "../graph/sourceScope.js";
 import { matchLocalPath, normalizePath } from "../graph/localPaths.js";
 import { compareText } from "../../utils/compare.js";
 
-// Helpers shared by the per-framework route detectors.
-
 export function resolveRouterTarget(
   identifier: string,
   mountFile: string,

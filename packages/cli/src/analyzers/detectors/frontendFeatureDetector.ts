@@ -7,41 +7,22 @@ import type { FeatureInfo } from "../features/featureDetector.js";
 import { isDynamicSegment } from "./nonResourceSegments.js";
 import { compareText } from "../../utils/compare.js";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/**
- * Top-level page segments that aren't really a distinct product feature —
- * either infrastructure (auth callbacks) or too generic to name a feature
- * after on their own. Deliberately short: pages are usually meaningful
- * (unlike the wider NON_RESOURCE_SEGMENTS list used for API-derived CRUD
- * entities in capabilityDetector.ts) — "settings" or "profile" *are* real
- * pages users navigate to, so they stay in.
- */
 /** Map key for the page served at "/". */
 const ROOT_SEGMENT = "";
 
 export const HOME_FEATURE_NAME = "Home";
 
+// Infrastructure or too-generic top-level segments. Kept short on purpose: unlike the wider
+// NON_RESOURCE_SEGMENTS used for API-derived entities, "settings" or "profile" are real pages.
 const NON_FEATURE_PAGE_SEGMENTS = new Set([
   "auth", "oauth", "callback",
   "api", "static", "assets", "public",
 ]);
 
-// ---------------------------------------------------------------------------
-// Barrel file detection
-// ---------------------------------------------------------------------------
-
 /**
- * isPureBarrelFile — heuristic for files that exist solely to re-export
- * symbols from other modules (index.ts barrel files). Two checks:
- * 1. No value-level symbols (functions, classes, consts) — only re-exports.
- * 2. Export-dominance: majority of non-empty, non-comment lines are
- *    `export * from` or `export { ... } from` re-export statements.
- *
- * A barrel file that also defines local values is NOT treated as a barrel —
- * it has its own logic and should participate in ownership normally.
+ * A barrel file only re-exports: it declares no symbols, and most of its non-comment lines are
+ * `export * from` / `export { ... } from`. A file that also defines local values has its own
+ * logic and takes part in ownership normally.
  */
 function isPureBarrelFile(
   analysis: FileAnalysis | undefined,
@@ -51,7 +32,6 @@ function isPureBarrelFile(
   if (analysis.symbols.length > 0) return false;
   if (analysis.imports.length === 0) return false;
 
-  // Export-dominance check: count re-export lines vs total meaningful lines
   const lines = content.split("\n");
   const meaningful = lines.filter((line) => {
     const trimmed = line.trim();
@@ -66,22 +46,13 @@ function isPureBarrelFile(
   return reExportCount / meaningful.length > 0.5;
 }
 
-// ---------------------------------------------------------------------------
-// Detector
-// ---------------------------------------------------------------------------
-
 /**
- * detectFrontendPageFeatures — turn Next.js App/Pages Router page routes into
- * features, independent of whether any database entity was found.
+ * Turns Next.js App/Pages Router page routes into features, independent of database entities.
  *
- * Why this needs to be independent: entity-derived features (Prisma/SQL/
- * route-hint) only run as a fallback chain that stops at the first non-empty
- * source. A project with even one Prisma model (e.g. a NextAuth Session
- * table) never reaches route-hint fallback, so page-only features like
- * "Quran" or "Dzikir" — which have zero database presence — never surfaced
- * at all. This runs unconditionally and merges alongside whatever else was
- * found, so a mostly-frontend project doesn't get its features dominated by
- * whatever thin backend evidence happens to exist.
+ * Entity-derived features run as a fallback chain that stops at the first non-empty source, so a
+ * project with a single Prisma model (e.g. a NextAuth Session table) never reached the
+ * route-hint fallback and page-only features with no database presence were lost. This runs
+ * unconditionally and is merged with the other sources.
  */
 export function detectFrontendPageFeatures(
   routes: RouteInfo[],
@@ -135,10 +106,6 @@ export function detectFrontendPageFeatures(
   return features;
 }
 
-// ---------------------------------------------------------------------------
-// Internals
-// ---------------------------------------------------------------------------
-
 function groupBySegment(pageRoutes: RouteInfo[]): Map<string, RouteInfo[]> {
   const bySegment = new Map<string, RouteInfo[]>();
 
@@ -164,37 +131,25 @@ function groupBySegment(pageRoutes: RouteInfo[]): Map<string, RouteInfo[]> {
   return bySegment;
 }
 
-// ---------------------------------------------------------------------------
-// React Router (client-side routing)
-// ---------------------------------------------------------------------------
-
-/**
- * Matches the common ways a path gets paired with a component reference in
- * React Router — JSX `<Route path="..." element={<Foo />} />` / `component={Foo}`,
- * and object/data-router configs `{ path: "...", element: <Foo /> }` /
- * `{ path: "...", Component: Foo }`. Not a JSX/AST parser — same "common
- * conventions, not full coverage" approach as the SQL table-name extraction.
- * Assumes `path` appears before the element/component reference, which is
- * the idiomatic order in real code; reversed ordering is a known v1 miss.
- */
+// Regex pairing of a path with a component reference: JSX `<Route path element={<Foo />}>` /
+// `component={Foo}` and object configs `{ path, element: <Foo /> }` / `{ path, Component: Foo }`.
+// Common conventions, not a parser; `path` must come before the component (reversed order is missed).
 const CLIENT_ROUTE_PATTERNS = [
   /<Route\s+[^>]*?path=["'`]([^"'`]+)["'`][^>]*?element=\{<(\w+)/g,
   /<Route\s+[^>]*?path=["'`]([^"'`]+)["'`][^>]*?component=\{?(\w+)/g,
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?element:\s*<(\w+)/g,
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?Component:\s*(\w+)/g,
-  // Vue Router — identifier form (component already imported above).
+  // Vue Router, identifier form.
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?component:\s*(\w+)\s*[,}]/g,
 ];
 
-// Vue Router — lazy import form: `component: () => import("./views/About.vue")`.
-// Captures the relative specifier instead of an identifier, so it resolves
-// through resolveRouteSpecifierFile rather than the identifier matcher.
+// Vue Router lazy form `component: () => import("./views/About.vue")`: captures the specifier
+// rather than an identifier, so it resolves through resolveRouteSpecifierFile.
 const LAZY_ROUTE_PATTERN =
   /\{\s*path:\s*["'`]([^"'`]+)["'`][^}]*?component:\s*\(\)\s*=>\s*import\(\s*["'`]([^"'`]+)["'`]\s*\)/g;
 
-// svelte-spa-router — object map form: `const routes = { '/about': About }`.
-// Too generic to trust on its own (any "string-key : identifier" object could
-// match), so it only runs on files that import svelte-spa-router.
+// svelte-spa-router object map `const routes = { '/about': About }`. Any "string: identifier"
+// object would match, so it only runs on files that import svelte-spa-router.
 const SVELTE_SPA_ROUTER_PATTERN = /["'`](\/[^"'`]*)["'`]\s*:\s*(\w+)/g;
 const SVELTE_SPA_ROUTER_IMPORT =
   /from\s+["']svelte-spa-router["']|require\(\s*["']svelte-spa-router["']\s*\)/;
@@ -240,11 +195,7 @@ function findClientRoutes(files: ScannedFile[]): ClientRoute[] {
   return routes;
 }
 
-/**
- * A route only gives an identifier ("QuranPage"), not a file. Resolve it by
- * checking what the defining file actually imports — the dependency graph
- * already has that edge, so this is a lookup, not new import resolution.
- */
+/** A route names a component ("QuranPage"), not a file; match it against the defining file's graph imports by file stem. */
 function resolveRouteComponentFile(route: ClientRoute, fileGraph: FileGraph): string | undefined {
   const imported = fileGraph[route.definedIn] ?? [];
   const target = route.component.toLowerCase();
@@ -255,12 +206,7 @@ function resolveRouteComponentFile(route: ClientRoute, fileGraph: FileGraph): st
   });
 }
 
-/**
- * Vue Router's lazy form captures a relative specifier ("./views/About.vue"),
- * not an identifier — the graph's resolved imports won't match it directly.
- * Resolve the specifier against the defining file's folder and match the
- * scanned file list, covering explicit .vue extensions and omitted ones.
- */
+/** Resolves a lazy-import specifier against the defining file's folder and the scanned file list, with or without an extension. */
 function resolveRouteSpecifierFile(route: ClientRoute, files: ScannedFile[]): string | undefined {
   const available = new Set(files.map((file) => file.path));
   const baseParts = route.definedIn.split("/");
@@ -299,10 +245,8 @@ function normalizeRoutePath(path: string): string {
 }
 
 /**
- * detectClientRouteFeatures — same purpose and output shape as
- * detectFrontendPageFeatures, for SPAs with no file-based routing (Vite +
- * React Router). Route paths come from parsing route definitions instead of
- * folder conventions; ownership uses the exact same reverse-graph rule.
+ * Same output as `detectFrontendPageFeatures` for SPAs without file-based routing (Vite + React
+ * Router): paths come from route definitions, ownership uses the same reverse-graph rule.
  */
 export function detectClientRouteFeatures(
   files: ScannedFile[],
@@ -375,9 +319,8 @@ function byShallowPath(files: string[]): string[] {
 }
 
 /**
- * A component reachable from two different pages belongs to neither: with
- * auto-imported or app-wide components every page reaches the same big tree, and
- * the first page would otherwise own all of it. A page keeps its own seed files.
+ * A file reachable from two pages belongs to neither: with auto-imported or app-wide components
+ * every page reaches the same tree, and the first page would otherwise own all of it. A page keeps its seed files.
  */
 function dropSharedFiles(pages: Array<{ seedFiles: string[]; ownedFiles: string[] }>): void {
   const claims = new Map<string, number>();
@@ -399,12 +342,9 @@ export function pageFeatureName(segment: string): string {
 }
 
 /**
- * collectOwnedFiles — seed files plus every file reachable from them whose
- * *every* referrer is also within that reachable set. A component (or
- * store, or any other file) imported by this route/page and nothing else is
- * "owned"; a file also imported by a different page or feature is shared
- * and stays out — false-negative (feature looks smaller than it is) over
- * false-positive (feature claims a shared file it doesn't really own).
+ * Seed files plus every reachable file whose referrers all lie inside the reachable set. A file
+ * also imported from elsewhere is shared and stays out: a feature that looks too small is
+ * better than one that claims files it does not own.
  */
 function collectOwnedFiles(
   seedFiles: string[],
@@ -417,7 +357,7 @@ function collectOwnedFiles(
 
   while (queue.length > 0) {
     const current = queue.shift() as string;
-    if (barrelFiles.has(current)) continue; // JANGAN ekspansi children barrel
+    if (barrelFiles.has(current)) continue; // a barrel's re-exports are not followed: they would pull in files this page does not own
     for (const next of graph[current] ?? []) {
       if (!reachable.has(next)) {
         reachable.add(next);

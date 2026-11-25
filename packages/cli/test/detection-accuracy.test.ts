@@ -39,8 +39,6 @@ async function routeTable(root: string): Promise<string[]> {
     .sort();
 }
 
-// ------------------------------------------------------- dynamic URL segments
-
 test("isDynamicSegment: recognizes every framework's parameter syntax", () => {
   for (const segment of ["[id]", "[...slug]", ":id", "*", "*path", "{id}"]) {
     assert.equal(isDynamicSegment(segment), true, segment);
@@ -77,8 +75,6 @@ test("route-hint entities: `:id` and `{id}` segments are skipped like `[id]`", (
   assert.ok(!names.some((name) => /^[:{]/.test(name)), names.join(", "));
 });
 
-// ----------------------------------------------------------- SQL entity names
-
 test("SQL entities: snake_case tables are named like models", () => {
   const file: ScannedFile = {
     path: "src/db.ts",
@@ -94,8 +90,6 @@ test("SQL entities: snake_case tables are named like models", () => {
   const names = new SQLExtractor().extract([file]).map((entity) => entity.name).sort();
   assert.deepEqual(names, ["OrderItem", "User", "UserRole"]);
 });
-
-// -------------------------------------------------------- SvelteKit `@` folder
 
 test("SvelteKit: a literal `@` folder is part of the URL, not a parallel slot", async () => {
   await withProject({
@@ -125,8 +119,6 @@ test("Next: an `@slot` folder is still not a URL segment", async () => {
     assert.ok(!table.some((line) => line.includes("@team")), table.join("\n"));
   });
 });
-
-// ------------------------------------------------------------ Fastify autoload
 
 const AUTOLOAD_APP = [
   'import path from "node:path";',
@@ -197,8 +189,6 @@ test("Fastify without autoload: routes keep their literal paths", async () => {
     assert.deepEqual(await routeTable(root), ["api /users [GET]"]);
   });
 });
-
-// -------------------------------------------------- one-letter URL segments
 
 test("a one-letter page segment (`/s/[subdomain]`) does not crash feature detection", async () => {
   await withProject({

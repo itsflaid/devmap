@@ -33,16 +33,13 @@ export type RouteInfo = {
 };
 
 /**
- * detectRoutes — run every detector whose framework was detected, then merge
- * the results. A project with a Next.js frontend AND an Express backend in a
- * single scan now yields routes from BOTH sides instead of first-match-wins.
+ * Runs every detector whose framework was detected and merges the results, so a
+ * Next.js frontend with an Express backend yields routes from both sides.
+ * Detectors filter by their own file patterns, so running several at once does
+ * not produce duplicates.
  *
- * Each per-framework detector stays isolated (they already filter by their own
- * file patterns), so running several at once is safe — they don't collide
- * because they look at different files.
- *
- * `graph` (optional) lets the Express detector resolve routers mounted across
- * files so mount prefixes compose with the sub-paths they wrap.
+ * `graph` lets the detectors that follow mounts across files (Express, Fastify,
+ * Hono, Angular, ...) compose mount prefixes with the sub-paths they wrap.
  */
 export function detectRoutes(
   files: ScannedFile[],
@@ -118,9 +115,8 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
   const slotFiles = new Set<string>();
 
   for (const file of files.filter((item) => isArchitectureSource(item.path))) {
-    // App Router — match anywhere in path, not just root.
-    // Supports: src/app/, app/, apps/web/src/app/, packages/web/src/app/, dll.
-    // Sebelumnya pakai ^(?:src\/)? yang miss monorepo prefix seperti apps/web/.
+    // App Router: matched at any depth, not anchored to the root, so monorepo
+    // prefixes such as apps/web/src/app/ are found.
     const appMatch = file.path.match(
       /(?:^|\/)(?:src\/)?app\/(.+\/)?(page|route|sitemap|robots|manifest)\.[jt]sx?$/
     );
@@ -151,7 +147,7 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
       continue;
     }
 
-    // Pages Router — sama, ganti ^ ke (?:^|\/) buat monorepo support.
+    // Pages Router: also matched at any depth for monorepos.
     const pagesMatch = file.path.match(
       /(?:^|\/)(?:src\/)?pages\/(.+)\.[jt]sx?$/
     );
@@ -178,11 +174,9 @@ function detectNextRoutes(files: ScannedFile[]): RouteInfo[] {
 }
 
 /**
- * detectAstroRoutes — pages live under src/pages/ (Astro always uses src/ as
- * its source root). Page files are .astro/.md/.mdx; endpoint files are
- * .ts/.js exporting GET/POST/etc., the same convention as Next.js route
- * handlers. Underscore-prefixed segments and content collections are not
- * routes and are skipped.
+ * Astro pages live under `src/pages/` as .astro/.md/.mdx; endpoints are .ts/.js
+ * files exporting GET/POST/etc., like Next.js route handlers. Underscore-prefixed
+ * segments are not routes.
  */
 function detectAstroRoutes(files: ScannedFile[]): RouteInfo[] {
   const routes: RouteInfo[] = [];
@@ -213,10 +207,9 @@ function detectAstroRoutes(files: ScannedFile[]): RouteInfo[] {
 }
 
 /**
- * detectNuxtRoutes — Nuxt uses root-level pages/** (not src/pages/ like Astro),
- * unless srcDir is customized in nuxt.config — a v1 limitation. Bracket syntax
- * for dynamic segments, [...slug] for catch-alls, and index-stripping mirror
- * Next.js Pages Router conventions.
+ * Nuxt pages are `pages/**` at any depth (the folder is not tied to `src/`);
+ * `srcDir` from nuxt.config is not read. Bracket segments, `[...slug]`
+ * catch-alls and index stripping follow the Next.js Pages Router conventions.
  */
 function detectNuxtRoutes(files: ScannedFile[]): RouteInfo[] {
   const routes: RouteInfo[] = [];
@@ -266,10 +259,9 @@ function detectNuxtRoutes(files: ScannedFile[]): RouteInfo[] {
 }
 
 /**
- * detectSvelteKitRoutes — the route unit is a FOLDER under src/routes/, not a
- * file name. Only +page.svelte (page) and +server.[jt]s (api) are routes; the
- * "+" prefix is SvelteKit-only, so the escaped literals below are safe. Route
- * groups "(group)" are stripped by toRoutePath.
+ * The route unit is a folder under `src/routes/`, not a file name. Only
+ * `+page.svelte` (page) and `+server.[jt]s` (api) are routes. Route groups
+ * `(group)` are stripped by `toRoutePath`.
  */
 function detectSvelteKitRoutes(files: ScannedFile[]): RouteInfo[] {
   const routes: RouteInfo[] = [];
@@ -339,7 +331,6 @@ function detectFastifyRoutes(
   );
   const byPath = new Map(eligibleFiles.map((file) => [file.path, file]));
 
-  // First pass: direct routes per file, plus collect plugin registrations.
   const directRoutes = new Map<string, RouteInfo[]>();
   const registers: FastifyRegister[] = [];
 
@@ -362,7 +353,6 @@ function detectFastifyRoutes(
     }
   }
 
-  // Second pass: resolve registered plugins and compose prefix + sub-path.
   const mountedFiles = new Set<string>();
   for (const register of registers) {
     const target = resolveRouterTarget(
@@ -386,14 +376,14 @@ function detectFastifyRoutes(
         });
       }
     }
-    // Unresolvable plugin without routes — it is not a route, so drop it.
+    // A plugin that cannot be resolved or has no routes is dropped; unlike Express
+    // there is no USE placeholder for it.
   }
 
   // @fastify/autoload registers every plugin file of a folder with the folder path as its
   // prefix, so a file's routes are relative to that path, not to "/".
   const autoloads = findAutoloadRoots(eligibleFiles);
 
-  // Emit standalone routes only for files that were not absorbed by a plugin.
   for (const [path, fileRoutes] of directRoutes) {
     if (mountedFiles.has(path)) continue;
     const prefix = autoloadPrefix(path, autoloads);
@@ -518,7 +508,6 @@ function detectExpressRoutes(
   );
   const byPath = new Map(eligibleFiles.map((file) => [file.path, file]));
 
-  // First pass: direct route methods per file, plus collect mounted routers.
   const directRoutes = new Map<string, RouteInfo[]>();
   const mounts: ExpressMount[] = [];
 
@@ -541,7 +530,6 @@ function detectExpressRoutes(
     }
   }
 
-  // Second pass: resolve each mount to the router file it points at.
   const resolvedMounts = mounts.map((mount) => ({
     mount,
     target: resolveRouterTarget(
@@ -597,8 +585,8 @@ function detectExpressRoutes(
         // the full prefix, so a bare USE entry would be noise.
         mountedFiles.add(target.path);
       } else {
-        // Unresolvable or empty router — keep the mount itself as a USE route so
-        // the middleware prefix stays visible instead of silently disappearing.
+        // Unresolvable or empty router: keep the mount as a USE route so the
+        // middleware prefix stays visible.
         routes.push({
           path: base || "/",
           file: mount.file,
@@ -609,7 +597,6 @@ function detectExpressRoutes(
     }
   }
 
-  // Emit standalone routes only for files that were not absorbed by a mount.
   for (const [path, fileRoutes] of directRoutes) {
     if (!mountedFiles.has(path)) {
       routes.push(...fileRoutes);

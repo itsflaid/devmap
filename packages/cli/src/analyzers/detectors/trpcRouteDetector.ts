@@ -5,7 +5,7 @@ import { compareText } from "../../utils/compare.js";
 
 type ProcedureKind = "QUERY" | "MUTATION";
 
-// Known V1 limitations:
+// Known limitations:
 // - Only processes the first router({...}) call per file
 // - Nested composition resolved max 2 levels (root → sub)
 
@@ -140,7 +140,7 @@ function parseRouterFile(
     }
   }
 
-  // Extract sub-router references: "subRouter" used as values
+  // Sub-routers referenced as values, e.g. `users: usersRouter`.
   const subRouterRefs: string[] = [];
   const refPattern = /(\w+)\s*:\s*(\w+Router)\b/g;
   let refMatch = refPattern.exec(routerBody);

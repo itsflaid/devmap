@@ -94,8 +94,6 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   return { promise, resolve: resolvePromise };
 }
 
-// ── devmap_analyze ─────────────────────────────────────────────────────────
-
 test("devmap_analyze reports unchanged without re-analyzing when nothing changed", async () => {
   const projectRoot = await tinyProject();
   const { analyze, calls } = countingAnalyze();
@@ -276,8 +274,6 @@ test("devmap_analyze sends progress notifications while it runs", async () => {
   }
 });
 
-// ── auto-refresh ───────────────────────────────────────────────────────────
-
 test("without autoRefresh, queries never write: stale results are reported as stale", async () => {
   const projectRoot = await tinyProject();
   const { analyze, calls } = countingAnalyze();
@@ -389,8 +385,6 @@ test("provider auto-refresh retries after the cooldown", async () => {
   }
 });
 
-// ── lock ───────────────────────────────────────────────────────────────────
-
 test("analysis refuses to start while a live process holds the lock", async () => {
   const projectRoot = await tinyProject();
 
@@ -465,8 +459,6 @@ test("refresher: unchanged projects skip the lock and the analysis", async () =>
   }
 });
 
-// ── impact (transitive) ────────────────────────────────────────────────────
-
 test("devmap_impact follows imports transitively and reports affected features", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "devmap-mcp-impact-"));
   await cp(hubFixture, projectRoot, { recursive: true });
@@ -519,8 +511,6 @@ test("transitive impact is cycle-safe", async () => {
   }
 });
 
-// ── prompts ────────────────────────────────────────────────────────────────
-
 test("prompts expose ready-made DevMap workflows", async () => {
   const projectRoot = await tinyProject();
   const { client, close } = await connect({ projectRoot });
@@ -550,8 +540,6 @@ test("prompts expose ready-made DevMap workflows", async () => {
     await rm(projectRoot, { recursive: true, force: true });
   }
 });
-
-// ── real process ───────────────────────────────────────────────────────────
 
 test("devmap mcp --auto-refresh over stdio refreshes a stale project with a clean protocol stream", async () => {
   const projectRoot = await tinyProject();

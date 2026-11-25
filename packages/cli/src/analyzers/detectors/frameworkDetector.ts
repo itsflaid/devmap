@@ -27,14 +27,9 @@ export function detectFramework(files: ScannedFile[]): Framework {
 }
 
 /**
- * detectFrameworks — detect every framework signal, then return AT MOST one
- * winner per category (frontend, backend). Frontend-first for display.
- *
- * A project with both a Next.js frontend and an Express backend (single
- * package or monorepo scan) returns two entries instead of the single
- * first-match-wins value the old flat order produced. `nextjs` still beats
- * `astro` within the frontend category — the same first-match-wins rule is
- * simply scoped per category now.
+ * At most one winner per category (frontend, backend), frontend first. A Next.js
+ * frontend with an Express backend returns both; within a category the first
+ * match in the priority order wins (`nextjs` beats `astro`).
  */
 export function detectFrameworks(files: ScannedFile[]): DetectedFramework[] {
   return winnersOf(collectFrameworks(files));
@@ -86,8 +81,7 @@ function collectFrameworks(files: ScannedFile[]): Set<DetectedFramework> {
   const detected = new Set<DetectedFramework>();
   const sourceFiles = files.filter((file) => isArchitectureSource(file.path));
 
-  // Phase 1: dependency manifest — highest confidence signal.
-  // package.json is the canonical source of truth for what frameworks are installed.
+  // package.json dependencies are the highest-confidence signal.
   for (const manifest of readManifestDependencies(files)) {
     const dependencies = { ...manifest.runtime, ...manifest.dev };
     // A server framework that is only a devDependency is usually test tooling
@@ -145,9 +139,9 @@ function collectFrameworks(files: ScannedFile[]): Set<DetectedFramework> {
       detected.add("react");
     }
 
-    // Nuxt apps ship App.vue too, so vue must exclude when nuxt is present —
-    // same mirror of the react-vs-next exclusion. The runtime gate prevents a
-    // Vue UI library (vue only in peerDependencies) from being labeled an app.
+    // Nuxt apps ship App.vue too, so vue is excluded when nuxt is present (as react
+    // is for next). The runtime gate keeps a Vue UI library, which lists vue as a
+    // peer or dev dependency, from being labeled an app.
     const hasVueRuntime = "@vitejs/plugin-vue" in dependencies
       || "@vitejs/plugin-vue2" in dependencies
       || "@vue/cli-service" in dependencies
@@ -162,13 +156,11 @@ function collectFrameworks(files: ScannedFile[]): Set<DetectedFramework> {
     }
   }
 
-  // Phase 2: file structure heuristics — secondary signal.
-  // Only used when package.json is absent or incomplete (e.g. monorepo root without deps).
+  // File-structure signals run in addition to the manifests (a monorepo root may list no deps).
 
   // Next.js: next.config.* or App Router / Pages Router file conventions.
-  // _app and _document are Next.js-unique; a bare src/pages/api/ folder is NOT
-  // (Astro uses the same folder for endpoints), so it is deliberately excluded
-  // from the Pages Router signal here.
+  // _app and _document are Next.js-unique; a bare src/pages/api/ folder is not a
+  // signal because Astro uses the same folder for endpoints.
   if (
     sourceFiles.some((file) => /(^|\/)next\.config\.[cm]?[jt]s$/.test(file.path))
     || sourceFiles.some((file) =>
@@ -180,63 +172,52 @@ function collectFrameworks(files: ScannedFile[]): Set<DetectedFramework> {
     detected.add("nextjs");
   }
 
-  // Express: primarily via package.json dependency (see below for the file-only path).
+  // The Express and Hono file heuristics below only apply when this is false.
   const hasReliableManifest = files.some(
     (file) => file.path.endsWith("package.json") && isArchitectureSource(file.path) && isParseableJson(file.content)
   );
 
-  // Express: ONLY add via file heuristic if express was already confirmed in package.json,
-  // OR — narrow fallback — if package.json is missing/unparseable entirely.
-  //
-  // Rationale: `server.ts` and `app.ts` are common filenames in Next.js, NestJS, and vanilla
-  // Node projects. Without the dependency gate, a Next.js project with a custom `app.ts`
-  // utility file would be misclassified as Express. The dep check is the authoritative signal;
-  // the filename pattern alone is intentionally never used as a standalone trigger.
-  //
-  // When there's no reliable manifest to check at all, that filename ambiguity is still a
-  // real risk, so instead of trusting the filename we scan file *content* for an actual
-  // `express()` call or `require("express")`/`from "express"` — evidence specific enough
-  // that a Next.js app.ts utility file won't produce a false positive.
+  // A `server.ts` / `app.ts` filename never adds Express by itself: Next.js, NestJS and
+  // plain Node projects use those names too. With no parseable package.json to check,
+  // file content is scanned for an `express()` call or an `express` require/import instead.
   if (
     detected.has("express")
     && sourceFiles.some((file) =>
       /(^|\/)(?:src\/)?(?:server|app)\.[cm]?[jt]s$/.test(file.path)
     )
   ) {
-    // Already added via deps — this block intentionally left as documentation of the gate.
-    // The detected.add("express") already happened above; we don't re-add.
+    // Already detected from dependencies.
   } else if (!hasReliableManifest && sourceFiles.some((file) => hasExpressCallSite(file.content))) {
     detected.add("express");
   }
 
-  // Astro: src/pages/*.astro is specific enough to be safe as a standalone signal.
+  // src/pages/*.astro is specific enough to stand alone.
   if (sourceFiles.some((file) => /(^|\/)src\/pages\/.+\.astro$/.test(file.path))) {
     detected.add("astro");
   }
 
-  // Nuxt: nuxt.config.* is as specific as next.config.* today.
+  // nuxt.config.* is specific to Nuxt.
   if (sourceFiles.some((file) => /(^|\/)nuxt\.config\.[cm]?[jt]s$/.test(file.path))) {
     detected.add("nuxt");
   }
 
-  // Vue: App.vue at the project root (or src/) is specific enough to stand alone.
+  // App.vue at the project root (or src/) is specific enough to stand alone.
   if (sourceFiles.some((file) => /(^|\/)(?:src\/)?App\.vue$/.test(file.path))) {
     detected.add("vue");
   }
 
-  // SvelteKit: +page.svelte under src/routes/ is unique to SvelteKit — the "+"
-  // prefix is not used by any other framework. svelte.config.js is NOT used as a
-  // signal because non-SvelteKit Svelte projects have it too.
+  // +page.svelte under src/routes/ is unique to SvelteKit. svelte.config.js is not a
+  // signal because plain Svelte projects have it too.
   if (sourceFiles.some((file) => /(^|\/)src\/routes\/.+\+page\.svelte$/.test(file.path))) {
     detected.add("sveltekit");
   }
 
-  // NestJS: nest-cli.json is as specific as next.config.* / nuxt.config.*.
+  // nest-cli.json is specific to NestJS.
   if (files.some((file) => /(^|\/)nest-cli\.json$/.test(file.path))) {
     detected.add("nestjs");
   }
 
-  // Remix / React Router v7: their config files are specific to each tool.
+  // The Remix and React Router v7 config files are specific to each tool.
   if (files.some((file) => /(^|\/)remix\.config\.[cm]?js$/.test(file.path))) {
     detected.add("remix");
   }
@@ -279,7 +260,7 @@ const REMIX_PACKAGES = [
 
 const QWIK_PACKAGES = ["@builder.io/qwik-city", "@builder.io/qwik", "@qwik.dev/router", "@qwik.dev/core"];
 
-// v6 ships `@adonisjs/core`; v4 and v5 ship `@adonisjs/framework` / `@adonisjs/core` too.
+// `@adonisjs/core` is v5 and v6; `@adonisjs/framework` is v4.
 const ADONIS_PACKAGES = ["@adonisjs/core", "@adonisjs/framework"];
 
 const TANSTACK_ROUTER_PACKAGES = [

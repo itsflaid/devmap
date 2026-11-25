@@ -2,14 +2,7 @@ import { isDynamicSegment, isOperationalSegment, LARGE_API_ROUTE_COUNT } from ".
 import type { RouteInfo } from "../../detectors/index.js";
 import type { EntityInfo, IRouteFallbackExtractor } from "./types.js";
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/**
- * Segments yang sering muncul di URL tapi bukan entity name.
- * Difilter biar gak muncul sebagai entity hint.
- */
+/** URL segments that are common but never entity names. */
 const ROUTE_NON_ENTITY_SEGMENTS = new Set([
   "api", "v1", "v2", "v3",
   "public", "internal", "private",
@@ -19,10 +12,7 @@ const ROUTE_NON_ENTITY_SEGMENTS = new Set([
   "me", "self",
 ]);
 
-/**
- * Kata irregular yang singularization-nya tidak bisa di-derive dari suffix rules.
- * Key = lowercase plural, value = singular yang benar.
- */
+/** Words whose singular cannot be derived from suffix rules. Key is the lowercase plural form. */
 const IRREGULAR_SINGULAR = new Map([
   ["media", "media"],
   ["data", "data"],
@@ -48,21 +38,10 @@ const IRREGULAR_SINGULAR = new Map([
 
 const SINGULAR_ENDS_IN_S_PLURAL = /(?:status|bus|alias|campus|bonus|virus|canvas|bias|atlas)es$/;
 
-// ---------------------------------------------------------------------------
-// Extractor
-// ---------------------------------------------------------------------------
-
 /**
- * RouteFallbackExtractor — derive entity names dari URL segments sebagai
- * best-effort fallback kalau tidak ada schema source yang ditemukan.
- *
- * Confidence: low — hanya dapat names, zero field/relation data.
- * Tapi tetap berguna buat capabilityDetector dan domain inference.
- *
- * Contoh:
- *   /api/snippets        → "Snippet"
- *   /api/workspaces/[id] → "Workspace"
- *   /api/collections     → "Collection"
+ * Derives entity names from API route segments when no schema source exists
+ * (`/api/snippets` gives "Snippet"). Low confidence: names only, no fields or relations, but
+ * capabilityDetector and domain inference still use them.
  */
 export class RouteFallbackExtractor implements IRouteFallbackExtractor {
   readonly name = "route-fallback";
@@ -77,20 +56,19 @@ export class RouteFallbackExtractor implements IRouteFallbackExtractor {
       const writes = (route.methods ?? []).some((method) => method !== "GET" && method !== "HEAD" && method !== "QUERY");
 
       for (const segment of segments) {
-        // Skip dynamic segments: [id], [slug], [...catchall], :id
+        // Dynamic segments: [id], [slug], [...catchall], :id
         if (isDynamicSegment(segment)) {
           prevWasDynamic = true;
           continue;
         }
-        // Segments immediately after a dynamic parameter are sub-resources
-        // (e.g. /api/workspaces/[id]/members → "members" is a sub-resource of "workspaces")
+        // A segment right after a dynamic parameter is a sub-resource (`/api/workspaces/[id]/members`),
+        // which is skipped so it does not become its own entity.
         if (prevWasDynamic) {
           prevWasDynamic = false;
           continue;
         }
-        // Skip short segments: "v1", "id", dll
+        // Short segments such as "v1" and "id".
         if (segment.length <= 2) continue;
-        // Skip common non-entity prefixes
         if (ROUTE_NON_ENTITY_SEGMENTS.has(segment.toLowerCase())) continue;
         if (isOperationalSegment(segment)) continue;
 
@@ -124,24 +102,14 @@ export function resourceEntityName(segment: string): string {
   return words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join("");
 }
 
-// ---------------------------------------------------------------------------
-// Singularization
-// ---------------------------------------------------------------------------
-
 /**
- * singularize — simple English singularization untuk route segments.
- * Cukup buat common REST conventions, bukan full NLP.
- *
- * "snippets"   → "Snippet"
- * "categories" → "Category"
- * "replies"    → "Reply"
- * "workspaces" → "Workspace"
- * "media"      → "Media"  (irregular, tidak diubah)
+ * Singularizes a route segment and capitalizes it ("categories" gives "Category", "media" stays
+ * "Media"). Covers common REST naming only, not English in general.
  */
 export function singularize(word: string): string {
   const lower = word.toLowerCase();
 
-  // Irregular — cek duluan sebelum suffix rules
+  // Irregulars first: suffix rules would mangle them.
   if (IRREGULAR_SINGULAR.has(lower)) {
     return capitalize(IRREGULAR_SINGULAR.get(lower) ?? lower);
   }
@@ -158,17 +126,15 @@ export function singularize(word: string): string {
   if (lower.endsWith("ies")) {
     return capitalize(lower.slice(0, -3) + "y");
   }
-  // "addresses" → "address", "churches" → "church", "boxes" → "box"
-  // (stem itself ends in a hard consonant cluster that takes "-es")
+  // "addresses", "churches", "boxes": the stem ends in a sound that takes "-es".
   if (lower.endsWith("sses") || lower.endsWith("xes") || lower.endsWith("ches") || lower.endsWith("shes")) {
     return capitalize(lower.slice(0, -2));
   }
-  // "verses" → "verse", "houses" → "house", "cases" → "case", "responses" → "response"
-  // (singular already ends in a silent "e" before the "s" — plural just adds "s", not "es")
+  // "verses", "houses", "responses": the singular ends in a silent "e" and the plural adds only "s".
   if (lower.endsWith("ses")) {
     return capitalize(lower.slice(0, -1));
   }
-  // "workspaces", "snippets", "collections" — trailing -s yang umum
+  // Plain trailing "s"; "ss" words ("class") are left alone.
   if (lower.endsWith("s") && !lower.endsWith("ss")) {
     return capitalize(lower.slice(0, -1));
   }

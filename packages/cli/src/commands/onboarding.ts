@@ -105,14 +105,12 @@ export function buildOnboardingMarkdown(
   const lang = options.language ?? model.language;
   const sections: string[] = [];
 
-  // Header
   sections.push(`# ${model.projectName}`);
   sections.push("");
   sections.push(model.tagline);
   if (model.stackLine) sections.push(`\`${model.stackLine}\``);
   sections.push("");
 
-  // Stale warning
   if (options.stale || model.isStale) {
     sections.push(lang === "id"
       ? "> ⚠ Snapshot stale — jalankan `devmap analyze --fresh` sebelum mengandalkan guide ini."
@@ -124,13 +122,11 @@ export function buildOnboardingMarkdown(
   sections.push("---");
   sections.push("");
 
-  // Section 1: What this is
   sections.push(lang === "id" ? "## Tentang project ini" : "## What this is");
   sections.push("");
   sections.push(model.whatThisIs);
   sections.push("");
 
-  // Section 2: How it works
   sections.push(lang === "id" ? "## Cara kerjanya" : "## How it works");
   sections.push("");
   for (let i = 0; i < model.howItWorks.length; i++) {
@@ -138,7 +134,6 @@ export function buildOnboardingMarkdown(
   }
   sections.push("");
 
-  // Section 3: What's inside
   if (model.features.length > 0) {
     sections.push(lang === "id" ? "## Fitur yang ada" : "## What's inside");
     sections.push("");
@@ -146,7 +141,6 @@ export function buildOnboardingMarkdown(
     sections.push("");
   }
 
-  // Section 4: Start here
   if (model.startHere.length > 0) {
     sections.push(lang === "id" ? "## Mulai dari sini" : "## Start here");
     sections.push("");
@@ -154,7 +148,6 @@ export function buildOnboardingMarkdown(
     sections.push("");
   }
 
-  // Section 5: Key flows (optional, dari snapshot langsung)
   const flows = options.flows ?? [];
   if (flows.length > 0) {
     sections.push(lang === "id" ? "## Flow utama" : "## Key flows");
@@ -163,13 +156,11 @@ export function buildOnboardingMarkdown(
     sections.push("");
   }
 
-  // Section 6: Go deeper (statik)
   sections.push(lang === "id" ? "## Lebih dalam" : "## Go deeper");
   sections.push("");
   sections.push(...renderGoDeeper(lang));
   sections.push("");
 
-  // Footer
   sections.push("---");
   sections.push(lang === "id"
     ? "*Dibuat oleh DevMap · Jalankan `devmap analyze` untuk refresh*"
@@ -234,8 +225,7 @@ function renderKeyFlows(flows: ProjectMap["flows"], lang: OnboardingLanguage): s
   return lines;
 }
 
-// Set of actually-registered CLI commands from index.ts.
-// Add entries here when new commands ship so they appear in the onboarding guide.
+// Only commands registered in index.ts; a new command must be added here to appear in the guide.
 const AVAILABLE_COMMANDS = new Set([
   "init",
   "analyze",
@@ -275,8 +265,6 @@ function renderGoDeeper(lang: OnboardingLanguage): string[] {
       return `- \`${cmd}\` — ${desc}`;
     });
 }
-
-// ── Language resolution ───────────────────────────────────────────────────────
 
 async function resolveOnboardingLanguage(options: OnboardingOptions): Promise<OnboardingLanguage> {
   const explicitLanguage = normalizeOnboardingLanguage(options.language);

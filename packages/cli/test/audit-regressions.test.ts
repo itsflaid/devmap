@@ -36,8 +36,6 @@ async function withProject(files: Record<string, string>, run: (root: string) =>
   }
 }
 
-// ------------------------------------------------------------ Vue SFC with two script blocks
-
 const TWO_BLOCKS = [
   "<script lang=\"ts\">",
   "export default { name: \"Parent\" };",
@@ -76,8 +74,6 @@ test("a component imported only from <script setup> stays connected in the graph
   });
 });
 
-// ------------------------------------------------------------ tooling config is never an entry
-
 test("config files are not entry points, but Angular's app.config.ts still is", () => {
   const graph = {
     "vitest.config.e2e.ts": ["src/a.ts"],
@@ -95,8 +91,6 @@ test("config files are not entry points, but Angular's app.config.ts still is", 
   assert.ok(entries.includes("src/app/app.config.ts"));
 });
 
-// ------------------------------------------------------------ framework signals from sample folders
-
 test("a next.config.js inside examples/ does not make the repository a Next.js app", () => {
   const manifest = JSON.stringify({ name: "lib", dependencies: { react: "^19.0.0" } });
   const files = [
@@ -108,8 +102,6 @@ test("a next.config.js inside examples/ does not make the repository a Next.js a
   assert.ok(detectFrameworks([...files, fileOf("apps/web/next.config.js", "module.exports = {};")]).includes("nextjs"));
 });
 
-// ------------------------------------------------------------ assets are not feature evidence
-
 test("an image named after a capability does not create a feature", async () => {
   await withProject({
     "package.json": JSON.stringify({ name: "site", dependencies: { react: "^19.0.0" } }),
@@ -120,8 +112,6 @@ test("an image named after a capability does not create a feature", async () => 
     assert.ok(!map.features.some((feature) => feature.files.some((file) => file.endsWith(".svg"))));
   });
 });
-
-// ------------------------------------------------------------ one-line bundles
 
 test("a bundle written on one line is skipped instead of stalling the analysis", async () => {
   const bundle = "var a=function(){return 1};".repeat(20_000);
@@ -137,14 +127,10 @@ test("a bundle written on one line is skipped instead of stalling the analysis",
   assert.equal(parsed.symbols.length, 5_000);
 });
 
-// ------------------------------------------------------------ generated onboarding guide
-
 test("the ONBOARDING.md that devmap writes is not part of the scanned project", () => {
   assert.equal(shouldIgnorePath("ONBOARDING.md", false), true);
   assert.equal(shouldIgnorePath("docs/ONBOARDING.md", false), false);
 });
-
-// ------------------------------------------------------------ onboarding wording
 
 function snapshotWith(overrides: Partial<ProjectMap>): ProjectMap {
   const feature = (name: string, fileCount: number, purpose = "") => ({
@@ -200,8 +186,6 @@ test("a project without a framework is not called an 'application application'",
   assert.equal(model.tagline, "shop — application.");
 });
 
-// ------------------------------------------------------------ AI requests are bounded in time
-
 test("a custom endpoint that never answers fails with a timeout error", async () => {
   const previous = process.env.DEVMAP_AI_TIMEOUT_MS;
   process.env.DEVMAP_AI_TIMEOUT_MS = "50";
@@ -225,8 +209,6 @@ test("a custom endpoint that never answers fails with a timeout error", async ()
     else process.env.DEVMAP_AI_TIMEOUT_MS = previous;
   }
 });
-
-// ------------------------------------------------------------ AI domain must be grounded in the project
 
 const BLOG_EVIDENCE = {
   projectName: "taxonomy",
@@ -320,8 +302,6 @@ test("analyze ignores an AI domain the project does not support and says so", as
   });
 });
 
-// ------------------------------------------------------------ ownership comes from the entity graph
-
 test("the snapshot records who owns the data, and 'Personal app' needs that evidence", () => {
   const withoutEvidence = buildOnboardingModel(snapshotWith({ capabilities: [] }), "en");
   assert.doesNotMatch(withoutEvidence.tagline, /personal/i);
@@ -331,8 +311,6 @@ test("the snapshot records who owns the data, and 'Personal app' needs that evid
   }), "en");
   assert.match(isolated.tagline, /personal/i);
 });
-
-// ------------------------------------------------------------ one feature, one name
 
 test("a /docs page and the Documentation role are one feature", async () => {
   await withProject({
@@ -380,8 +358,6 @@ test("a single Next.js app does not list the React it ships as a second framewor
   });
 });
 
-// ------------------------------------------------------------ syntax errors lower the confidence
-
 test("a file TypeScript had to recover from is not reported as a clean parse", async () => {
   const analyses = await analyzeFiles([
     fileOf("src/ok.ts", "import { a } from './a';\nexport function ok() { return a; }\n"),
@@ -410,8 +386,6 @@ test("the snapshot carries the lowered confidence per file", async () => {
     assert.equal(fileIndex["src/broken.ts"].analysisConfidence, "medium");
   });
 });
-
-// ------------------------------------------------------------ vocabulary words are hints, packages are evidence
 
 const lines = (...rows: string[]) => rows.join("\n") + "\n";
 

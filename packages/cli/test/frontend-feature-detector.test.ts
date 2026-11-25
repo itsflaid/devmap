@@ -33,11 +33,9 @@ test("frontend-only pages become features even when the project has zero API rou
 });
 
 test("page features still surface when a Prisma entity is also present (the core regression)", async () => {
-  // Before this fix: any project with even one database entity (here, a
-  // NextAuth-style User model) never reached the point where page routes
-  // could become features at all — the entity-extraction fallback chain
-  // stopped at the first non-empty source, so a mostly-frontend project's
-  // real features were invisible next to whatever thin backend existed.
+  // Regression: a single database entity (here a NextAuth-style User model)
+  // stopped the entity-extraction fallback chain at its first non-empty source,
+  // so page routes never became features in a mostly-frontend project.
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({ name: "mixed", dependencies: { "next-auth": "^5.0.0" } }),
     "prisma/schema.prisma": 'generator client {\n  provider = "prisma-client-js"\n}\ndatasource db {\n  provider = "postgresql"\n  url = env("DATABASE_URL")\n}\nmodel User {\n  id String @id\n}\n',
@@ -167,8 +165,7 @@ test("API routes are not mistaken for page features, and vice versa", async () =
 
   try {
     const snapshot = await createProjectMap(projectRoot);
-    // Both should surface — one from the page detector, one from the
-    // route-hint entity fallback — without a broken/duplicated name.
+    // The page detector and the route-hint entity fallback both surface Chat, without a broken or duplicated name.
     const names = snapshot.features.map((f) => f.name);
     assert.ok(names.some((name) => name === "Chat" || name === "Chat Management"));
   } finally {
@@ -176,12 +173,10 @@ test("API routes are not mistaken for page features, and vice versa", async () =
   }
 });
 
-// WP2: Barrel/re-export files should not inflate page feature ownership.
-// Two different pages both import from a barrel — the barrel's
-// re-exported components should NOT appear in either page's files.
+// Two pages importing the same barrel must not both claim the barrel's re-exported components.
 test("barrel re-export file does not inflate page feature ownership", async () => {
-  // Use "widgets.ts" instead of "index.ts" to avoid false-positive matches
-  // from registry signals (e.g. Search matches "index" in import paths).
+  // "widgets.ts" rather than "index.ts": registry signals match "index" in import
+  // paths (Search) and would add noise.
   const projectRoot = await buildFixture({
     "package.json": JSON.stringify({ name: "barrel-test" }),
     "app/settings/page.tsx": [
@@ -208,8 +203,7 @@ test("barrel re-export file does not inflate page feature ownership", async () =
     assert.ok(featureSettings, "Feature Settings should exist");
     assert.ok(featureDashboard, "Feature Dashboard should exist");
 
-    // ThemeToggle.tsx should NOT be claimed by either page — the barrel file
-    // (ui/widgets.ts) is the BFS barrier.
+    // The barrel (ui/widgets.ts) is the BFS barrier.
     assert.ok(
       !featureSettings.files.some((f) => f.includes("ThemeToggle.tsx")),
       "Settings should not include ThemeToggle.tsx via barrel"

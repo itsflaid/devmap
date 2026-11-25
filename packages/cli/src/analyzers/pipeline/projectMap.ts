@@ -136,7 +136,7 @@ export type ProjectMap = {
   features: FeatureInfo[];
   entityGraph?: EntityGraph;
   capabilities?: CapabilityInfo[];
-  /** AI-inferred domain understanding — present kalau AI inference berhasil */
+  /** AI-inferred domain; present only when inference succeeded and was grounded. */
   domain?: DomainInferenceResult;
   /** Who owns the data, read from the entity graph (static, never from AI). */
   ownership?: {
@@ -159,8 +159,7 @@ export type ProjectMap = {
     rejectedCandidateIds: string[];
   };
   dependencies: Record<string, string[]>;
-  /** Resolved file-to-file import graph (project-relative paths). Distinct from
-   *  `dependencies`, which holds package.json npm dependency names. */
+  /** Resolved file-to-file imports (project-relative paths); `dependencies` holds package.json npm names. */
   fileGraph: Record<string, string[]>;
   ai?: {
     architecture: string;
@@ -177,11 +176,7 @@ export type ProjectMap = {
 
 export async function createProjectMap(
   projectRoot: string,
-  /**
-   * Optional AI caller — kalau disediakan, domain inference (Step 5) akan dijalankan.
-   * Kalau tidak ada, hanya static analysis yang jalan.
-   * Injected biar decoupled dari provider specifics (Groq, OpenRouter, dll).
-   */
+  /** Enables domain inference; without it only static analysis runs. Injected to stay independent of the AI provider. */
   callAI?: (prompt: string) => Promise<string>
 ): Promise<ProjectMap> {
   let activeSpinner: Spinner | undefined;
@@ -218,13 +213,10 @@ export async function createProjectMap(
     activeSpinner.succeed("Dependencies mapped");
 
     activeSpinner = output.spinner("Extracting entities & features");
-    // Step 1: Extract entities dari schema (Prisma dll) atau route fallback
     const entityGraph = extractEntities(files, routes);
 
-    // Step 2: Detect capabilities dari route patterns + HTTP methods
     const capabilities = detectCapabilities(routes, entityGraph);
 
-    // Step 3: Detect features — consume entityGraph + capabilities
     const featureResult = detectFeatures(files, analyses, routes, database, entityGraph, capabilities, graph);
     const features = attachFeatureEntryPoints(
       featureResult.features,
@@ -236,9 +228,7 @@ export async function createProjectMap(
     );
     activeSpinner.succeed(`Detected ${features.length} features`);
 
-    // Step 4: AI domain inference (optional — hanya jalan kalau callAI disediakan)
-    // Kirim structured metadata ke AI, dapat domain summary + domain-specific features.
-    // Kalau gagal atau callAI tidak ada, static features tetap lengkap.
+    // Domain inference sends structured metadata only; if it fails or is absent the static features stay complete.
     let domain: DomainInferenceResult | undefined;
     const domainWarnings: string[] = [];
     if (callAI) {
@@ -265,12 +255,9 @@ export async function createProjectMap(
           `AI domain "${result.domain}" was ignored: no entity, route or feature in the project supports it.`
         );
       } else if (result) {
-        // Merge domain-specific features ke features list.
-        // Pakai similarity engine — bukan name equality — sehingga
-        // "Customizable Plans" tidak duplicate "Plan Management" yang sudah ada.
-        // Canonical name (first-seen) dipertahankan oleh mergeDomainFeatures.
-        // The merge runs on a copy so AI output can never abort the analysis or
-        // leave the static feature list half-updated.
+        // Merged by similarity, not name equality, so "Customizable Plans" does not duplicate an
+        // existing "Plan Management"; the first-seen name is kept. The merge runs on a copy so AI
+        // output cannot abort the analysis or leave the static feature list half-updated.
         try {
           const merged = [...features];
           mergeDomainFeatures(merged, domainFeaturesToFeatureInfo(result.domainFeatures));
@@ -315,7 +302,6 @@ export async function createProjectMap(
       framework,
       project,
       stats: {
-        // A pre-filter filesystem count is not collected in schema v1.
         totalFiles: files.length,
         relevantFiles: files.length,
         totalLines: files.reduce((sum, file) => sum + file.lines, 0)
@@ -852,14 +838,8 @@ function buildFeatureBusinessFlow(
 }
 
 /**
- * buildStructuralFeatureFlow — build human-readable flow steps untuk sebuah feature.
- *
- * Generic by design — bekerja untuk project apapun berdasarkan:
- * 1. FileRole classification — detect architectural layers dari file paths
- * 2. Naming conventions — common patterns yang berlaku cross-domain
- *
- * Sebelumnya hardcode DevMap-specific paths (Analysis Engine, Snapshot Engine).
- * Sekarang derive flow dari actual files yang ditemukan di project.
+ * Flow steps for a feature, derived from file-path conventions (middleware, routes, services,
+ * repositories, ...) so they work for any project. A step is dropped when no file matches it.
  */
 function buildStructuralFeatureFlow(featureName: string, files: string[]): string[] {
   const find = (...patterns: RegExp[]) =>
@@ -869,7 +849,6 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
 
   const steps: Array<[string, string | undefined]> = [];
 
-  // --- Authentication flow (special case, high value) ---
   if (featureName === "Authentication") {
     steps.push(
       ["Guard protected routes", find(/middleware\.[cm]?[jt]sx?$/, /proxy\.[cm]?[jt]sx?$/)],
@@ -880,7 +859,6 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     );
   }
 
-  // --- API layer flow ---
   else if (featureName === "API Layer") {
     steps.push(
       ["Receive and validate request", find(/\/(routes?|controllers?|handlers?)\//)],
@@ -890,7 +868,6 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     );
   }
 
-  // --- Service layer flow ---
   else if (featureName === "Service Layer") {
     steps.push(
       ["Entry via service interface", find(/\/(services?|usecases?)\//)],
@@ -899,7 +876,6 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     );
   }
 
-  // --- CLI Commands flow ---
   else if (featureName === "CLI Commands") {
     steps.push(
       ["Parse and dispatch command", find(/\/(src\/)?index\.[cm]?[jt]s$/, /\/bin\//)],
@@ -908,7 +884,6 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     );
   }
 
-  // --- AI Integration flow ---
   else if (featureName === "AI Integration") {
     steps.push(
       ["Build context", find(/\/(context|contextbuilder)\.[cm]?[jt]s$/)],
@@ -918,9 +893,8 @@ function buildStructuralFeatureFlow(featureName: string, files: string[]): strin
     );
   }
 
-  // --- Generic CRUD flow — berlaku buat Snippet Management, Order Management, dll ---
+  // Any other feature is treated as CRUD on an entity named by the feature ("Snippet Management" -> "snippet").
   else {
-    // Extract entity name dari feature name (e.g. "Snippet Management" → "snippet")
     const entitySlug = featureName
       .toLowerCase()
       .replace(/\s+(management|system|module|feature)$/, "")

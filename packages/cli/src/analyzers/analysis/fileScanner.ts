@@ -28,7 +28,7 @@ export async function scanFiles(projectRoot: string): Promise<ScannedFile[]> {
   const limit = pLimit(50);
   const realRoot = await realpath(projectRoot).catch(() => projectRoot);
 
-  // Ignore files are cached per process; re-read them for every scan.
+  // The ignore-file cache lives for the process; clear it so edits between scans are seen.
   clearGitignoreCache();
 
   // The limiter only guards actual filesystem I/O (readdir, stat + readFile).

@@ -37,10 +37,6 @@ async function withProject(files: Record<string, string>, run: (root: string) =>
 
 const PACKAGE = JSON.stringify({ name: "fixture", dependencies: {} });
 
-// ---------------------------------------------------------------------------
-// Project metadata: nothing is reported that the files do not show
-// ---------------------------------------------------------------------------
-
 test("a project without TypeScript or JavaScript files reports its own language, never typescript", () => {
   const files = [
     scanned("manage.py", "import os\n"),
@@ -126,8 +122,6 @@ test("a runtime dependency on a server framework is enough", () => {
   assert.deepEqual(detectFrameworks([scanned("package.json", manifest)]), ["fastify"]);
 });
 
-// The settings-only pnpm-workspace.yaml (onlyBuiltDependencies, overrides) is what pnpm 10
-// projects commonly have; only a `packages` list declares workspace members.
 async function metadataOf(files: Record<string, string>, frameworks: Parameters<typeof detectProjectMetadata>[3]) {
   let project: ReturnType<typeof detectProjectMetadata> | undefined;
   await withProject(files, async (root) => {
@@ -136,6 +130,8 @@ async function metadataOf(files: Record<string, string>, frameworks: Parameters<
   return project as ReturnType<typeof detectProjectMetadata>;
 }
 
+// pnpm 10 projects commonly have a settings-only pnpm-workspace.yaml (onlyBuiltDependencies,
+// overrides); only a `packages` list declares workspace members.
 test("pnpm-workspace.yaml without a packages list does not make a monorepo", async () => {
   const project = await metadataOf({
     "package.json": JSON.stringify({ name: "app", dependencies: { next: "^15.0.0" } }),
@@ -190,10 +186,6 @@ test("declaration files are never entry points, and type-test folders are not pr
   assert.equal(isArchitectureSource("test-d/search-params.ts"), false);
   assert.equal(isArchitectureSource("src/search/query.ts"), true);
 });
-
-// ---------------------------------------------------------------------------
-// Features: names, ids and search terms stay tied to the project's own evidence
-// ---------------------------------------------------------------------------
 
 test("search terms list only the vocabulary the project's files contain", async () => {
   await withProject({
@@ -266,10 +258,6 @@ test("agent navigation keeps both features when two names slug to the same id", 
     }
   });
 });
-
-// ---------------------------------------------------------------------------
-// Domain inference: a bad model answer or a bad cache never breaks analysis
-// ---------------------------------------------------------------------------
 
 const DOMAIN_INPUT: DomainInferenceInput = {
   entityNames: ["Order", "Customer"],
